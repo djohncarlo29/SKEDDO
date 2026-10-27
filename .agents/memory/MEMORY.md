@@ -54,6 +54,7 @@
 - [Replit temporary storage limits](replit-home-quota.md) — keep caches and Flutter temp files on the workspace partition, not quota-limited home or the 4GB /tmp tmpfs.
 - [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — keep 5.0.0 switch geometry and optics; active/inactive track colors follow app accent/category and tertiary-label colors.
 - [Liquid Glass slider v5 edge motion](liquid-glass-slider-version-split.md) — keep slider 5.0.0; add live thumb-envelope callbacks for edge-icon push and bounce.
+- [Fixed Liquid Glass midpoint marker](liquid-glass-fixed-midpoint-marker.md) — pin the 50% tick to the row card; let the rubberbanded track move beneath it.
 - [Text Size slider step alignment](text-size-slider-step-alignment.md) — align seven markers with settled thumb centers; allow continuous dragging and snap on release.
 - [Glass navigation package compatibility](liquid-glass-widgets-compatibility.md) — the title package's transitive dependency requires Dart 3.12.2; keep SDK pins aligned.
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run causes JNI SIGSEGV; keep the registered TFLite path.

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-import 'package:flutter/gestures.dart' show kTouchSlop;
+import 'package:flutter/gestures.dart'
+    show PointerDownEvent, PointerEvent, kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -292,6 +294,8 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
   bool _pointerDown = false;
   bool _isDragging = false;
   bool _didToggleDuringDrag = false;
+  int? _activePointer;
+  int _pointerGeneration = 0;
 
   /// Whether the pointer has travelled far enough to be a drag rather than a
   /// held tap, by DISTANCE.
@@ -500,6 +504,37 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
     setState(() {});
   }
 
+  void _rememberPointer(PointerDownEvent event) {
+    if (_activePointer != null) return;
+    _activePointer = event.pointer;
+    _pointerGeneration++;
+  }
+
+  /// Backstop the gesture recognizer's end/cancel callback with the raw
+  /// pointer lifecycle. If an ancestor route or scroll transition removes
+  /// the recognizer during the same dispatch, finish the lift after the
+  /// event has had a chance to reach it.
+  void _finishFromRawPointer(PointerEvent event, {required bool canceled}) {
+    if (_activePointer != event.pointer) return;
+    final generation = _pointerGeneration;
+    scheduleMicrotask(() {
+      if (!mounted ||
+          generation != _pointerGeneration ||
+          _activePointer != event.pointer) {
+        return;
+      }
+      if (_pointerDown) {
+        if (canceled) {
+          _handleCancel();
+        } else {
+          _handleUp();
+        }
+      } else {
+        _activePointer = null;
+      }
+    });
+  }
+
   void _handleMove(Offset globalPosition) {
     if (!_pointerDown) return;
     final elapsed = DateTime.now().difference(_downTime).inMicroseconds / 1e6;
@@ -551,6 +586,8 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
   void _handleUp() {
     if (!_pointerDown) return;
     _pointerDown = false;
+    _activePointer = null;
+    _pointerGeneration++;
     final elapsed = DateTime.now().difference(_downTime).inMicroseconds / 1e6;
 
     // Distance decides first, time second. A gesture that carried the thumb
@@ -596,6 +633,8 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
       return;
     }
     _pointerDown = false;
+    _activePointer = null;
+    _pointerGeneration++;
     _morphTarget = 0;
     _thumbSpringTarget = _targetThumbCX;
     _ensureTicking();
@@ -799,19 +838,26 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
     final Widget control = SizedBox(
       width: l.width,
       height: l.height,
-      child: RawGestureDetector(
-        behavior: HitTestBehavior.opaque,
-        gestures: liquidGlassEagerPanGestures(
-          debugOwner: this,
-          onDown: _handleDown,
-          onMove: _handleMove,
-          onUp: _handleUp,
-          onCancel: _handleCancel,
-        ),
-        child: OverflowBox(
-          maxWidth: viewWidth,
-          maxHeight: viewHeight,
-          child: view,
+      child: Listener(
+        onPointerDown: _rememberPointer,
+        onPointerUp: (event) =>
+            _finishFromRawPointer(event, canceled: false),
+        onPointerCancel: (event) =>
+            _finishFromRawPointer(event, canceled: true),
+        child: RawGestureDetector(
+          behavior: HitTestBehavior.opaque,
+          gestures: liquidGlassEagerPanGestures(
+            debugOwner: this,
+            onDown: _handleDown,
+            onMove: _handleMove,
+            onUp: _handleUp,
+            onCancel: _handleCancel,
+          ),
+          child: OverflowBox(
+            maxWidth: viewWidth,
+            maxHeight: viewHeight,
+            child: view,
+          ),
         ),
       ),
     );

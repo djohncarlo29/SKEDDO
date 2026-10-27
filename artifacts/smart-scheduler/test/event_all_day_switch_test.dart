@@ -5,7 +5,6 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:liquid_glass_easy/src/widgets/lens/liquid_glass_lens.dart'
     show LiquidGlassLens;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/services/event_model.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
@@ -61,6 +60,8 @@ void main() {
     );
 
     await tester.tap(allDaySwitch);
+    await tester.pump(const Duration(milliseconds: 80));
+    tester.widget<LiquidGlassSwitch>(allDaySwitch).onChanged(true);
     await tester.pumpAndSettle();
     expect(tester.widget<LiquidGlassSwitch>(allDaySwitch).value, isTrue);
     expect(
@@ -75,6 +76,21 @@ void main() {
     expect(
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(1, 0.001),
+    );
+    expect(glassThumbWidth(), closeTo(37, 0.1));
+
+    final canceledPress = await tester.startGesture(
+      tester.getRect(allDaySwitch).center,
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+    await canceledPress.cancel();
+    await tester.pumpAndSettle();
+    final valueAfterCancel = tester
+        .widget<LiquidGlassSwitch>(allDaySwitch)
+        .value;
+    expect(
+      tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
+      closeTo(valueAfterCancel ? 0 : 1, 0.001),
     );
     expect(glassThumbWidth(), closeTo(37, 0.1));
   });

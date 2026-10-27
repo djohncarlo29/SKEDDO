@@ -716,14 +716,11 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                   ),
                   if (markerProgress != null)
                     Positioned(
-                      // Anchor the marker to this frame, which is the same
-                      // shifted/stretched geometry used for the live track.
-                      // Its fraction stays fixed even as the thumb drags past
-                      // an endpoint and the track rubberbands.
+                      // The marker belongs to the row card, not the elastic
+                      // track. Keep it at its resting coordinate while the
+                      // track shifts and stretches underneath it.
                       left:
-                          restingTrackX +
-                          restingTrackW * markerProgress -
-                          1.5,
+                          _trackMinX + _trackWidth * markerProgress - 1.5,
                       top: centerY + 8 - 1.5,
                       child: Container(
                         key: const ValueKey(

@@ -11626,35 +11626,42 @@ class _NewEventSheetState extends State<_NewEventSheet>
   // ── All-day / Unscheduled toggles ─────────────────────────────────────────
 
   void _toggleAllDay(bool turningOn) {
-    if (turningOn == _allDay) return;
-    // Close any open picker menu before its labels and option set change.
-    if (_pickerMenuOpen) {
-      _dismissPickerOverlay();
-    }
-    // Close any open time picker first so the pill resets correctly.
-    if (_activePicker.endsWith('_time')) {
-      _ctrlFor(_activePicker).animateTo(0.0, curve: Curves.easeIn).then((_) {
-        if (mounted) setState(() => _activePicker = '');
+    final changed = turningOn != _allDay;
+    if (changed) {
+      // Close any open picker menu before its labels and option set change.
+      if (_pickerMenuOpen) {
+        _dismissPickerOverlay();
+      }
+      // Close any open time picker first so the pill resets correctly.
+      if (_activePicker.endsWith('_time')) {
+        _ctrlFor(_activePicker).animateTo(0.0, curve: Curves.easeIn).then((_) {
+          if (mounted) setState(() => _activePicker = '');
+        });
+      }
+      setState(() {
+        _allDay = turningOn;
+        if (turningOn) {
+          // Reset travel selections so they don't bleed into alert labels and
+          // so toggling All-day back off always starts fresh with 'None'.
+          _travelTime = 'None';
+          _travelMode = 'None';
+          // All-day default: remind the user the night before and expose the
+          // optional second reminder. Choosing None in the Reminder picker
+          // remains the deliberate opt-out and collapses the second row.
+          _alert = 'Night before (9 PM)';
+          _secondAlert = 'None';
+        } else {
+          // Restore sensible non-all-day defaults.
+          _alert = 'At time of event';
+          _secondAlert = 'None';
+        }
       });
     }
-    setState(() {
-      _allDay = turningOn;
-      if (turningOn) {
-        // Reset travel selections so they don't bleed into alert labels and
-        // so toggling All-day back off always starts fresh with 'None'.
-        _travelTime = 'None';
-        _travelMode = 'None';
-        // All-day default: remind the user the night before and expose the
-        // optional second reminder. Choosing None in the Reminder picker
-        // remains the deliberate opt-out and collapses the second row.
-        _alert = 'Night before (9 PM)';
-        _secondAlert = 'None';
-      } else {
-        // Restore sensible non-all-day defaults.
-        _alert = 'At time of event';
-        _secondAlert = 'None';
-      }
-    });
+
+    // Also reconcile the dependent transitions for duplicate callbacks.
+    // The glass switch and its full-row tap target can report the same desired
+    // value during one interaction; state stays idempotent, but controllers
+    // must still land on the state the switch shows.
     if (turningOn) {
       // All-day ON → collapse Travel Time and Travel Mode. The default
       // Reminder is active, so keep Second Reminder visible.

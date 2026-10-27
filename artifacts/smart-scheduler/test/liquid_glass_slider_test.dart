@@ -235,50 +235,58 @@ void main() {
     );
   });
 
-  testWidgets('the midpoint marker follows the track during rubberbanding', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const CupertinoApp(
-        home: Center(
-          child: LiquidGlassSlider(
-            value: 0.5,
-            onChanged: _ignoreSliderChange,
-            stepMarkerValue: 0.5,
+  testWidgets(
+    'the midpoint marker stays fixed to the row during rubberbanding',
+    (tester) async {
+      await tester.pumpWidget(
+        const CupertinoApp(
+          home: Center(
+            child: LiquidGlassSlider(
+              value: 0.5,
+              onChanged: _ignoreSliderChange,
+              stepMarkerValue: 0.5,
+            ),
           ),
         ),
-      ),
-    );
-
-    final sliderRect = tester.getRect(find.byType(LiquidGlassSlider));
-    final trackFinder = find.byKey(const ValueKey('liquid-glass-slider-track'));
-    final markerFinder = find.byKey(
-      const ValueKey('liquid-glass-slider-step-marker'),
-    );
-    final initialTrack = tester.getRect(trackFinder);
-
-    Future<void> expectMarkerCenteredOnTrack() async {
-      final trackRect = tester.getRect(trackFinder);
-      final markerRect = tester.getRect(markerFinder);
-      expect(
-        markerRect.center.dx,
-        closeTo(trackRect.center.dx, 0.1),
-        reason: 'The 50% marker must remain at the track midpoint.',
       );
-    }
 
-    final gesture = await tester.startGesture(sliderRect.center);
-    await gesture.moveTo(Offset(sliderRect.right + 80, sliderRect.center.dy));
-    await tester.pump();
-    await expectMarkerCenteredOnTrack();
-    expect(tester.getRect(trackFinder).width, greaterThan(initialTrack.width));
+      final sliderRect = tester.getRect(find.byType(LiquidGlassSlider));
+      final trackFinder = find.byKey(
+        const ValueKey('liquid-glass-slider-track'),
+      );
+      final markerFinder = find.byKey(
+        const ValueKey('liquid-glass-slider-step-marker'),
+      );
+      final initialTrack = tester.getRect(trackFinder);
+      final initialMarker = tester.getRect(markerFinder);
+      final rowMarkerX = initialMarker.center.dx;
 
-    await gesture.moveTo(Offset(sliderRect.left - 80, sliderRect.center.dy));
-    await tester.pump();
-    await expectMarkerCenteredOnTrack();
-    await gesture.up();
-    await tester.pump(const Duration(milliseconds: 400));
-  });
+      void expectMarkerStaysOnRow() {
+        final markerRect = tester.getRect(markerFinder);
+        expect(
+          markerRect.center.dx,
+          closeTo(rowMarkerX, 0.1),
+          reason: 'The 50% marker must remain fixed to the slider row.',
+        );
+      }
+
+      final gesture = await tester.startGesture(sliderRect.center);
+      await gesture.moveTo(Offset(sliderRect.right + 80, sliderRect.center.dy));
+      await tester.pump();
+      expectMarkerStaysOnRow();
+      final rightTrack = tester.getRect(trackFinder);
+      expect(rightTrack.width, greaterThan(initialTrack.width));
+      expect(rightTrack.center.dx, isNot(closeTo(initialTrack.center.dx, 0.1)));
+
+      await gesture.moveTo(Offset(sliderRect.left - 80, sliderRect.center.dy));
+      await tester.pump();
+      expectMarkerStaysOnRow();
+      final leftTrack = tester.getRect(trackFinder);
+      expect(leftTrack.center.dx, isNot(closeTo(initialTrack.center.dx, 0.1)));
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 400));
+    },
+  );
 
   testWidgets('tab bar and shared surfaces follow the same slider blur', (
     tester,
