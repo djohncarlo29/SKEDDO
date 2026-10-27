@@ -31,6 +31,7 @@ class ModalToolbarGlassButton extends StatefulWidget {
     this.flipHorizontal = false,
     this.tapDelay = Duration.zero,
     this.peakScale = 1.15,
+    this.disableTouchMotion = false,
     this.semanticLabel,
   });
 
@@ -47,6 +48,11 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final bool flipHorizontal;
   final Duration tapDelay;
   final double peakScale;
+
+  /// Disables press scaling and drag-following deformation.
+  ///
+  /// Use for modal toolbar actions that should keep a fixed circular shape.
+  final bool disableTouchMotion;
   final String? semanticLabel;
 
   @override
@@ -90,6 +96,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
     final disabledBySurface =
         checkmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
     _canTap = widget.enabled && !disabledBySurface;
+    final interactionScale = widget.disableTouchMotion ? 1.0 : widget.peakScale;
+    final stretch = widget.disableTouchMotion ? 0.0 : 0.5;
+    final anchorStretch = !widget.disableTouchMotion;
 
     final neutralSurfaces = [
       resolveThemeColor(kModalCard, context).toARGB32(),
@@ -196,8 +205,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         height: widget.size,
         shape: const LiquidOval(),
         quality: GlassQuality.premium,
-        interactionScale: widget.peakScale,
-        stretch: 0.5,
+        interactionScale: interactionScale,
+        stretch: stretch,
+        anchorStretch: anchorStretch,
         resistance: 0.01,
         enabled: _canTap,
         style: GlassButtonStyle.transparent,
@@ -220,7 +230,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         settings: glassSettings,
         quality: GlassQuality.premium,
         useOwnLayer: true,
-        interactionScale: widget.peakScale,
+        interactionScale: interactionScale,
+        stretch: stretch,
+        anchorStretch: anchorStretch,
         glowColor: checkmark && !_canTap ? const Color(0x00000000) : null,
         semanticLabel: widget.semanticLabel ?? fallbackLabel,
       );

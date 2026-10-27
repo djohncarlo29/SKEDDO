@@ -9,12 +9,14 @@ use an accent/category fill at 85% opacity, with glass optics layered above it
 at a fixed 50%-slider reference; slider changes must not affect active
 checkmarks. The composition also contains a 30% refraction-only package layer
 and a clear full-strength Fresnel/lighting layer. Put every visual layer inside
-one transparent `GlassButton.custom` stretch shell so fill, optical layers, and
-white glyph deform together. Inactive checkmarks use shared slider settings,
-85% glass tint and a white glyph in both themes, tinted `#CECDD3` in Light Mode
-or `#474749` in Dark Mode, while remaining semantically and functionally
-disabled. Set `GlassIconButton.glowColor` to transparent on these inactive
-checkmarks to remove the touch halo without changing their resting glass tint.
+one transparent `GlassButton.custom` shell so fill, optical layers, and white
+glyph remain composed together. Modal sheet toolbars opt out of touch scaling
+and stretch so their circles stay fixed-size. Inactive checkmarks use shared
+slider settings, 85% glass tint and a white glyph in both themes, tinted
+`#CECDD3` in Light Mode or `#474749` in Dark Mode, while remaining semantically
+and functionally disabled. Set `GlassIconButton.glowColor` to transparent on
+these inactive checkmarks to remove the touch halo without changing their
+resting glass tint. The discard-confirmation button has no touch glow or stretch.
 
 **Why:** Without explicit settings, `GlassIconButton` uses the package's general
 theme defaults (lower thickness/refraction, more blur). Active checkmarks need
@@ -27,11 +29,13 @@ Applying opacity to the complete active composition also dims its glass, so the
 85% value belongs on the category fill only.
 
 **How to apply:** Route sheet and attachment-preview toolbar actions through the
-shared wrapper with `GlassQuality.premium` and `useOwnLayer: true`. For active
-chromatic checkmarks, use the fixed 50%-reference optics and place the tint
-underneath the package glass rather than passing it as `glassColor`; apply 85%
-opacity to the category fill only. Inactive grey tints use shared slider
-settings, `glassColor` directly, and a white glyph in both themes. Keep inactive
-controls disabled, suppress their glow with transparent `glowColor`, and
-preserve the package renderer.
+shared wrapper with `GlassQuality.premium` and `useOwnLayer: true`; set its
+no-touch-motion option for modal headers, leaving app-shell and search controls
+unchanged. For active chromatic checkmarks, use the fixed 50%-reference optics
+and place the tint underneath the package glass rather than passing it as
+`glassColor`; apply 85% opacity to the category fill only. Inactive grey tints
+use shared slider settings, `glassColor` directly, and a white glyph in both
+themes. Keep inactive controls disabled and suppress their glow with transparent
+`glowColor`. The discard confirmation action uses zero interaction scale,
+zero stretch, and transparent zero-opacity glow.
 Non-Impeller renderers still use the package's lighter path.

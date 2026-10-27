@@ -707,7 +707,13 @@ class _DiscardConfirmationGlassButtonState
                 quality: GlassQuality.premium,
                 useOwnLayer: true,
                 style: GlassButtonStyle.filled,
-                interactionScale: 1.06,
+                interactionScale: 1,
+                stretch: 0,
+                anchorStretch: false,
+                glowColor: const Color(0x00000000),
+                glowOpacity: 0,
+                glowBlurRadius: 0,
+                glowSpreadRadius: 0,
                 label: 'Discard Changes',
                 child: Center(
                   child: Text(

@@ -97,6 +97,7 @@ class GlassIconButton extends StatelessWidget {
     this.glowColor,
     this.glowRadius = 20,
     this.interactionScale = 0.95,
+    this.stretch = 0.5,
     this.useOwnLayer = false,
     this.settings,
     this.quality,
@@ -142,6 +143,12 @@ class GlassIconButton extends StatelessWidget {
   /// Values less than 1.0 create a "squash" effect on tap.
   /// Defaults to 0.95 (95% of original size).
   final double interactionScale;
+
+  /// Drag-following deformation amount passed to [GlassButton].
+  ///
+  /// Set to `0` to keep the button's shape fixed while pressed or dragged.
+  /// Defaults to `0.5`.
+  final double stretch;
 
   // ===========================================================================
   // Size and Shape Properties
@@ -267,6 +274,7 @@ class GlassIconButton extends StatelessWidget {
       useOwnLayer: useOwnLayer,
       quality: quality,
       interactionScale: interactionScale,
+      stretch: stretch,
       glowColor: glowColor, // Let GlassButton use theme if null
       glowRadius: glowRadius,
       persistPressOnDrag: persistPressOnDrag,

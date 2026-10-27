@@ -185,6 +185,51 @@ void main() {
     expect(button.settings!.glassColor.a, closeTo(0.614, 0.001));
   });
 
+  testWidgets('modal toolbars can keep their buttons rigid on touch', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ModalToolbarGlassButton(
+              icon: CupertinoIcons.xmark,
+              iconColor: CupertinoColors.label,
+              surfaceColor: Color(0xFFFFFFFF),
+              disableTouchMotion: true,
+              onTap: _ignoreTap,
+            ),
+            ModalToolbarGlassButton(
+              icon: CupertinoIcons.checkmark,
+              iconColor: CupertinoColors.white,
+              surfaceColor: Color(0xFF007AFF),
+              isCheckmark: true,
+              disableTouchMotion: true,
+              onTap: _ignoreTap,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final standardButton = tester.widget<GlassIconButton>(
+      find.byType(GlassIconButton).first,
+    );
+    expect(standardButton.interactionScale, 1);
+    expect(standardButton.stretch, 0);
+    expect(standardButton.anchorStretch, isFalse);
+
+    final shellFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is GlassButton && widget.style == GlassButtonStyle.transparent,
+    );
+    final checkmarkShell = tester.widget<GlassButton>(shellFinder);
+    expect(checkmarkShell.interactionScale, 1);
+    expect(checkmarkShell.stretch, 0);
+    expect(checkmarkShell.anchorStretch, isFalse);
+  });
+
   testWidgets(
     'inactive checkmarks retain active glass treatment and ignore taps',
     (tester) async {
@@ -235,3 +280,5 @@ void main() {
     },
   );
 }
+
+void _ignoreTap() {}

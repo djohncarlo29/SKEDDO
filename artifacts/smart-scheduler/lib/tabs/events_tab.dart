@@ -18125,6 +18125,7 @@ class _ModalCircleButton extends StatelessWidget {
       iconColor: iconColor,
       surfaceColor: containerColor,
       isCheckmark: icon == CupertinoIcons.checkmark,
+      disableTouchMotion: true,
       onTap: onTap,
       tapDelay: tapDelay,
       iconOffset: iconOffset,

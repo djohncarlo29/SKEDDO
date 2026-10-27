@@ -193,6 +193,13 @@ void main() {
     expect(discardButton.useOwnLayer, isTrue);
     expect(discardButton.quality, GlassQuality.premium);
     expect(discardButton.style, GlassButtonStyle.filled);
+    expect(discardButton.interactionScale, 1);
+    expect(discardButton.stretch, 0);
+    expect(discardButton.anchorStretch, isFalse);
+    expect(discardButton.glowColor, const Color(0x00000000));
+    expect(discardButton.glowOpacity, 0);
+    expect(discardButton.glowBlurRadius, 0);
+    expect(discardButton.glowSpreadRadius, 0);
     expect(discardButton.settings!.thickness, 0);
     expect(discardButton.settings!.blur, 0);
     expect(discardButton.settings!.chromaticAberration, 0);
