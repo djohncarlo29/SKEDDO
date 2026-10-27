@@ -716,6 +716,10 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                   ),
                   if (markerProgress != null)
                     Positioned(
+                      // Anchor the marker to this frame, which is the same
+                      // shifted/stretched geometry used for the live track.
+                      // Its fraction stays fixed even as the thumb drags past
+                      // an endpoint and the track rubberbands.
                       left:
                           restingTrackX +
                           restingTrackW * markerProgress -

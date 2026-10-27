@@ -83,26 +83,29 @@ void main() {
     );
   });
 
-  test('50% reproduces the former 57% effect values and endpoints stay fixed', () {
-    expect(skeddoLiquidGlassEffectPositionForSliderPosition(0), 0);
-    expect(skeddoLiquidGlassEffectPositionForSliderPosition(0.5), 0.57);
-    expect(skeddoLiquidGlassEffectPositionForSliderPosition(1), 1);
-    expect(skeddoSharedGlassBlurForPosition(0.5), closeTo(1.7, 0.000001));
-    expect(
-      skeddoActiveTabIndicatorBlurForPosition(0.5),
-      closeTo(2.7, 0.000001),
-    );
-    expect(
-      skeddoSharedGlassOpacityForPosition(0.5, Brightness.light),
-      closeTo(0.528, 0.000001),
-    );
-    expect(
-      skeddoSharedGlassOpacityForPosition(0.5, Brightness.dark),
-      closeTo(0.628, 0.000001),
-    );
-    expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.907, 0.000001));
-    expect(skeddoPopoverBlurForPosition(0.5), closeTo(5.7, 0.000001));
-  });
+  test(
+    '50% reproduces the former 57% effect values and endpoints stay fixed',
+    () {
+      expect(skeddoLiquidGlassEffectPositionForSliderPosition(0), 0);
+      expect(skeddoLiquidGlassEffectPositionForSliderPosition(0.5), 0.57);
+      expect(skeddoLiquidGlassEffectPositionForSliderPosition(1), 1);
+      expect(skeddoSharedGlassBlurForPosition(0.5), closeTo(1.7, 0.000001));
+      expect(
+        skeddoActiveTabIndicatorBlurForPosition(0.5),
+        closeTo(2.7, 0.000001),
+      );
+      expect(
+        skeddoSharedGlassOpacityForPosition(0.5, Brightness.light),
+        closeTo(0.528, 0.000001),
+      );
+      expect(
+        skeddoSharedGlassOpacityForPosition(0.5, Brightness.dark),
+        closeTo(0.628, 0.000001),
+      );
+      expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.907, 0.000001));
+      expect(skeddoPopoverBlurForPosition(0.5), closeTo(5.7, 0.000001));
+    },
+  );
 
   test('active checkmark optics stay fixed regardless of slider position', () {
     final originalOpacity = appLiquidGlassOpacityNotifier.value;
@@ -223,15 +226,58 @@ void main() {
     expect(markerDecoration.shape, BoxShape.circle);
     expect(markerDecoration.color, CupertinoColors.tertiaryLabel);
     final markerPositioned = tester.widget<Positioned>(
-      find
-          .ancestor(of: markerFinder, matching: find.byType(Positioned))
-          .first,
+      find.ancestor(of: markerFinder, matching: find.byType(Positioned)).first,
     );
     final sliderSize = tester.getSize(find.byType(LiquidGlassSlider));
     expect(
       markerPositioned.top,
       closeTo(sliderSize.height / 2 + 8 - 1.5, 0.001),
     );
+  });
+
+  testWidgets('the midpoint marker follows the track during rubberbanding', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: Center(
+          child: LiquidGlassSlider(
+            value: 0.5,
+            onChanged: _ignoreSliderChange,
+            stepMarkerValue: 0.5,
+          ),
+        ),
+      ),
+    );
+
+    final sliderRect = tester.getRect(find.byType(LiquidGlassSlider));
+    final trackFinder = find.byKey(const ValueKey('liquid-glass-slider-track'));
+    final markerFinder = find.byKey(
+      const ValueKey('liquid-glass-slider-step-marker'),
+    );
+    final initialTrack = tester.getRect(trackFinder);
+
+    Future<void> expectMarkerCenteredOnTrack() async {
+      final trackRect = tester.getRect(trackFinder);
+      final markerRect = tester.getRect(markerFinder);
+      expect(
+        markerRect.center.dx,
+        closeTo(trackRect.center.dx, 0.1),
+        reason: 'The 50% marker must remain at the track midpoint.',
+      );
+    }
+
+    final gesture = await tester.startGesture(sliderRect.center);
+    await gesture.moveTo(Offset(sliderRect.right + 80, sliderRect.center.dy));
+    await tester.pump();
+    await expectMarkerCenteredOnTrack();
+    expect(tester.getRect(trackFinder).width, greaterThan(initialTrack.width));
+
+    await gesture.moveTo(Offset(sliderRect.left - 80, sliderRect.center.dy));
+    await tester.pump();
+    await expectMarkerCenteredOnTrack();
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 400));
   });
 
   testWidgets('tab bar and shared surfaces follow the same slider blur', (

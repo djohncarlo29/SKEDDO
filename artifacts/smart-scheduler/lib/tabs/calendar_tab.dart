@@ -11353,10 +11353,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Switch row ────────────────────────────────────────────────────────────
 
-  Widget _switchRow(String label, bool value, VoidCallback onToggle) =>
+  Widget _switchRow(
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) =>
       GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onToggle,
+        onTap: () => onChanged(!value),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
@@ -11375,7 +11379,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     scale: 0.80,
                     child: AppSwitch(
                       value: value,
-                      onChanged: (_) => onToggle(),
+                      onChanged: onChanged,
                       color: _resolvedCategoryColor,
                       height: 31,
                     ),
@@ -11621,7 +11625,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── All-day / Unscheduled toggles ─────────────────────────────────────────
 
-  void _toggleAllDay() {
+  void _toggleAllDay(bool turningOn) {
+    if (turningOn == _allDay) return;
     // Close any open picker menu before its labels and option set change.
     if (_pickerMenuOpen) {
       _dismissPickerOverlay();
@@ -11632,7 +11637,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
         if (mounted) setState(() => _activePicker = '');
       });
     }
-    final turningOn = !_allDay;
     setState(() {
       _allDay = turningOn;
       if (turningOn) {
@@ -11665,8 +11669,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
     }
   }
 
-  void _toggleUnscheduled() {
-    final turningOn = !_unscheduled;
+  void _toggleUnscheduled(bool turningOn) {
+    if (turningOn == _unscheduled) return;
     setState(() {
       _unscheduled = turningOn;
     });

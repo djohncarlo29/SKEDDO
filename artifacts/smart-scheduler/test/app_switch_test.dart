@@ -37,6 +37,71 @@ void main() {
       expect(LiquidGlassSwitch.defaultStyle.dispersion, 1.0);
     },
   );
+
+  testWidgets(
+    'switch taps in a scaled modal-style row update once and settle',
+    (tester) async {
+      var allDay = false;
+      var changes = 0;
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: StatefulBuilder(
+            builder: (context, setState) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => allDay = !allDay),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    const Text('All-day'),
+                    const Spacer(),
+                    SizedBox(
+                      width: 70 * 0.80,
+                      height: 30,
+                      child: OverflowBox(
+                        maxWidth: 70,
+                        maxHeight: 31,
+                        alignment: Alignment.center,
+                        child: Transform.scale(
+                          scale: 0.80,
+                          child: AppSwitch(
+                            value: allDay,
+                            onChanged: (_) {
+                              changes++;
+                              setState(() => allDay = !allDay);
+                            },
+                            height: 31,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final switchFinder = find.byType(LiquidGlassSwitch);
+      Future<void> settleFrames() async {
+        for (var frame = 0; frame < 60; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+      }
+
+      await tester.tap(switchFinder);
+      await settleFrames();
+      expect(allDay, isTrue);
+      expect(changes, 1);
+
+      await tester.tap(switchFinder);
+      await settleFrames();
+      expect(allDay, isFalse);
+      expect(changes, 2);
+    },
+  );
 }
 
 void _ignoreSwitchChange(bool _) {}
