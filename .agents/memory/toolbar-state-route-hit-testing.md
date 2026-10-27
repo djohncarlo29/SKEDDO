@@ -1,10 +1,12 @@
 ---
 name: Toolbar state-route hit testing
-description: Keep screen input working when transparent routes are used only to register pinned toolbar states.
+description: Give pinned toolbar routes real morph timing without covering the app body or disabling changed controls.
 ---
 
-A non-opaque `PageRoute` still creates a modal barrier, and a transparent barrier with `dismissible: false` consumes pointer events. If a route exists only to register toolbar chrome over the current screen, override its barrier with an `IgnorePointer` so content beneath remains interactive; leave hit testing enabled only for the actual toolbar.
+Keep toolbar-only transition routes in a sibling nested `Navigator` above the indexed app body. Use opaque routes there so `GlassNavigationShell` receives real secondary-animation progress, while the route page itself stays transparent and ignores pointer input. A synthetic non-opaque route in the root navigator can leave progress at zero, keeping the outgoing toolbar controls visible or disabling the incoming ones.
 
-**Why:** Ignoring the route's full-screen page child does not bypass the separate modal-barrier overlay entry. The screen can look normal while all its controls and tabs stop receiving taps.
+Keep the primary `GlassBarItem` ID and icon-content identity stable across destinations when only its glyph changes. Render the current glyph inside a stable `Icon` wrapper so the package morphs the glass group rather than crossfading a different toolbar item.
 
-**How to apply:** Add a widget test that pushes the toolbar-registration route and taps a control on the underlying screen.
+**Why:** The navigation package derives morph progress from route coverage and matches persistent items by identity/content. A transparent root route can remain at zero progress, leaving outgoing controls on top and non-interactive. Separately, a non-opaque route's modal barrier can consume taps even if its page widget ignores pointers.
+
+**How to apply:** Put only toolbar-state routes in the sibling navigator, keep the main tab subtree alive underneath, and test physical taps on both the changing leading item and the pass-through app body.

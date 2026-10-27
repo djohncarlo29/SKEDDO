@@ -896,8 +896,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final _calendarStripSlide = ValueNotifier<double>(0.0);
 
   int _selectedIndex = 0;
-  String? _activeToolbarRouteKey;
-  bool _baseToolbarFallbackVisible = true;
+  String? _activeToolbarRouteKey = 'home';
+  final GlobalKey<NavigatorState> _toolbarStateNavigatorKey =
+      GlobalKey<NavigatorState>();
   final AppHeaderTitleTransition _headerTitleTransition =
       AppHeaderTitleTransition();
   static const _nativeTabBarChannel = MethodChannel(
@@ -2792,28 +2793,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return _selectedIndex == 0 ? 'home' : 'tab-$_selectedIndex';
   }
 
-  void _syncToolbarDestination() {
-    if (!mounted || _settingsOpen) return;
-
-    final key = _toolbarDestinationKey();
-    if (key == _activeToolbarRouteKey) return;
-
-    final navigator = Navigator.of(context, rootNavigator: true);
-
-    if (key == 'home') {
-      _activeToolbarRouteKey = null;
-      if (!_baseToolbarFallbackVisible) {
-        setState(() => _baseToolbarFallbackVisible = true);
-      }
-      if (navigator.canPop()) navigator.pop();
-      return;
-    }
-
-    final tabIndex = _selectedIndex;
+  Route<void> _toolbarStateRouteForKey(String key) {
+    final tabIndex = key == 'home' ? 0 : _selectedIndex;
     final isSearch = key == 'search';
     final isDcv = key == 'events-dcv';
-    final route = appShellToolbarStateRoute(
+
+    return appShellToolbarStateRoute(
       name: 'app-shell-toolbar-$key',
+      opaque: true,
       onSystemBack: _handleToolbarRouteSystemBack,
       toolbarBuilder: (routeContext) => AnimatedBuilder(
         animation: Listenable.merge([
@@ -2848,17 +2835,26 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         },
       ),
     );
+  }
 
-    final replacingToolbarRoute = _activeToolbarRouteKey != null;
+  void _syncToolbarDestination() {
+    if (!mounted || _settingsOpen) return;
+
+    final key = _toolbarDestinationKey();
+    if (key == _activeToolbarRouteKey) return;
+
+    final navigator = _toolbarStateNavigatorKey.currentState;
+    if (navigator == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncToolbarDestination();
+      });
+      return;
+    }
+
     _activeToolbarRouteKey = key;
-    if (_baseToolbarFallbackVisible) {
-      setState(() => _baseToolbarFallbackVisible = false);
-    }
-    if (replacingToolbarRoute) {
-      unawaited(navigator.pushReplacement<void, void>(route));
-    } else {
-      unawaited(navigator.push<void>(route));
-    }
+    unawaited(
+      navigator.pushReplacement<void, void>(_toolbarStateRouteForKey(key)),
+    );
   }
 
   void _handleToolbarRouteSystemBack() {
@@ -4106,38 +4102,23 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // This is the app's base route (Home). Other destinations
-              // register their own toolbar route so the shell, not the glyph,
-              // morphs between each screen's item groups.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: IgnorePointer(
-                  ignoring: !_baseToolbarFallbackVisible,
-                  child: Opacity(
-                    // Keep the base route registered for return morphs, but
-                    // suppress its in-route fallback while a destination route
-                    // owns the toolbar. The shell still renders this route's
-                    // GlassBarItems during transitions.
-                    opacity: _baseToolbarFallbackVisible ? 1.0 : 0.0,
-                    child: AppShellPinnedToolbar(
-                      glyph: AppShellToolbarGlyph.menu,
-                      semanticLabel: 'Open settings',
-                      horizontalInset:
-                          AppWindowContentScope.of(context).horizontalInset +
-                          16.0,
-                      color: resolveAccentColor(context),
-                      actions: _buildPinnedHeaderActions(
-                        context,
-                        accent: resolveAccentColor(context),
-                        opacity: 1.0,
-                        tabIndex: 0,
-                        useDcvCategory: false,
-                      ),
-                      onTap: _handlePrimaryToolbarTap,
-                    ),
-                  ),
+              // Keep the tab content in this AppShell route, and put only
+              // toolbar destination routes in a sibling Navigator. Opaque
+              // routes there drive GlassNavigationShell's real transition
+              // clock without covering or rebuilding the indexed tab body.
+              Positioned.fill(
+                child: Navigator(
+                  key: _toolbarStateNavigatorKey,
+                  initialRoute: 'app-shell-toolbar-home',
+                  onGenerateRoute: (settings) {
+                    const prefix = 'app-shell-toolbar-';
+                    final routeName =
+                        settings.name ?? '${prefix}home';
+                    final key = routeName.startsWith(prefix)
+                        ? routeName.substring(prefix.length)
+                        : 'home';
+                    return _toolbarStateRouteForKey(key);
+                  },
                 ),
               ),
             ],

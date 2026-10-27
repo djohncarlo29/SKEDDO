@@ -66,9 +66,10 @@ class AppShellPinnedToolbar extends StatelessWidget {
             label: semanticLabel,
             enabled: visibility > 0.01,
             background: navigation_glass.GlassBarItemBackground.shared,
-            icon: Opacity(
+            icon: _AppShellToolbarGlyphContent(
+              state: glyph,
+              glyphColor: color,
               opacity: visibility,
-              child: _AppShellMenuGlyph(state: glyph, color: color),
             ),
             onTap: onTap,
           )
@@ -93,6 +94,28 @@ class AppShellPinnedToolbar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Keeps the package's matched item as one persistent button while changing
+/// its glyph immediately at the destination. The fixed Icon fields provide a
+/// stable content identity to GlassNavigationShell; the route-specific glyph
+/// is painted by this widget rather than cross-fading a second toolbar item.
+class _AppShellToolbarGlyphContent extends Icon {
+  const _AppShellToolbarGlyphContent({
+    required this.state,
+    required this.glyphColor,
+    required this.opacity,
+  }) : super(CupertinoIcons.line_horizontal_3, size: 26);
+
+  final AppShellToolbarGlyph state;
+  final Color glyphColor;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) => Opacity(
+    opacity: opacity,
+    child: _AppShellMenuGlyph(state: state, color: glyphColor),
+  );
 }
 
 class _AppShellMenuGlyph extends StatelessWidget {
@@ -168,27 +191,29 @@ Route<void> appShellToolbarStateRoute({
   required String name,
   required WidgetBuilder toolbarBuilder,
   required VoidCallback onSystemBack,
+  bool opaque = false,
 }) {
   return _AppShellToolbarStateRoute(
     name: name,
     toolbarBuilder: toolbarBuilder,
     onSystemBack: onSystemBack,
+    opaque: opaque,
   );
 }
 
-/// A transparent, non-modal route used only to register a toolbar destination.
+/// A non-modal route used only to register a toolbar destination.
 ///
-/// ModalRoute's default transparent barrier still absorbs pointer events.
-/// This route must let the underlying screen remain interactive everywhere
-/// outside the pinned toolbar itself.
+/// When hosted by a dedicated toolbar Navigator layered over the app content,
+/// [opaque] keeps the package's route transition progress authoritative without
+/// covering the app body. The page's empty background remains pass-through.
 class _AppShellToolbarStateRoute extends PageRouteBuilder<void> {
   _AppShellToolbarStateRoute({
     required String name,
     required WidgetBuilder toolbarBuilder,
     required VoidCallback onSystemBack,
+    required super.opaque,
   }) : super(
          settings: RouteSettings(name: name),
-         opaque: false,
          barrierDismissible: false,
          transitionDuration: const Duration(milliseconds: 360),
          reverseTransitionDuration: const Duration(milliseconds: 360),
