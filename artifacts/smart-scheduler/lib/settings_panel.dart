@@ -2307,11 +2307,12 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                           widget.onChanged(raw * 6);
                         },
                         onChangeEnd: (raw) {
+                          final settled = (raw * 6).roundToDouble() / 6;
                           setState(() {
-                            _dragValue = raw;
+                            _dragValue = settled;
                             _isDragging = false;
                           });
-                          widget.onChangeEnd(raw * 6);
+                          widget.onChangeEnd(settled * 6);
                         },
                       )
                     : Stack(
@@ -2347,11 +2348,12 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                               widget.onChanged((raw * 6).roundToDouble());
                             },
                             onChangeEnd: (raw) {
+                              final settled = (raw * 6).roundToDouble() / 6;
                               setState(() {
-                                _dragValue = raw;
+                                _dragValue = settled;
                                 _isDragging = false;
                               });
-                              widget.onChangeEnd((raw * 6).roundToDouble());
+                              widget.onChangeEnd(settled * 6);
                             },
                           ),
                           Positioned.fill(
@@ -2391,12 +2393,17 @@ class _TextSizeSliderTicksPainter extends CustomPainter {
     final layout = _liquidGlassSliderLayout;
     final trackStart = layout.iconSize + layout.iconGap;
     final trackEnd = sliderWidth - trackStart;
+    final firstThumbCenter = trackStart + layout.thumbWidth / 2;
+    final lastThumbCenter = trackEnd - layout.thumbWidth / 2;
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
 
     for (var step = 0; step <= 6; step++) {
-      final x = trackStart + (trackEnd - trackStart) * step / 6;
+      // Marks align with every settled thumb center, not the track's outer
+      // endpoints. This leaves both extreme steps inset by half a thumb.
+      final x =
+          firstThumbCenter + (lastThumbCenter - firstThumbCenter) * step / 6;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(

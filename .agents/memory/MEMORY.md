@@ -54,10 +54,10 @@
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.
 - [Android Freeform/Recents window band](android-recents-preview-theme.md) — distinguish system caption and Recents layers before changing inset behavior; preserve floating-window controls.
-- [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — preserve SKEDDO's captured optics for fixed actions; modal toolbars use the package GlassIconButton.
 - [Replit temporary storage limits](replit-home-quota.md) — keep caches and Flutter temp files on the workspace partition, not quota-limited home or the 4GB /tmp tmpfs.
-- [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — keep hosted liquid_glass_easy 5.0.0 untouched and route native iOS switches separately.
+- [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — keep liquid_glass_easy at 5.0.0; preserve untouched switch defaults and native iOS routing.
 - [Liquid Glass slider v5 edge motion](liquid-glass-slider-version-split.md) — keep slider 5.0.0; add live thumb-envelope callbacks for edge-icon push and bounce.
+- [Text Size slider step alignment](text-size-slider-step-alignment.md) — align seven markers with settled thumb centers; allow continuous dragging and snap on release.
 - [Glass navigation package compatibility](liquid-glass-widgets-compatibility.md) — the title package's transitive dependency requires Dart 3.12.2; keep SDK pins aligned.
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
