@@ -234,7 +234,7 @@ class _LiquidGlassBlenderProgram {
     try {
       try {
         return _programs[impeller] = await ui.FragmentProgram.fromAsset(
-          'packages/liquid_glass_easy/lib/assets/shaders/$name',
+          'packages/liquid_glass_easy_slider/lib/assets/shaders/$name',
         );
       } catch (_) {
         return _programs[impeller] = await ui.FragmentProgram.fromAsset(

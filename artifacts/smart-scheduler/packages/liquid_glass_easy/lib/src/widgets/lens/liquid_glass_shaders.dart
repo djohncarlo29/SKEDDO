@@ -91,7 +91,7 @@ class LiquidGlassShaders {
       // Normal case: this package is a dependency of the running app, so its
       // assets live under the packages/ prefix.
       return await ui.FragmentProgram.fromAsset(
-          'packages/liquid_glass_easy/$relativePath');
+          'packages/liquid_glass_easy_slider/$relativePath');
     } catch (_) {
       // Running inside the package itself (its own widget tests), where the
       // same assets resolve without the prefix.

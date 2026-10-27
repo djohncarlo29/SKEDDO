@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:liquid_glass_easy/src/widgets/components/slider/liquid_glass_slider.dart';
-import 'package:liquid_glass_easy/src/widgets/components/slider/liquid_glass_slider_track_painter.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/lens/liquid_glass_lens.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/components/slider/liquid_glass_slider.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/components/slider/liquid_glass_slider_track_painter.dart';
 
 void main() {
   testWidgets('track progress reaches both outer endpoints', (tester) async {
@@ -86,4 +87,81 @@ void main() {
     );
   });
 
+  testWidgets('edge icons follow the lifted thumb through end bounce', (
+    tester,
+  ) async {
+    for (final isMinimum in [true, false]) {
+      final iconKey = ValueKey(
+        isMinimum ? 'minimum-edge-icon' : 'maximum-edge-icon',
+      );
+      final startValue = isMinimum ? 0.0 : 1.0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: LiquidGlassSlider(
+                key: ValueKey('slider-$isMinimum'),
+                value: startValue,
+                width: 301,
+                layout: const LiquidGlassSliderLayout(
+                  iconSize: 34,
+                  iconGap: 8,
+                  horizontalInset: 0,
+                ),
+                minimumIcon: SizedBox(
+                  key: isMinimum ? iconKey : null,
+                  width: 34,
+                  height: 34,
+                ),
+                maximumIcon: SizedBox(
+                  key: isMinimum ? null : iconKey,
+                  width: 34,
+                  height: 34,
+                ),
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final sliderRect = tester.getRect(find.byType(LiquidGlassSlider));
+      final thumbCenterX = isMinimum ? 60.5 : 240.5;
+      final gesture = await tester.startGesture(
+        Offset(sliderRect.left + thumbCenterX, sliderRect.center.dy),
+      );
+      await tester.pump();
+      for (var frame = 0; frame < 32; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      Rect iconRect() => tester.getRect(find.byKey(iconKey));
+      Rect thumbRect() => tester.getRect(find.byType(LiquidGlassLens));
+      double edgeGap() {
+        final icon = iconRect();
+        final thumb = thumbRect();
+        return isMinimum ? thumb.left - icon.right : icon.left - thumb.right;
+      }
+
+      expect(edgeGap(), closeTo(4, 0.5));
+
+      await gesture.moveBy(Offset(isMinimum ? -30 : 30, 0));
+      await tester.pump();
+      for (var frame = 0; frame < 4; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(edgeGap(), closeTo(4, 0.5));
+
+      await gesture.up();
+      await tester.pump();
+      for (var frame = 0; frame < 50; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(
+        isMinimum ? iconRect().left : iconRect().right,
+        closeTo(isMinimum ? sliderRect.left : sliderRect.right, 0.5),
+      );
+    }
+  });
 }

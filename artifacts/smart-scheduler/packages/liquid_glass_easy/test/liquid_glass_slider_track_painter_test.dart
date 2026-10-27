@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:liquid_glass_easy/src/widgets/components/slider/liquid_glass_slider_track_painter.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/components/slider/liquid_glass_slider_track_painter.dart';
 
 void main() {
   testWidgets('continuous track has rounded caps and no endpoint step', (

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_light_mode.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_refresh_rate.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_light_mode.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_refresh_rate.dart';
 
 import '../widgets/utils/liquid_glass_refraction_mode.dart';
 import '../widgets/utils/liquid_glass_shape.dart';

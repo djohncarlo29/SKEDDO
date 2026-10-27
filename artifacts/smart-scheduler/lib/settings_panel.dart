@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
 import 'app_settings.dart';
@@ -17,7 +16,7 @@ import 'widgets/accent_tinted_image.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
-import 'widgets/liquid_glass_slider_edge_icon.dart';
+import 'widgets/legacy_liquid_glass_slider.dart' as legacy_slider;
 import 'widgets/native_fluid_slider_row.dart';
 import 'widgets/app_window_content_boundary.dart';
 import 'widgets/app_header_scroll_edge.dart';
@@ -2272,10 +2271,6 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
           animation: _indexAnimation,
           builder: (context, _) => LayoutBuilder(
             builder: (context, constraints) {
-              final sliderValue =
-                  (_dragValue ?? _indexAnimation.value / 6)
-                      .clamp(0.0, 1.0)
-                      .toDouble();
               // Match Liquid Glass's tuned endpoint geometry exactly: the
               // settled thumb centers sit 16 px inside the visible card edge.
               final sliderWidth =
@@ -2289,7 +2284,7 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                 maxWidth: sliderWidth,
                 child: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
                     ? NativeFluidSliderRow(
-                        value: sliderValue,
+                        value: _dragValue ?? _indexAnimation.value / 6,
                         minimumValue: 0,
                         maximumValue: 1,
                         minimumIcon: 'TextSizeSmaller',
@@ -2321,8 +2316,8 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                       )
                     : Stack(
                         children: [
-                          LiquidGlassSlider(
-                            value: sliderValue,
+                          legacy_slider.LiquidGlassSlider(
+                            value: _dragValue ?? _indexAnimation.value / 6,
                             minimumValue: 0,
                             maximumValue: 1,
                             width: sliderWidth,
@@ -2332,23 +2327,15 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                             activeColor: widget.accentColor,
                             inactiveColor: inactiveColor,
                             thumbColor: const Color(0xFFFDFDFD),
-                            minimumIcon: LiquidGlassSliderEdgeIcon(
-                              value: sliderValue,
-                              isMinimum: true,
-                              child: Icon(
-                                SFIcons.sf_textformat_size_smaller,
-                                size: 20,
-                                color: emptyStateGreyColor,
-                              ),
+                            minimumIcon: Icon(
+                              SFIcons.sf_textformat_size_smaller,
+                              size: 20,
+                              color: emptyStateGreyColor,
                             ),
-                            maximumIcon: LiquidGlassSliderEdgeIcon(
-                              value: sliderValue,
-                              isMinimum: false,
-                              child: Icon(
-                                SFIcons.sf_textformat_size_larger,
-                                size: 20,
-                                color: emptyStateGreyColor,
-                              ),
+                            maximumIcon: Icon(
+                              SFIcons.sf_textformat_size_larger,
+                              size: 20,
+                              color: emptyStateGreyColor,
                             ),
                             onChangeStart: (_) {
                               if (!_isDragging) {
@@ -2663,16 +2650,13 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         return Center(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final sliderValue = (_dragValue ?? widget.value)
-                  .clamp(0.0, 1.0)
-                  .toDouble();
-              return LiquidGlassSlider(
-                value: sliderValue,
+              return legacy_slider.LiquidGlassSlider(
+                value: _dragValue ?? widget.value,
                 minimumValue: 0,
                 maximumValue: 1,
                 width: constraints.maxWidth,
                 height: _kSettingsRowHeight,
-                layout: const LiquidGlassSliderLayout(
+                layout: const legacy_slider.LiquidGlassSliderLayout(
                   iconSize: 34,
                   iconGap: 8,
                   horizontalInset: 0,
@@ -2680,23 +2664,15 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                 activeColor: widget.activeColor,
                 inactiveColor: widget.inactiveColor,
                 thumbColor: const Color(0xFFFDFDFD),
-                minimumIcon: LiquidGlassSliderEdgeIcon(
-                  value: sliderValue,
-                  isMinimum: true,
-                  child: SvgPicture.string(
-                    _withThemeColors(sources[0]),
-                    width: 34,
-                    height: 34,
-                  ),
+                minimumIcon: SvgPicture.string(
+                  _withThemeColors(sources[0]),
+                  width: 34,
+                  height: 34,
                 ),
-                maximumIcon: LiquidGlassSliderEdgeIcon(
-                  value: sliderValue,
-                  isMinimum: false,
-                  child: SvgPicture.string(
-                    _withThemeColors(sources[1]),
-                    width: 34,
-                    height: 34,
-                  ),
+                maximumIcon: SvgPicture.string(
+                  _withThemeColors(sources[1]),
+                  width: 34,
+                  height: 34,
                 ),
                 onChangeStart: (_) {
                   if (!_isDragging) {
@@ -2731,8 +2707,10 @@ const double _kLiquidGlassSettledEdgeInset = 16.0;
 // Zero inset aligns the line's outer endpoints with the resting thumb's edges.
 // Discrete tick bars span the full track, flush to those outer endpoints.
 const double _kLiquidGlassSliderInset = 0.0;
-const LiquidGlassSliderLayout _liquidGlassSliderLayout =
-    LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
+const legacy_slider.LiquidGlassSliderLayout _liquidGlassSliderLayout =
+    legacy_slider.LiquidGlassSliderLayout(
+      horizontalInset: _kLiquidGlassSliderInset,
+    );
 
 void _setLiquidGlassOpacityLive(double raw) {
   final liveValue = liquidGlassOpacityForSliderPosition(raw);

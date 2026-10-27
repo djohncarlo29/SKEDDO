@@ -34,7 +34,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_easy_slider/liquid_glass_easy.dart';
 
 void main() => runApp(const _BenchApp());
 

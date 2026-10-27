@@ -2,11 +2,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:liquid_glass_easy/src/controllers/liquid_glass_view_controller.dart';
-import 'package:liquid_glass_easy/src/widgets/lens/liquid_glass_lens_scope.dart';
-import 'package:liquid_glass_easy/src/widgets/lens/liquid_glass_shaders.dart';
-import 'package:liquid_glass_easy/src/widgets/liquid_glass.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_refresh_rate.dart';
+import 'package:liquid_glass_easy_slider/src/controllers/liquid_glass_view_controller.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/lens/liquid_glass_lens_scope.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/lens/liquid_glass_shaders.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/liquid_glass.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_refresh_rate.dart';
 // Flutter only re-exports `internal` from foundation.dart on newer SDKs.
 // ignore: unnecessary_import
 import 'package:meta/meta.dart';

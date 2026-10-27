@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
-import 'package:liquid_glass_easy/src/controllers/liquid_glass_controller.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_blur.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_position.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_touch.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_shape.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_refraction_mode.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_refraction_type.dart';
-import 'package:liquid_glass_easy/src/widgets/components/liquid_glass_shadow.dart';
-import 'package:liquid_glass_easy/src/widgets/liquid_glass_style.dart';
+import 'package:liquid_glass_easy_slider/src/controllers/liquid_glass_controller.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_blur.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_position.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_touch.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_shape.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_refraction_mode.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_refraction_type.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/components/liquid_glass_shadow.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/liquid_glass_style.dart';
 
 /// Represents a single lens in the LiquidGlass system, configured
 /// through four grouped objects:

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_refresh_rate.dart';
+import 'package:liquid_glass_easy_slider/src/widgets/utils/liquid_glass_refresh_rate.dart';
 
 import '../controllers/liquid_glass_view_controller.dart';
 import '../helpers/slider_page_view.dart';

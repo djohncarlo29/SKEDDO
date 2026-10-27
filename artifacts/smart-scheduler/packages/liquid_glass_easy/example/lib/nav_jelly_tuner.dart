@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_easy_slider/liquid_glass_easy.dart';
 
 import 'nav_bar_tuning.dart';
 import 'tuner_widgets.dart';

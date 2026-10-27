@@ -1,6 +1,6 @@
 ﻿
 name: liquid_glass_easy_example
-description: "Example app demonstrating the usage of liquid_glass_easy package."
+description: "Example app for the retained liquid glass slider package."
 publish_to: "none"
 
 environment:
@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
 
   flutter_svg: ^2.3.0
-  liquid_glass_easy:
+  liquid_glass_easy_slider:
     path: ../
 
 dev_dependencies:

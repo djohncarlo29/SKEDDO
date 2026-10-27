@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_easy_slider/liquid_glass_easy.dart';
 
 // =============================================================
 // Liquid Glass Easy — headline example: lens over image, blended.
