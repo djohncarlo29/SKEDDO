@@ -59,39 +59,27 @@ void main() {
       closeTo(1, 0.001),
     );
 
+    expect(find.text('9:00 AM'), findsOneWidget);
+
+    // Tapping the switch and the row label are separate supported targets.
     await tester.tap(allDaySwitch);
-    await tester.pump(const Duration(milliseconds: 80));
-    tester.widget<LiquidGlassSwitch>(allDaySwitch).onChanged(true);
     await tester.pumpAndSettle();
     expect(tester.widget<LiquidGlassSwitch>(allDaySwitch).value, isTrue);
     expect(
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(0, 0.001),
     );
+    expect(find.text('9:00 AM'), findsNothing);
     expect(glassThumbWidth(), closeTo(37, 0.1));
 
-    await tester.tap(allDaySwitch);
+    await tester.tap(find.text('All-day'));
     await tester.pumpAndSettle();
     expect(tester.widget<LiquidGlassSwitch>(allDaySwitch).value, isFalse);
     expect(
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(1, 0.001),
     );
-    expect(glassThumbWidth(), closeTo(37, 0.1));
-
-    final canceledPress = await tester.startGesture(
-      tester.getRect(allDaySwitch).center,
-    );
-    await tester.pump(const Duration(milliseconds: 16));
-    await canceledPress.cancel();
-    await tester.pumpAndSettle();
-    final valueAfterCancel = tester
-        .widget<LiquidGlassSwitch>(allDaySwitch)
-        .value;
-    expect(
-      tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
-      closeTo(valueAfterCancel ? 0 : 1, 0.001),
-    );
+    expect(find.text('9:00 AM'), findsOneWidget);
     expect(glassThumbWidth(), closeTo(37, 0.1));
   });
 

@@ -196,10 +196,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _noteInputKey = GlobalKey<_NoteInputCardState>();
-  // GlobalKey keeps _AppSearchBarState alive when the parent sliver switches
-  // between SliverToBoxAdapter (unfocused) and SliverPersistentHeader (focused).
-  // Without this key, the element is remounted on every search-mode transition,
-  // which kills any in-progress STT session (onPartial/onFinal see !mounted).
+  // The key keeps AppSearchBar state alive while off-screen search transfers
+  // the row between the pinned header and its independent overlay.
   final _searchBarKey = GlobalKey<AppSearchBarState>();
   // Keep the Liquid Glass cancel control alive when the search row moves
   // between the scrollable sliver and the off-screen search overlay.
@@ -434,12 +432,10 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     if (focused) {
       prepareParentForSearch();
       setState(() => _searchFocused = true);
-      // The sliver type just changed (SliverToBoxAdapter → SliverPersistentHeader),
-      // which remounts AppSearchBar and its NativeTextInput platform view. A
-      // post-frame refocus restores the cursor after the rebuild settles.
+      // The inline row stays mounted in the pinned header; only lock its
+      // existing focus after the rebuild settles.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _searchFocused) {
-          NativeTextInput.focus(_searchController);
           NativeTextInput.lockFocus(_searchController);
         }
       });
@@ -590,8 +586,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     final bool showResults = _searchFocused && _searchText.isNotEmpty;
     final bool isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
-    final collapsibleSearch = !isLandscape &&
-        (!_searchFocused || _activatedFromOffScreen || _restoringSearchParent);
 
     // Search bar row — carries _searchBarKey.
     // When off-screen search is active (_activatedFromOffScreen) this widget
@@ -640,23 +634,20 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               child: AppHeaderScrollInset(
                 collapseAnimation: widget.searchModeAnimation,
                 enabled: !isLandscape,
-                searchBar: collapsibleSearch
-                    ? (_activatedFromOffScreen || _restoringSearchParent
-                        ? const SizedBox.shrink()
-                        : searchBarRow)
-                    : null,
-                searchBarExtent:
-                    collapsibleSearch ? searchBarHostRowHeight(context) : 0,
+                // Keep inline search in this same pinned-header slot while
+                // focus enters and exits. The shell's header animation moves
+                // the row vertically; moving it to a sibling overlay made it
+                // disappear for a frame during the handoff.
+                searchBar: isLandscape
+                    ? null
+                    : (_activatedFromOffScreen
+                          ? const SizedBox.shrink()
+                          : searchBarRow),
+                searchBarExtent: isLandscape
+                    ? 0
+                    : searchBarHostRowHeight(context),
               ),
             ),
-            // Normal search belongs to the outer header's second collapse
-            // phase. Active search keeps its existing separate overlay.
-            if (_searchFocused &&
-                !_activatedFromOffScreen &&
-                !_restoringSearchParent)
-              SliverToBoxAdapter(
-                child: SizedBox(height: searchBarHeaderExtent(context)),
-              ),
 
             // ── Content ───────────────────────────────────────────────────
             // Inline search results use the same shared renderer as the
@@ -741,7 +732,12 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           ),
         ),
 
-        if (_searchFocused && !_activatedFromOffScreen)
+        // Landscape does not use the pinned large-title header, so retain its
+        // existing fixed search header instead of trying to move the row
+        // through an unavailable sliver slot.
+        if (_searchFocused &&
+            !_activatedFromOffScreen &&
+            isLandscape)
           Positioned(
             top: 0,
             left: 0,

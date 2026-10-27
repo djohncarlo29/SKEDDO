@@ -1732,10 +1732,8 @@ class EventsTabState extends State<EventsTab>
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final GlobalKey _scrollViewportKey = GlobalKey();
-  // GlobalKey keeps _AppSearchBarState alive when the parent sliver switches
-  // between SliverToBoxAdapter (unfocused) and SliverPersistentHeader (focused).
-  // Without this key, the element is remounted on every search-mode transition,
-  // which kills any in-progress STT session (onPartial/onFinal see !mounted).
+  // The key keeps AppSearchBar state alive while off-screen search transfers
+  // the row between the pinned header and its independent overlay.
   final _searchBarKey = GlobalKey<AppSearchBarState>();
   // Keep the Liquid Glass cancel control alive when the search row moves
   // between the scrollable sliver and the off-screen search overlay.
@@ -7952,16 +7950,10 @@ class EventsTabState extends State<EventsTab>
     if (focused) {
       prepareParentForSearch();
       setState(() => _searchFocused = true);
-      // The sliver type changed (SliverToBoxAdapter → SliverPersistentHeader),
-      // which remounts AppSearchBar and its NativeTextInput platform view.
-      // Defer focus to the post-frame callback so it targets the NEW instance
-      // that exists after the rebuild, not the old one being disposed.
+      // The inline row stays mounted in the pinned header; only lock its
+      // existing focus after the rebuild settles.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _searchFocused) {
-          NativeTextInput.focus(_searchController);
-          // Lock after focus so iOS textFieldShouldEndEditing returns false,
-          // blocking implicit resigns (tap-outside, scroll-drag) for the
-          // duration of the search session.
           NativeTextInput.lockFocus(_searchController);
         }
       });
@@ -8274,8 +8266,6 @@ class EventsTabState extends State<EventsTab>
           ),
     ];
 
-    final collapsibleSearch = !isLandscape &&
-        (!_searchFocused || _activatedFromOffScreen || _restoringSearchParent);
     // Shared search-bar row — used by both layout paths below.
     final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
@@ -8349,25 +8339,18 @@ class EventsTabState extends State<EventsTab>
             collapseAnimation: widget.searchModeAnimation,
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
-            searchBar: collapsibleSearch
-                ? (_activatedFromOffScreen || _restoringSearchParent
-                    ? const SizedBox.shrink()
-                    : searchBarRow)
-                : null,
+            // Inline search remains in the pinned header for the entire
+            // transition. Its position follows the shared shell animation,
+            // rather than being removed and recreated in a sibling overlay.
+            searchBar: isLandscape
+                ? null
+                : (_activatedFromOffScreen
+                      ? const SizedBox.shrink()
+                      : searchBarRow),
             searchBarExtent:
-                collapsibleSearch ? searchBarHostRowHeight(context) : 0,
+                isLandscape ? 0 : searchBarHostRowHeight(context),
           ),
         ),
-        // The normal bar collapses in the outer header. Active search still
-        // uses its existing sibling overlay and results-layout reservation.
-        if (_searchFocused &&
-            !_activatedFromOffScreen &&
-            !_restoringSearchParent)
-          // Reserve the header's normal layout slot, but keep the actual
-          // search chrome as a sibling overlay outside the scroll hierarchy.
-          SliverToBoxAdapter(
-            child: SizedBox(height: searchBarHeaderExtent(context)),
-          ),
 
         // ── Inline search results ─────────────────────────────────────────
         if (showResults && !_activatedFromOffScreen) ...[
@@ -8520,7 +8503,8 @@ class EventsTabState extends State<EventsTab>
         ],
           ],
         );
-        final scrollView = _searchFocused && !_activatedFromOffScreen
+        final scrollView = isLandscape && _searchFocused &&
+                !_activatedFromOffScreen
             ? Stack(
                 fit: StackFit.expand,
                 children: [
