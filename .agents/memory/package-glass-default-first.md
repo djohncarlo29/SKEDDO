@@ -45,8 +45,10 @@ reference even though their widget may rebuild.
 For the Liquid Glass settings slider, map the new 50% position to the effects
 formerly produced at 57%, while preserving the 0% and 100% endpoints. Apply
 that coordinate remap to every slider-driven opacity and blur curve, including
-the independent active-tab and popover curves. The midpoint track marker is a
-release-only detent: 49% and 51% settle to 50%, but dragging remains continuous.
+the independent active-tab and popover curves. Its midpoint marker matches
+Text Size ticks: 3×3 circle, tertiary-label color, 8px below the track center,
+and below the thumb. It is a release-only detent: 49% and 51% settle to 50%,
+but dragging remains continuous.
 
 **Why:** The user wants the prior 57% effect response centered at the slider's
 50% position, with the midpoint marker helping users settle there without
@@ -54,5 +56,5 @@ introducing a drag-time stop.
 
 **How to apply:** Keep the effect-coordinate remap centralized for all glass
 curves; keep the stored slider coordinate unchanged and apply midpoint snapping
-only at gesture completion. Render the marker below the thumb on Flutter and
-native iOS.
+only at gesture completion. Preserve the shared tick geometry, color, and layer
+order on Flutter and native iOS.

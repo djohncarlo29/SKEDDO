@@ -138,7 +138,7 @@ class LiquidGlassSlider extends StatefulWidget {
   /// dragging or change the slider's continuous behavior.
   final double? stepMarkerValue;
 
-  /// Color for [stepMarkerValue]. Defaults to [activeColor].
+  /// Color for [stepMarkerValue]. Defaults to [inactiveColor].
   final Color? stepMarkerColor;
 
   /// Glass look of the expanded thumb, its contact shadow included;
@@ -742,7 +742,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                           restingTrackX +
                           restingTrackW * markerProgress -
                           1.5,
-                      top: centerY - 1.5,
+                      top: centerY + 8 - 1.5,
                       child: Container(
                         key: const ValueKey(
                           'liquid-glass-slider-step-marker',
@@ -750,7 +750,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                         width: 3,
                         height: 3,
                         decoration: BoxDecoration(
-                          color: widget.stepMarkerColor ?? widget.activeColor,
+                          color: widget.stepMarkerColor ?? widget.inactiveColor,
                           shape: BoxShape.circle,
                         ),
                       ),

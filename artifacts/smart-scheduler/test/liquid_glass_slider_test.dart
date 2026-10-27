@@ -193,7 +193,7 @@ void main() {
     expect(settleLiquidGlassSliderPosition(0.52), 0.52);
   });
 
-  testWidgets('the midpoint marker is painted on the Liquid Glass track', (
+  testWidgets('the midpoint marker matches Text Size tick styling', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -203,15 +203,32 @@ void main() {
             value: 0.25,
             onChanged: _ignoreSliderChange,
             stepMarkerValue: 0.5,
-            stepMarkerColor: CupertinoColors.activeBlue,
+            stepMarkerColor: CupertinoColors.tertiaryLabel,
           ),
         ),
       ),
     );
 
+    final markerFinder = find.byKey(
+      const ValueKey('liquid-glass-slider-step-marker'),
+    );
+    expect(markerFinder, findsOneWidget);
+    final marker = tester.widget<Container>(markerFinder);
+    final markerSize = tester.getSize(markerFinder);
+    expect(markerSize.width, 3);
+    expect(markerSize.height, 3);
+    final markerDecoration = marker.decoration! as BoxDecoration;
+    expect(markerDecoration.shape, BoxShape.circle);
+    expect(markerDecoration.color, CupertinoColors.tertiaryLabel);
+    final markerPositioned = tester.widget<Positioned>(
+      find
+          .ancestor(of: markerFinder, matching: find.byType(Positioned))
+          .first,
+    );
+    final sliderSize = tester.getSize(find.byType(LiquidGlassSlider));
     expect(
-      find.byKey(const ValueKey('liquid-glass-slider-step-marker')),
-      findsOneWidget,
+      markerPositioned.top,
+      closeTo(sliderSize.height / 2 + 8 - 1.5, 0.001),
     );
   });
 

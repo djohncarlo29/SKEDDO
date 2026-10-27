@@ -2590,10 +2590,6 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
 
   @override
   Widget build(BuildContext context) {
-    final currentPosition = _dragValue ?? widget.value;
-    final stepMarkerColor = currentPosition <= kDefaultLiquidGlassSliderPosition
-        ? widget.activeColor
-        : widget.inactiveColor;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       return NativeFluidSliderRow(
         value: _dragValue ?? widget.value,
@@ -2606,7 +2602,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         accentColor: widget.activeColor,
         tickColor: widget.inactiveColor,
         stepMarkerValue: kDefaultLiquidGlassSliderPosition,
-        stepMarkerColor: stepMarkerColor,
+        stepMarkerColor: widget.inactiveColor,
         darkMode: widget.darkMode,
         height: _kSettingsRowHeight,
         onChangeStart: (_) {
@@ -2653,7 +2649,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                 inactiveColor: widget.inactiveColor,
                 thumbColor: const Color(0xFFFDFDFD),
                 stepMarkerValue: kDefaultLiquidGlassSliderPosition,
-                stepMarkerColor: stepMarkerColor,
+                stepMarkerColor: widget.inactiveColor,
                 minimumIcon: SvgPicture.string(
                   _withThemeColors(sources[0]),
                   width: 34,

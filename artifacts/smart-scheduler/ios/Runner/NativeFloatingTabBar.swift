@@ -337,14 +337,12 @@ private struct NativeFluidSliderRow: View {
                             Circle()
                                 .fill(
                                     model.configuration.stepMarkerColor
-                                        ?? (progress < position
-                                            ? model.configuration.accentColor
-                                            : model.configuration.tickColor)
+                                        ?? model.configuration.tickColor
                                 )
                                 .frame(width: 3, height: 3)
                                 .position(
                                     x: 13 + trackWidth * position,
-                                    y: geometry.size.height / 2
+                                    y: geometry.size.height / 2 + 8
                                 )
                                 .allowsHitTesting(false)
                         }
