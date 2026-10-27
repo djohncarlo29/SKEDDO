@@ -152,8 +152,7 @@ double skeddoLiquidGlassEffectPositionForSliderPosition(double position) {
     return normalized * (_kOldSliderPositionForNewMidpoint / 0.5);
   }
   return _kOldSliderPositionForNewMidpoint +
-      (normalized - 0.5) *
-          ((1 - _kOldSliderPositionForNewMidpoint) / 0.5);
+      (normalized - 0.5) * ((1 - _kOldSliderPositionForNewMidpoint) / 0.5);
 }
 
 /// Backdrop blur for the shared Liquid Glass renderer, interpolated between
@@ -215,8 +214,7 @@ LiquidGlassSettings _settingsForSharedGlassPosition(
 
 /// Bridges the slider-driven shared optical values into the separate
 /// navigation package's settings type without using that package's defaults.
-navigation_glass.LiquidGlassSettings
-skeddoPinnedNavigationGlassSettingsFor(
+navigation_glass.LiquidGlassSettings skeddoPinnedNavigationGlassSettingsFor(
   Brightness brightness, {
   double? sliderPosition,
   double visibility = 1,
@@ -225,12 +223,11 @@ skeddoPinnedNavigationGlassSettingsFor(
     brightness,
     sliderPosition: sliderPosition,
   );
-  final specularSharpness =
-      switch (shared.specularSharpness.name) {
-        'soft' => navigation_glass.GlassSpecularSharpness.soft,
-        'sharp' => navigation_glass.GlassSpecularSharpness.sharp,
-        _ => navigation_glass.GlassSpecularSharpness.medium,
-      };
+  final specularSharpness = switch (shared.specularSharpness.name) {
+    'soft' => navigation_glass.GlassSpecularSharpness.soft,
+    'sharp' => navigation_glass.GlassSpecularSharpness.sharp,
+    _ => navigation_glass.GlassSpecularSharpness.medium,
+  };
 
   return navigation_glass.LiquidGlassSettings(
     visibility: visibility.clamp(0.0, 1.0).toDouble(),
@@ -269,8 +266,7 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
   Color cardTint, {
   double? sliderPosition,
-}
-) {
+}) {
   final position =
       sliderPosition ??
       liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value);
@@ -293,8 +289,7 @@ LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
   Color buttonTint, {
   double? sliderPosition,
-}
-) {
+}) {
   final position =
       sliderPosition ??
       liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value);

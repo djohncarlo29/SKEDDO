@@ -23,22 +23,13 @@ import 'widgets/app_header_scroll_edge.dart';
 import 'widgets/app_shell_toolbar.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
+// SettingsPanel — full-screen settings content with route-based sub-screen nav.
 //
-// Positioned at Offset(0,0) in the root Stack when open.  The AppShell owns
-// the AnimationController (_settingsController) and wraps this widget in a
-// SlideTransition + GestureDetector.
-//
-// Navigation model
-//   • _push(route)  — animates sub-screen in from right; main content shifts
-//     left with a 30 % parallax (matches DCV slide feel).
-//   • _pop()        — reverses the animation then clears the active route.
-//   • The X button in AppShell's overlay always closes the whole panel.
-//   • The "< Settings" back button lives inside the sub-screen header's
-//     44 pt icon-row slot.  Because the X overlay from AppShell is rendered
-//     above this widget, taps inside the X's hit-area close the panel; taps
-//     outside (but still within the back button row) trigger _pop().  Both
-//     results are correct from the sub-screen context.
+// AppShell presents this surface as a Navigator route and pins the shared
+// toolbar above it. Portrait sub-screens are pushed as Cupertino routes and
+// register the same toolbar item ID; landscape master/detail remains inline.
+// The route-level X closes the panel, while the sub-screen chevron pops one
+// route.
 //
 // Spacing contract
 //   • Main list and sub-screens use 16 pt edge gaps on the 8 pt grid.
@@ -499,17 +490,20 @@ class _SettingsPanelState extends State<SettingsPanel>
     }
 
     _restoreHeaderScrollOffset();
-    Navigator.of(context, rootNavigator: true).push<void>(
+    Navigator.of(context, rootNavigator: true)
+        .push<void>(
       CupertinoPageRoute<void>(
         settings: RouteSettings(name: 'settings-${route.title}'),
         builder: (routeContext) => _SettingsSubScreenRoute(
           route: route,
           bottomInset: widget.bottomInset,
           headerTitleTransition: _headerTitleTransition,
-          onPopped: _restoreHeaderScrollOffset,
         ),
       ),
-    );
+    )
+        .then((_) {
+          if (mounted) _restoreHeaderScrollOffset();
+        });
   }
 
   Future<void> _closeSplitPane() async {
@@ -811,44 +805,42 @@ class _SettingsSubScreenRoute extends StatelessWidget {
     required this.route,
     required this.bottomInset,
     required this.headerTitleTransition,
-    required this.onPopped,
   });
 
   final _SettingsRoute route;
   final double bottomInset;
   final AppHeaderTitleTransition headerTitleTransition;
-  final VoidCallback onPopped;
 
   bool _bindHeaderPosition(ScrollNotification notification) {
     final metrics = notification.metrics;
+    final notificationContext = notification.context;
     if (metrics.axis != Axis.vertical ||
         notification.depth != 0 ||
+        notificationContext == null ||
         metrics.viewportDimension <
-            max(240, MediaQuery.sizeOf(notification.context!).height * 0.35)) {
+            max(240, MediaQuery.sizeOf(notificationContext).height * 0.35)) {
       return false;
     }
-    final notificationContext = notification.context;
-    if (notificationContext != null) {
-      final position = Scrollable.maybeOf(
-        notificationContext,
-        axis: Axis.vertical,
-      )?.position;
-      if (position != null) {
-        headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
-      }
+    final position = Scrollable.maybeOf(
+      notificationContext,
+      axis: Axis.vertical,
+    )?.position;
+    if (position != null) {
+      headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
     }
     return false;
   }
 
   bool _bindHeaderMetrics(ScrollMetricsNotification notification) {
+    final notificationContext = notification.context;
     if (notification.metrics.axis != Axis.vertical ||
         notification.depth != 0 ||
         notification.metrics.viewportDimension <
-            max(240, MediaQuery.sizeOf(notification.context).height * 0.35)) {
+            max(240, MediaQuery.sizeOf(notificationContext).height * 0.35)) {
       return false;
     }
     final position = Scrollable.maybeOf(
-      notification.context,
+      notificationContext,
       axis: Axis.vertical,
     )?.position;
     if (position != null) {
@@ -869,11 +861,7 @@ class _SettingsSubScreenRoute extends StatelessWidget {
     final headerHeight = topInset + toolbarHeight;
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
 
-    return PopScope<void>(
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) onPopped();
-      },
-      child: ListenableBuilder(
+    return ListenableBuilder(
         listenable: appAccentNotifier,
         builder: (context, _) {
           final accentColor = CupertinoDynamicColor.resolve(
@@ -936,7 +924,6 @@ class _SettingsSubScreenRoute extends StatelessWidget {
                         horizontalInset:
                             AppWindowContentScope.of(context).horizontalInset +
                             16.0,
-                        color: resolveAccentColor(context),
                         onTap: () => Navigator.of(
                           context,
                           rootNavigator: true,
@@ -949,8 +936,7 @@ class _SettingsSubScreenRoute extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
+      );
   }
 }
 

@@ -9,7 +9,11 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show LiquidGlassWidgets;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
-    show GlassNavigationShell;
+    show
+        GlassBarItem,
+        GlassBarItemBackground,
+        GlassNavigationShell,
+        LiquidGlassWidgets;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -510,6 +514,7 @@ Future<void> main() async {
   if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
     await LiquidGlassWidgets.initialize();
   }
+  await navigation_glass.LiquidGlassWidgets.initialize();
   // Set the system-bar layout before startup awaits so Android can draw the
   // first frame edge-to-edge, including when the app launches in a freeform
   // window. The header separately uses MediaQuery.padding.top for safe layout.
@@ -577,7 +582,9 @@ Future<void> main() async {
   EventPipeline.instance.scheduleBackgroundReembed(
     EventStore.instance.events.value,
   );
-  runApp(const SKEDDOApp());
+  runApp(
+    navigation_glass.LiquidGlassWidgets.wrap(child: const SKEDDOApp()),
+  );
 }
 
 class SKEDDOApp extends StatefulWidget {
@@ -1188,40 +1195,33 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         barrierColor: const Color.fromRGBO(0, 0, 0, 0.4),
         transitionDuration: const Duration(milliseconds: 320),
         reverseTransitionDuration: const Duration(milliseconds: 320),
-        pageBuilder: (routeContext, animation, secondaryAnimation) =>
-            PopScope<void>(
-              onPopInvokedWithResult: (didPop, result) {
-                if (didPop) _onSettingsRoutePopped();
-              },
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  SettingsPanel(
-                    topInset: topInset,
-                    bottomInset: bottomInset,
-                    isOpen: true,
-                    isLandscapeTwoPane: isLandscapeTwoPane,
-                    onClose: _closeSettings,
-                    subScreenBackAction: _settingsBackAction,
-                    headerTitleTransition: _headerTitleTransition,
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: AppShellPinnedToolbar(
-                      glyph: AppShellToolbarGlyph.close,
-                      semanticLabel: 'Close settings',
-                      horizontalInset:
-                          AppWindowContentScope.of(routeContext).horizontalInset +
-                          16.0,
-                      color: resolveAccentColor(routeContext),
-                      onTap: _closeSettings,
-                    ),
-                  ),
-                ],
+        pageBuilder: (routeContext, animation, secondaryAnimation) => Stack(
+          fit: StackFit.expand,
+          children: [
+            SettingsPanel(
+              topInset: topInset,
+              bottomInset: bottomInset,
+              isOpen: true,
+              isLandscapeTwoPane: isLandscapeTwoPane,
+              onClose: _closeSettings,
+              subScreenBackAction: _settingsBackAction,
+              headerTitleTransition: _headerTitleTransition,
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: AppShellPinnedToolbar(
+                glyph: AppShellToolbarGlyph.close,
+                semanticLabel: 'Close settings',
+                horizontalInset:
+                    AppWindowContentScope.of(routeContext).horizontalInset +
+                    16.0,
+                onTap: _closeSettings,
               ),
             ),
+          ],
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curved = CurvedAnimation(
             parent: animation,
@@ -1244,8 +1244,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _closeSettings() {
     if (!_settingsOpen) return;
-    setState(() => _settingsOpen = false);
-    _settingsBackAction.value = null; // clear any active sub-screen
+    _settingsBackAction.value = null;
     Navigator.of(context, rootNavigator: true).maybePop();
   }
 
@@ -1925,6 +1924,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvSlideController.dispose();
     _searchModeController.dispose();
     _calendarStripSlide.dispose();
+    _settingsBackAction.dispose();
     _headerTitleTransition.dispose();
     super.dispose();
   }
@@ -2649,46 +2649,52 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildEventsHeaderActions(
+  List<navigation_glass.GlassBarItem> _buildPinnedHeaderActions(
     BuildContext context, {
     required Color accent,
-    required bool isLandscape,
+    required double opacity,
     required bool useDcvCategory,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (_selectedIndex != 3)
-          AnimatedTapIcon(
-            padding: EdgeInsets.fromLTRB(18, 10, 4, isLandscape ? 10 : 0),
-            onTap: _activateTabSearch,
-            child: Transform.translate(
-              offset: const Offset(5, 0),
-              child: SvgPicture.asset(
-                'assets/icons/search.svg',
-                width: 26,
-                height: 26,
-                colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
-              ),
-            ),
-          ),
-        AnimatedTapIcon(
-          padding: EdgeInsets.fromLTRB(10, 10, 0, isLandscape ? 10 : 0),
-          onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
-            context,
-            initialCategoryId: useDcvCategory
-                ? _eventsTabKey.currentState?.activeStandardDcvCategoryId
-                : null,
-          ),
-          child: SvgPicture.asset(
-            'assets/icons/plus.svg',
-            width: 26,
-            height: 26,
-            colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
-          ),
-        ),
-      ],
+    final visible = opacity.clamp(0.0, 1.0).toDouble();
+    Widget icon(String asset) => Opacity(
+      opacity: visible,
+      child: SvgPicture.asset(
+        asset,
+        width: 26,
+        height: 26,
+        colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+      ),
     );
+
+    final actions = <navigation_glass.GlassBarItem>[];
+    if (_selectedIndex != 3) {
+      actions.add(
+        navigation_glass.GlassBarItem.icon(
+          id: 'app-shell-search-action',
+          label: 'Search',
+          enabled: visible > 0.01,
+          background: navigation_glass.GlassBarItemBackground.shared,
+          icon: icon('assets/icons/search.svg'),
+          onTap: _activateTabSearch,
+        ),
+      );
+    }
+    actions.add(
+      navigation_glass.GlassBarItem.icon(
+        id: 'app-shell-create-event-action',
+        label: 'Create event',
+        enabled: visible > 0.01,
+        background: navigation_glass.GlassBarItemBackground.shared,
+        icon: icon('assets/icons/plus.svg'),
+        onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
+          context,
+          initialCategoryId: useDcvCategory
+              ? _eventsTabKey.currentState?.activeStandardDcvCategoryId
+              : null,
+        ),
+      ),
+    );
+    return actions;
   }
 
   Widget _buildLandscapeDcvPaneHeader({
@@ -3688,16 +3694,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 ),
                                                                               ),
                                                                               const Spacer(),
-                                                                              if (!landscapeDcvSplit)
-                                                                                _buildEventsHeaderActions(
-                                                                                  context,
-                                                                                  accent: accent,
-                                                                                  isLandscape: isLandscape,
-                                                                                  useDcvCategory:
-                                                                                      isDCVVisual &&
-                                                                                      _selectedIndex ==
-                                                                                          2,
-                                                                                ),
                                                                             ],
                                                                           ),
                                                                         ),
@@ -3833,6 +3829,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 animation: Listenable.merge([
                   _dcvSlideController,
                   _searchModeAnim,
+                  appAccentNotifier,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
@@ -3880,35 +3877,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // Keep one Search/Plus pair above the entering/leaving DCV
-              // header. The DCV title and leading controls slide beneath
-              // these shared actions; callbacks resolve the active DCV.
-              if (landscapeDcvSplit)
-                Positioned(
-                  top: topInset,
-                  // Match the original full-width header row's 16px trailing
-                  // inset. AppWindowContentPadding below still reserves the
-                  // system safe area; this keeps the action glyphs stationary
-                  // as they move to the higher-z overlay during the DCV split.
-                  right: 16,
-                  child: AppWindowContentPadding(
-                    includeLeft: false,
-                    child: SizedBox(
-                      height: headerContentHeight,
-                      child: _buildEventsHeaderActions(
-                        context,
-                        accent: _dcvColor ?? resolveAccentColor(context),
-                        isLandscape: isLandscape,
-                        useDcvCategory: true,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // The tab bar is now a floating shell control. It is placed
-              // above the content but below the settings scrim so it stays
-              // available across tabs and is naturally covered by shell
-              // overlays.
+              // The tab bar is shared across tabs. Full-screen Navigator
+              // routes naturally cover it while they are presented.
               AnimatedBuilder(
                 animation: Listenable.merge([
                   _dcvSlideController,
@@ -3997,6 +3967,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             16.0,
                         opacity: fadeOpacity,
                         color: accent,
+                        actions: _buildPinnedHeaderActions(
+                          context,
+                          accent: accent,
+                          opacity: fadeOpacity,
+                          useDcvCategory:
+                              isDCVVisual && _selectedIndex == 2,
+                        ),
                         onTap: isDCVVisual ? _exitDCV : _openSettings,
                       ),
                     ),
@@ -4293,7 +4270,6 @@ class _CalendarNavChevron extends StatelessWidget {
     );
   }
 }
-
 /// A split chevron hit target that remains reliable inside the horizontally
 /// rubber-banding title scroller. The raw pointer listener tracks tap slop
 /// independently of the scroll gesture arena, while the nested no-op tap
@@ -4358,116 +4334,6 @@ class _CalendarNavTapTargetState extends State<_CalendarNavTapTarget> {
         onPointerUp: _onPointerUp,
         onPointerCancel: _onPointerCancel,
         child: widget.child,
-      ),
-    );
-  }
-}
-
-class _MorphingMenuIcon extends StatelessWidget {
-  final bool open;
-  final bool isDCV;
-  final Color color;
-
-  const _MorphingMenuIcon({
-    required this.open,
-    this.isDCV = false,
-    this.color = kAccentColor,
-  });
-
-  // Paints the icon at parameter t:
-  //   t = -1 → chevron <   t = 0 → hamburger   t = 1 → X
-  Widget _buildIcon(double t) {
-    final double topX, topY, topAngle, bottomX, bottomY, bottomAngle;
-    final double s = t <= 0 ? -t : 0.0;
-    final double strokeWidth = 22.0 - 10.0 * s;
-
-    if (t <= 0) {
-      // Hamburger ↔ Chevron <  (t: 0 → −1)
-      // topX/bottomX = 0 so both strokes stay centred on x=0.  At t=−1 the
-      // two strokes run from x≈−4.6 (apex) to x≈+4.6 (open ends), making the
-      // geometric centre of the < land exactly at the icon centre — the same
-      // point as the hamburger × intersection.
-      topX = 0;
-      topY = -4.5 + 0.64 * s;
-      topAngle = -0.6981317007977318 * s;
-      bottomX = 0;
-      bottomY = 4.5 - 0.64 * s;
-      bottomAngle = 0.6981317007977318 * s;
-    } else {
-      // Hamburger ↔ X  (t: 0 → 1)
-      topX = 0;
-      topY = -4.5 + (4.5 * t);
-      topAngle = 0.7853981633974483 * t;
-      bottomX = 0;
-      bottomY = 4.5 - (4.5 * t);
-      bottomAngle = -0.7853981633974483 * t;
-    }
-
-    return SizedBox(
-      width: 26,
-      height: 26,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Transform.translate(
-            offset: Offset(topX, topY),
-            child: Transform.rotate(
-              angle: topAngle,
-              child: _MenuStroke(width: strokeWidth, color: color),
-            ),
-          ),
-          Transform.translate(
-            offset: Offset(bottomX, bottomY),
-            child: Transform.rotate(
-              angle: bottomAngle,
-              child: _MenuStroke(width: strokeWidth, color: color),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // DCV mode: draw the chevron synchronously — no TweenAnimationBuilder,
-    // no animation lifecycle, zero flicker on enter/exit.
-    if (isDCV) return _buildIcon(-1.0);
-
-    // Normal mode: animate hamburger ↔ X when the menu opens/closes.
-    // The chevron morph is intentionally excluded here so it always snaps.
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(end: open ? 1.0 : 0.0),
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeInOutCubic,
-      builder: (context, t, _) => _buildIcon(t),
-    );
-  }
-}
-
-class _MenuStroke extends StatelessWidget {
-  final double width;
-
-  /// Stroke thickness in logical pixels. Matches the thinner header icon
-  /// treatment used by the Day View and View Mode controls.
-  final double height;
-  final Color color;
-  const _MenuStroke({
-    this.width = 22,
-    this.height = 1.6,
-    this.color = kAccentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: ShapeDecoration(
-        color: color,
-        shape: const BoundedSquircleStadiumBorder(
-          radius: kSquircleStadiumRadius,
-        ),
       ),
     );
   }

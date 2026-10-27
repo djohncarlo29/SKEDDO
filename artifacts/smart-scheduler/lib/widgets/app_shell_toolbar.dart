@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as navigation_glass
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
     show GlassAppBar, GlassBarItem, GlassBarItemBackground;
 
 import '../app_settings.dart';
@@ -61,13 +62,9 @@ class AppShellPinnedToolbar extends StatelessWidget {
       label: semanticLabel,
       enabled: visibility > 0.01,
       background: navigation_glass.GlassBarItemBackground.shared,
-      tintColor: color,
       icon: Opacity(
         opacity: visibility,
-        child: _AppShellMenuGlyph(
-          state: glyph,
-          color: color,
-        ),
+        child: _AppShellMenuGlyph(state: glyph, color: color),
       ),
       onTap: onTap,
     );
@@ -99,25 +96,20 @@ class _AppShellMenuGlyph extends StatelessWidget {
     final double bottomAngle;
     final double strokeWidth;
 
-    switch (state) {
-      case AppShellToolbarGlyph.menu:
-        topY = -4.5;
-        topAngle = 0;
-        bottomY = 4.5;
-        bottomAngle = 0;
-        strokeWidth = 22;
-      case AppShellToolbarGlyph.close:
-        topY = -4.5 + 4.5 * progress;
-        topAngle = 0.7853981633974483 * progress;
-        bottomY = 4.5 - 4.5 * progress;
-        bottomAngle = -0.7853981633974483 * progress;
-        strokeWidth = 22;
-      case AppShellToolbarGlyph.back:
-        topY = -3.86;
-        topAngle = -0.6981317007977318;
-        bottomY = 3.86;
-        bottomAngle = 0.6981317007977318;
-        strokeWidth = 12;
+    if (progress >= 0) {
+      final t = progress.clamp(0.0, 1.0);
+      topY = -4.5 + 4.5 * t;
+      topAngle = 0.7853981633974483 * t;
+      bottomY = 4.5 - 4.5 * t;
+      bottomAngle = -0.7853981633974483 * t;
+      strokeWidth = 22;
+    } else {
+      final t = (-progress).clamp(0.0, 1.0);
+      topY = -4.5 + 0.64 * t;
+      topAngle = -0.6981317007977318 * t;
+      bottomY = 4.5 - 0.64 * t;
+      bottomAngle = 0.6981317007977318 * t;
+      strokeWidth = 22 - 10 * t;
     }
 
     return SizedBox(
@@ -147,8 +139,11 @@ class _AppShellMenuGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state == AppShellToolbarGlyph.back) return _buildGlyph(1);
-    final target = state == AppShellToolbarGlyph.close ? 1.0 : 0.0;
+    final target = switch (state) {
+      AppShellToolbarGlyph.menu => 0.0,
+      AppShellToolbarGlyph.close => 1.0,
+      AppShellToolbarGlyph.back => -1.0,
+    };
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: target),
       duration: const Duration(milliseconds: 260),
@@ -170,9 +165,7 @@ class _MenuStroke extends StatelessWidget {
     height: 1.6,
     decoration: ShapeDecoration(
       color: color,
-      shape: const BoundedSquircleStadiumBorder(
-        radius: kSquircleStadiumRadius,
-      ),
+      shape: const BoundedSquircleStadiumBorder(radius: kSquircleStadiumRadius),
     ),
   );
 }
