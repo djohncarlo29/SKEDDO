@@ -180,7 +180,7 @@ void main() {
       GlassThemeVariant.dark.settings!.ambientStrength,
     );
     expect(tabBar.settings!.thickness, 30.0);
-    expect(tabBar.settings!.blur, 10.0);
+    expect(tabBar.settings!.blur, closeTo(1.7, 0.000001));
     expect(tabBar.settings!.chromaticAberration, 0.3);
     expect(tabBar.settings!.refractiveIndex, 1.59);
     expect(tabBar.settings!.saturation, 0.7);

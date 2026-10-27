@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassContainer, GlassTabBar, LiquidGlassSettings;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart'
+    show LiquidGlassSlider;
 
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
@@ -179,6 +181,7 @@ void main() {
 
   test('Liquid Glass slider positions settle on whole percentages', () {
     expect(quantizeLiquidGlassSliderPosition(0.756), 0.76);
+    expect(quantizeLiquidGlassSliderPosition(0.49), 0.49);
     expect(
       liquidGlassOpacityForSliderPosition(0.756),
       closeTo(0.656, 0.000001),
@@ -188,6 +191,28 @@ void main() {
     expect(settleLiquidGlassSliderPosition(0.51), 0.5);
     expect(settleLiquidGlassSliderPosition(0.48), 0.48);
     expect(settleLiquidGlassSliderPosition(0.52), 0.52);
+  });
+
+  testWidgets('the midpoint marker is painted on the Liquid Glass track', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: Center(
+          child: LiquidGlassSlider(
+            value: 0.25,
+            onChanged: _ignoreSliderChange,
+            stepMarkerValue: 0.5,
+            stepMarkerColor: CupertinoColors.activeBlue,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('liquid-glass-slider-step-marker')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('tab bar and shared surfaces follow the same slider blur', (
@@ -293,3 +318,5 @@ void main() {
     expect(previewGlass.settings!.glassColor.a, closeTo(0.614, 0.001));
   });
 }
+
+void _ignoreSliderChange(double _) {}
