@@ -60,6 +60,17 @@ class NativeTextInput extends StatefulWidget {
     }
   }
 
+  static void unfocus(TextEditingController controller) {
+    for (int i = _instances.length - 1; i >= 0; i--) {
+      final state = _instances[i];
+      if (state.widget.controller == controller &&
+          state._element == html.document.activeElement) {
+        state._blur();
+        return;
+      }
+    }
+  }
+
   // Web parity stub: programmatically focuses the underlying HTML input
   // for the instance whose [TextEditingController] matches [controller].
   // Mirrors the mobile implementation so callers don't need a platform

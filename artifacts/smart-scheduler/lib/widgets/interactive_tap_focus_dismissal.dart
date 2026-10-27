@@ -22,17 +22,8 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
 
   final Widget child;
 
-  static final Set<int> _dismissAfterPointerUp = <int>{};
-
-  static bool _hasEditableFocus() {
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    final hasFlutterTextInputFocus =
-        primaryFocus != null &&
-        primaryFocus.hasFocus &&
-        primaryFocus is! FocusScopeNode;
-    return hasFlutterTextInputFocus ||
-        NativeTextInput.focusedController != null;
-  }
+  static final Map<int, _FocusAtPointerDown> _dismissAfterPointerUp =
+      <int, _FocusAtPointerDown>{};
 
   void _handlePointerDown(PointerDownEvent event) {
     _dismissAfterPointerUp.remove(event.pointer);
@@ -47,21 +38,39 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
     );
     if (hitEditableText) return;
 
-    if (_hasEditableFocus()) {
-      _dismissAfterPointerUp.add(event.pointer);
-    }
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final flutterFocus =
+        primaryFocus != null &&
+            primaryFocus.hasFocus &&
+            primaryFocus is! FocusScopeNode
+        ? primaryFocus
+        : null;
+    final nativeController = NativeTextInput.focusedController;
+    if (flutterFocus == null && nativeController == null) return;
+
+    _dismissAfterPointerUp[event.pointer] = _FocusAtPointerDown(
+      flutterFocus: flutterFocus,
+      nativeController: nativeController,
+    );
   }
 
   void _handlePointerUp(PointerUpEvent event) {
-    if (!_dismissAfterPointerUp.remove(event.pointer)) return;
+    final focusAtPointerDown = _dismissAfterPointerUp.remove(event.pointer);
+    if (focusAtPointerDown == null) return;
 
     // Run after the target's tap callback. Some picker controls request focus
-    // as part of their action; the interaction still owns dismissal.
+    // as part of their action. Only blur the field that was active when this
+    // interaction began, never a newly focused field on a destination route.
     scheduleMicrotask(() {
-      if (!_hasEditableFocus()) return;
-      final primaryFocus = FocusManager.instance.primaryFocus;
-      NativeTextInput.unfocusAll();
-      primaryFocus?.unfocus();
+      final flutterFocus = focusAtPointerDown.flutterFocus;
+      if (flutterFocus?.hasFocus ?? false) {
+        flutterFocus!.unfocus();
+      }
+      final nativeController = focusAtPointerDown.nativeController;
+      if (nativeController != null &&
+          NativeTextInput.isFocused(nativeController)) {
+        NativeTextInput.unfocus(nativeController);
+      }
     });
   }
 
@@ -79,4 +88,14 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
       child: child,
     );
   }
+}
+
+class _FocusAtPointerDown {
+  const _FocusAtPointerDown({
+    required this.flutterFocus,
+    required this.nativeController,
+  });
+
+  final FocusNode? flutterFocus;
+  final TextEditingController? nativeController;
 }

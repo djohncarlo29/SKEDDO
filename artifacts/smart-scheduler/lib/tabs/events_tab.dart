@@ -26,6 +26,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/route_transition_focus.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
 import '../widgets/modal_toolbar_glass_button.dart';
 import '../widgets/app_header_scroll_edge.dart';
@@ -13382,6 +13383,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     text: widget.initial?.name ?? '',
   );
   final FocusNode _nameFocus = FocusNode();
+  VoidCallback? _cancelInitialFocusRequest;
   final ScrollController _sheetScrollCtrl = ScrollController();
   final ScrollController _nameScrollCtrl = ScrollController();
   late final Set<String> _selectedIds = Set<String>.from(
@@ -13437,13 +13439,19 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     // the keyboard so the user can review the existing name first.
     if (widget.initial == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _nameFocus.requestFocus();
+        if (mounted) {
+          _cancelInitialFocusRequest = requestFocusAfterRouteTransition(
+            context,
+            _nameFocus,
+          );
+        }
       });
     }
   }
 
   @override
   void dispose() {
+    _cancelInitialFocusRequest?.call();
     _nameCtrl.dispose();
     _nameFocus.dispose();
     _sheetScrollCtrl.dispose();
@@ -14002,6 +14010,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   final _startLocFocus = FocusNode();
   final _destFocus = FocusNode();
   final _smartDescriptionFocus = FocusNode();
+  VoidCallback? _cancelInitialFocusRequest;
 
   // ── Picker-row state ──────────────────────────────────────────────────────
   late String _categoryType = widget.initial?.categoryType ?? 'Standard';
@@ -14190,6 +14199,16 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   @override
   void initState() {
     super.initState();
+    if (!_isSmart && widget.initial == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _cancelInitialFocusRequest = requestFocusAfterRouteTransition(
+            context,
+            _titleFocus,
+          );
+        }
+      });
+    }
     // ── Restore preset field values when editing an existing category ────────
     final init = widget.initial;
     if (init != null && !_isSmart) {
@@ -14371,6 +14390,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   @override
   void dispose() {
+    _cancelInitialFocusRequest?.call();
     _travelModeCtrl.dispose();
     _endRepeatCtrl.dispose();
     _endDateCtrl.dispose();
@@ -15135,7 +15155,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   showCursor: !_isSmart,
                   // New Category (not Edit, not a smart tile) opens with the
                   // keyboard already up and focused here.
-                  autofocus: !_isSmart && widget.initial == null,
                   // selectionControls uses a captured colour so handles update live
                   // when the user changes the category swatch.
                   selectionControls: _selectionControls,

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/interactive_tap_focus_dismissal.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
+import 'package:smart_scheduler/widgets/route_transition_focus.dart';
 
 void main() {
   testWidgets('rounded sheet dismisses from a downward drag', (tester) async {
@@ -143,6 +144,55 @@ void main() {
     focusNode.dispose();
   });
 
+  testWidgets('opening a focused sheet preserves its destination focus', (
+    tester,
+  ) async {
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final sourceFocus = FocusNode();
+    final sheetFocus = FocusNode();
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => InteractiveTapFocusDismissal(
+          child: AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
+        home: CupertinoPageScaffold(
+          child: Column(
+            children: [
+              CupertinoTextField(focusNode: sourceFocus),
+              CupertinoButton(
+                onPressed: () {
+                  showRoundedCupertinoSheet<void>(
+                    context: navigatorKey.currentContext!,
+                    requestFocus: true,
+                    pageBuilder: (_) => _RouteFocusSheet(focusNode: sheetFocus),
+                  );
+                },
+                child: const Text('Open focused sheet'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    sourceFocus.requestFocus();
+    await tester.pump();
+    expect(sourceFocus.hasFocus, isTrue);
+
+    await tester.tap(find.text('Open focused sheet'));
+    await tester.pumpAndSettle();
+    expect(sheetFocus.hasFocus, isTrue);
+    expect(sourceFocus.hasFocus, isFalse);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    sourceFocus.dispose();
+    sheetFocus.dispose();
+  });
+
   testWidgets('keeps an unsaved modal draft through orientation changes', (
     tester,
   ) async {
@@ -214,6 +264,45 @@ void main() {
     );
     expect(FocusManager.instance.primaryFocus, same(focusedNodeBeforeRotation));
   });
+}
+
+class _RouteFocusSheet extends StatefulWidget {
+  const _RouteFocusSheet({required this.focusNode});
+
+  final FocusNode focusNode;
+
+  @override
+  State<_RouteFocusSheet> createState() => _RouteFocusSheetState();
+}
+
+class _RouteFocusSheetState extends State<_RouteFocusSheet> {
+  VoidCallback? _cancelFocusRequest;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _cancelFocusRequest = requestFocusAfterRouteTransition(
+          context,
+          widget.focusNode,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _cancelFocusRequest?.call();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: Center(child: CupertinoTextField(focusNode: widget.focusNode)),
+    );
+  }
 }
 
 class _DraftSheet extends StatefulWidget {

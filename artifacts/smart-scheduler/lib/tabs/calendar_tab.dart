@@ -24,6 +24,7 @@ import '../widgets/event_time_picker.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/route_transition_focus.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
 import '../widgets/modal_toolbar_glass_button.dart';
 import '../widgets/app_header_scroll_edge.dart';
@@ -10461,6 +10462,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   final _titleScrollCtrl = ScrollController();
   final _subtitleScrollCtrl = ScrollController();
   final _titleFocus = FocusNode();
+  VoidCallback? _cancelInitialFocusRequest;
   final _subtitleFocus = FocusNode();
 
   // ── URL / Notes ───────────────────────────────────────────────────────────
@@ -10826,7 +10828,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
     // to review existing content rather than immediately enter the title.
     if (!widget.isEditing) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _titleFocus.requestFocus();
+        if (mounted) {
+          _cancelInitialFocusRequest = requestFocusAfterRouteTransition(
+            context,
+            _titleFocus,
+          );
+        }
       });
     }
   }
@@ -10951,6 +10958,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _urlScrollCtrl.dispose();
     _notesCtrl.dispose();
     _notesScrollCtrl.dispose();
+    _cancelInitialFocusRequest?.call();
     _titleFocus.dispose();
     _subtitleFocus.dispose();
     _locationFocus.dispose();

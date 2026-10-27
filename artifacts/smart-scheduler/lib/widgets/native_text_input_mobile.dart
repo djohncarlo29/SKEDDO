@@ -73,6 +73,16 @@ class NativeTextInput extends StatefulWidget {
     }
   }
 
+  static void unfocus(TextEditingController controller) {
+    for (int i = _instances.length - 1; i >= 0; i--) {
+      final state = _instances[i];
+      if (state.widget.controller == controller && state._focusNode.hasFocus) {
+        state._blur();
+        return;
+      }
+    }
+  }
+
   // Programmatically focus the field for the instance whose
   // [TextEditingController] matches [controller].
   static void focus(TextEditingController controller) {
