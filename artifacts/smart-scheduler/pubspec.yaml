@@ -33,6 +33,7 @@ dependencies:
   flutter_liquid_glass_widgets: ^0.0.1
   drift: ^2.35.0
   drift_flutter: ^0.3.1
+  liquid_glass_widgets: ^1.15.0
 
 dev_dependencies:
   flutter_test:
