@@ -5,9 +5,60 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/app_settings.dart';
 import '../lib/widgets/floating_tab_pill.dart';
+import '../lib/widgets/liquid_glass_slider_edge_icon.dart';
 import '../lib/widgets/skeddo_glass_settings.dart';
 
 void main() {
+  test('slider edge icons push through the native endpoint pressure range', () {
+    const minimumAtEnd = LiquidGlassSliderEdgeIcon(
+      value: 0,
+      isMinimum: true,
+      child: SizedBox.shrink(),
+    );
+    expect(minimumAtEnd.pressure, 1);
+    expect(minimumAtEnd.translationX, -10);
+    expect(minimumAtEnd.scale, closeTo(0.84, 0.000001));
+
+    const minimumAtHalfPressure = LiquidGlassSliderEdgeIcon(
+      value: 0.025,
+      isMinimum: true,
+      child: SizedBox.shrink(),
+    );
+    expect(minimumAtHalfPressure.pressure, closeTo(0.5, 0.000001));
+    expect(minimumAtHalfPressure.translationX, closeTo(-5, 0.000001));
+
+    const minimumOutsidePressureZone = LiquidGlassSliderEdgeIcon(
+      value: 0.05,
+      isMinimum: true,
+      child: SizedBox.shrink(),
+    );
+    expect(minimumOutsidePressureZone.pressure, 0);
+
+    const maximumAtEnd = LiquidGlassSliderEdgeIcon(
+      value: 1,
+      isMinimum: false,
+      child: SizedBox.shrink(),
+    );
+    expect(maximumAtEnd.pressure, 1);
+    expect(maximumAtEnd.translationX, 10);
+    expect(maximumAtEnd.scale, closeTo(0.84, 0.000001));
+
+    const maximumOutsidePressureZone = LiquidGlassSliderEdgeIcon(
+      value: 0.95,
+      isMinimum: false,
+      child: SizedBox.shrink(),
+    );
+    expect(maximumOutsidePressureZone.pressure, 0);
+
+    const maximumAtHalfPressure = LiquidGlassSliderEdgeIcon(
+      value: 0.975,
+      isMinimum: false,
+      child: SizedBox.shrink(),
+    );
+    expect(maximumAtHalfPressure.pressure, closeTo(0.5, 0.000001));
+    expect(maximumAtHalfPressure.translationX, closeTo(5, 0.000001));
+  });
+
   test('shared glass blur uses piecewise linear slider interpolation', () {
     expect(skeddoSharedGlassBlurForPosition(0), closeTo(0.01, 0.000001));
     expect(skeddoSharedGlassBlurForPosition(0.25), closeTo(0.5, 0.000001));

@@ -222,9 +222,6 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   // ── Constants that are not geometry ────────────────────────────────
   static const double _tapTimeThreshold = 0.15; // seconds
   static const double _hapticEdge = 2; // px
-  static const double _edgeIconPressureRange = 0.05;
-  static const double _edgeIconPushDistance = 10;
-  static const double _edgeIconScaleReduction = 0.16;
 
   /// The geometry actually in force: [LiquidGlassSlider.layout] with the
   /// widget's own [LiquidGlassSlider.width] / [LiquidGlassSlider.height]
@@ -316,21 +313,9 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   double get _minThumbCX => _trackMinX + _contractedW / 2;
   double get _maxThumbCX => _trackMaxX - _contractedW / 2;
   double get _thumbRange => math.max(1.0, _maxThumbCX - _minThumbCX);
-  double get _thumbProgress =>
-      ((_thumbCX - _minThumbCX) / _thumbRange).clamp(0.0, 1.0).toDouble();
-  double get _minimumIconPressure =>
-      ((_edgeIconPressureRange - _thumbProgress) / _edgeIconPressureRange)
-          .clamp(0.0, 1.0)
-          .toDouble();
-  double get _maximumIconPressure =>
-      ((_thumbProgress - (1.0 - _edgeIconPressureRange)) /
-              _edgeIconPressureRange)
-          .clamp(0.0, 1.0)
-          .toDouble();
 
   double get _minimumIconLeft {
-    final baseLeft =
-        _padX - _minimumIconPressure * _edgeIconPushDistance;
+    final baseLeft = _padX;
     if (!_glassVisible || widget.minimumIcon == null) return baseLeft;
     final baseRight = baseLeft + _iconSize;
     final liftedThumbLeft = _thumbCX - _visualThumbWidth / 2;
@@ -339,11 +324,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   }
 
   double get _maximumIconLeft {
-    final baseLeft =
-        _layout.width -
-        _padX -
-        _iconSize +
-        _maximumIconPressure * _edgeIconPushDistance;
+    final baseLeft = _layout.width - _padX - _iconSize;
     if (!_glassVisible || widget.maximumIcon == null) return baseLeft;
     final liftedThumbRight = _thumbCX + _visualThumbWidth / 2;
     final allowedLeft = liftedThumbRight + _activeIconGap;
@@ -731,38 +712,22 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                   ),
                   if (widget.minimumIcon != null)
                     Positioned(
-                      key: const ValueKey(
-                        'liquid-glass-slider-minimum-icon-position',
-                      ),
                       left: _minimumIconLeft,
                       top: centerY - _iconSize / 2,
-                      child: Transform.scale(
-                        scale:
-                            1 -
-                            _minimumIconPressure * _edgeIconScaleReduction,
-                        child: SizedBox(
-                          width: _iconSize,
-                          height: _iconSize,
-                          child: widget.minimumIcon,
-                        ),
+                      child: SizedBox(
+                        width: _iconSize,
+                        height: _iconSize,
+                        child: widget.minimumIcon,
                       ),
                     ),
                   if (widget.maximumIcon != null)
                     Positioned(
-                      key: const ValueKey(
-                        'liquid-glass-slider-maximum-icon-position',
-                      ),
                       left: _maximumIconLeft,
                       top: centerY - _iconSize / 2,
-                      child: Transform.scale(
-                        scale:
-                            1 -
-                            _maximumIconPressure * _edgeIconScaleReduction,
-                        child: SizedBox(
-                          width: _iconSize,
-                          height: _iconSize,
-                          child: widget.maximumIcon,
-                        ),
+                      child: SizedBox(
+                        width: _iconSize,
+                        height: _iconSize,
+                        child: widget.maximumIcon,
                       ),
                     ),
                 ],
