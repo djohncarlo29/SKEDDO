@@ -714,6 +714,8 @@ class _DiscardConfirmationGlassButtonState
                 glowOpacity: 0,
                 glowBlurRadius: 0,
                 glowSpreadRadius: 0,
+                ambientBaseLight: 0,
+                enableInteractionColorFeedback: false,
                 label: 'Discard Changes',
                 child: Center(
                   child: Text(

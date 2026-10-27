@@ -16,7 +16,8 @@ slider settings, 85% glass tint and a white glyph in both themes, tinted
 `#CECDD3` in Light Mode or `#474749` in Dark Mode, while remaining semantically
 and functionally disabled. Set `GlassIconButton.glowColor` to transparent on
 these inactive checkmarks to remove the touch halo without changing their
-resting glass tint. The discard-confirmation button has no touch glow or stretch.
+resting glass tint. The discard-confirmation button has no touch glow, stretch,
+or interaction-driven color change.
 
 **Why:** Without explicit settings, `GlassIconButton` uses the package's general
 theme defaults (lower thickness/refraction, more blur). Active checkmarks need
@@ -37,5 +38,6 @@ and place the tint underneath the package glass rather than passing it as
 use shared slider settings, `glassColor` directly, and a white glyph in both
 themes. Keep inactive controls disabled and suppress their glow with transparent
 `glowColor`. The discard confirmation action uses zero interaction scale,
-zero stretch, and transparent zero-opacity glow.
+zero stretch, transparent zero-opacity glow, zero ambient light, and disabled
+interaction color feedback.
 Non-Impeller renderers still use the package's lighter path.

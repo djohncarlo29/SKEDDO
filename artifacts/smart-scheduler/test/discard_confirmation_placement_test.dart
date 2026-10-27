@@ -6,6 +6,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassButton,
         GlassButtonStyle,
         GlassContainer,
+        AdaptiveGlass,
         GlassMenuAlignment,
         GlassPopover,
         GlassQuality,
@@ -200,6 +201,27 @@ void main() {
     expect(discardButton.glowOpacity, 0);
     expect(discardButton.glowBlurRadius, 0);
     expect(discardButton.glowSpreadRadius, 0);
+    expect(discardButton.ambientBaseLight, 0);
+    expect(discardButton.enableInteractionColorFeedback, isFalse);
+    final buttonGlassFinder = find.descendant(
+      of: discardButtonFinder,
+      matching: find.byType(AdaptiveGlass),
+    );
+    expect(buttonGlassFinder, findsOneWidget);
+    expect(
+      tester.widget<AdaptiveGlass>(buttonGlassFinder).glowIntensity,
+      0,
+    );
+    final heldPress = await tester.startGesture(
+      tester.getCenter(discardButtonFinder),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(
+      tester.widget<AdaptiveGlass>(buttonGlassFinder).glowIntensity,
+      0,
+    );
+    await heldPress.cancel();
+    await tester.pump();
     expect(discardButton.settings!.thickness, 0);
     expect(discardButton.settings!.blur, 0);
     expect(discardButton.settings!.chromaticAberration, 0);

@@ -158,6 +158,7 @@ class GlassButton extends StatefulWidget {
     this.anchorStretchSettings = const AnchorStretchSettings(),
     this.alignment = Alignment.center,
     this.ambientBaseLight = 0.08,
+    this.enableInteractionColorFeedback = true,
     this.platformViewBackdrop = false,
     this.canRequestFocus = true,
     this.excludeFromSemantics = false,
@@ -216,6 +217,7 @@ class GlassButton extends StatefulWidget {
     this.anchorStretchSettings = const AnchorStretchSettings(),
     this.alignment = Alignment.center,
     this.ambientBaseLight = 0.08,
+    this.enableInteractionColorFeedback = true,
     this.platformViewBackdrop = false,
     this.canRequestFocus = true,
     this.excludeFromSemantics = false,
@@ -523,6 +525,13 @@ class GlassButton extends StatefulWidget {
   /// Set to 0.0 to disable.
   final double ambientBaseLight;
 
+  /// Whether press, hover, and focus states may change the glass color.
+  ///
+  /// Disabling this suppresses the ambient brightness overlay, directional
+  /// touch glow, and shader-based press glow while preserving tap behavior.
+  /// Defaults to true.
+  final bool enableInteractionColorFeedback;
+
   /// When true (typically for iOS PlatformViews), forces the BackdropFilter
   /// fallback render path instead of the Impeller-native shader. Forwarded to
   /// the underlying [AdaptiveGlass].
@@ -671,20 +680,23 @@ class _GlassButtonState extends State<GlassButton>
 
     final resolvedGlowColors =
         GlassThemeData.of(context).glowColorsFor(context);
-    final effectiveGlowColor = widget.glowColor ??
-        resolvedGlowColors.primary ??
-        CupertinoTheme.of(context)
-            .textTheme
-            .textStyle
-            .color
-            ?.withValues(alpha: 0.24) ??
-        CupertinoColors.white.withValues(alpha: 0.24);
+    final effectiveGlowColor = widget.enableInteractionColorFeedback
+        ? widget.glowColor ??
+            resolvedGlowColors.primary ??
+            CupertinoTheme.of(context)
+                .textTheme
+                .textStyle
+                .color
+                ?.withValues(alpha: 0.24) ??
+            CupertinoColors.white.withValues(alpha: 0.24)
+        : const Color(0x00000000);
     final effectiveGlowBlurRadius =
         widget.glowBlurRadius ?? resolvedGlowColors.glowBlurRadius;
     final effectiveGlowSpreadRadius =
         widget.glowSpreadRadius ?? resolvedGlowColors.glowSpreadRadius;
-    final effectiveGlowOpacity =
-        widget.glowOpacity ?? resolvedGlowColors.glowOpacity;
+    final effectiveGlowOpacity = widget.enableInteractionColorFeedback
+        ? widget.glowOpacity ?? resolvedGlowColors.glowOpacity
+        : 0.0;
 
     // Build the content widget (either icon or custom child)
     final contentWidget = SizedBox(
@@ -721,6 +733,9 @@ class _GlassButtonState extends State<GlassButton>
       animation:
           Listenable.merge([_saturationAnimation, _isHovered, _isFocused]),
       builder: (context, _) {
+        if (!widget.enableInteractionColorFeedback) {
+          return const SizedBox.shrink();
+        }
         double opacity = _saturationAnimation.value * widget.ambientBaseLight;
         if (_isFocused.value) {
           opacity += 0.15;
@@ -805,7 +820,9 @@ class _GlassButtonState extends State<GlassButton>
           settings: baseSettings, // Preserve user's saturation setting!
           quality: effectiveQuality,
           useOwnLayer: widget.useOwnLayer,
-          glowIntensity: _saturationAnimation.value, // 0.0-1.0 animation
+          glowIntensity: widget.enableInteractionColorFeedback
+              ? _saturationAnimation.value
+              : 0.0, // 0.0-1.0 animation
           isInteractive: true, // Buttons manage their own RepaintBoundary
           platformViewBackdrop: widget.platformViewBackdrop,
           // Give the RepaintBoundary texture extra headroom for the press scale
