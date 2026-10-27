@@ -132,11 +132,13 @@ Future<T?> showRoundedCupertinoSheet<T>({
   required BuildContext context,
   required WidgetBuilder pageBuilder,
   bool enableDrag = true,
+  bool? requestFocus,
 }) {
   return AppShellNavigationScope.rootNavigatorOf(context).push<T>(
     RoundedCupertinoSheetRoute<T>(
       builder: pageBuilder,
       enableDrag: enableDrag,
+      requestFocus: requestFocus,
       isNestedSheet: RoundedCupertinoSheetRoute.hasParentSheet(context),
     ),
   );
@@ -228,9 +230,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     with _RoundedSheetRouteTransitionMixin<T> {
   RoundedCupertinoSheetRoute({
     super.settings,
-    // Give autofocus fields in this route a focused scope. This does not
-    // autofocus every sheet; individual fields still control that behavior.
-    super.requestFocus = true,
+    super.requestFocus,
     required this.builder,
     this.enableDrag = true,
     this.isNestedSheet = false,

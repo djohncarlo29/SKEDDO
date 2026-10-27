@@ -4,6 +4,7 @@
 - [Native STT channels](native-stt-channels.md) — speech_to_text replaced by native MethodChannel+EventChannel; iOS uses SFSpeechRecognizer, Android uses SpeechRecognizer.
 - [Android selection-handle haptics](android-selection-handle-haptics.md) — suppress only selection-click feedback during handle presses; keep tap selection and unrelated haptics intact.
 - [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — offscreen DCV scroll views stole taps; use SizedBox.expand when label.isEmpty.
+- [Modal keyboard focus behavior](keyboard-focus-modal-interaction.md) — only new Event, Group, and Category sheets autofocus; taps outside editable fields dismiss focus across routes.
 - [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — overlay CustomScrollViews need primary:false or they adopt the tab controller and reset its offset.
 - [Calendar runtime behavior](calendar-runtime-index.md) — focused notes for swipes, list parity, timing, scroll restoration, and landscape layout.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search clear icon have dedicated constants.

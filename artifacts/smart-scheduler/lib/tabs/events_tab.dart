@@ -2557,6 +2557,7 @@ class EventsTabState extends State<EventsTab>
     final allSolo = _userCategories.where((c) => !c.archived).toList();
     showRoundedCupertinoSheet<void>(
       context: context,
+      requestFocus: true,
       pageBuilder:
           (ctx) => _NewGroupSheet(
             allCategories: allSolo,
@@ -6860,6 +6861,7 @@ class EventsTabState extends State<EventsTab>
   void addCategory() {
     showRoundedCupertinoSheet<void>(
       context: context,
+      requestFocus: true,
       pageBuilder: (context) => _AddCategorySheet(onSave: _handleNewCategory),
     );
   }
@@ -12435,6 +12437,7 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
   void _openAddCategorySheet() {
     showRoundedCupertinoSheet<void>(
       context: context,
+      requestFocus: true,
       pageBuilder:
           (context) => _AddCategorySheet(onSave: widget.onCategorySaved),
     );

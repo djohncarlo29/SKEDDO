@@ -57,7 +57,10 @@ void main() {
           child: Column(
             children: [
               CupertinoTextField(focusNode: focusNode),
-              CupertinoButton(onPressed: () {}, child: const Text('Action')),
+              CupertinoButton(
+                onPressed: focusNode.requestFocus,
+                child: const Text('Action'),
+              ),
             ],
           ),
         ),
@@ -92,7 +95,9 @@ void main() {
       CupertinoApp(
         navigatorKey: navigatorKey,
         builder: (context, child) => InteractiveTapFocusDismissal(
-          child: child ?? const SizedBox.shrink(),
+          child: AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
         home: CupertinoPageScaffold(
           child: Center(
@@ -100,6 +105,7 @@ void main() {
               onPressed: () {
                 showRoundedCupertinoSheet<void>(
                   context: navigatorKey.currentContext!,
+                  requestFocus: true,
                   pageBuilder: (_) => CupertinoPageScaffold(
                     child: Column(
                       children: [
@@ -110,7 +116,7 @@ void main() {
                           ),
                         ),
                         CupertinoButton(
-                          onPressed: () {},
+                          onPressed: focusNode.requestFocus,
                           child: const Text('Sheet action'),
                         ),
                       ],
@@ -127,11 +133,6 @@ void main() {
 
     await tester.tap(find.text('Open focused sheet'));
     await tester.pumpAndSettle();
-    debugDumpFocusTree();
-    // ignore: avoid_print
-    print(
-      'modal requestFocus=${(ModalRoute.of(tester.element(find.byType(CupertinoTextField)))!).requestFocus}, node=${focusNode.hasFocus}',
-    );
     expect(focusNode.hasFocus, isTrue);
 
     await tester.tap(find.text('Sheet action'));

@@ -1,6 +1,12 @@
-import 'package:flutter/gestures.dart' show PointerDownEvent;
+import 'dart:async';
+
 import 'package:flutter/rendering.dart'
-    show HitTestResult, RenderEditable, RendererBinding;
+    show
+        HitTestResult,
+        PointerCancelEvent,
+        PointerUpEvent,
+        RenderEditable,
+        RendererBinding;
 import 'package:flutter/widgets.dart';
 
 import 'native_text_input.dart';
@@ -16,7 +22,20 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
 
   final Widget child;
 
+  static final Set<int> _dismissAfterPointerUp = <int>{};
+
+  static bool _hasEditableFocus() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final hasFlutterTextInputFocus =
+        primaryFocus != null &&
+        primaryFocus.hasFocus &&
+        primaryFocus is! FocusScopeNode;
+    return hasFlutterTextInputFocus ||
+        NativeTextInput.focusedController != null;
+  }
+
   void _handlePointerDown(PointerDownEvent event) {
+    _dismissAfterPointerUp.remove(event.pointer);
     final hitTest = HitTestResult();
     RendererBinding.instance.hitTestInView(
       hitTest,
@@ -28,16 +47,26 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
     );
     if (hitEditableText) return;
 
-    final primaryFocus = FocusManager.instance.primaryFocus;
-    final focusedRenderObject = primaryFocus?.context?.findRenderObject();
-    final hasFlutterTextInputFocus = focusedRenderObject is RenderEditable;
-    final hasNativeTextInputFocus = NativeTextInput.focusedController != null;
-    if (!hasFlutterTextInputFocus && !hasNativeTextInputFocus) return;
+    if (_hasEditableFocus()) {
+      _dismissAfterPointerUp.add(event.pointer);
+    }
+  }
 
-    // NativeTextInput has its own platform focus bridge; unfocus it as well as
-    // Flutter's current focus so the software keyboard reliably closes.
-    NativeTextInput.unfocusAll();
-    primaryFocus?.unfocus();
+  void _handlePointerUp(PointerUpEvent event) {
+    if (!_dismissAfterPointerUp.remove(event.pointer)) return;
+
+    // Run after the target's tap callback. Some picker controls request focus
+    // as part of their action; the interaction still owns dismissal.
+    scheduleMicrotask(() {
+      if (!_hasEditableFocus()) return;
+      final primaryFocus = FocusManager.instance.primaryFocus;
+      NativeTextInput.unfocusAll();
+      primaryFocus?.unfocus();
+    });
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    _dismissAfterPointerUp.remove(event.pointer);
   }
 
   @override
@@ -45,6 +74,8 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: _handlePointerDown,
+      onPointerUp: _handlePointerUp,
+      onPointerCancel: _handlePointerCancel,
       child: child,
     );
   }

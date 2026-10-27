@@ -857,6 +857,7 @@ class CalendarTabState extends State<CalendarTab>
   }) {
     showRoundedCupertinoSheet<void>(
       context: shellContext,
+      requestFocus: true,
       pageBuilder: (ctx) =>
           _NewEventSheet(
             initialCategoryId: initialCategoryId,
