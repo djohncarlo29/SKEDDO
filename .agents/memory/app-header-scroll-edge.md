@@ -11,7 +11,7 @@ One app-wide header state is authoritative across tabs, Detailed Category View, 
 
 **Why:** The user requires a real two-level-to-one-level layout change even when the body has zero normal scroll range. The installed package's title sliver keeps its title row's box extent; its controller is useful, but that box alone does not supply the requested geometry. Per-page saved header state also contradicts the user's explicit current-screen-is-authoritative rule.
 
-**How to apply:** Preserve the active state on destination handoff and seed newly created header geometry before Calendar morph endpoints are measured. Do not reapply alignment to the same position. Keep header collapse driven by the outer position and glass-edge travel informed by the coordinated body as well. Short pages should have only the real header collapse travel, not fabricated body scroll extent. Calendar Day timelines remain independent scroll sources, but their fixed chrome must inherit the remaining shared title height rather than always reserving the expanded slot. Preserve search restoration and existing edge bounds. Nested inner-position jumps use body coordinates and can collapse the outer header even at body offset zero; body-only restoration must preserve the actual outer position.
+**How to apply:** Preserve the active state on destination handoff and seed newly created header geometry before Calendar morph endpoints are measured. Do not reapply alignment to the same position. Keep header collapse driven by the outer position and glass-edge travel informed by the coordinated body as well. Short pages should have only the real header collapse travel, not fabricated body scroll extent. Calendar Day timelines remain independent scroll sources, but their fixed chrome must inherit the remaining shared title height rather than always reserving the expanded slot. Preserve search restoration and existing edge bounds. Nested inner-position jumps use body coordinates and can collapse the outer header even at body offset zero; even a no-op inner jump can trigger this, so body-only movement must preserve the actual outer position.
 
 Each screen keeps separate expanded and scrolled body backups. Before the shared header is fully compact—including partial title movement—restore the expanded backup before paint and retain the scrolled backup. At fully compact, restore the destination's last scrolled body offset; a short destination stays compact even if its body cannot scroll farther. Never show a destination's stale body position for a frame before alignment.
 
@@ -93,11 +93,15 @@ Shared header handoffs must not recursively realign themselves or notify
 sibling tabs during a destination's build.
 
 **Why:** Settings can inherit the active position while building, but shared
-header observers also belong to kept-alive sibling screens.
+header observers also belong to kept-alive sibling screens. Nested-position
+`jumpTo` emits scroll notifications synchronously, so an uncleared pending
+handoff can re-enter binding and repeat its jump.
 
 **How to apply:** Align authoritative geometry immediately; coalesce listener
 notifications until after the build when necessary, rather than delaying the
-geometry or allowing a reentrant handoff.
+geometry or allowing a reentrant handoff. Consume pending handoff values before
+calling `jumpTo`, so synchronous listeners cannot apply the same handoff
+recursively.
 
 For targeted app pages, raise available content by extending the shared scroll viewport at the top; do not reduce authored first-item padding or reuse `kFixedVerticalPadding` for this separate viewport adjustment. Explicit empty-state calculations based on an outer layout constraint must include the extension once; calculations based on the expanded scroll viewport already receive it.
 

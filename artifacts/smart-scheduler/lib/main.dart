@@ -1079,8 +1079,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
 
   void _settleShellTransitionsForSearch() {
-    _headerTitleTransition.suspend();
-
     if (_dcvCategoryTransitionController.isAnimating) {
       _dcvCategoryTransitionController.value = 1.0;
     }
@@ -2104,6 +2102,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // cannot hide the second-level header after Search closes.
       _settleShellTransitionsForSearch();
       _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
+      // Freeze the settled parent state before the search layout changes the
+      // viewport. Search chrome can animate independently without becoming a
+      // new source for the parent's shared header state.
+      _headerTitleTransition.suspend();
     }
     setState(() => _searchFocused = focused);
     _syncToolbarDestination();
@@ -2149,6 +2151,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _eventsTabKey.currentState?.prepareParentForSearch();
     }
     _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
+    // Preserve the active screen's settled header through the temporary search
+    // layout, including screens that don't own a scroll position.
+    _headerTitleTransition.suspend();
 
     // Calendar tab: always use the off-screen path so its own search overlay
     // appears while the parent shell chrome remains at its resting position.

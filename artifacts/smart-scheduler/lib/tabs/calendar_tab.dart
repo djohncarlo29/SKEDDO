@@ -1001,13 +1001,13 @@ class CalendarTabState extends State<CalendarTab>
     if (!controller.hasClients) return;
     for (final position in List<ScrollPosition>.of(controller.positions)) {
       if (!position.hasContentDimensions) {
-        position.jumpTo(position.pixels);
+        AppHeaderScrollView.jumpBodyPositionTo(position, position.pixels);
         continue;
       }
       final settledOffset = position.pixels
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
-      position.jumpTo(settledOffset);
+      AppHeaderScrollView.jumpBodyPositionTo(position, settledOffset);
     }
   }
 

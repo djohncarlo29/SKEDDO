@@ -426,11 +426,14 @@ class AppHeaderTitleTransition extends ChangeNotifier {
                     0.0))
             .clamp(minExtent, maxExtent)
             .toDouble();
+    // Clear before jumpTo because NestedScrollPosition.jumpTo emits
+    // ScrollNotifications synchronously. A notification listener can re-enter
+    // bindTo for this same position before jumpTo returns.
+    _pendingHandoffCollapseProgress = null;
+    _pendingHandoffSearchProgress = null;
     if ((position.pixels - targetOffset).abs() > 0.5) {
       position.jumpTo(targetOffset);
     }
-    _pendingHandoffCollapseProgress = null;
-    _pendingHandoffSearchProgress = null;
     _cachedContentOffset = AppHeaderScrollBehavior.contentOffset(position);
     _cachedCollapseProgress = _controller.collapseProgress;
   }
@@ -927,24 +930,40 @@ class AppHeaderScrollView extends StatelessWidget {
     return null;
   }
 
-  /// Moves the body in body coordinates without turning a zero-offset
-  /// restoration into a request to collapse the outer header.
+  /// Moves the body in body coordinates while preserving its paired outer
+  /// header position.
   ///
-  /// NestedScrollView interprets innerPosition.jumpTo(0) as "header fully
-  /// collapsed, body at zero". Existing search/layout restorations mean only
-  /// "keep this body at zero", so preserve the actual outer geometry there.
+  /// NestedScrollView can couple an inner jump to the outer header, including
+  /// a jump to the inner minimum. Search/layout restoration means "move only
+  /// this body"; it must never change the active header state.
   static void jumpBodyTo(ScrollController controller, double offset) {
     for (final position in controller.positions.toList()) {
-      final outer = _outerPositionForBody(position);
-      if (outer != null &&
-          outer.hasContentDimensions &&
-          offset == position.minScrollExtent &&
-          outer.pixels < outer.maxScrollExtent) {
-        outer.jumpTo(outer.pixels);
-      } else {
-        position.jumpTo(offset);
-      }
+      jumpBodyPositionTo(position, offset);
     }
+  }
+
+  /// Moves one nested body position without allowing NestedScrollView to
+  /// reinterpret the body offset as a request to collapse its outer header.
+  static void jumpBodyPositionTo(ScrollPosition position, double offset) {
+    final target = position.hasContentDimensions
+        ? offset
+              .clamp(position.minScrollExtent, position.maxScrollExtent)
+              .toDouble()
+        : offset;
+    if ((position.pixels - target).abs() <= 0.01) return;
+
+    final outer = _outerPositionForBody(position);
+    if (outer == null || !outer.hasContentDimensions) {
+      position.jumpTo(target);
+      return;
+    }
+
+    final outerOffset = outer.pixels;
+    position.jumpTo(target);
+    if ((outer.pixels - outerOffset).abs() > 0.5) {
+      outer.jumpTo(outerOffset);
+    }
+    _rememberPositionBackup(outer);
   }
 
   static void _registerOuterPosition(
