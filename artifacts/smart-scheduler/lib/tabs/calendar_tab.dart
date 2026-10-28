@@ -850,6 +850,7 @@ class CalendarTabState extends State<CalendarTab>
   bool _greyActive = false;
   bool _greyFadeIn = false;
   bool _searchFocused = false;
+  bool _restoringSearchParent = false;
   String _searchText = '';
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
@@ -934,6 +935,7 @@ class CalendarTabState extends State<CalendarTab>
     }
     return null;
   }
+  bool get isRestoringSearchParent => _restoringSearchParent;
 
   /// Current settled scroll offset for the shell-owned calendar header title.
   /// Day View owns its title in the shell, so its timeline position must not
@@ -1142,40 +1144,62 @@ class CalendarTabState extends State<CalendarTab>
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _searchFocused = false;
+      _restoringSearchParent = true;
       _searchText = '';
       _searchSuggestion = null;
-      _greyFadeIn = false;
-      _greyActive = false;
       _searchHits = [];
     });
     widget.onSearchCancel?.call();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ScrollController? controller;
-      double? offset;
-      if (_view == CalendarView.year) {
-        controller = _yearScrollCtrl;
-        offset = _savedYearScrollOffset;
-      } else if (_view == CalendarView.month) {
-        controller = _monthViewScrollCtrl;
-        offset = _savedMonthScrollOffset;
-      }
-      if (controller != null && offset != null && controller.hasClients) {
-        for (final position in List<ScrollPosition>.of(controller.positions)) {
-          if (!position.hasContentDimensions) continue;
-          AppHeaderScrollView.jumpBodyPositionTo(
-            position,
-            offset
-                .clamp(position.minScrollExtent, position.maxScrollExtent)
-                .toDouble(),
-          );
+    var attempts = 0;
+    void attemptRestore() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _searchFocused) return;
+        ScrollController? controller;
+        double? offset;
+        if (_view == CalendarView.year) {
+          controller = _yearScrollCtrl;
+          offset = _savedYearScrollOffset;
+        } else if (_view == CalendarView.month) {
+          controller = _monthViewScrollCtrl;
+          offset = _savedMonthScrollOffset;
         }
-      }
-      setState(() {
-        _greyActive = false;
-        _greyFadeIn = false;
+        final targetOffset = offset;
+        final positions = controller != null && controller.hasClients
+            ? List<ScrollPosition>.of(controller.positions)
+            : <ScrollPosition>[];
+        final ready = targetOffset == null ||
+            (positions.isNotEmpty &&
+                positions.every(
+                  (position) =>
+                      position.hasContentDimensions &&
+                      position.maxScrollExtent + 0.5 >= targetOffset,
+                ));
+        if (!ready && attempts < 60) {
+          attempts++;
+          attemptRestore();
+          WidgetsBinding.instance.scheduleFrame();
+          return;
+        }
+        if (targetOffset != null) {
+          for (final position in positions) {
+            if (!position.hasContentDimensions) continue;
+            AppHeaderScrollView.jumpBodyPositionTo(
+              position,
+              targetOffset
+                  .clamp(position.minScrollExtent, position.maxScrollExtent)
+                  .toDouble(),
+            );
+          }
+        }
+        setState(() {
+          _restoringSearchParent = false;
+          _greyActive = false;
+          _greyFadeIn = false;
+        });
       });
-    });
+    }
+
+    attemptRestore();
   }
 
   /// Debounced 150 ms smart search across all events.

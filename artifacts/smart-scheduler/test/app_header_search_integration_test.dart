@@ -466,10 +466,18 @@ void main() {
           tester.getTopLeft(searchHeader).dy,
           closeTo(MediaQuery.paddingOf(tester.element(searchHeader)).top, 0.5),
         );
+        // The native keyboard resizes the viewport while offscreen search is
+        // active. Reproduce its animated dismissal after cancelling.
+        tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+        await tester.pumpAndSettle();
         final cancel = tester
             .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
             .firstWhere((button) => button.searchFocused);
         cancel.onTap();
+        for (final keyboardInset in [240.0, 160.0, 80.0, 0.0]) {
+          tester.view.viewInsets = FakeViewPadding(bottom: keyboardInset);
+          await tester.pump(const Duration(milliseconds: 40));
+        }
         await tester.pump(const Duration(milliseconds: 400));
         await tester.pumpAndSettle();
         drainKnownGridRoundingOverflow();

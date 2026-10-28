@@ -6910,6 +6910,7 @@ class EventsTabState extends State<EventsTab>
 
   /// Exposed so AppShell can check whether the search bar is on-screen.
   ScrollController get scrollController => _scrollController;
+  bool get isRestoringSearchParent => _restoringSearchParent;
 
   /// Called by AppShell when the user taps the header search icon.
   void focusSearch() => NativeTextInput.focus(_searchController);
@@ -6924,6 +6925,14 @@ class EventsTabState extends State<EventsTab>
     if (!_activatedFromOffScreen && !_restoringSearchParent) return;
     if (_lockingScrollDrift) return;
     if (!_scrollController.hasClients) return;
+    final positions = List<ScrollPosition>.of(_scrollController.positions);
+    if (positions.any(
+      (position) =>
+          !position.hasContentDimensions ||
+          position.maxScrollExtent + 0.5 < _savedScrollOffset,
+    )) {
+      return;
+    }
     final current = _scrollController.offset;
     if (current == _savedScrollOffset) return;
     _lockingScrollDrift = true;
@@ -6946,16 +6955,42 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _restoreParentScrollAfterSearch() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _searchFocused) return;
-      if (!_scrollController.hasClients) return;
-      final position = _scrollController.position;
-      if (!position.hasContentDimensions) return;
-      final restoredOffset = _savedScrollOffset
-          .clamp(position.minScrollExtent, position.maxScrollExtent)
-          .toDouble();
-      AppHeaderScrollView.jumpBodyTo(_scrollController, restoredOffset);
-    });
+    var attempts = 0;
+    void attemptRestore() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _searchFocused) return;
+        final positions = _scrollController.hasClients
+            ? List<ScrollPosition>.of(_scrollController.positions)
+            : <ScrollPosition>[];
+        final ready = positions.isNotEmpty && positions.every(
+          (position) =>
+              position.hasContentDimensions &&
+              position.maxScrollExtent + 0.5 >= _savedScrollOffset,
+        );
+        if (!ready && attempts < 60) {
+          attempts++;
+          attemptRestore();
+          WidgetsBinding.instance.scheduleFrame();
+          return;
+        }
+        if (positions.isNotEmpty) {
+          AppHeaderScrollView.jumpBodyTo(
+            _scrollController,
+            _savedScrollOffset,
+          );
+        }
+        if (_activatedFromOffScreen || _restoringSearchParent) {
+          setState(() {
+            _activatedFromOffScreen = false;
+            _restoringSearchParent = false;
+            _greyActive = false;
+            _greyFadeIn = false;
+          });
+        }
+      });
+    }
+
+    attemptRestore();
   }
 
   void _holdParentScrollUntilSearchHeaderSettles() {
@@ -6964,7 +6999,6 @@ class EventsTabState extends State<EventsTab>
     void releaseLock() {
       if (mounted && _restoringSearchParent) {
         _restoreParentScrollAfterSearch();
-        setState(() => _restoringSearchParent = false);
       }
       animation?.removeStatusListener(animListener);
     }
@@ -8005,6 +8039,8 @@ class EventsTabState extends State<EventsTab>
   /// it must not clear an in-progress search or steal the user's focus.
   void resetSearchForTabSwitch() {
     final wasFocused = _searchFocused;
+    final wasSearching =
+        _searchFocused || _activatedFromOffScreen || _restoringSearchParent;
     _searchBarKey.currentState?.cancelMic();
     _searchDebounce?.cancel();
     _saveCategories();
@@ -8024,7 +8060,7 @@ class EventsTabState extends State<EventsTab>
       _searchAll = [];
     });
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
-    _restoreParentScrollAfterSearch();
+    if (wasSearching) _restoreParentScrollAfterSearch();
   }
 
   void _cancelSearch() {
@@ -8054,24 +8090,8 @@ class EventsTabState extends State<EventsTab>
         _searchText = '';
         _greyFadeIn = false;
         _greyActive = false;
-        // _activatedFromOffScreen intentionally NOT cleared here.
-      });
-      // Release the lock once the header animation finishes reversing.
-      // At that point the viewport is stable, the position is exactly
-      // _savedScrollOffset, and no further correction is needed.
-      void Function(AnimationStatus)? animListener;
-      animListener = (AnimationStatus status) {
-        if (status == AnimationStatus.dismissed) {
-          if (mounted) setState(() => _activatedFromOffScreen = false);
-          widget.searchModeAnimation?.removeStatusListener(animListener!);
-        }
-      };
-      widget.searchModeAnimation?.addStatusListener(animListener!);
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted && _activatedFromOffScreen && !_greyActive) {
-          setState(() => _activatedFromOffScreen = false);
-          widget.searchModeAnimation?.removeStatusListener(animListener!);
-        }
+        _restoringSearchParent = true;
+        // Keep the offscreen lock until the saved offset is valid again.
       });
     } else {
       setState(() {

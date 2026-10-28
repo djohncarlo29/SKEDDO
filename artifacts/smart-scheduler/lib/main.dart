@@ -2127,20 +2127,41 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _searchToolbarSlideController.value = 0.0;
         _searchModeController.value = 0.0;
         _searchToolbarInteractionsEnabled.value = true;
-        // Offscreen search temporarily changes the page viewport. Rebind only
-        // after the tab has restored its saved position in the next frame.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted || _searchFocused || _searchEnteredOffScreen) return;
-            _syncHeaderScrollOffsetToParent();
-          });
-        });
+        // The active tab may need several layout frames to reattach its
+        // scroll position after keyboard and shell insets return. Rebind only
+        // after that tab confirms its original offset has been restored.
+        _syncHeaderAfterSearchParentRestores();
       } else {
         _searchToolbarSlideController.reverse();
         _searchModeController.reverse();
       }
       _searchEnteredOffScreen = false;
     }
+  }
+
+  bool get _activeSearchParentIsRestoring => switch (_selectedIndex) {
+    0 => _notesTabKey.currentState?.isRestoringSearchParent ?? false,
+    1 => _calendarTabKey.currentState?.isRestoringSearchParent ?? false,
+    2 => _eventsTabKey.currentState?.isRestoringSearchParent ?? false,
+    _ => false,
+  };
+
+  void _syncHeaderAfterSearchParentRestores() {
+    var attempts = 0;
+    void waitForParent() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _searchFocused || _searchEnteredOffScreen) return;
+        if (_activeSearchParentIsRestoring && attempts < 60) {
+          attempts++;
+          waitForParent();
+          WidgetsBinding.instance.scheduleFrame();
+          return;
+        }
+        _syncHeaderScrollOffsetToParent();
+      });
+    }
+
+    waitForParent();
   }
 
   /// Called by the header search icon.  Focuses whichever tab's search bar is

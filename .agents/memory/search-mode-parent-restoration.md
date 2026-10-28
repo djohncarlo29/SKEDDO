@@ -25,8 +25,8 @@ Off-screen search is an overlay, not a toolbar destination: keep the parent tool
 
 **How to apply:** Do not push an empty toolbar route for off-screen search. Let the overlay hide the chrome on the existing route, and verify no toolbar morph runs during entry or exit; keep inline-search route behavior separate.
 
-Off-screen search can change the parent viewport's leading inset. Do not restore a saved scroll offset before AppShell has restored that inset: the temporary smaller max extent clamps the jump. Restore after the parent layout returns, then rebind the shared header transition from the active screen's restored scroll position.
+Off-screen search can temporarily shrink the parent's scroll extent or detach its ScrollPosition while shell and keyboard insets return. Never clamp or abandon the saved offset against that transient geometry. Retry until the position is attached and its range supports the saved offset, then restore and clear the lock; rebind the shared header after the tab confirms restoration.
 
-**Why:** A pre-layout restore can appear correct at first but lose toolbar-height distance on every repeated search cycle, while the shared transition remains suspended on stale header state.
+**Why:** A single post-frame callback can run while the keyboard is still animating or the scrollable is detached. Clamping then loses the original offset; returning to zero is worse than the gradual drift it replaced.
 
-**How to apply:** Notes and Events restore their saved body offsets in a post-frame callback after notifying AppShell that search ended. Calendar restores the active Year/Month scroll offset after its shell callback. Rebind the shared header only after that restoration frame.
+**How to apply:** Notes, Events, and Calendar should retry restoration across layout frames when the controller is detached or the current extent is too small. Do not release the offscreen restoration lock until the saved offset has been applied, and have AppShell wait before rebinding the shared header.

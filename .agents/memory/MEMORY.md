@@ -141,7 +141,7 @@
 - [Pinned Flutter dependency resolution](flutter-pub-lock-sdk-resolution.md) — managed preview restarts resolve packages against its pinned Dart SDK.
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
-- [Search-mode parent restoration](search-mode-parent-restoration.md) — restore after the parent viewport returns; early jumps clamp and can leave the shared header suspended.
+- [Search-mode parent restoration](search-mode-parent-restoration.md) — wait for the parent scroll position to reattach and regain range before restoring its saved offset.
 - [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets keep AppShell stationary; only nested sheets scale the parent.
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.
