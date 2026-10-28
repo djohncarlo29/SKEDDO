@@ -27,6 +27,7 @@ void main() {
         title: 'Timed event',
         date: '2026-10-27',
         time: '09:00',
+        alerts: const ['At time of event'],
       ),
     );
     await tester.pumpAndSettle();
@@ -138,6 +139,7 @@ void main() {
         title: 'All-day event',
         date: '2026-10-27',
         isAllDay: true,
+        alerts: const ['Night before (9 PM)'],
       ),
     );
     await tester.pumpAndSettle();
@@ -249,6 +251,7 @@ void main() {
         title: 'Timed event from AppShell',
         date: '2026-10-27',
         time: '09:00',
+        alerts: const ['At time of event'],
       ),
     );
     await tester.pumpAndSettle();

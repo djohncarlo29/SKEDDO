@@ -12309,7 +12309,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
     }
 
     // ── Alerts ────────────────────────────────────────────────────────────
-    _alerts = _normaliseAlertState(e.alertSequence);
+    // AlertSequence.compact intentionally returns an unmodifiable snapshot.
+    // The sheet edits this sequence in place when All-day or alert choices
+    // change, so keep a mutable form-owned copy rather than retaining it.
+    _alerts = List<String>.of(_normaliseAlertState(e.alertSequence));
     if (_alerts.isEmpty && e.alerts == null && e.alert == null) {
       _alerts = ['At time of event'];
     }
@@ -12897,7 +12900,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
       final presetAlerts = _normaliseAlertState(
         cat.presetAlerts ?? [cat.presetAlert, cat.presetSecondAlert],
       );
-      _alerts = presetAlerts.isEmpty ? ['At time of event'] : presetAlerts;
+      _alerts = List<String>.of(
+        presetAlerts.isEmpty ? ['At time of event'] : presetAlerts,
+      );
     }
 
     ActionItem itemFor(_NewEventCategory cat) => ActionItem(
