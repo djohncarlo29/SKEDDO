@@ -1132,13 +1132,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  bool _canReplaceLandscapeDcvPage() {
-    if (_dcvCategory == null || _selectedIndex != 2) return false;
-    final geometry = AppWindowMasterDetailGeometry.of(context);
-    return geometry.isLandscape &&
-        geometry.detailPaneWidth >= kAppWindowMasterDetailMinimumDetailWidth;
-  }
-
   void _onDcvCategoryTransitionStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed &&
         _previousDcvCategory != null &&
@@ -1162,21 +1155,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _headerTitleTransition.bindTo(null, preserveCollapseProgress: true);
     _dcvToolbarVisible = true;
     _dcvToolbarAccent.value = color;
-
-    if (_canReplaceLandscapeDcvPage()) {
-      // Finish any in-flight replacement before starting the next one. The
-      // pane itself stays at its settled split width throughout.
-      _dcvCategoryTransitionController.value = 1.0;
-      setState(() {
-        _previousDcvCategory = _dcvCategory;
-        _previousDcvColor = _dcvColor;
-        _dcvCategory = label;
-        _dcvColor = color;
-      });
-      _dcvCategoryTransitionController.forward(from: 0.0);
-      _syncToolbarDestination();
-      return;
-    }
 
     _dcvCategoryTransitionController.value = 1.0;
     setState(() {
@@ -1222,10 +1200,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _openSettings() {
     if (_settingsOpen) return;
     setState(() => _settingsOpen = true);
-    final geometry = AppWindowMasterDetailGeometry.of(context);
-    final isLandscapeTwoPane =
-        geometry.isLandscape &&
-        geometry.detailPaneWidth >= kAppWindowMasterDetailMinimumDetailWidth;
     final topInset = MediaQuery.paddingOf(context).top;
     final bottomInset = systemSafeAreaBottomInset(context);
     final navigator = _appShellNavigatorKey.currentState;
@@ -1246,7 +1220,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               topInset: topInset,
               bottomInset: bottomInset,
               isOpen: true,
-              isLandscapeTwoPane: isLandscapeTwoPane,
               onClose: _closeSettings,
               subScreenBackAction: _settingsBackAction,
               inlineSubScreenBackVisible: _settingsInlineBackVisible,
@@ -2838,19 +2811,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return actions;
   }
 
-  bool _isLandscapeDcvSplit() {
-    final geometry = AppWindowMasterDetailGeometry.of(context);
-    return geometry.isLandscape &&
-        geometry.detailPaneWidth >=
-            kAppWindowMasterDetailMinimumDetailWidth;
-  }
-
   String _toolbarDestinationKey() {
     return appShellToolbarConfigurationKey(
       searchFocused: _searchToolbarHidden.value,
       selectedTabIndex: _selectedIndex,
       dcvToolbarVisible: _dcvToolbarVisible,
-      landscapeDcvSplit: _isLandscapeDcvSplit(),
     );
   }
 
@@ -3230,10 +3195,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // (~1 frame) caused by re-instantiating UITextField / EditText whenever
   // Flutter rebuilt the tab. The hidden tabs are wrapped in Offstage by
   // IndexedStack so they don't paint or hit-test, just keep their state.
-  Widget _buildContent({
-    required bool landscapeMasterDetail,
-    required double landscapeMasterWidth,
-  }) {
+  Widget _buildContent() {
     // RepaintBoundary around each tab isolates its repaint layer from its
     // siblings. When the visible tab repaints (e.g. a search result changes)
     // the engine skips the offstage tabs entirely, and vice-versa.
@@ -3313,8 +3275,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             onSearchFocusChanged: _setSearchFocused,
             searchModeAnimation: _searchModeAnim,
             activeDCV: _dcvCategory,
-            landscapeMasterDetail: landscapeMasterDetail,
-            landscapeMasterWidth: landscapeMasterWidth,
             dcvSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
             dcvSortDir: _dcvSortDirMap[_dcvCategory] ?? '',
             onUtilityBecameEmpty: _exitDCV,
@@ -3353,24 +3313,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final masterDetailGeometry = AppWindowMasterDetailGeometry.of(context);
-    final isLandscape = masterDetailGeometry.isLandscape;
-    // The master pane starts at the physical left edge, while its content is
-    // inset from that edge by landscapeHorizontalInset. Add that one inset to
-    // the portrait-width content target so the visible content itself remains
-    // exactly as wide as the phone in portrait.
-    final landscapeMasterWidth = masterDetailGeometry.masterPaneWidth;
-    final landscapeDetailUsableWidth = masterDetailGeometry.detailPaneWidth;
-    final landscapeDcvLayoutAvailable =
-        isLandscape &&
-        landscapeDetailUsableWidth >= kAppWindowMasterDetailMinimumDetailWidth;
-    final landscapeDcvSplit =
-        landscapeDcvLayoutAvailable &&
-        _dcvCategory != null &&
-        _selectedIndex == 2 &&
-        !_searchFocused;
-    final landscapeTabBarHorizontalOffset =
-        masterDetailGeometry.masterContentCenterOffset;
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final topInset = MediaQuery.of(context).padding.top;
     final headerContentHeight = isLandscape ? 52.0 : 101.0;
     final headerToolbarHeight = isLandscape
@@ -3386,7 +3330,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final headerSurfaceColor = isLandscape
         ? backgroundColor
         : const Color(0x00000000);
-    final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     // AppShell uses a custom Stack instead of Scaffold, so the framework does
     // not automatically shrink the content viewport when the IME appears.
@@ -3493,11 +3436,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   ),
                                 );
                               },
-                              child: _buildContent(
-                                landscapeMasterDetail:
-                                    landscapeDcvLayoutAvailable,
-                                landscapeMasterWidth: landscapeMasterWidth,
-                              ),
+                              child: _buildContent(),
                             ),
 
                             // Header — last Stack child so it paints above the content.
@@ -3535,17 +3474,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     0.0,
                                     1.0,
                                   );
-                                  final splitProgress = landscapeDcvSplit
-                                      ? _dcvSlideProgress.value
-                                      : 0.0;
                                   // Midpoint snap: header shows DCV state once the slide
                                   // passes 50 % in either direction.  Because pageP comes
                                   // from the same controller tick as the SlideTransition,
                                   // the snap and the content cross exactly the same frame.
                                   final isDCVVisual =
                                       pageP >= _dcvColorSnapThreshold &&
-                                      _selectedIndex == 2 &&
-                                      !landscapeDcvSplit;
+                                      _selectedIndex == 2;
                                   // Header icons swap to the category's own colour while
                                   // its DCV is visible, snapping at the same 50 % pageP
                                   // threshold as the icons themselves (see comment above).
@@ -3710,36 +3645,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                           child: LayoutBuilder(
                                             builder: (context, constraints) {
                                               final leftHeaderWidth =
-                                                  landscapeDcvSplit
-                                                  ? masterDetailGeometry
-                                                        .masterContentWidthAt(
-                                                          splitProgress,
-                                                        )
-                                                  : constraints.maxWidth;
-                                              final headerDividerWidth =
-                                                  landscapeDcvSplit
-                                                  ? masterDetailGeometry
-                                                        .dividerWidthAt(
-                                                          splitProgress,
-                                                        )
-                                                  : 0.0;
-                                              final rightHeaderViewportWidth =
-                                                  landscapeDcvSplit
-                                                  ? masterDetailGeometry
-                                                            .detailPaneWidthAt(
-                                                              splitProgress,
-                                                            ) +
-                                                        masterDetailGeometry
-                                                                .horizontalInset *
-                                                            (1.0 -
-                                                                splitProgress)
-                                                  : 0.0;
+                                                  constraints.maxWidth;
                                               final headerRowWidth =
-                                                  landscapeDcvSplit
-                                                  ? leftHeaderWidth +
-                                                        headerDividerWidth +
-                                                        rightHeaderViewportWidth
-                                                  : constraints.maxWidth;
+                                                  constraints.maxWidth;
                                               final headerRow = Row(
                                                 children: [
                                                   SizedBox(
@@ -4076,53 +3984,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       ),
                                                     ),
                                                   ),
-                                                  if (landscapeDcvSplit)
-                                                    SizedBox(
-                                                      width: headerDividerWidth,
-                                                      height:
-                                                          topInset +
-                                                          headerContentHeight,
-                                                      child: ColoredBox(
-                                                        color: separatorColor,
-                                                      ),
-                                                    ),
-                                                  if (landscapeDcvSplit)
-                                                    SizedBox(
-                                                      width:
-                                                          rightHeaderViewportWidth,
-                                                      child: ClipRect(
-                                                        child: Align(
-                                                          alignment:
-                                                              Alignment.topLeft,
-                                                          child: SizedBox(
-                                                            width:
-                                                                rightHeaderViewportWidth,
-                                                            child: Padding(
-                                                              padding:
-                                                                  EdgeInsets.only(
-                                                                    top:
-                                                                        topInset,
-                                                                  ),
-                                                              child: AppWindowPaneContent(
-                                                                includeLeft:
-                                                                    false,
-                                                                child: _buildLandscapeDcvPaneHeader(
-                                                                  accent:
-                                                                      _dcvColor ??
-                                                                      resolveAccentColor(
-                                                                        context,
-                                                                      ),
-                                                                  headerColor:
-                                                                      headerColor,
-                                                                  primaryLabel:
-                                                                      primaryLabel,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
                                                 ],
                                               );
                                               return OverflowBox(
@@ -4166,8 +4027,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
                   final isDCVVisual =
                       pageP >= _dcvColorSnapThreshold &&
-                      _selectedIndex == 2 &&
-                      !landscapeDcvSplit;
+                      _selectedIndex == 2;
                   final opacity = !isDCVVisual && _selectedIndex == 2
                       ? (1.0 - _searchModeAnim.value).clamp(0.0, 1.0)
                       : 0.0;
@@ -4217,14 +4077,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
-                  final followsDcvPaneAnimation =
-                      landscapeDcvSplit && _dcvSlideController.isAnimating;
-                  final tabBarHorizontalOffset = landscapeDcvSplit
-                      ? landscapeTabBarHorizontalOffset *
-                            (followsDcvPaneAnimation
-                                ? _dcvSlideProgress.value
-                                : 1.0)
-                      : 0.0;
                   final isDCVVisual =
                       pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
                   final eventsAccent = isDCVVisual
@@ -4246,8 +4098,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           : FloatingTabPill(
                               selectedIndex: _selectedIndex,
                               eventsAccent: eventsAccent,
-                              horizontalOffset: tabBarHorizontalOffset,
-                              animateHorizontalOffset: !followsDcvPaneAnimation,
                               onTabSelected: _switchTab,
                               onCreateEvent: () => _calendarTabKey.currentState
                                   ?.showNewEventSheet(

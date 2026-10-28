@@ -423,206 +423,216 @@ class AppSearchBarState extends State<AppSearchBar>
       fontStyle: FontStyle.normal,
       letterSpacing: kTracking16,
     );
-    return Container(
-      clipBehavior: Clip.antiAlias,
+    const searchBarShape = BoundedSquircleStadiumBorder(
+      radius: kSearchBarCornerRadius,
+    );
+    return DecoratedBox(
       decoration: ShapeDecoration(
         color: surfaceColor,
-        shape: const BoundedSquircleStadiumBorder(
-          radius: kSearchBarCornerRadius,
-        ),
+        shape: searchBarShape,
         shadows: resolveThemeShadows(kCardShadow, context),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: kSearchBarVerticalPadding,
-        ),
-        child: SizedBox(
-          height: textLineHeight,
-          child: Row(
-            children: [
-              const SizedBox(width: kSearchBarHorizontalEdgePadding),
-              SizedBox(
-                width: textScaler.scale(kSearchBarSearchIconSize),
-                height: textLineHeight,
-                child: Center(
-                  child: SearchWeightedIcon(
-                    CupertinoIcons.search,
-                    size: textScaler.scale(kSearchBarSearchIconSize),
-                    color: tertiaryLabel,
+      child: ClipPath(
+        clipper: ShapeBorderClipper(shape: searchBarShape),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: kSearchBarVerticalPadding,
+          ),
+          child: SizedBox(
+            height: textLineHeight,
+            child: Row(
+              children: [
+                const SizedBox(width: kSearchBarHorizontalEdgePadding),
+                SizedBox(
+                  width: textScaler.scale(kSearchBarSearchIconSize),
+                  height: textLineHeight,
+                  child: Center(
+                    child: SearchWeightedIcon(
+                      CupertinoIcons.search,
+                      size: textScaler.scale(kSearchBarSearchIconSize),
+                      color: tertiaryLabel,
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: TapRegion(
-                  groupId: kSbGroupId,
-                  child: CupertinoTheme(
-                    data: CupertinoTheme.of(
-                      context,
-                    ).copyWith(primaryColor: selectionTint),
-                    child: DefaultSelectionStyle(
-                      selectionColor: selectionTint.withOpacity(0.20),
-                      child: HorizontalEdgeFade(
-                        fadeColor: surfaceColor,
-                        // Short search text still participates in the native
-                        // rubberband gesture. Show an edge fade only while it
-                        // is pulled past that edge; resting fitting text has
-                        // no hidden content and therefore no fade.
-                        fadeOnRubberbandWhenContentFits: true,
-                        // The editable viewport spans from icon edge to icon
-                        // edge. Its content has one 8 px inset on each side,
-                        // and the fades begin exactly at those usable-field
-                        // boundaries.
-                        leadingInset: kSearchFieldFadeEdgeGap,
-                        trailingInset: kSearchFieldFadeEdgeGap,
-                        placeholderText: widget.placeholder,
-                        placeholderTextStyle: placeholderStyle,
-                        placeholderFocusListenable: _placeholderFocusNotifier,
-                        controller: widget.controller,
-                        scrollController: _scrollController,
-                        child: NativeTextInput(
+                Expanded(
+                  child: TapRegion(
+                    groupId: kSbGroupId,
+                    child: CupertinoTheme(
+                      data: CupertinoTheme.of(
+                        context,
+                      ).copyWith(primaryColor: selectionTint),
+                      child: DefaultSelectionStyle(
+                        selectionColor: selectionTint.withOpacity(0.20),
+                        child: HorizontalEdgeFade(
+                          fadeColor: surfaceColor,
+                          // Short search text still participates in the native
+                          // rubberband gesture. Show an edge fade only while it
+                          // is pulled past that edge; resting fitting text has
+                          // no hidden content and therefore no fade.
+                          fadeOnRubberbandWhenContentFits: true,
+                          // The editable viewport spans from icon edge to icon
+                          // edge. Its content has one 8 px inset on each side,
+                          // and the fades begin exactly at those usable-field
+                          // boundaries.
+                          leadingInset: kSearchFieldFadeEdgeGap,
+                          trailingInset: kSearchFieldFadeEdgeGap,
+                          placeholderText: widget.placeholder,
+                          placeholderTextStyle: placeholderStyle,
+                          placeholderFocusListenable:
+                              _placeholderFocusNotifier,
                           controller: widget.controller,
-                          caretToEndOnFirstTap: true,
                           scrollController: _scrollController,
-                          onFocusChanged: (focused) {
-                            _placeholderFocusNotifier.value = focused;
-                            widget.onFocusChanged?.call(focused);
-                          },
-                          // HorizontalEdgeFade paints the full intrinsic
-                          // placeholder so it can fade and rubberband like
-                          // normal one-line content.
-                          placeholder: '',
-                          placeholderStyle: placeholderStyle,
-                          style: TextStyle(
-                            inherit: false,
-                            fontSize: kSearchBarTextFontSize,
-                            color: primaryLabel,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                            height: kLineHeight,
+                          child: NativeTextInput(
+                            controller: widget.controller,
+                            caretToEndOnFirstTap: true,
+                            scrollController: _scrollController,
+                            onFocusChanged: (focused) {
+                              _placeholderFocusNotifier.value = focused;
+                              widget.onFocusChanged?.call(focused);
+                            },
+                            // HorizontalEdgeFade paints the full intrinsic
+                            // placeholder so it can fade and rubberband like
+                            // normal one-line content.
+                            placeholder: '',
+                            placeholderStyle: placeholderStyle,
+                            style: TextStyle(
+                              inherit: false,
+                              fontSize: kSearchBarTextFontSize,
+                              color: primaryLabel,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking16,
+                              height: kLineHeight,
+                            ),
+                            padding: const EdgeInsets.only(
+                              left: kSearchFieldFadeEdgeGap,
+                              right: kSearchFieldFadeEdgeGap,
+                            ),
+                            cursorColor: selectionTint,
+                            selectionColor: selectionTint.withOpacity(0.20),
+                            selectionControls: _selectionControls,
                           ),
-                           padding: const EdgeInsets.only(
-                             left: kSearchFieldFadeEdgeGap,
-                             right: kSearchFieldFadeEdgeGap,
-                           ),
-                          cursorColor: selectionTint,
-                          selectionColor: selectionTint.withOpacity(0.20),
-                          selectionControls: _selectionControls,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // Mic icon (idle) ↔ clear-circle (has text) — animated switcher.
-              // The slot follows the text line; the bar's 16 pt insets are the
-              // only vertical spacing, so the outer height is never fixed.
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: widget.controller,
-                builder: (context, value, child) {
-                  final bool hasText = value.text.isNotEmpty;
-                  return SizedBox(
-                     // Reserve the action icon plus its 16 px outer inset.
-                     // The editable field's own 8 px content padding supplies
-                     // the usable-field distance before the action icon.
-                    width:
-                        textScaler.scale(kSearchBarClearIconSize) +
+                // Mic icon (idle) ↔ clear-circle (has text) — animated switcher.
+                // The slot follows the text line; the bar's 16 pt insets are the
+                // only vertical spacing, so the outer height is never fixed.
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: widget.controller,
+                  builder: (context, value, child) {
+                    final bool hasText = value.text.isNotEmpty;
+                    return SizedBox(
+                      // Reserve the action icon plus its 16 px outer inset.
+                      // The editable field's own 8 px content padding supplies
+                      // the usable-field distance before the action icon.
+                      width:
+                          textScaler.scale(kSearchBarClearIconSize) +
                           kSearchBarHorizontalEdgePadding,
-                    height: textLineHeight,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) {
-                        final scale = Tween<double>(begin: 0.5, end: 1.0)
-                            .animate(
-                              CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOut,
-                              ),
-                            );
-                        return FadeTransition(
-                          opacity: animation,
-                          child: ScaleTransition(scale: scale, child: child),
-                        );
-                      },
-                      child: _micListening
-                          ? GestureDetector(
-                              key: const ValueKey('search-mic-listen'),
-                              onTap: _onMicTap,
-                              behavior: HitTestBehavior.opaque,
-                              child: _searchActionIconSlot(
-                                height: textLineHeight,
-                                child: AnimatedBuilder(
-                                  animation: _pulseCtrl,
-                                  builder: (_, __) => Opacity(
-                                    opacity: _pulseCtrl.value,
-                                    child: FixedSFIcon(
-                                      SFIcons.sf_microphone_fill,
-                                      fontSize: textScaler.scale(
-                                        kSearchBarMicIconSize,
-                                      ),
-                                      color: resolveAccentColor(context),
-                                      shadows: resolveThemeTextShadows([
-                                        Shadow(
-                                          color: resolveAccentColor(context),
-                                          blurRadius: 0.4,
+                      height: textLineHeight,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) {
+                          final scale = Tween<double>(
+                            begin: 0.5,
+                            end: 1.0,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOut,
+                            ),
+                          );
+                          return FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: scale,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _micListening
+                            ? GestureDetector(
+                                key: const ValueKey('search-mic-listen'),
+                                onTap: _onMicTap,
+                                behavior: HitTestBehavior.opaque,
+                                child: _searchActionIconSlot(
+                                  height: textLineHeight,
+                                  child: AnimatedBuilder(
+                                    animation: _pulseCtrl,
+                                    builder: (_, __) => Opacity(
+                                      opacity: _pulseCtrl.value,
+                                      child: FixedSFIcon(
+                                        SFIcons.sf_microphone_fill,
+                                        fontSize: textScaler.scale(
+                                          kSearchBarMicIconSize,
                                         ),
-                                      ], context),
+                                        color: resolveAccentColor(context),
+                                        shadows: resolveThemeTextShadows([
+                                          Shadow(
+                                            color: resolveAccentColor(context),
+                                            blurRadius: 0.4,
+                                          ),
+                                        ], context),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            )
-                          : hasText
-                          ? GestureDetector(
-                              key: const ValueKey('search-clear'),
-                              onTap: () => widget.controller.clear(),
-                              behavior: HitTestBehavior.opaque,
-                               child: _searchActionIconSlot(
-                                 height: textLineHeight,
-                                 child: Icon(
-                                   kSearchClearCircleIcon,
-                                   size: textScaler.scale(
-                                     kSearchBarClearIconSize,
-                                   ),
-                                   color: emptyStateIcon,
+                              )
+                            : hasText
+                            ? GestureDetector(
+                                key: const ValueKey('search-clear'),
+                                onTap: () => widget.controller.clear(),
+                                behavior: HitTestBehavior.opaque,
+                                child: _searchActionIconSlot(
+                                  height: textLineHeight,
+                                  child: Icon(
+                                    kSearchClearCircleIcon,
+                                    size: textScaler.scale(
+                                      kSearchBarClearIconSize,
+                                    ),
+                                    color: emptyStateIcon,
+                                  ),
+                                ),
+                              )
+                            : AnimatedTapIcon(
+                                key: const ValueKey('search-mic'),
+                                padding: EdgeInsets.zero,
+                                onTap: _onMicTap,
+                                onPressedChanged: (pressed) =>
+                                    setState(() => _micPressed = pressed),
+                                child: _searchActionIconSlot(
+                                  height: textLineHeight,
+                                  child: FixedSFIcon(
+                                    SFIcons.sf_microphone_fill,
+                                    fontSize: textScaler.scale(
+                                      kSearchBarMicIconSize,
+                                    ),
+                                    color: _micPressed
+                                        ? secondaryLabel
+                                        : tertiaryLabel,
+                                    shadows: resolveThemeTextShadows([
+                                      Shadow(
+                                        color: _micPressed
+                                            ? secondaryLabel
+                                            : tertiaryLabel,
+                                        blurRadius: 0.4,
+                                      ),
+                                    ], context),
+                                  ),
                                 ),
                               ),
-                            )
-                          : AnimatedTapIcon(
-                              key: const ValueKey('search-mic'),
-                              padding: EdgeInsets.zero,
-                              onTap: _onMicTap,
-                              onPressedChanged: (pressed) =>
-                                  setState(() => _micPressed = pressed),
-                               child: _searchActionIconSlot(
-                                 height: textLineHeight,
-                                 child: FixedSFIcon(
-                                   SFIcons.sf_microphone_fill,
-                                   fontSize: textScaler.scale(
-                                     kSearchBarMicIconSize,
-                                   ),
-                                   color: _micPressed
-                                       ? secondaryLabel
-                                       : tertiaryLabel,
-                                   shadows: resolveThemeTextShadows([
-                                     Shadow(
-                                       color: _micPressed
-                                           ? secondaryLabel
-                                           : tertiaryLabel,
-                                       blurRadius: 0.4,
-                                     ),
-                                   ], context),
-                                ),
-                              ),
-                            ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

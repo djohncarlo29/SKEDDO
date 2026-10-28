@@ -1496,6 +1496,25 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
             : (bodyOverscroll > outerOverscroll
                   ? bodyOverscroll
                   : outerOverscroll);
+        final searchBarCollapseProgress =
+            controller.searchBarCollapseProgress;
+        final searchBarSlot = Align(
+          alignment: Alignment.topCenter,
+          // Use GlassLargeTitle's package-controlled second phase.
+          heightFactor: pinSearchBar
+              ? 1.0
+              : 1.0 - searchBarCollapseProgress,
+          child: Opacity(
+            opacity: pinSearchBar
+                ? 1.0
+                : Curves.easeIn.transform(1.0 - searchBarCollapseProgress),
+            child: SizedBox(height: searchBarExtent, child: searchBar),
+          ),
+        );
+        final searchBarViewport = pinSearchBar ||
+                searchBarCollapseProgress > 0.0001
+            ? ClipRect(child: searchBarSlot)
+            : searchBarSlot;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -1518,26 +1537,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                 // position. Follow that top pull (or the package controller's
                 // outer pull) without changing any collapse geometry.
                 offset: Offset(0.0, searchBarStretchOffset),
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    // Use GlassLargeTitle's package-controlled second phase.
-                    heightFactor: pinSearchBar
-                        ? 1.0
-                        : 1.0 - controller.searchBarCollapseProgress,
-                    child: Opacity(
-                      opacity: pinSearchBar
-                          ? 1.0
-                          : Curves.easeIn.transform(
-                              1.0 - controller.searchBarCollapseProgress,
-                            ),
-                      child: SizedBox(
-                        height: searchBarExtent,
-                        child: searchBar,
-                      ),
-                    ),
-                  ),
-                ),
+                child: searchBarViewport,
               ),
             ),
           ],

@@ -185,7 +185,7 @@ class SettingsPanel extends StatefulWidget {
 
   /// Whether the current landscape window can fit a master/detail layout.
   /// Settings still opens as a full-width master pane until a row is tapped.
-  final bool isLandscapeTwoPane;
+  final bool isLandscapeTwoPane = false;
 
   /// Called when the X button is tapped — triggers controller.reverse()
   /// on the parent.
@@ -202,7 +202,6 @@ class SettingsPanel extends StatefulWidget {
     required this.topInset,
     required this.bottomInset,
     required this.isOpen,
-    required this.isLandscapeTwoPane,
     required this.onClose,
     required this.subScreenBackAction,
     required this.inlineSubScreenBackVisible,
@@ -634,17 +633,14 @@ class _SettingsPanelState extends State<SettingsPanel>
         final liquidGlassOpacityLabel =
             '${(liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value) * 100).round()}%';
 
-        final geometry = AppWindowMasterDetailGeometry.of(context);
-        final isLandscape = geometry.isLandscape;
-        final canSplitInLandscape = widget.isLandscapeTwoPane && isLandscape;
-        final showLandscapeSplit = canSplitInLandscape && _isSplitActive;
+        final isLandscape =
+            MediaQuery.orientationOf(context) == Orientation.landscape;
         final headerContentHeight = isLandscape ? 52.0 : 101.0;
         final headerToolbarHeight = isLandscape
             ? headerContentHeight
             : kAppHeaderToolbarHeight;
         final headerHeight = topInset + headerToolbarHeight;
         final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-        final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final mainSettingsContent = _MainSettingsContent(
           key: _mainSettingsContentKey,
           bottomInset: bottomInset,
@@ -662,36 +658,6 @@ class _SettingsPanelState extends State<SettingsPanel>
           defaultCategoryLabel: defaultCategoryLabel,
           dateFormatLabel: dateFormatLabel,
           liquidGlassOpacityLabel: liquidGlassOpacityLabel,
-        );
-        final splitRoute = _activeRoute ?? _kRoutes['Profile']!;
-        final splitBody = AppWindowMasterDetailTransition(
-          geometry: geometry,
-          progress: _paneTransitionProgress,
-          dividerColor: separatorColor,
-          applyDetailPaneInsets: false,
-          focusAvoidTabBar: false,
-          focusAnchorKey: _masterAnchorKey,
-          focusBottomClearance: bottomInset,
-          scrollAnchorKeys: _settingsRowAnchorKeys.values.toList(
-            growable: false,
-          ),
-          master: ColoredBox(
-            color: backgroundColor,
-            child: mainSettingsContent,
-          ),
-          detail: ColoredBox(
-            color: backgroundColor,
-            child: AppWindowPaneContent(
-              includeLeft: false,
-              includeRight: true,
-              child: _buildSplitSubScreenStack(
-                activeRoute: splitRoute,
-                previousRoute: _previousRoute,
-                bottomInset: bottomInset,
-                accentColor: accentColor,
-              ),
-            ),
-          ),
         );
 
         return NotificationListener<ScrollMetricsNotification>(
@@ -716,99 +682,32 @@ class _SettingsPanelState extends State<SettingsPanel>
                                   Orientation.portrait
                               ? kAppHeaderTitleCollapseDistance
                               : 0.0,
-                          child: showLandscapeSplit
-                              ? AppHeaderScrollClip(child: splitBody)
-                              : AppWindowPhysicalWidth(
-                                  child: SlideTransition(
-                                    position: _mainParallax,
-                                    child: AppWindowContentPadding(
-                                      child: mainSettingsContent,
-                                    ),
-                                  ),
-                                ),
-                        ),
-                      ),
-
-                      // ── Sub-screen body — slides in from right; no header ───────
-                      if (!showLandscapeSplit && _activeRoute != null)
-                        Positioned.fill(
-                          top: headerHeight,
-                          child: AppHeaderScrollInsetScope(
-                            titleTransition: _headerTitleTransition,
-                            leadingInset: headerHeight,
-                            titleCollapseExtent:
-                                MediaQuery.orientationOf(context) ==
-                                    Orientation.portrait
-                                ? kAppHeaderTitleCollapseDistance
-                                : 0.0,
-                            child: AppWindowPhysicalWidth(
-                              child: SlideTransition(
-                                position: _subSlide,
-                                child: _buildSubScreen(
-                                  route: _activeRoute!,
-                                  bottomInset: bottomInset,
-                                  accentColor: accentColor,
-                                  applyAppWindowContentPadding: true,
-                                ),
-                              ),
+                          child: AppWindowPhysicalWidth(
+                            child: AppWindowContentPadding(
+                              child: mainSettingsContent,
                             ),
                           ),
                         ),
+                      ),
 
                       // ── Unified snapping header — never slides ──────────────────
-                      // Title snaps from "Settings" → sub-screen name at the 50 %
-                      // midpoint of _navCtrl, matching the overlay icon snap timing.
-                      // Must be Positioned so StackFit.expand doesn't force it to
-                      // fill the entire stack (which would cover all content below).
                       Positioned(
                         top: 0,
                         left: 0,
                         right: 0,
-                        child: showLandscapeSplit
-                            ? AnimatedBuilder(
-                                animation: Listenable.merge([
-                                  _paneTransitionController,
-                                  _splitDetailController,
-                                ]),
-                                builder: (context, _) {
-                                  final progress = Curves.easeInOutCubic
-                                      .transform(_splitDetailController.value);
-                                  return _SettingsTwoPaneHeader(
-                                    geometry: geometry,
-                                    topInset: topInset,
-                                    contentHeight: headerContentHeight,
-                                    paneProgress: _paneTransitionProgress,
-                                    activeTitle: splitRoute.title,
-                                    previousTitle: _previousRoute?.title,
-                                    transitionProgress: progress,
-                                    dividerColor: separatorColor,
-                                    onBack: _closeSplitPane,
-                                  );
-                                },
-                              )
-                            : AnimatedBuilder(
-                                animation: Listenable.merge([
-                                  _navCtrl,
-                                  _headerTitleTransition,
-                                ]),
-                                builder: (context, _) {
-                                  final isSubScreen =
-                                      _activeRoute != null &&
-                                      _navCtrl.value >= 0.5;
-                                  return _SettingsHeader(
-                                    topInset: topInset,
-                                    contentHeight: headerContentHeight,
-                                    isLandscape: isLandscape,
-                                    scrollOffset:
-                                        _headerTitleTransition.contentOffset,
-                                    collapseProgress:
-                                        _headerTitleTransition.collapseProgress,
-                                    title: isSubScreen
-                                        ? _activeRoute!.title
-                                        : 'Settings',
-                                  );
-                                },
-                              ),
+                        child: AnimatedBuilder(
+                          animation: _headerTitleTransition,
+                          builder: (context, _) => _SettingsHeader(
+                            topInset: topInset,
+                            contentHeight: headerContentHeight,
+                            isLandscape: isLandscape,
+                            scrollOffset:
+                                _headerTitleTransition.contentOffset,
+                            collapseProgress:
+                                _headerTitleTransition.collapseProgress,
+                            title: 'Settings',
+                          ),
+                        ),
                       ),
                     ],
                   ),

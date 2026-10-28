@@ -1661,8 +1661,8 @@ class EventsTab extends StatefulWidget {
   final ValueChanged<bool>? onSearchFocusChanged;
   final Animation<double>? searchModeAnimation;
   final String? activeDCV;
-  final bool landscapeMasterDetail;
-  final double? landscapeMasterWidth;
+  final bool landscapeMasterDetail = false;
+  final double? landscapeMasterWidth = null;
   final void Function(String label, Color color)? onTileTapped;
   /// Called after an open utility DCV has rendered its empty state.
   final VoidCallback? onUtilityBecameEmpty;
@@ -1707,8 +1707,6 @@ class EventsTab extends StatefulWidget {
     this.onSearchFocusChanged,
     this.searchModeAnimation,
     this.activeDCV,
-    this.landscapeMasterDetail = false,
-    this.landscapeMasterWidth,
     this.onTileTapped,
     this.onUtilityBecameEmpty,
     this.onActiveDCVCategoryChanged,
@@ -13376,7 +13374,9 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
   VoidCallback? _cancelInitialFocusRequest;
   final ScrollController _sheetScrollCtrl = ScrollController();
   final ScrollController _nameScrollCtrl = ScrollController();
-  late final Set<String> _selectedIds = Set<String>.from(
+  // Keep selection edits local to this sheet; category groups may expose an
+  // immutable member snapshot.
+  late final Set<String> _selectedIds = Set<String>.of(
     widget.initialMemberIds,
   );
 
@@ -14212,10 +14212,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       _travelMode = init.presetTravelMode ?? 'None';
       _repeat = init.presetRepeat ?? 'Never';
       _endRepeat = init.presetRepeatEndType ?? 'Never';
-      _alerts =
-          AlertSequence.compact(
-            init.presetAlerts ?? [init.presetAlert, init.presetSecondAlert],
-          ).toList();
+      // AlertSequence.compact returns an immutable snapshot. The editor's
+      // picker handlers mutate this list, so own a growable copy.
+      _alerts = List<String>.of(
+        AlertSequence.compact(
+          init.presetAlerts ?? [init.presetAlert, init.presetSecondAlert],
+        ),
+      );
       if (_alerts.isEmpty) _alerts = ['At time of event'];
       // Reconstruct custom repeat config if present.
       final crc = init.presetCustomRepeatConfig;

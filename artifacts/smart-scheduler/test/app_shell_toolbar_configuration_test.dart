@@ -6,12 +6,10 @@ void main() {
     required int tab,
     bool searchFocused = false,
     bool dcvToolbarVisible = false,
-    bool landscapeDcvSplit = false,
   }) => appShellToolbarConfigurationKey(
     searchFocused: searchFocused,
     selectedTabIndex: tab,
     dcvToolbarVisible: dcvToolbarVisible,
-    landscapeDcvSplit: landscapeDcvSplit,
   );
 
   test('tabs with identical toolbar contents keep one route', () {
@@ -21,10 +19,6 @@ void main() {
 
     expect(configuration(tab: 3), isNot(notes));
     expect(configuration(tab: 2, dcvToolbarVisible: true), isNot(notes));
-    expect(
-      configuration(tab: 2, dcvToolbarVisible: true, landscapeDcvSplit: true),
-      notes,
-    );
     expect(configuration(tab: 2, searchFocused: true), 'search');
   });
 }

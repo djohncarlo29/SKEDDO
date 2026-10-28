@@ -10,7 +10,7 @@
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search clear icon have dedicated constants.
 - [App-header scroll-edge behavior](app-header-scroll-edge.md) — share the active header state across tabs, DCV and Settings; do not restore a destination's stale state.
 - [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep insets and wrapper ancestry stable; capture keyed scroll anchors after layout, not during mount.
-- [Landscape master-detail transition](landscape-events-master-detail.md) — anchor pane reflow to the active source; current master viewport owns restoration.
+- [Landscape single-pane rule](landscape-events-master-detail.md) — Settings subscreens and Events DCV remain full-screen in landscape; do not restore side-by-side panes.
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
 - [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
 - [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer; don't prefilter hits with a render-tree Listener.
@@ -90,7 +90,6 @@
 - [Attachment card corner stability](attachment-card-corner-stability.md) — animate rows inside one fixed-radius card; avoid AnimatedSize and radius switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.
 - [App-shell toolbar states](app-shell-menu-button-no-press-tint.md) — the pinned shell owns toolbar hits; search slides chrome offscreen before unregistering it.
-- [Split-pane content sizing](split-pane-content-sizing.md) — responsive layouts in a bounded pane must use pane-local width while retaining portrait spacing constants.
 - [Shell backdrop filter bounds](shell-backdrop-filter-bounds.md) — permanent Android glass overlays need explicit finite clipping and clamped blur sampling or they can veil the whole app.
 - [Liquid Glass optical input field](liquid-glass-optical-input.md) — expand the shader source field in both axes while keeping the registered pill mask and full-strength refraction unchanged.
 - [Liquid Glass environmental shadows](liquid-glass-environment-shadow.md) — composite Light Mode shadows as parent layers beneath glass; do not attach them to the translucent material appearance.

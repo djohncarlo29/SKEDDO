@@ -48,7 +48,6 @@ void main() {
               topInset: 0,
               bottomInset: 0,
               isOpen: true,
-              isLandscapeTwoPane: false,
               onClose: () {},
               subScreenBackAction: backAction,
               inlineSubScreenBackVisible: inlineBackVisible,

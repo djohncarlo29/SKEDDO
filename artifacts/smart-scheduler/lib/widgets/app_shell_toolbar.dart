@@ -35,10 +35,9 @@ String appShellToolbarConfigurationKey({
   required bool searchFocused,
   required int selectedTabIndex,
   required bool dcvToolbarVisible,
-  required bool landscapeDcvSplit,
 }) {
   if (searchFocused) return 'search';
-  if (selectedTabIndex == 2 && dcvToolbarVisible && !landscapeDcvSplit) {
+  if (selectedTabIndex == 2 && dcvToolbarVisible) {
     return 'events-dcv';
   }
   return selectedTabIndex == 3 ? 'tab-3' : 'home';

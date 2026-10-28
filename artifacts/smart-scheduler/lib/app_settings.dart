@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -297,6 +298,10 @@ int skeddoTextScaleIndexForSystemScale(double scale) {
 /// Fetch the complete native OS profile. The separate SKEDDO mapping is built
 /// from it without modifying or trimming the native entries.
 Future<void> initializeDeviceTextScaleProfile() {
+  // Web has no native scale-profile channel; Flutter's MediaQuery scaler is
+  // already the authoritative fallback, so do not wait on a channel handshake
+  // before the first frame.
+  if (kIsWeb) return Future<void>.value();
   return _enqueueTextScaleProfileOperation(_loadDeviceTextScaleProfile);
 }
 
