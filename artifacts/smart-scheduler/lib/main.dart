@@ -2147,7 +2147,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _searchEnteredOffScreen = true;
       _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
-      _searchToolbarSlideController.value = 0.0;
       setState(() => _searchFocused = true);
       _calendarTabKey.currentState?.activateSearchMode();
       return;
@@ -2179,7 +2178,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _searchEnteredOffScreen = true;
       _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
-      _searchToolbarSlideController.value = 0.0;
       setState(() => _searchFocused = true); // AppShell state
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
@@ -3445,7 +3443,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               top: 0,
                               left: 0,
                               right: 0,
-                              child: AnimatedBuilder(
+                              child: IgnorePointer(
+                                // Search surfaces are drawn in the tab layer
+                                // beneath this stationary shell header. Keep
+                                // the header visible for off-screen search,
+                                // but let the search field and cancel control
+                                // receive their taps.
+                                ignoring: _searchFocused,
+                                child: AnimatedBuilder(
                                 // Both _searchModeAnim and _dcvSlideController are
                                 // AnimationControllers owned by AppShell.  EventsTab's
                                 // SlideTransitions also listen to _dcvSlideController —
@@ -3999,6 +4004,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     ),
                                   );
                                 },
+                                ),
                               ),
                             ),
                           ],

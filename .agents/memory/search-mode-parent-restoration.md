@@ -18,3 +18,9 @@ Portrait inline search keeps the same search-bar widget in the pinned header whi
 **Why:** The inline result viewport must bounce independently, while the search bar and separator remain fixed. The shared header slot preserves the search field state and avoids a frame-long disappearance during entry or exit.
 
 **How to apply:** Keep the fixed search header in the shared third-level header slot, pin that slot during inline search, and disable its normal rubberband translation. Do not change the off-screen overlay path.
+
+Off-screen search is a stationary overlay: keep the shell header and toolbar at their existing positions, hide toolbar actions without sliding them, and show/remove the overlay without a fade. Preserve and restore the parent scroll state. Inline search keeps its existing animated header transition.
+
+**Why:** The user wants off-screen search to cover the current screen and leave it unchanged on exit; only inline search should move the header chrome.
+
+**How to apply:** In the AppShell off-screen activation path, do not drive the search-header or toolbar-slide controllers. Keep the overlay behavior local to Notes, Events, and Calendar, and restore both the page and shared header positions when it closes.

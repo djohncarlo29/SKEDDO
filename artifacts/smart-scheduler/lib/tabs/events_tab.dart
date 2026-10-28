@@ -1752,6 +1752,7 @@ class EventsTabState extends State<EventsTab>
   bool _activatedFromOffScreen = false;
   bool _restoringSearchParent = false;
   double _savedScrollOffset = 0;
+  double? _savedHeaderScrollOffset;
   // Re-entrancy guard for _enforceScrollLock — prevents jumpTo from
   // triggering the listener a second time and causing an infinite loop.
   bool _lockingScrollDrift = false;
@@ -6954,6 +6955,22 @@ class EventsTabState extends State<EventsTab>
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
       AppHeaderScrollView.jumpBodyTo(_scrollController, restoredOffset);
+      final headerPosition = AppHeaderScrollView.headerPositionFor(
+        _scrollController,
+      );
+      final savedHeaderOffset = _savedHeaderScrollOffset;
+      if (headerPosition != null &&
+          headerPosition.hasContentDimensions &&
+          savedHeaderOffset != null) {
+        headerPosition.jumpTo(
+          savedHeaderOffset
+              .clamp(
+                headerPosition.minScrollExtent,
+                headerPosition.maxScrollExtent,
+              )
+              .toDouble(),
+        );
+      }
     });
   }
 
@@ -7016,6 +7033,8 @@ class EventsTabState extends State<EventsTab>
   void prepareParentForSearch() {
     _restoringSearchParent = false;
     _savedScrollOffset = _settleParentScrollForSearch();
+    _savedHeaderScrollOffset =
+        AppHeaderScrollView.headerPositionFor(_scrollController)?.pixels;
   }
 
   Timer? _midnightTimer;
@@ -8056,7 +8075,10 @@ class EventsTabState extends State<EventsTab>
       void Function(AnimationStatus)? animListener;
       animListener = (AnimationStatus status) {
         if (status == AnimationStatus.dismissed) {
-          if (mounted) setState(() => _activatedFromOffScreen = false);
+          if (mounted) {
+            setState(() => _activatedFromOffScreen = false);
+            _restoreParentScrollAfterSearch();
+          }
           widget.searchModeAnimation?.removeStatusListener(animListener!);
         }
       };
@@ -8066,6 +8088,7 @@ class EventsTabState extends State<EventsTab>
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _activatedFromOffScreen && !_greyActive) {
           setState(() => _activatedFromOffScreen = false);
+          _restoreParentScrollAfterSearch();
           widget.searchModeAnimation?.removeStatusListener(animListener!);
         }
       });
