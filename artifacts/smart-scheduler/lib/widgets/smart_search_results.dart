@@ -23,6 +23,8 @@ class SmartSearchResultsSliver extends StatelessWidget {
   final String? suggestedQuery;
   final ValueChanged<String>? onSuggestionTap;
   final double eventTopPadding;
+  final double? emptyStateBottomClearance;
+  final double viewportBottomOffset;
   final Widget Function(
     SearchHit hit,
     Widget child,
@@ -37,6 +39,8 @@ class SmartSearchResultsSliver extends StatelessWidget {
     this.suggestedQuery,
     this.onSuggestionTap,
     this.eventTopPadding = _kDirectSearchResultTopPadding,
+    this.emptyStateBottomClearance,
+    this.viewportBottomOffset = 0,
     this.eventTileWrapper,
     this.eventTilePressWrapper,
   });
@@ -47,7 +51,10 @@ class SmartSearchResultsSliver extends StatelessWidget {
       return SliverFillRemaining(
         hasScrollBody: false,
         child: SearchNoResultsCentered(
-          bottomClearance: floatingTabBarContentBottomClearance(context),
+          bottomClearance:
+              emptyStateBottomClearance ??
+              floatingTabBarContentBottomClearance(context),
+          viewportBottomOffset: viewportBottomOffset,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -117,6 +124,9 @@ class SmartDcvSearchResults extends StatelessWidget {
   final ValueChanged<String>? onSuggestionTap;
   final bool hidePrimaryCategoryName;
   final double eventTopPadding;
+  final double? emptyStateBottomClearance;
+  final double? resultsBottomClearance;
+  final double viewportBottomOffset;
   final Widget Function(
     SearchHit hit,
     Widget child,
@@ -133,6 +143,9 @@ class SmartDcvSearchResults extends StatelessWidget {
     this.onSuggestionTap,
     this.hidePrimaryCategoryName = false,
     this.eventTopPadding = _kDirectSearchResultTopPadding,
+    this.emptyStateBottomClearance,
+    this.resultsBottomClearance,
+    this.viewportBottomOffset = 0,
     this.eventTileWrapper,
     this.eventTilePressWrapper,
   });
@@ -140,17 +153,26 @@ class SmartDcvSearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
+    final keyboardOverlap = math.max(
+      0.0,
+      keyboardBottom - viewportBottomOffset,
+    );
+    final tabBarClearance =
+        emptyStateBottomClearance ??
+        floatingTabBarContentBottomClearance(context);
+    final resolvedResultsBottomClearance =
+        resultsBottomClearance ??
+        floatingTabBarContentBottomClearance(
+            context,
+            existingTrailingContentPadding: 32,
+            finalContentGap: 20,
+          );
     final isEmpty = primary.isEmpty && overflow.isEmpty;
-    // The empty-state viewport must clear whichever is larger: the keyboard
-    // or the floating tab bar. Use one animated inset so tab-bar clearance
-    // takes over continuously as the keyboard shrinks, rather than waiting for
-    // the keyboard inset to reach zero and starting a second animation.
+    // Account only for the part of the keyboard that overlaps this viewport.
+    // Its bottom may already be reserved by an enclosing overlay.
     final bottomObstruction = isEmpty
-        ? math.max(
-            keyboardBottom,
-            floatingTabBarContentBottomClearance(context),
-          )
-        : keyboardBottom;
+        ? math.max(keyboardOverlap, tabBarClearance)
+        : keyboardOverlap;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -161,6 +183,7 @@ class SmartDcvSearchResults extends StatelessWidget {
         child: _buildResults(
           context,
           keyboardSafeViewport: keyboardBottom > 0,
+          bottomClearance: resolvedResultsBottomClearance,
         ),
       ),
     );
@@ -169,6 +192,7 @@ class SmartDcvSearchResults extends StatelessWidget {
   Widget _buildResults(
     BuildContext context, {
     required bool keyboardSafeViewport,
+    required double bottomClearance,
   }) {
     if (primary.isEmpty && overflow.isEmpty) {
       // Keep the empty state inside the same bouncing scroll surface as
@@ -290,11 +314,7 @@ class SmartDcvSearchResults extends StatelessWidget {
           child: SizedBox(
             height: keyboardSafeViewport
                 ? 0
-                : floatingTabBarContentBottomClearance(
-                    context,
-                    existingTrailingContentPadding: 32,
-                    finalContentGap: 20,
-                  ),
+                : math.max(0.0, bottomClearance - 32 + 20),
           ),
         ),
       ],

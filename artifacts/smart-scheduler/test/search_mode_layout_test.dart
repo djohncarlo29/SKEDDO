@@ -131,6 +131,130 @@ void main() {
   );
 
   testWidgets(
+    'offscreen empty results account for the tab bar and keyboard only once',
+    (tester) async {
+      const surfaceSize = Size(390, 800);
+      const viewportBottomOffset = 80.0;
+      const headerHeight = 120.0;
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      Widget buildApp(double keyboardBottom) {
+        return CupertinoApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: surfaceSize,
+              viewInsets: EdgeInsets.only(bottom: keyboardBottom),
+            ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                height: surfaceSize.height - viewportBottomOffset,
+                child: Column(
+                  children: [
+                    const SizedBox(height: headerHeight),
+                    Expanded(
+                      child: CustomScrollView(
+                        primary: false,
+                        slivers: [
+                          const SmartSearchResultsSliver(
+                            hits: [],
+                            emptyStateBottomClearance: 0,
+                            viewportBottomOffset: viewportBottomOffset,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildApp(0));
+      await tester.pumpAndSettle();
+      final placeholder = find.byType(SearchNoResults);
+      final centerWithoutKeyboard = tester.getCenter(placeholder).dy;
+      expect(
+        centerWithoutKeyboard,
+        closeTo((headerHeight + surfaceSize.height - viewportBottomOffset) / 2, 1),
+      );
+
+      await tester.pumpWidget(buildApp(200));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(placeholder).dy,
+        closeTo((headerHeight + surfaceSize.height - 200) / 2, 1),
+      );
+    },
+  );
+
+  testWidgets(
+    'inline empty results center above the tab bar and keyboard',
+    (tester) async {
+      const surfaceSize = Size(390, 800);
+      const bottomClearance = 80.0;
+      const headerHeight = 120.0;
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      Widget buildApp(double keyboardBottom) {
+        return CupertinoApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: surfaceSize,
+              viewInsets: EdgeInsets.only(bottom: keyboardBottom),
+            ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                height: surfaceSize.height,
+                child: Column(
+                  children: [
+                    const SizedBox(height: headerHeight),
+                    Expanded(
+                      child: CustomScrollView(
+                        primary: false,
+                        slivers: [
+                          const SmartSearchResultsSliver(
+                            hits: [],
+                            emptyStateBottomClearance: bottomClearance,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildApp(0));
+      await tester.pumpAndSettle();
+      final placeholder = find.byType(SearchNoResults);
+      expect(
+        tester.getCenter(placeholder).dy,
+        closeTo((headerHeight + surfaceSize.height - bottomClearance) / 2, 1),
+      );
+
+      await tester.pumpWidget(buildApp(200));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(placeholder).dy,
+        closeTo((headerHeight + surfaceSize.height - 200) / 2, 1),
+      );
+    },
+  );
+
+  testWidgets(
     'DCV empty results center above the keyboard without a duplicate shell inset',
     (tester) async {
       const surfaceSize = Size(390, 800);

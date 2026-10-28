@@ -888,26 +888,34 @@ class SearchModeHeader extends StatelessWidget {
 class SearchNoResultsCentered extends StatelessWidget {
   final Widget child;
   final double bottomClearance;
+  final double viewportBottomOffset;
 
   const SearchNoResultsCentered({
     super.key,
     required this.child,
     this.bottomClearance = 0,
+    this.viewportBottomOffset = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
-    // While the keyboard is present it is the larger obstruction, so the tab
-    // bar does not steal additional space. As the keyboard dismisses,
-    // clearance transfers continuously to the tab bar without a binary layout
-    // jump at inset == 0.
+    // Some search overlays are already bounded above the floating tab bar.
+    // Convert the window-relative keyboard inset into the portion that actually
+    // overlaps this viewport, rather than subtracting the tab-bar region twice.
+    final keyboardOverlap = math.max(
+      0.0,
+      keyboardBottom - viewportBottomOffset,
+    );
+    // While the keyboard overlaps the viewport it is the relevant obstruction.
+    // For inline search, the viewport reaches the window bottom and the tab-bar
+    // clearance takes over continuously as the keyboard dismisses.
     //
     // AnimatedPadding keeps the child centered in the remaining height while
     // remaining intrinsic-size compatible with SliverFillRemaining. A
     // LayoutBuilder here breaks that sliver's intrinsic sizing and leaves an
     // empty search viewport unlaid out.
-    final bottomObstruction = math.max(keyboardBottom, bottomClearance);
+    final bottomObstruction = math.max(keyboardOverlap, bottomClearance);
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,

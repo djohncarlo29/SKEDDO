@@ -142,6 +142,7 @@
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
 - [Search-mode parent preservation](search-mode-parent-restoration.md) — offscreen search is a shell-level overlay; never mutate or restore the parent scroll position.
+- [Search empty-state viewport geometry](search-empty-state-viewport.md) — account for tab-bar reservation once and subtract only keyboard overlap with the results viewport.
 - [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets keep AppShell stationary; only nested sheets scale the parent.
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.
