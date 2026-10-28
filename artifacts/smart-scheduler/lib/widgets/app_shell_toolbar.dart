@@ -192,24 +192,32 @@ class _AppShellMenuGlyph extends StatelessWidget {
     return SizedBox(
       width: 26,
       height: 26,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Transform.translate(
-            offset: Offset(0, topY),
-            child: Transform.rotate(
-              angle: topAngle,
-              child: _MenuStroke(width: strokeWidth, color: color),
+      child: Transform.translate(
+        // Match the established optical correction for a left-facing
+        // chevron; its geometric center reads slightly right of the circle's
+        // center without this small glyph-only adjustment.
+        offset: state == AppShellToolbarGlyph.back
+            ? const Offset(-2, 0)
+            : Offset.zero,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Transform.translate(
+              offset: Offset(0, topY),
+              child: Transform.rotate(
+                angle: topAngle,
+                child: _MenuStroke(width: strokeWidth, color: color),
+              ),
             ),
-          ),
-          Transform.translate(
-            offset: Offset(0, bottomY),
-            child: Transform.rotate(
-              angle: bottomAngle,
-              child: _MenuStroke(width: strokeWidth, color: color),
+            Transform.translate(
+              offset: Offset(0, bottomY),
+              child: Transform.rotate(
+                angle: bottomAngle,
+                child: _MenuStroke(width: strokeWidth, color: color),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
