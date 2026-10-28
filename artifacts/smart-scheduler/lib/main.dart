@@ -4095,6 +4095,27 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
+              // Cover the parent content beneath the translucent tab bar
+              // while leaving the tab bar itself as the top interactive layer.
+              if (_searchEnteredOffScreen && _searchFocused)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: floatingTabBarContentBottomClearance(
+                    context,
+                    finalContentGap: 0,
+                  ),
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      key: const ValueKey(
+                        'offscreen-search-tabbar-background',
+                      ),
+                      color: backgroundColor,
+                    ),
+                  ),
+                ),
+
               // The tab bar is shared across tabs. Full-screen Navigator
               // routes naturally cover it while they are presented.
               AnimatedBuilder(

@@ -373,6 +373,14 @@ void main() {
             .color,
         resolveThemeColor(kBackgroundColor, tester.element(searchHeader)),
       );
+      final tabBarBackground = find.byKey(
+        const ValueKey('offscreen-search-tabbar-background'),
+      );
+      expect(tabBarBackground, findsOneWidget);
+      expect(
+        tester.getBottomRight(tabBarBackground).dy,
+        closeTo(tester.view.physicalSize.height, 0.5),
+      );
       expect(
         tester.getTopLeft(searchHeader).dy,
         closeTo(MediaQuery.paddingOf(tester.element(searchHeader)).top, 0.5),
