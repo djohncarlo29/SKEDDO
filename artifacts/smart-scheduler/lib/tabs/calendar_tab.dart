@@ -446,6 +446,7 @@ class CalendarTab extends StatefulWidget {
     this.scrollableTitleBuilder,
     this.onStripSlide,
     this.onSearchCancel,
+    this.onSearchOverlayChanged,
     this.searchModeAnimation,
     this.onEditEvent,
     this.dcvSectionNamesProvider,
@@ -477,6 +478,7 @@ class CalendarTab extends StatefulWidget {
   // Called when the calendar's own search overlay is dismissed so AppShell can
   // reset its _searchFocused flag and restore the header.
   final VoidCallback? onSearchCancel;
+  final VoidCallback? onSearchOverlayChanged;
   // Shared animation from AppShell — 0=header visible, 1=search mode active.
   final Animation<double>? searchModeAnimation;
 
@@ -850,7 +852,6 @@ class CalendarTabState extends State<CalendarTab>
   bool _greyActive = false;
   bool _greyFadeIn = false;
   bool _searchFocused = false;
-  bool _restoringSearchParent = false;
   String _searchText = '';
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
@@ -935,8 +936,6 @@ class CalendarTabState extends State<CalendarTab>
     }
     return null;
   }
-  bool get isRestoringSearchParent => _restoringSearchParent;
-
   /// Current settled scroll offset for the shell-owned calendar header title.
   /// Day View owns its title in the shell, so its timeline position must not
   /// drive the large-title collapse state.
@@ -1109,6 +1108,7 @@ class CalendarTabState extends State<CalendarTab>
       _greyFadeIn = true;
       _searchFocused = true;
     });
+    widget.onSearchOverlayChanged?.call();
     sbSearchModeActive = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -1144,62 +1144,14 @@ class CalendarTabState extends State<CalendarTab>
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _searchFocused = false;
-      _restoringSearchParent = true;
       _searchText = '';
       _searchSuggestion = null;
       _searchHits = [];
+      _greyActive = false;
+      _greyFadeIn = false;
     });
+    widget.onSearchOverlayChanged?.call();
     widget.onSearchCancel?.call();
-    var attempts = 0;
-    void attemptRestore() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _searchFocused) return;
-        ScrollController? controller;
-        double? offset;
-        if (_view == CalendarView.year) {
-          controller = _yearScrollCtrl;
-          offset = _savedYearScrollOffset;
-        } else if (_view == CalendarView.month) {
-          controller = _monthViewScrollCtrl;
-          offset = _savedMonthScrollOffset;
-        }
-        final targetOffset = offset;
-        final positions = controller != null && controller.hasClients
-            ? List<ScrollPosition>.of(controller.positions)
-            : <ScrollPosition>[];
-        final ready = targetOffset == null ||
-            (positions.isNotEmpty &&
-                positions.every(
-                  (position) =>
-                      position.hasContentDimensions &&
-                      position.maxScrollExtent + 0.5 >= targetOffset,
-                ));
-        if (!ready && attempts < 60) {
-          attempts++;
-          attemptRestore();
-          WidgetsBinding.instance.scheduleFrame();
-          return;
-        }
-        if (targetOffset != null) {
-          for (final position in positions) {
-            if (!position.hasContentDimensions) continue;
-            AppHeaderScrollView.jumpBodyPositionTo(
-              position,
-              targetOffset
-                  .clamp(position.minScrollExtent, position.maxScrollExtent)
-                  .toDouble(),
-            );
-          }
-        }
-        setState(() {
-          _restoringSearchParent = false;
-          _greyActive = false;
-          _greyFadeIn = false;
-        });
-      });
-    }
-
-    attemptRestore();
   }
 
   /// Debounced 150 ms smart search across all events.
@@ -1212,6 +1164,7 @@ class CalendarTabState extends State<CalendarTab>
           _searchHits = [];
           _searchSuggestion = null;
         });
+        widget.onSearchOverlayChanged?.call();
       }
       return;
     }
@@ -1225,6 +1178,7 @@ class CalendarTabState extends State<CalendarTab>
         _searchHits = results.all;
         _searchSuggestion = results.suggestedQuery;
       });
+      widget.onSearchOverlayChanged?.call();
     });
   }
 
@@ -2417,6 +2371,7 @@ class CalendarTabState extends State<CalendarTab>
       final t = _searchCtrl.text;
       if (t != _searchText) {
         setState(() => _searchText = t);
+        widget.onSearchOverlayChanged?.call();
         _scheduleSearch();
       }
     });
@@ -2847,7 +2802,7 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
-  Widget _buildSearchOverlay() {
+  Widget buildOffscreenSearchOverlay() {
     final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
@@ -2863,13 +2818,12 @@ class CalendarTabState extends State<CalendarTab>
             key: _searchCancelKey,
             searchFocused: true,
             onTap: cancelSearch,
-            animation: widget.searchModeAnimation,
+            animation: const AlwaysStoppedAnimation<double>(1.0),
           ),
         ],
       ),
     );
-    return Positioned.fill(
-      child: AnimatedOpacity(
+    return AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
@@ -2940,7 +2894,6 @@ class CalendarTabState extends State<CalendarTab>
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -3847,7 +3800,6 @@ class CalendarTabState extends State<CalendarTab>
                       ),
 
                     // ── Full-screen search overlay (same pattern as EventsTab) ──
-                    if (_greyActive) _buildSearchOverlay(),
                   ],
                 ),
               ),

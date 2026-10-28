@@ -175,12 +175,14 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
 // ─────────────────────────────────────────────────────────────────────────────
 class NotesTab extends StatefulWidget {
   final ValueChanged<bool>? onSearchFocusChanged;
+  final VoidCallback? onSearchOverlayChanged;
   final Animation<double>? searchModeAnimation;
   final void Function(ScheduledEvent event)? onEditEvent;
 
   const NotesTab({
     super.key,
     this.onSearchFocusChanged,
+    this.onSearchOverlayChanged,
     this.searchModeAnimation,
     this.onEditEvent,
   });
@@ -194,14 +196,13 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   final _noteScrollController = ScrollController();
   final _noteMetrics = ValueNotifier<EdgeFadeMetrics?>(null);
   final _searchController = TextEditingController();
+  final _offscreenSearchController = TextEditingController();
   final _scrollController = ScrollController();
   final _noteInputKey = GlobalKey<_NoteInputCardState>();
-  // The key keeps AppSearchBar state alive while off-screen search transfers
-  // the row between the pinned header and its independent overlay.
   final _searchBarKey = GlobalKey<AppSearchBarState>();
-  // Keep the Liquid Glass cancel control alive when the search row moves
-  // between the scrollable sliver and the off-screen search overlay.
+  final _offscreenSearchBarKey = GlobalKey<AppSearchBarState>();
   final _searchCancelKey = GlobalKey();
+  final _offscreenSearchCancelKey = GlobalKey();
   bool _searchFocused = false;
   bool _activatedFromOffScreen = false;
   bool _restoringSearchParent = false;
@@ -215,6 +216,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   bool _greyFadeIn = false;
   String _searchText = '';
   bool _wasSearchFocusedBeforePause = false;
+
+  TextEditingController get _activeSearchController =>
+      _activatedFromOffScreen ? _offscreenSearchController : _searchController;
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
   List<SearchHit> _searchHits = [];
@@ -235,7 +239,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   // with a synchronous jumpTo.  The _lockingScrollDrift flag prevents the
   // jumpTo itself from re-entering and looping.
   void _enforceScrollLock() {
-    if (!_activatedFromOffScreen && !_restoringSearchParent) return;
+    if (!_restoringSearchParent) return;
     if (_lockingScrollDrift) return;
     if (!_scrollController.hasClients) return;
     final positions = List<ScrollPosition>.of(_scrollController.positions);
@@ -342,6 +346,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     // AppShell already captured the parent position before changing the
     // viewport. Preparing here would overwrite it after the inset clamps.
     _activatedFromOffScreen = true;
+    _offscreenSearchController.value = _searchController.value;
     _greyActive = true;
     _greyFadeIn = true;
     // Do NOT scroll to 0.  The SliverPersistentHeader is pinned so it stays
@@ -349,12 +354,13 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     // SliverFillRemaining grey fill covers the rest of the viewport, making
     // the search bar appear as an overlay without disturbing the scroll position.
     setState(() => _searchFocused = true);
+    widget.onSearchOverlayChanged?.call();
     // One post-frame is enough: the rebuild switches to SliverPersistentHeader
     // (pinned), so the bar is in the viewport by the time the frame paints.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        NativeTextInput.focus(_searchController);
-        NativeTextInput.lockFocus(_searchController);
+        NativeTextInput.focus(_activeSearchController);
+        NativeTextInput.lockFocus(_activeSearchController);
       }
     });
   }
@@ -378,6 +384,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchTextChanged);
+    _offscreenSearchController.addListener(_onSearchTextChanged);
     WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_enforceScrollLock);
   }
@@ -387,11 +394,13 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     _searchDebounce?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.removeListener(_onSearchTextChanged);
+    _offscreenSearchController.removeListener(_onSearchTextChanged);
     _scrollController.dispose();
     _noteController.dispose();
     _noteScrollController.dispose();
     _noteMetrics.dispose();
     _searchController.dispose();
+    _offscreenSearchController.dispose();
     super.dispose();
   }
 
@@ -408,22 +417,24 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (!_searchFocused) _onSearchFocusChanged(true);
-          NativeTextInput.focus(_searchController);
-          NativeTextInput.lockFocus(_searchController);
+          NativeTextInput.focus(_activeSearchController);
+          NativeTextInput.lockFocus(_activeSearchController);
         });
       }
     }
   }
 
   void _onSearchTextChanged() {
-    if (_searchController.text == _searchText) return;
+    final controller = _activeSearchController;
+    if (controller.text == _searchText) return;
     setState(() {
-      _searchText = _searchController.text;
+      _searchText = controller.text;
       // Search is local, so clear the previous query's hits immediately while
       // the next local semantic query completes.
       _searchHits = [];
       _searchSuggestion = null;
     });
+    widget.onSearchOverlayChanged?.call();
     _scheduleSearch();
   }
 
@@ -437,6 +448,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           _searchHits = [];
           _searchSuggestion = null;
         });
+        widget.onSearchOverlayChanged?.call();
       }
       return;
     }
@@ -451,16 +463,103 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         _searchHits = results.all;
         _searchSuggestion = results.suggestedQuery;
       });
+      widget.onSearchOverlayChanged?.call();
     });
   }
 
   void _applySearchSuggestion(String suggestion) {
-    _searchController.value = TextEditingValue(
+    _activeSearchController.value = TextEditingValue(
       text: suggestion,
       selection: TextSelection.collapsed(offset: suggestion.length),
     );
-    NativeTextInput.focus(_searchController);
-    NativeTextInput.lockFocus(_searchController);
+    NativeTextInput.focus(_activeSearchController);
+    NativeTextInput.lockFocus(_activeSearchController);
+  }
+
+  Widget _buildSearchBarRow({bool offscreen = false}) {
+    final controller = offscreen ? _offscreenSearchController : _searchController;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: AppSearchBar(
+              key: offscreen ? _offscreenSearchBarKey : _searchBarKey,
+              controller: controller,
+              onFocusChanged: _onSearchFocusChanged,
+            ),
+          ),
+          SearchCancelButton(
+            key: offscreen ? _offscreenSearchCancelKey : _searchCancelKey,
+            animation: offscreen
+                ? const AlwaysStoppedAnimation<double>(1.0)
+                : widget.searchModeAnimation,
+            searchFocused: offscreen
+                ? _searchFocused
+                : _searchFocused && !_activatedFromOffScreen,
+            onTap: _cancelSearch,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildOffscreenSearchOverlay() {
+    return AnimatedOpacity(
+      opacity: _greyFadeIn ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      child: ColoredBox(
+        color: resolveThemeColor(kBackgroundColor, context),
+        child: AppWindowContentPadding(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SearchModeHeader(
+                searchBarRow: _buildSearchBarRow(offscreen: true),
+              ),
+              Expanded(
+                child: CustomScrollView(
+                  primary: false,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.manual,
+                  slivers: [
+                    SmartSearchResultsSliver(
+                      hits: _searchText.isEmpty ? const [] : _searchHits,
+                      suggestedQuery:
+                          _searchText.isEmpty ? null : _searchSuggestion,
+                      onSuggestionTap: _applySearchSuggestion,
+                      eventTopPadding: 16,
+                      eventTileWrapper: (hit, child, previewBuilder) =>
+                          wrapSearchEventTileWithActions(
+                            hit: hit,
+                            child: child,
+                            previewBuilder: previewBuilder,
+                            onEdit: widget.onEditEvent == null
+                                ? null
+                                : () => widget.onEditEvent!(hit.event),
+                            onDelete: () =>
+                                confirmDeleteEvent(context, hit.event),
+                          ),
+                      eventTilePressWrapper: wrapSearchEventTileWithPressScale,
+                    ),
+                    if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: floatingTabBarContentBottomClearance(context),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _onSearchFocusChanged(bool focused) {
@@ -529,12 +628,15 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   /// not erase the user's query or focus.
   void resetSearchForTabSwitch() {
     final wasFocused = _searchFocused;
+    final wasOffScreen = _activatedFromOffScreen;
     final wasSearching =
         _searchFocused || _activatedFromOffScreen || _restoringSearchParent;
     _searchBarKey.currentState?.cancelMic();
+    _offscreenSearchBarKey.currentState?.cancelMic();
     _searchDebounce?.cancel();
-    NativeTextInput.unlockFocus(_searchController);
+    NativeTextInput.unlockFocus(_activeSearchController);
     _searchController.clear();
+    _offscreenSearchController.clear();
     sbSearchModeActive = false;
     setState(() {
       _searchFocused = false;
@@ -546,38 +648,34 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       _searchSuggestion = null;
       _searchHits = [];
     });
+    widget.onSearchOverlayChanged?.call();
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
-    if (wasSearching) _restoreParentScrollAfterSearch();
+    if (wasSearching && !wasOffScreen) _restoreParentScrollAfterSearch();
   }
 
   void _cancelSearch() {
     // Stop any active mic session before clearing the search bar.
     _searchBarKey.currentState?.cancelMic();
+    _offscreenSearchBarKey.currentState?.cancelMic();
     final wasFocused = _searchFocused;
     final wasOffScreen = _activatedFromOffScreen;
     sbSearchModeActive = false;
+    NativeTextInput.unlockFocus(_activeSearchController);
     _searchController.clear();
-    NativeTextInput.unlockFocus(_searchController);
+    _offscreenSearchController.clear();
     NativeTextInput.unfocusAll();
     FocusManager.instance.primaryFocus?.unfocus();
     if (wasOffScreen) {
-      // Remove the overlay but intentionally keep _activatedFromOffScreen=true
-      // so the _enforceScrollLock listener stays active throughout the 250 ms
-      // header re-expansion animation.  During that animation the viewport
-      // height changes each frame and BouncingScrollPhysics can silently
-      // correct the position away from _savedScrollOffset — the listener
-      // prevents that correction from ever taking effect.  The main sliver
-      // stays as SizedBox(height:58) while the lock is held; because the
-      // user has scrolled past the search bar, that placeholder is off-screen
-      // and completely invisible.
+      // Off-screen search is a true overlay: the parent scroll view and its
+      // geometry were never changed, so exit must not jump or restore offsets.
       setState(() {
         _searchFocused = false;
+        _activatedFromOffScreen = false;
         _searchText = '';
         _searchSuggestion = null;
         _greyFadeIn = false;
         _greyActive = false;
-        _restoringSearchParent = true;
-        // Keep the offscreen lock until the saved offset is valid again.
+        _restoringSearchParent = false;
       });
     } else {
       setState(() {
@@ -594,8 +692,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       // returns, then restore the search row to its normal sliver position.
       _holdParentScrollUntilSearchHeaderSettles();
     }
+    widget.onSearchOverlayChanged?.call();
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
-    if (wasOffScreen) _restoreParentScrollAfterSearch();
   }
 
   @override
@@ -604,31 +702,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     final bool isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
 
-    // Search bar row — carries _searchBarKey.
-    // When off-screen search is active (_activatedFromOffScreen) this widget
-    // lives in the Stack overlay below so the scroll view is left completely
-    // untouched and the scroll position is preserved.  At all other times it
-    // lives inside the scroll view sliver.
-    final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: AppSearchBar(
-              key: _searchBarKey,
-              controller: _searchController,
-              onFocusChanged: _onSearchFocusChanged,
-            ),
-          ),
-          SearchCancelButton(
-            key: _searchCancelKey,
-            animation: widget.searchModeAnimation,
-            searchFocused: _searchFocused,
-            onTap: _cancelSearch,
-          ),
-        ],
-      ),
-    );
+    final searchBarRow = _buildSearchBarRow();
 
     return AppHeaderScrollStack(
       children: [
@@ -640,7 +714,10 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           child: AppHeaderScrollView(
             // Search mode keeps its original header position; the extra
             // viewport raise is for normal page content only.
-            topExtension: _searchFocused ? 0.0 : kContentAreaTopRaise,
+            topExtension:
+                _searchFocused && !_activatedFromOffScreen
+                    ? 0.0
+                    : kContentAreaTopRaise,
             clipBehavior: Clip.none,
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(
@@ -655,16 +732,15 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 // header, but adds the fixed search surface and separator.
                 searchBar: isLandscape
                     ? null
-                    : (_activatedFromOffScreen
-                          ? const SizedBox.shrink()
-                          : (_searchFocused
-                                ? SearchModeHeader(searchBarRow: searchBarRow)
-                                : searchBarRow)),
-                searchBarExtent: isLandscape
-                    ? 0
                     : (_searchFocused && !_activatedFromOffScreen
-                          ? searchBarHeaderExtent(context)
-                          : searchBarHostRowHeight(context)),
+                          ? SearchModeHeader(searchBarRow: searchBarRow)
+                          : searchBarRow),
+                searchBarExtent:
+                    isLandscape
+                        ? 0
+                        : (_searchFocused && !_activatedFromOffScreen
+                              ? searchBarHeaderExtent(context)
+                              : searchBarHostRowHeight(context)),
                 pinSearchBar: _searchFocused && !_activatedFromOffScreen,
               ),
             ),
@@ -765,80 +841,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
             child: SearchModeHeader(searchBarRow: searchBarRow),
           ),
 
-        // ── Off-screen search overlay ─────────────────────────────────────
-        // Covers the scroll view without touching it.  _searchBarKey lives
-        // here while the overlay is present, moving back to the scroll view
-        // sliver once _greyActive / _activatedFromOffScreen are cleared.
-        if (_greyActive)
-          AnimatedOpacity(
-              opacity: _greyFadeIn ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              // No onEnd: exit is instant (overlay removed directly in
-              // _cancelSearch), so there is no fade-out to wait for.
-              child: ColoredBox(
-                color: resolveThemeColor(kBackgroundColor, context),
-                // The header is a fixed sibling above this independently
-                // rubber-banding content viewport.
-                child: AppWindowContentPadding(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SearchModeHeader(searchBarRow: searchBarRow),
-                      Expanded(
-                        child: CustomScrollView(
-                          primary: false,
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.manual,
-                          slivers: [
-                            SmartSearchResultsSliver(
-                              hits: _searchText.isEmpty
-                                  ? const []
-                                  : _searchHits,
-                              suggestedQuery: _searchText.isEmpty
-                                  ? null
-                                  : _searchSuggestion,
-                              onSuggestionTap: _applySearchSuggestion,
-                              eventTopPadding: 16,
-                              eventTileWrapper:
-                                  (hit, child, previewBuilder) =>
-                                      wrapSearchEventTileWithActions(
-                                        hit: hit,
-                                        child: child,
-                                        previewBuilder: previewBuilder,
-                                        onEdit: widget.onEditEvent == null
-                                            ? null
-                                            : () =>
-                                                widget.onEditEvent!(hit.event),
-                                        onDelete: () => confirmDeleteEvent(
-                                          context,
-                                          hit.event,
-                                        ),
-                                      ),
-                              eventTilePressWrapper:
-                                  wrapSearchEventTileWithPressScale,
-                            ),
-                            if (_searchText.isNotEmpty &&
-                                _searchHits.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: SizedBox(
-                                  height:
-                                      floatingTabBarContentBottomClearance(
-                                    context,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ),
       ],
     );
   }

@@ -451,15 +451,37 @@ void main() {
       final scrollController = events.scrollController;
       expect(scrollController.hasClients, isTrue);
       expect(scrollController.position.maxScrollExtent, greaterThan(0));
-      scrollController.jumpTo(scrollController.position.maxScrollExtent);
+      final eventsTab = find.byType(EventsTab);
+      await tester.drag(eventsTab, const Offset(0, -900));
+      await tester.pumpAndSettle();
+      drainKnownGridRoundingOverflow();
+      await tester.drag(eventsTab, const Offset(0, -900));
       await tester.pumpAndSettle();
       drainKnownGridRoundingOverflow();
       final originalOffset = scrollController.offset;
+      expect(
+        originalOffset,
+        greaterThan(scrollController.position.maxScrollExtent * 0.75),
+        reason: 'The test must begin from a deeply scrolled Events page.',
+      );
+      final headerPosition =
+          AppHeaderScrollView.headerPositionFor(scrollController)!;
+      final originalHeaderOffset = headerPosition.pixels;
 
       for (var cycle = 0; cycle < 3; cycle++) {
         await tester.tapAt(const Offset(323, 30));
         await tester.pumpAndSettle();
         drainKnownGridRoundingOverflow();
+        expect(
+          scrollController.offset,
+          closeTo(originalOffset, 0.5),
+          reason: 'Entering offscreen search changed the Events page.',
+        );
+        expect(
+          headerPosition.pixels,
+          closeTo(originalHeaderOffset, 0.5),
+          reason: 'Entering offscreen search changed the shared header.',
+        );
         final searchHeader = find.byType(SearchModeHeader);
         expect(searchHeader, findsOneWidget);
         expect(
@@ -470,6 +492,16 @@ void main() {
         // active. Reproduce its animated dismissal after cancelling.
         tester.view.viewInsets = const FakeViewPadding(bottom: 320);
         await tester.pumpAndSettle();
+        expect(
+          scrollController.offset,
+          closeTo(originalOffset, 0.5),
+          reason: 'The search keyboard changed the covered Events page.',
+        );
+        expect(
+          headerPosition.pixels,
+          closeTo(originalHeaderOffset, 0.5),
+          reason: 'The search keyboard changed the shared header.',
+        );
         final cancel = tester
             .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
             .firstWhere((button) => button.searchFocused);
@@ -485,6 +517,11 @@ void main() {
           scrollController.offset,
           closeTo(originalOffset, 0.5),
           reason: 'Offscreen search cycle ${cycle + 1} moved the Events page.',
+        );
+        expect(
+          headerPosition.pixels,
+          closeTo(originalHeaderOffset, 0.5),
+          reason: 'Offscreen search cycle ${cycle + 1} moved the header.',
         );
       }
       drainKnownGridRoundingOverflow();

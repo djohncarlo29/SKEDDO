@@ -1025,7 +1025,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
-    if (_settingsOpen) {
+    if (_settingsOpen || _searchEnteredOffScreen) {
       return false;
     }
     if (_searchModeController.value > 0.01) {
@@ -1841,6 +1841,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final ValueNotifier<bool> _searchToolbarHidden = ValueNotifier(false);
   final ValueNotifier<bool> _searchToolbarInteractionsEnabled =
       ValueNotifier(true);
+  final ValueNotifier<int> _searchOverlayRevision = ValueNotifier(0);
   late final AnimationController _searchToolbarSlideController;
   late final CurvedAnimation _searchToolbarSlideProgress;
   // True if the current search session was entered via the off-screen path
@@ -1997,6 +1998,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _searchToolbarSlideController.dispose();
     _searchToolbarHidden.dispose();
     _searchToolbarInteractionsEnabled.dispose();
+    _searchOverlayRevision.dispose();
     _calendarStripSlide.dispose();
     _appShellNavigationObserver.dispose();
     _appShellRouteRevision.dispose();
@@ -2094,9 +2096,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _setSearchFocused(bool focused) {
     if (_searchFocused == focused) return;
     final enteredOffScreen = _searchEnteredOffScreen;
+    if (enteredOffScreen) {
+      setState(() {
+        _searchFocused = focused;
+        if (!focused) _searchEnteredOffScreen = false;
+      });
+      _syncToolbarDestination();
+      return;
+    }
     _searchToolbarHidden.value = focused && enteredOffScreen;
     _searchToolbarInteractionsEnabled.value = false;
-    if (focused) {
+    if (focused && !enteredOffScreen) {
       // The tab settles its own scroll position before reporting focus. Sync
       // the shell title from that settled parent so a stale overscroll value
       // cannot hide the second-level header after Search closes.
@@ -2110,27 +2120,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() => _searchFocused = focused);
     _syncToolbarDestination();
     if (focused) {
-      if (enteredOffScreen) {
-        // Off-screen search is an overlay over the settled page. Keep the
-        // shell chrome at its resting geometry; only switch to the established
-        // search appearance while the tab's overlay covers the page.
-        _searchToolbarSlideController.value = 0.0;
-        _searchModeController.value = 1.0;
-      } else {
+      if (!enteredOffScreen) {
         _searchToolbarSlideController.forward();
         _searchModeController.forward();
       }
     } else {
       if (enteredOffScreen) {
-        // The overlay is removed directly. Restore the parent's normal shell
-        // layout without playing the inline-search chrome slide in reverse.
-        _searchToolbarSlideController.value = 0.0;
-        _searchModeController.value = 0.0;
+        // Off-screen search never changed the parent's scroll geometry.
+        // Keep the existing header binding and scroll position untouched.
         _searchToolbarInteractionsEnabled.value = true;
-        // The active tab may need several layout frames to reattach its
-        // scroll position after keyboard and shell insets return. Rebind only
-        // after that tab confirms its original offset has been restored.
-        _syncHeaderAfterSearchParentRestores();
       } else {
         _searchToolbarSlideController.reverse();
         _searchModeController.reverse();
@@ -2139,29 +2137,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
-  bool get _activeSearchParentIsRestoring => switch (_selectedIndex) {
-    0 => _notesTabKey.currentState?.isRestoringSearchParent ?? false,
-    1 => _calendarTabKey.currentState?.isRestoringSearchParent ?? false,
-    2 => _eventsTabKey.currentState?.isRestoringSearchParent ?? false,
-    _ => false,
-  };
-
-  void _syncHeaderAfterSearchParentRestores() {
-    var attempts = 0;
-    void waitForParent() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _searchFocused || _searchEnteredOffScreen) return;
-        if (_activeSearchParentIsRestoring && attempts < 60) {
-          attempts++;
-          waitForParent();
-          WidgetsBinding.instance.scheduleFrame();
-          return;
-        }
-        _syncHeaderScrollOffsetToParent();
-      });
-    }
-
-    waitForParent();
+  void _notifySearchOverlayChanged() {
+    if (mounted) _searchOverlayRevision.value++;
   }
 
   /// Called by the header search icon.  Focuses whichever tab's search bar is
@@ -2170,28 +2147,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _activateTabSearch() {
     if (_selectedIndex == 3 || _searchFocused) return;
 
-    _settleShellTransitionsForSearch();
-    switch (_selectedIndex) {
-      case 0:
-        _notesTabKey.currentState?.prepareParentForSearch();
-      case 1:
-        _calendarTabKey.currentState?.prepareParentForSearch();
-      case 2:
-        _eventsTabKey.currentState?.prepareParentForSearch();
-    }
-    _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
-    // Preserve the active screen's settled header through the temporary search
-    // layout, including screens that don't own a scroll position.
-    _headerTitleTransition.suspend();
-
     // Calendar tab: always use the off-screen path so its own search overlay
-    // appears while the parent shell chrome remains at its resting position.
+    // appears over the untouched parent screen.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = true;
-      _searchToolbarInteractionsEnabled.value = false;
-      _searchModeController.value = 1.0;
-      _searchToolbarSlideController.value = 0.0;
       setState(() => _searchFocused = true);
       _syncToolbarDestination();
       _calendarTabKey.currentState?.activateSearchMode();
@@ -2217,13 +2176,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
-      // Search bar is off-screen. Keep the parent chrome stationary and let
-      // the tab present its existing overlay and focus the keyboard.
+      // Search is a genuine overlay. Do not settle, save, resize, or otherwise
+      // touch the parent's scrollable or its shared header position.
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = true;
-      _searchToolbarInteractionsEnabled.value = false;
-      _searchModeController.value = 1.0;
-      _searchToolbarSlideController.value = 0.0;
       setState(() => _searchFocused = true); // AppShell state
       _syncToolbarDestination();
       if (_selectedIndex == 0) {
@@ -2232,6 +2187,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _eventsTabKey.currentState?.activateSearchMode();
       }
     } else {
+      _settleShellTransitionsForSearch();
+      switch (_selectedIndex) {
+        case 0:
+          _notesTabKey.currentState?.prepareParentForSearch();
+        case 1:
+          _calendarTabKey.currentState?.prepareParentForSearch();
+        case 2:
+          _eventsTabKey.currentState?.prepareParentForSearch();
+      }
+      _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
+      _headerTitleTransition.suspend();
       // Search bar is visible: just focus it and let the normal async
       // onFocusChanged chain animate the header and update tab state.
       _searchEnteredOffScreen = false;
@@ -3255,6 +3221,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: NotesTab(
             key: _notesTabKey,
             onSearchFocusChanged: _setSearchFocused,
+            onSearchOverlayChanged: _notifySearchOverlayChanged,
             searchModeAnimation: _searchModeAnim,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
@@ -3300,6 +3267,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             scrollableTitleBuilder: _buildScrollableCalendarTitle,
             onStripSlide: (x) => _calendarStripSlide.value = x,
             onSearchCancel: () => _setSearchFocused(false),
+            onSearchOverlayChanged: _notifySearchOverlayChanged,
             searchModeAnimation: _searchModeAnim,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
@@ -3318,6 +3286,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: EventsTab(
             key: _eventsTabKey,
             onSearchFocusChanged: _setSearchFocused,
+            onSearchOverlayChanged: _notifySearchOverlayChanged,
             searchModeAnimation: _searchModeAnim,
             activeDCV: _dcvCategory,
             dcvSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
@@ -3407,7 +3376,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: AppShellNavigationScope(
             navigatorKey: _appShellNavigatorKey,
             routeRevision: _appShellRouteRevision,
-            child: AnimatedBuilder(
+            child: Stack(
+              fit: StackFit.expand,
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedBuilder(
               animation: _searchToolbarSlideProgress,
               builder: (context, child) {
                 final offset =
@@ -3493,7 +3466,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               top: 0,
                               left: 0,
                               right: 0,
-                              child: AnimatedBuilder(
+                              child: IgnorePointer(
+                                ignoring: _searchEnteredOffScreen,
+                                child: Opacity(
+                                  opacity: _searchEnteredOffScreen ? 0.0 : 1.0,
+                                  child: AnimatedBuilder(
                                 // Both _searchModeAnim and _dcvSlideController are
                                 // AnimationControllers owned by AppShell.  EventsTab's
                                 // SlideTransitions also listen to _dcvSlideController —
@@ -4047,6 +4024,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     ),
                                   );
                                 },
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -4073,7 +4052,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   final isDCVVisual =
                       pageP >= _dcvColorSnapThreshold &&
                       _selectedIndex == 2;
-                  final opacity = !isDCVVisual && _selectedIndex == 2
+                  final opacity =
+                      !_searchEnteredOffScreen &&
+                              !isDCVVisual &&
+                              _selectedIndex == 2
                       ? (1.0 - _searchModeAnim.value).clamp(0.0, 1.0)
                       : 0.0;
                   if (opacity <= 0.0) return const SizedBox.shrink();
@@ -4184,11 +4166,39 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+
             ],
           ),
                 ), // child offset
               ),
-            ), // GlassNavigationShell
+            ), // GlassNavigationShell / outer chrome animation
+                if (_searchEnteredOffScreen && _searchFocused)
+                  Positioned(
+                    top: MediaQuery.paddingOf(context).top,
+                    left: 0,
+                    right: 0,
+                    bottom: floatingTabBarContentBottomClearance(
+                      context,
+                      finalContentGap: 0,
+                    ),
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: _searchOverlayRevision,
+                      builder: (context, _, __) {
+                        final overlay = switch (_selectedIndex) {
+                          0 => _notesTabKey.currentState
+                              ?.buildOffscreenSearchOverlay(),
+                          1 => _calendarTabKey.currentState
+                              ?.buildOffscreenSearchOverlay(),
+                          2 => _eventsTabKey.currentState
+                              ?.buildOffscreenSearchOverlay(),
+                          _ => null,
+                        };
+                        return overlay ?? const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
         ), // AppShellNavigationScope
       ),

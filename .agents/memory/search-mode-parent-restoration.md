@@ -25,8 +25,8 @@ Off-screen search is an overlay, not a toolbar destination: keep the parent tool
 
 **How to apply:** Do not push an empty toolbar route for off-screen search. Let the overlay hide the chrome on the existing route, and verify no toolbar morph runs during entry or exit; keep inline-search route behavior separate.
 
-Off-screen search can temporarily shrink the parent's scroll extent or detach its ScrollPosition while shell and keyboard insets return. Never clamp or abandon the saved offset against that transient geometry. Retry until the position is attached and its range supports the saved offset, then restore and clear the lock; rebind the shared header after the tab confirms restoration.
+Off-screen search must be rendered above the entire navigation shell. Keep the parent tab, its scroll views, and the shared header binding mounted and unchanged. Do not settle, resize, detach, rebind, jump, clamp, or restore the parent's scroll offsets. Search results use their own non-primary scroll view and separate search input where the parent has a search row.
 
-**Why:** A single post-frame callback can run while the keyboard is still animating or the scrollable is detached. Clamping then loses the original offset; returning to zero is worse than the gradual drift it replaced.
+**Why:** Post-hoc offset restoration caused cumulative drift and could return the parent at zero when keyboard or header geometry changed. The user requires search to have no side effects on the screen it covers.
 
-**How to apply:** Notes, Events, and Calendar should retry restoration across layout frames when the controller is detached or the current extent is too small. Do not release the offscreen restoration lock until the saved offset has been applied, and have AppShell wait before rebinding the shared header.
+**How to apply:** For Notes, Events, Calendar, and DCV off-screen paths, present the overlay as a shell-level sibling above `GlassNavigationShell`, leaving the tab bar outside its hit-test bounds. Keep inline search separate. Tests should compare both the active tab body and shared header offsets before, during, and after repeated overlay sessions, including keyboard inset changes.

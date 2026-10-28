@@ -1659,6 +1659,7 @@ class _StorageFullBannerState extends State<_StorageFullBanner>
 
 class EventsTab extends StatefulWidget {
   final ValueChanged<bool>? onSearchFocusChanged;
+  final VoidCallback? onSearchOverlayChanged;
   final Animation<double>? searchModeAnimation;
   final String? activeDCV;
   final bool landscapeMasterDetail = false;
@@ -1705,6 +1706,7 @@ class EventsTab extends StatefulWidget {
   const EventsTab({
     super.key,
     this.onSearchFocusChanged,
+    this.onSearchOverlayChanged,
     this.searchModeAnimation,
     this.activeDCV,
     this.onTileTapped,
@@ -1728,15 +1730,13 @@ class EventsTab extends StatefulWidget {
 class EventsTabState extends State<EventsTab>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   final _searchController = TextEditingController();
+  final _offscreenSearchController = TextEditingController();
   final _scrollController = ScrollController();
   final GlobalKey _scrollViewportKey = GlobalKey();
-  // The key keeps AppSearchBar state alive while off-screen search transfers
-  // the row between the pinned header and its independent overlay.
   final _searchBarKey = GlobalKey<AppSearchBarState>();
-  // Keep the Liquid Glass cancel control alive when the search row moves
-  // between the scrollable sliver and the off-screen search overlay.
+  final _offscreenSearchBarKey = GlobalKey<AppSearchBarState>();
   final _searchCancelKey = GlobalKey();
-  final _dcvSearchCancelKey = GlobalKey();
+  final _offscreenSearchCancelKey = GlobalKey();
   BuildContext get _gridLayoutContext =>
       _gridStackKey.currentContext ?? context;
   double get _categoryListCardWidth {
@@ -1759,6 +1759,8 @@ class EventsTabState extends State<EventsTab>
   bool _greyFadeIn = false;
   String _searchText = '';
   bool _wasSearchFocusedBeforePause = false;
+  TextEditingController get _activeSearchController =>
+      _activatedFromOffScreen ? _offscreenSearchController : _searchController;
   bool _utilityExitScheduled = false;
   bool _hadArchivedUtilityItems = false;
   bool _hadRecentlyDeletedUtilityItems = false;
@@ -6912,6 +6914,40 @@ class EventsTabState extends State<EventsTab>
   ScrollController get scrollController => _scrollController;
   bool get isRestoringSearchParent => _restoringSearchParent;
 
+  Widget _buildSearchBarRow({
+    bool offscreen = false,
+    String? placeholder,
+    Color? selectionTint,
+  }) {
+    final controller = offscreen ? _offscreenSearchController : _searchController;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: AppSearchBar(
+              key: offscreen ? _offscreenSearchBarKey : _searchBarKey,
+              controller: controller,
+              onFocusChanged: _onSearchFocusChanged,
+              placeholder: placeholder ?? 'Search',
+              selectionTint: selectionTint,
+            ),
+          ),
+          SearchCancelButton(
+            key: offscreen ? _offscreenSearchCancelKey : _searchCancelKey,
+            animation: offscreen
+                ? const AlwaysStoppedAnimation<double>(1.0)
+                : widget.searchModeAnimation,
+            searchFocused: offscreen
+                ? _searchFocused
+                : _searchFocused && !_activatedFromOffScreen,
+            onTap: _cancelSearch,
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Called by AppShell when the user taps the header search icon.
   void focusSearch() => NativeTextInput.focus(_searchController);
 
@@ -6922,7 +6958,7 @@ class EventsTabState extends State<EventsTab>
   // with a synchronous jumpTo.  The _lockingScrollDrift flag prevents the
   // jumpTo itself from re-entering and looping.
   void _enforceScrollLock() {
-    if (!_activatedFromOffScreen && !_restoringSearchParent) return;
+    if (!_restoringSearchParent) return;
     if (_lockingScrollDrift) return;
     if (!_scrollController.hasClients) return;
     final positions = List<ScrollPosition>.of(_scrollController.positions);
@@ -7024,6 +7060,7 @@ class EventsTabState extends State<EventsTab>
     // AppShell already captured the parent position before changing the
     // viewport. Preparing here would overwrite it after the inset clamps.
     _activatedFromOffScreen = true;
+    _offscreenSearchController.value = _searchController.value;
     _greyActive = true;
     _greyFadeIn = true;
     // Do NOT scroll to 0.  The SliverPersistentHeader is pinned so it stays
@@ -7031,6 +7068,7 @@ class EventsTabState extends State<EventsTab>
     // SliverFillRemaining grey fill covers the rest of the viewport, making
     // the search bar appear as an overlay without disturbing the scroll position.
     setState(() => _searchFocused = true);
+    widget.onSearchOverlayChanged?.call();
     // Set sbSearchModeActive immediately — _onSearchFocusChanged(true) returns
     // early in this path (because _searchFocused is already true by the time
     // the NativeTextInput fires onFocusChanged), so we must set it here.
@@ -7039,10 +7077,10 @@ class EventsTabState extends State<EventsTab>
     // (pinned), so the bar is in the viewport by the time the frame paints.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        NativeTextInput.focus(_searchController);
+        NativeTextInput.focus(_activeSearchController);
         // Lock after focus to prevent iOS from implicitly resigning first
         // responder (tap-outside / scroll-drag) during the search session.
-        NativeTextInput.lockFocus(_searchController);
+        NativeTextInput.lockFocus(_activeSearchController);
       }
     });
   }
@@ -7110,6 +7148,7 @@ class EventsTabState extends State<EventsTab>
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchTextChanged);
+    _offscreenSearchController.addListener(_onSearchTextChanged);
     WidgetsBinding.instance.addObserver(this);
     _scheduleMidnightRefresh();
     EventStore.instance.events.addListener(_onEventsChanged);
@@ -7180,8 +7219,10 @@ class EventsTabState extends State<EventsTab>
     EventStore.instance.archivedEvents.removeListener(_onEventsChanged);
     WidgetsBinding.instance.removeObserver(this);
     _searchController.removeListener(_onSearchTextChanged);
+    _offscreenSearchController.removeListener(_onSearchTextChanged);
     _scrollController.dispose();
     _searchController.dispose();
+    _offscreenSearchController.dispose();
     // dcvSlideController is owned and disposed by AppShell — do NOT dispose here.
     super.dispose();
   }
@@ -7706,16 +7747,17 @@ class EventsTabState extends State<EventsTab>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (!_searchFocused) _onSearchFocusChanged(true);
-          NativeTextInput.focus(_searchController);
+          NativeTextInput.focus(_activeSearchController);
         });
       }
     }
   }
 
   void _onSearchTextChanged() {
-    if (_searchController.text == _searchText) return;
+    final controller = _activeSearchController;
+    if (controller.text == _searchText) return;
     setState(() {
-      _searchText = _searchController.text;
+      _searchText = controller.text;
       // Search is local, but semantic matching still completes asynchronously.
       // Clear the previous query's hits immediately instead of showing stale
       // results or presenting a network-style loading indicator.
@@ -7724,6 +7766,7 @@ class EventsTabState extends State<EventsTab>
       _searchAll = [];
       _searchSuggestion = null;
     });
+    widget.onSearchOverlayChanged?.call();
     _scheduleSearch();
   }
 
@@ -7950,16 +7993,17 @@ class EventsTabState extends State<EventsTab>
         _searchAll = results.all;
         _searchSuggestion = results.suggestedQuery;
       });
+      widget.onSearchOverlayChanged?.call();
     });
   }
 
   void _applySearchSuggestion(String suggestion) {
-    _searchController.value = TextEditingValue(
+    _activeSearchController.value = TextEditingValue(
       text: suggestion,
       selection: TextSelection.collapsed(offset: suggestion.length),
     );
-    NativeTextInput.focus(_searchController);
-    NativeTextInput.lockFocus(_searchController);
+    NativeTextInput.focus(_activeSearchController);
+    NativeTextInput.lockFocus(_activeSearchController);
   }
 
   Widget _wrapSearchEventTile(
@@ -8039,14 +8083,17 @@ class EventsTabState extends State<EventsTab>
   /// it must not clear an in-progress search or steal the user's focus.
   void resetSearchForTabSwitch() {
     final wasFocused = _searchFocused;
+    final wasOffScreen = _activatedFromOffScreen;
     final wasSearching =
         _searchFocused || _activatedFromOffScreen || _restoringSearchParent;
     _searchBarKey.currentState?.cancelMic();
+    _offscreenSearchBarKey.currentState?.cancelMic();
     _searchDebounce?.cancel();
     _saveCategories();
     sbSearchModeActive = false;
+    NativeTextInput.unlockFocus(_activeSearchController);
     _searchController.clear();
-    NativeTextInput.unlockFocus(_searchController);
+    _offscreenSearchController.clear();
     setState(() {
       _searchFocused = false;
       _activatedFromOffScreen = false;
@@ -8060,38 +8107,33 @@ class EventsTabState extends State<EventsTab>
       _searchAll = [];
     });
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
-    if (wasSearching) _restoreParentScrollAfterSearch();
+    if (wasSearching && !wasOffScreen) _restoreParentScrollAfterSearch();
   }
 
   void _cancelSearch() {
     // Stop any active mic session before clearing the search bar.
     _searchBarKey.currentState?.cancelMic();
+    _offscreenSearchBarKey.currentState?.cancelMic();
     final wasFocused = _searchFocused;
     final wasOffScreen = _activatedFromOffScreen;
     sbSearchModeActive = false;
+    NativeTextInput.unlockFocus(_activeSearchController);
     _searchController.clear();
+    _offscreenSearchController.clear();
     // Unlock before blur so the "blur" channel call finds isLocked=false and
     // the native UITextField can resign first responder cleanly.
-    NativeTextInput.unlockFocus(_searchController);
     NativeTextInput.unfocusAll();
     FocusManager.instance.primaryFocus?.unfocus();
     if (wasOffScreen) {
-      // Remove the overlay but intentionally keep _activatedFromOffScreen=true
-      // so the _enforceScrollLock listener stays active throughout the 250 ms
-      // header re-expansion animation.  During that animation the viewport
-      // height changes each frame and BouncingScrollPhysics can silently
-      // correct the position away from _savedScrollOffset — the listener
-      // prevents that correction from ever taking effect.  The main sliver
-      // stays as SizedBox(height:58) while the lock is held; because the
-      // user has scrolled past the search bar, that placeholder is off-screen
-      // and completely invisible.
+      // Off-screen search is a true overlay: the parent scroll view and its
+      // geometry were never changed, so exit must not jump or restore offsets.
       setState(() {
         _searchFocused = false;
+        _activatedFromOffScreen = false;
         _searchText = '';
         _greyFadeIn = false;
         _greyActive = false;
-        _restoringSearchParent = true;
-        // Keep the offscreen lock until the saved offset is valid again.
+        _restoringSearchParent = false;
       });
     } else {
       setState(() {
@@ -8108,7 +8150,6 @@ class EventsTabState extends State<EventsTab>
       _holdParentScrollUntilSearchHeaderSettles();
     }
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
-    if (wasOffScreen) _restoreParentScrollAfterSearch();
   }
 
   @override
@@ -8281,28 +8322,7 @@ class EventsTabState extends State<EventsTab>
           ),
     ];
 
-    // Shared search-bar row — used by both layout paths below.
-    final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: AppSearchBar(
-              key: _searchBarKey,
-              controller: _searchController,
-              onFocusChanged: _onSearchFocusChanged,
-              placeholder: 'Search',
-            ),
-          ),
-          SearchCancelButton(
-            key: _searchCancelKey,
-            animation: widget.searchModeAnimation,
-            searchFocused: _searchFocused,
-            onTap: _cancelSearch,
-          ),
-        ],
-      ),
-    );
+    final searchBarRow = _buildSearchBarRow();
 
     // searchBarRow carries _searchBarKey.  When off-screen search activates
     // (_activatedFromOffScreen) the key lives in the Stack overlay so the
@@ -8341,7 +8361,10 @@ class EventsTabState extends State<EventsTab>
         final baseScrollView = AppHeaderScrollView(
           // Search mode retains the search header's original vertical
           // position; only normal page content uses the 16pt raise.
-          topExtension: _searchFocused ? 0.0 : kContentAreaTopRaise,
+          topExtension:
+              _searchFocused && !_activatedFromOffScreen
+                  ? 0.0
+                  : kContentAreaTopRaise,
           key: _scrollViewportKey,
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(
@@ -8358,11 +8381,9 @@ class EventsTabState extends State<EventsTab>
             // background and separator while the results body scrolls.
             searchBar: isLandscape
                 ? null
-                : (_activatedFromOffScreen
-                      ? const SizedBox.shrink()
-                      : (_searchFocused
-                            ? SearchModeHeader(searchBarRow: searchBarRow)
-                            : searchBarRow)),
+                : (_searchFocused && !_activatedFromOffScreen
+                      ? SearchModeHeader(searchBarRow: searchBarRow)
+                      : searchBarRow),
             searchBarExtent:
                 isLandscape
                     ? 0
@@ -8936,23 +8957,19 @@ class EventsTabState extends State<EventsTab>
               ),
             ),
           ),
-          // Grid search overlay — covers the grid when off-screen search is
-          // active on the main Events view (not inside DCV).  The gridView
-          // scroll position is completely untouched throughout.
-          if (widget.activeDCV == null && _greyActive)
-            _buildGridSearchOverlay(searchBarRow),
-          // DCV search overlay — floats above the DCV content when active.
-          if (widget.activeDCV != null && _greyActive)
-            _buildDcvSearchOverlay(),
         ],
       ),
     );
   }
 
-  Widget _buildGridSearchOverlay(Widget searchBarRow) {
+  Widget buildOffscreenSearchOverlay() {
+    if (widget.activeDCV == null) return _buildGridSearchOverlay();
+    return _buildDcvSearchOverlay();
+  }
+
+  Widget _buildGridSearchOverlay() {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    return Positioned.fill(
-      child: AnimatedOpacity(
+    return AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
@@ -8964,7 +8981,9 @@ class EventsTabState extends State<EventsTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SearchModeHeader(searchBarRow: searchBarRow),
+                SearchModeHeader(
+                  searchBarRow: _buildSearchBarRow(offscreen: true),
+                ),
                 Expanded(
                   child: CustomScrollView(
                     primary: false,
@@ -9002,35 +9021,12 @@ class EventsTabState extends State<EventsTab>
             ),
           ),
         ),
-      ),
     );
   }
 
   Widget _buildDcvSearchOverlay() {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: AppSearchBar(
-              controller: _searchController,
-              onFocusChanged: _onSearchFocusChanged,
-              placeholder: 'Search ${widget.activeDCV ?? ''}',
-              selectionTint: _activeDcvColor(context),
-            ),
-          ),
-          SearchCancelButton(
-            key: _dcvSearchCancelKey,
-            animation: widget.searchModeAnimation,
-            searchFocused: _searchFocused,
-            onTap: _cancelSearch,
-          ),
-        ],
-      ),
-    );
-    return Positioned.fill(
-      child: AnimatedOpacity(
+    return AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
@@ -9047,7 +9043,13 @@ class EventsTabState extends State<EventsTab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SearchModeHeader(searchBarRow: searchBarRow),
+              SearchModeHeader(
+                searchBarRow: _buildSearchBarRow(
+                  offscreen: true,
+                  placeholder: 'Search ${widget.activeDCV ?? ''}',
+                  selectionTint: _activeDcvColor(context),
+                ),
+              ),
               Expanded(
                 child: AppWindowContentPadding(
                   child: SmartDcvSearchResults(
@@ -9069,7 +9071,6 @@ class EventsTabState extends State<EventsTab>
             ],
           ),
         ),
-      ),
     );
   }
 }
