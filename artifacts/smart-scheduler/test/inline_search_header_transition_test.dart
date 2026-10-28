@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/main.dart';
+import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 Future<void> verifyInlineSearchMotion(WidgetTester tester) async {
@@ -9,11 +10,24 @@ Future<void> verifyInlineSearchMotion(WidgetTester tester) async {
   expect(searchBar, findsOneWidget);
   final searchBarState = tester.state<AppSearchBarState>(searchBar);
   final initialTop = tester.getTopLeft(searchBar).dy;
+  final transition = AppHeaderScrollInsetScope.titleTransitionOf(
+    tester.element(searchBar),
+  )!;
+  final parentHeaderPosition = transition.position!;
+  final parentHeaderPixels = parentHeaderPosition.pixels;
+  final parentCollapseProgress = transition.collapseProgress;
+  final parentSearchProgress = transition.searchBarCollapseProgress;
 
   tester.widget<AppSearchBar>(searchBar).onFocusChanged!(true);
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
 
+  expect(transition.collapseProgress, closeTo(parentCollapseProgress, 0.001));
+  expect(
+    transition.searchBarCollapseProgress,
+    closeTo(parentSearchProgress, 0.001),
+  );
+  expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
   expect(find.byType(SearchModeHeader), findsOneWidget);
   expect(searchBar, findsOneWidget);
   expect(tester.state<AppSearchBarState>(searchBar), same(searchBarState));
@@ -29,6 +43,12 @@ Future<void> verifyInlineSearchMotion(WidgetTester tester) async {
   await tester.pumpAndSettle();
   final searchTop = tester.getTopLeft(searchBar).dy;
   expect(searchTop, lessThan(enteringTop));
+  expect(transition.collapseProgress, closeTo(parentCollapseProgress, 0.001));
+  expect(
+    transition.searchBarCollapseProgress,
+    closeTo(parentSearchProgress, 0.001),
+  );
+  expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
 
   final pull = await tester.startGesture(const Offset(200, 500));
   await pull.moveBy(const Offset(0, 64));
@@ -52,9 +72,21 @@ Future<void> verifyInlineSearchMotion(WidgetTester tester) async {
   expect(tester.state<AppSearchBarState>(searchBar), same(searchBarState));
   final exitingTop = tester.getTopLeft(searchBar).dy;
   expect(exitingTop, greaterThan(searchTop));
+  expect(transition.collapseProgress, closeTo(parentCollapseProgress, 0.001));
+  expect(
+    transition.searchBarCollapseProgress,
+    closeTo(parentSearchProgress, 0.001),
+  );
+  expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
 
   await tester.pumpAndSettle();
   expect(tester.getTopLeft(searchBar).dy, closeTo(initialTop, 0.5));
+  expect(transition.collapseProgress, closeTo(parentCollapseProgress, 0.001));
+  expect(
+    transition.searchBarCollapseProgress,
+    closeTo(parentSearchProgress, 0.001),
+  );
+  expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
 }
 
 void main() {

@@ -68,7 +68,8 @@ void main() {
         ),
       );
 
-      // Opening and cancelling search must not reopen its collapsed parent bar.
+      // Search may present its own header, but it must not rewrite the
+      // collapsed parent state or translate the shell chrome.
       await tester.tapAt(const Offset(323, 30));
       await tester.pumpAndSettle();
       expect(
@@ -79,7 +80,7 @@ void main() {
             .transform
             .getTranslation()
             .y,
-        lessThan(0),
+        closeTo(0, 0.01),
       );
       expect(
         tester
@@ -89,8 +90,11 @@ void main() {
             .transform
             .getTranslation()
             .y,
-        lessThan(0),
+        closeTo(0, 0.01),
       );
+      expect(transition.collapseProgress, 1);
+      expect(transition.searchBarCollapseProgress, 1);
+      expect(outer.pixels, kAppHeaderTitleHeight + searchExtent);
       final cancel = tester
           .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
           .firstWhere((widget) => widget.searchFocused);
@@ -314,6 +318,55 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsNothing);
       expectShellChromeAtRest();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'offscreen Calendar search preserves its expanded parent header',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+
+      final notes = find.byType(NotesTab);
+      final transition = AppHeaderScrollInsetScope.titleTransitionOf(
+        tester.element(notes),
+      )!;
+      expect(transition.collapseProgress, closeTo(0, 0.001));
+      expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
+
+      final calendarLabel = find.text('Calendar').last;
+      await tester.tapAt(tester.getCenter(calendarLabel) - const Offset(0, 24));
+      await tester.pumpAndSettle();
+      expect(transition.collapseProgress, closeTo(0, 0.001));
+      expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
+
+      final parentHeaderPosition = transition.position!;
+      final parentHeaderPixels = parentHeaderPosition.pixels;
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+      expect(transition.collapseProgress, closeTo(0, 0.001));
+      expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
+      expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
+
+      final cancel = tester
+          .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
+          .firstWhere((button) => button.searchFocused);
+      cancel.onTap();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SearchModeHeader), findsNothing);
+      expect(transition.collapseProgress, closeTo(0, 0.001));
+      expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
+      expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
       expect(tester.takeException(), isNull);
     },
   );

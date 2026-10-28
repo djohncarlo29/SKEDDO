@@ -2103,7 +2103,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // the shell title from that settled parent so a stale overscroll value
       // cannot hide the second-level header after Search closes.
       _settleShellTransitionsForSearch();
-      _syncHeaderScrollOffsetToParent();
+      _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
     }
     setState(() => _searchFocused = focused);
     _syncToolbarDestination();
@@ -2148,7 +2148,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       case 2:
         _eventsTabKey.currentState?.prepareParentForSearch();
     }
-    _syncHeaderScrollOffsetToParent();
+    _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
 
     // Calendar tab: always use the off-screen path so its own search overlay
     // appears while the parent shell chrome remains at its resting position.
