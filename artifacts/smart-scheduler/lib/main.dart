@@ -2112,9 +2112,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _searchToolbarSlideController.forward();
       _searchModeController.forward();
     } else if (wasOffScreenSearch) {
-      // Off-screen search uses the same top-aligned search header as inline
-      // search, but swaps chrome instantly: no slide or materialize motion.
-      _searchModeController.value = 0.0;
+      // The overlay already occupies the shell header slot. The parent header
+      // and scroll layout never moved, so dismissal only removes the overlay.
     } else {
       _searchToolbarSlideController.reverse();
       // Inline search moves the shared header in and out with its search bar.
@@ -2140,14 +2139,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _syncHeaderScrollOffsetToParent();
 
-    // Calendar always uses the overlay search surface. Snap the parent header
-    // slot out of the way so the overlay matches inline search without sliding
-    // the parent's chrome.
+    // Calendar always uses the overlay search surface. Hide the parent chrome
+    // immediately and let the overlay occupy the same top slot as inline search.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
       _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
-      _searchModeController.value = 1.0;
+      _syncToolbarDestination();
       setState(() => _searchFocused = true);
       _calendarTabKey.currentState?.activateSearchMode();
       return;
@@ -2172,13 +2170,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
-      // Search bar is off-screen. Replace the parent chrome with the same
-      // top-aligned search surface used by inline search, snapping the header
-      // slot immediately rather than animating it.
+      // Search bar is off-screen. Hide the parent chrome immediately and let
+      // the tab's overlay cover its header slot without changing parent layout.
       _searchEnteredOffScreen = true;
       _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
-      _searchModeController.value = 1.0;
+      _syncToolbarDestination();
       setState(() => _searchFocused = true); // AppShell state
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
@@ -2815,7 +2812,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  Route<void> _toolbarStateRouteForKey(String key) {
+  Route<void> _toolbarStateRouteForKey(
+    String key, {
+    Duration? transitionDuration,
+  }) {
     final tabIndex = key == 'tab-3' ? 3 : 0;
     final isDcv = key == 'events-dcv';
 
@@ -2862,6 +2862,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 );
               },
             ),
+      transitionDuration:
+          transitionDuration ?? const Duration(milliseconds: 360),
     );
     _toolbarStateRoutes.add(route);
     _currentToolbarStateRoute = route;
@@ -2882,7 +2884,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
-    final route = _toolbarStateRouteForKey(key);
+    final instantSearchChange =
+        key == 'search' || _activeToolbarRouteKey == 'search';
+    final route = _toolbarStateRouteForKey(
+      key,
+      transitionDuration: instantSearchChange ? Duration.zero : null,
+    );
     _activeToolbarRouteKey = key;
     unawaited(navigator.push<void>(route));
 
@@ -3374,7 +3381,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               },
               child: navigation_glass.GlassNavigationShell(
                 effectTransition:
-                    navigation_glass.GlassEffectTransition.materialize,
+                    _searchEnteredOffScreen
+                    ? navigation_glass.GlassEffectTransition.identity
+                    : navigation_glass.GlassEffectTransition.materialize,
                 child: AnimatedBuilder(
                   animation: _searchToolbarSlideProgress,
                   builder: (context, child) {

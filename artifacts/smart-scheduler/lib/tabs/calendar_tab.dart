@@ -2817,7 +2817,11 @@ class CalendarTabState extends State<CalendarTab>
         ],
       ),
     );
-    return Positioned.fill(
+    return Positioned(
+      top: -appHeaderToolbarHeightForOverlay(context),
+      left: 0,
+      right: 0,
+      bottom: 0,
       child: AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
         duration: Duration.zero,

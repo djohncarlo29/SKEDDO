@@ -246,6 +246,7 @@ void main() {
       tester.widget<AppSearchBar>(searchBar).onFocusChanged!(true);
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'Notes search entry');
 
       await tapTabIcon('Events');
       expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 2);
@@ -281,10 +282,18 @@ void main() {
           tester.element(find.byType(NotesTab)),
         ),
         closeTo(headerInsetBeforeOffscreenSearch, 0.01),
-        reason: 'Off-screen search must leave the shared header in place.',
+        reason: 'Off-screen search must not change the parent layout.',
+      );
+      expect(find.byType(AppHeaderScrollEdge), findsNothing);
+      expect(
+        tester.getTopLeft(find.byType(SearchModeHeader)).dy,
+        closeTo(MediaQuery.paddingOf(notesContext).top, 0.01),
       );
 
-      await tester.tap(find.byType(SearchCancelButton));
+      tester
+          .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
+          .firstWhere((widget) => widget.searchFocused)
+          .onTap();
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
@@ -305,10 +314,18 @@ void main() {
         closeTo(parentOffsetBeforeOffscreenSearch, 0.01),
         reason: 'Off-screen search must restore the original parent position.',
       );
+      expect(
+        AppHeaderScrollInsetScope.maybeOf(
+          tester.element(find.byType(NotesTab)),
+        ),
+        closeTo(headerInsetBeforeOffscreenSearch, 0.01),
+      );
+      expect(tester.takeException(), isNull, reason: 'Notes search exit');
 
       await tester.tapAt(const Offset(323, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'Calendar search entry');
 
       await tapTabIcon('Events');
       expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 2);
@@ -341,6 +358,14 @@ void main() {
         ),
         closeTo(calendarInsetBeforeSearch, 0.01),
       );
+      expect(find.byType(AppHeaderScrollEdge), findsNothing);
+      expect(
+        tester.getTopLeft(find.byType(SearchModeHeader)).dy,
+        closeTo(
+          MediaQuery.paddingOf(tester.element(find.byType(CalendarTab))).top,
+          0.01,
+        ),
+      );
       tester
           .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
           .firstWhere((widget) => widget.searchFocused)
@@ -357,6 +382,13 @@ void main() {
             .y,
         closeTo(0, 0.01),
       );
+      expect(
+        AppHeaderScrollInsetScope.maybeOf(
+          tester.element(find.byType(CalendarTab)),
+        ),
+        closeTo(calendarInsetBeforeSearch, 0.01),
+      );
+      expect(tester.takeException(), isNull, reason: 'Calendar search exit');
 
       await tapTabIcon('Events');
       final events = tester.state<EventsTabState>(find.byType(EventsTab));
@@ -372,6 +404,7 @@ void main() {
       await tester.tapAt(const Offset(323, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'Events search entry');
       expect(
         tester
             .widget<Transform>(
@@ -387,6 +420,14 @@ void main() {
           tester.element(find.byType(EventsTab)),
         ),
         closeTo(eventsInsetBeforeSearch, 0.01),
+      );
+      expect(find.byType(AppHeaderScrollEdge), findsNothing);
+      expect(
+        tester.getTopLeft(find.byType(SearchModeHeader)).dy,
+        closeTo(
+          MediaQuery.paddingOf(tester.element(find.byType(EventsTab))).top,
+          0.01,
+        ),
       );
       tester
           .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
@@ -407,7 +448,13 @@ void main() {
         closeTo(0, 0.01),
       );
       expect(events.scrollController.offset, closeTo(eventsOffsetBeforeSearch, 0.01));
-      expect(tester.takeException(), isNull);
+      expect(
+        AppHeaderScrollInsetScope.maybeOf(
+          tester.element(find.byType(EventsTab)),
+        ),
+        closeTo(eventsInsetBeforeSearch, 0.01),
+      );
+      expect(tester.takeException(), isNull, reason: 'Events search exit');
     },
   );
 }

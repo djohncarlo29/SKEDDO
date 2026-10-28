@@ -661,6 +661,17 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
       titleTransition != oldWidget.titleTransition;
 }
 
+/// The portion of the AppShell's leading inset reserved for its toolbar row.
+///
+/// Off-screen search overlays use this to cover that slot while leaving the
+/// parent scroll view's geometry and saved position unchanged.
+double appHeaderToolbarHeightForOverlay(BuildContext context) {
+  final topInset = MediaQuery.paddingOf(context).top;
+  final toolbarHeight =
+      AppHeaderScrollInsetScope.maybeOf(context) - topInset;
+  return toolbarHeight > 0.0 ? toolbarHeight : 0.0;
+}
+
 /// Extends a page scroll viewport upward by the shell inset without moving its
 /// parent's layout. The scrollable's own content must include a matching
 /// leading inset so its initial on-screen position stays unchanged.

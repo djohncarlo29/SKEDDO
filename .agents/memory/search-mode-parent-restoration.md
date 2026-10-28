@@ -19,8 +19,8 @@ Portrait inline search keeps the same search-bar widget in the pinned header whi
 
 **How to apply:** Keep the fixed search header in the shared third-level header slot, pin that slot during inline search, and disable its normal rubberband translation. Do not change the off-screen overlay path.
 
-Off-screen search is a stationary overlay: keep the shell header and toolbar at their existing positions, hide toolbar actions without sliding them, and show/remove the overlay without a fade. Preserve and restore the parent scroll state. Inline search keeps its existing animated header transition.
+Off-screen search must use the same top search header and separator as inline search. Hide the parent header and toolbar immediately, without sliding or animating them, and let the search overlay occupy their top slot. Keep the parent content geometry and saved scroll state unchanged behind the overlay, then restore them on exit. Inline search keeps its existing animated header transition.
 
-**Why:** The user wants off-screen search to cover the current screen and leave it unchanged on exit; only inline search should move the header chrome.
+**Why:** The user clarified that off-screen search should look like inline search; only the parent header/toolbar animation should differ. Leaving parent header elements visible inside the search screen is incorrect.
 
-**How to apply:** In the AppShell off-screen activation path, do not drive the search-header or toolbar-slide controllers. Keep the overlay behavior local to Notes, Events, and Calendar, and restore both the page and shared header positions when it closes.
+**How to apply:** In the AppShell off-screen path, do not animate parent chrome or change the scroll geometry. Extend the tab overlay through the reserved toolbar slot, switch toolbar registration to the empty search destination instantly, and restore the parent route and scroll positions on exit.

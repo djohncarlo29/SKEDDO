@@ -244,12 +244,14 @@ Route<void> appShellToolbarStateRoute({
   required WidgetBuilder toolbarBuilder,
   required VoidCallback onSystemBack,
   bool opaque = false,
+  Duration transitionDuration = const Duration(milliseconds: 360),
 }) {
   return _AppShellToolbarStateRoute(
     name: name,
     toolbarBuilder: toolbarBuilder,
     onSystemBack: onSystemBack,
     opaque: opaque,
+    transitionDuration: transitionDuration,
   );
 }
 
@@ -264,11 +266,12 @@ class _AppShellToolbarStateRoute extends PageRouteBuilder<void> {
     required WidgetBuilder toolbarBuilder,
     required VoidCallback onSystemBack,
     required super.opaque,
+    required Duration transitionDuration,
   }) : super(
          settings: RouteSettings(name: name),
          barrierDismissible: false,
-         transitionDuration: const Duration(milliseconds: 360),
-         reverseTransitionDuration: const Duration(milliseconds: 360),
+         transitionDuration: transitionDuration,
+         reverseTransitionDuration: transitionDuration,
          pageBuilder: (context, _, _) => PopScope<Object?>(
            canPop: false,
            onPopInvokedWithResult: (didPop, _) {

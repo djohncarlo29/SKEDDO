@@ -769,7 +769,14 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // here while the overlay is present, moving back to the scroll view
         // sliver once _greyActive / _activatedFromOffScreen are cleared.
         if (_greyActive)
-          AnimatedOpacity(
+          Positioned(
+            top: _activatedFromOffScreen
+                ? -appHeaderToolbarHeightForOverlay(context)
+                : 0.0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AnimatedOpacity(
             opacity: _greyFadeIn ? 1.0 : 0.0,
             duration: _activatedFromOffScreen
                 ? Duration.zero
@@ -834,6 +841,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 ),
               ),
             ),
+          ),
           ),
       ],
     );
