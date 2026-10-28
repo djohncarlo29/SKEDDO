@@ -2112,10 +2112,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _searchToolbarSlideController.forward();
       _searchModeController.forward();
     } else if (wasOffScreenSearch) {
-      // Off-screen search is a stationary overlay. The parent header and
-      // toolbar never moved, so leave both controllers at their current
-      // positions instead of animating them during dismissal.
-      _searchToolbarSlideController.value = 0.0;
+      // Off-screen search uses the same top-aligned search header as inline
+      // search, but swaps chrome instantly: no slide or materialize motion.
+      _searchModeController.value = 0.0;
     } else {
       _searchToolbarSlideController.reverse();
       // Inline search moves the shared header in and out with its search bar.
@@ -2141,12 +2140,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _syncHeaderScrollOffsetToParent();
 
-    // Calendar tab always uses its stationary search overlay. Keep the shared
-    // header and toolbar where they are while the overlay covers the calendar.
+    // Calendar always uses the overlay search surface. Snap the parent header
+    // slot out of the way so the overlay matches inline search without sliding
+    // the parent's chrome.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
       _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
+      _searchModeController.value = 1.0;
       setState(() => _searchFocused = true);
       _calendarTabKey.currentState?.activateSearchMode();
       return;
@@ -2171,13 +2172,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
-      // Search bar is off-screen. Let the tab place its search surface over the
-      // parent and focus the keyboard without moving the shared chrome.
-      // Unlike inline search, this path must not move either shared header
-      // chrome or the toolbar.
+      // Search bar is off-screen. Replace the parent chrome with the same
+      // top-aligned search surface used by inline search, snapping the header
+      // slot immediately rather than animating it.
       _searchEnteredOffScreen = true;
       _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
+      _searchModeController.value = 1.0;
       setState(() => _searchFocused = true); // AppShell state
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
@@ -3434,12 +3435,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               child: _buildContent(),
                             ),
 
-                            // Header — last Stack child so it paints above the content.
-                            // While the search bar is focused the header collapses to
-                            // just the status-bar inset (icons row + title slide off
-                            // screen) and the border + shadow fade out so the surface
-                            // reads as continuous.
-                            Positioned(
+                            // The parent chrome is absent during off-screen
+                            // search; the tab's overlay takes this same top slot
+                            // immediately, without animating the parent header.
+                            if (!_searchEnteredOffScreen)
+                              Positioned(
                               top: 0,
                               left: 0,
                               right: 0,
