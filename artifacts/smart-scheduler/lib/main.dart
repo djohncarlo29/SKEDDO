@@ -2856,14 +2856,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   Route<void> _toolbarStateRouteForKey(String key) {
     final tabIndex = key == 'tab-3' ? 3 : 0;
-    final isSearch = key == 'search';
     final isDcv = key == 'events-dcv';
 
     final route = appShellToolbarStateRoute(
       name: 'app-shell-toolbar-$key',
       opaque: true,
       onSystemBack: _handleToolbarRouteSystemBack,
-      toolbarBuilder: isSearch
+      toolbarBuilder: key == 'search'
           ? (_) => const SizedBox.shrink()
           : (routeContext) => AnimatedBuilder(
               animation: Listenable.merge([
@@ -3430,6 +3429,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     'app-shell-search-toolbar-offset',
                   ),
                   offset: Offset(0, -offset),
+                  transformHitTests: false,
                   child: child,
                 );
               },
@@ -3444,6 +3444,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                         _searchToolbarSlideProgress.value;
                     return Transform.translate(
                       offset: Offset(0, offset),
+                      transformHitTests: false,
                       child: child,
                     );
                   },
@@ -4267,19 +4268,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               // toolbar destinations and Settings routes. Global modal routes
               // use the root Navigator so they cover and dim this whole shell.
               Positioned.fill(
-                child: Navigator(
-                  key: _appShellNavigatorKey,
-                  observers: [_appShellNavigationObserver],
-                  initialRoute: 'app-shell-toolbar-home',
-                  onGenerateRoute: (settings) {
-                    const prefix = 'app-shell-toolbar-';
-                    final routeName =
-                        settings.name ?? '${prefix}home';
-                    final key = routeName.startsWith(prefix)
-                        ? routeName.substring(prefix.length)
-                        : 'home';
-                    return _toolbarStateRouteForKey(key);
-                  },
+                child: IgnorePointer(
+                  // Search removes all pinned toolbar chrome. Let taps pass
+                  // through the full-screen toolbar Navigator to the still
+                  // visible tab bar and the active search page.
+                  ignoring: _searchFocused,
+                  child: Navigator(
+                    key: _appShellNavigatorKey,
+                    observers: [_appShellNavigationObserver],
+                    initialRoute: 'app-shell-toolbar-home',
+                    onGenerateRoute: (settings) {
+                      const prefix = 'app-shell-toolbar-';
+                      final routeName =
+                          settings.name ?? '${prefix}home';
+                      final key = routeName.startsWith(prefix)
+                          ? routeName.substring(prefix.length)
+                          : 'home';
+                      return _toolbarStateRouteForKey(key);
+                    },
+                  ),
                 ),
               ),
             ],

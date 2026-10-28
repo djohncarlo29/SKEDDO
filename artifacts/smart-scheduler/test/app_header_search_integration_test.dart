@@ -5,6 +5,7 @@ import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/main.dart';
 import 'package:smart_scheduler/tabs/notes_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
@@ -215,6 +216,60 @@ void main() {
         tester.getTopLeft(firstOption).dy,
         closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'tab switching from inline and offscreen search clears search before return',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+
+      final tabBar = find.byType(FloatingTabPill);
+      expect(tabBar, findsOneWidget);
+      Future<void> tapTabIcon(String label) async {
+        final labelCenter = tester.getCenter(find.text(label).last);
+        await tester.tapAt(labelCenter - const Offset(0, 24));
+        await tester.pumpAndSettle();
+      }
+
+      final searchBar = find.byType(AppSearchBar).first;
+      tester.widget<AppSearchBar>(searchBar).onFocusChanged!(true);
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+
+      await tapTabIcon('Events');
+      expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 2);
+      expect(find.byType(SearchModeHeader), findsNothing);
+
+      await tapTabIcon('Home');
+      expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 0);
+      expect(find.byType(SearchModeHeader), findsNothing);
+
+      final notes = tester.state<NotesTabState>(find.byType(NotesTab));
+      final headerPosition = AppHeaderScrollView.headerPositionFor(
+        notes.scrollController,
+      )!;
+      headerPosition.jumpTo(headerPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+
+      await tapTabIcon('Events');
+      expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 2);
+      expect(find.byType(SearchModeHeader), findsNothing);
+
+      await tapTabIcon('Home');
+      expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 0);
+      expect(find.byType(SearchModeHeader), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
