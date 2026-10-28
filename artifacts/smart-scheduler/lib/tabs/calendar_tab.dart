@@ -5,7 +5,15 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show lerpDouble;
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
+import 'package:flutter/gestures.dart'
+    show
+        DeviceGestureSettings,
+        PointerCancelEvent,
+        PointerDownEvent,
+        PointerEvent,
+        PointerMoveEvent,
+        PointerUpEvent,
+        kTouchSlop;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
@@ -10508,6 +10516,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   bool _allDay = false;
   bool _unscheduled = false;
+  int? _allDaySwitchPointer;
+  bool _allDayAtPointerDown = false;
+  Offset _allDaySwitchDownPosition = Offset.zero;
+  Duration _allDaySwitchDownTime = Duration.zero;
+  bool _allDaySwitchMovedPastSlop = false;
   late DateTime _starts;
   late DateTime _ends;
 
@@ -11356,8 +11369,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _switchRow(
     String label,
     bool value,
-    ValueChanged<bool> onChanged,
-  ) =>
+    ValueChanged<bool> onChanged, {
+    bool reconcilePointerUp = false,
+  }) =>
       Row(
         children: [
           Expanded(
@@ -11396,11 +11410,25 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 alignment: Alignment.center,
                 child: Transform.scale(
                   scale: 0.80,
-                  child: AppSwitch(
-                    value: value,
-                    onChanged: onChanged,
-                    color: _resolvedCategoryColor,
-                    height: 31,
+                  child: Listener(
+                    onPointerDown: reconcilePointerUp
+                        ? _rememberAllDaySwitchPointer
+                        : null,
+                    onPointerMove: reconcilePointerUp
+                        ? _trackAllDaySwitchPointer
+                        : null,
+                    onPointerUp: reconcilePointerUp
+                        ? _reconcileAllDaySwitchPointer
+                        : null,
+                    onPointerCancel: reconcilePointerUp
+                        ? _clearAllDaySwitchPointer
+                        : null,
+                    child: AppSwitch(
+                      value: value,
+                      onChanged: onChanged,
+                      color: _resolvedCategoryColor,
+                      height: 31,
+                    ),
                   ),
                 ),
               ),
@@ -11408,6 +11436,57 @@ class _NewEventSheetState extends State<_NewEventSheet>
           ),
         ],
       );
+
+  void _rememberAllDaySwitchPointer(PointerDownEvent event) {
+    _allDaySwitchPointer = event.pointer;
+    _allDayAtPointerDown = _allDay;
+    _allDaySwitchDownPosition = event.position;
+    _allDaySwitchDownTime = event.timeStamp;
+    _allDaySwitchMovedPastSlop = false;
+  }
+
+  void _trackAllDaySwitchPointer(PointerMoveEvent event) {
+    if (_allDaySwitchPointer != event.pointer) return;
+    if ((event.position - _allDaySwitchDownPosition).distance > kTouchSlop) {
+      _allDaySwitchMovedPastSlop = true;
+    }
+  }
+
+  void _reconcileAllDaySwitchPointer(PointerUpEvent event) {
+    _finishAllDaySwitchPointer(event, reconcileIfUnchanged: true);
+  }
+
+  void _finishAllDaySwitchPointer(
+    PointerEvent event, {
+    required bool reconcileIfUnchanged,
+  }) {
+    if (_allDaySwitchPointer != event.pointer) return;
+    final startingValue = _allDayAtPointerDown;
+    scheduleMicrotask(() {
+      if (!mounted || _allDaySwitchPointer != event.pointer) return;
+      // LiquidGlassSwitch owns its glass gesture. A route/scroll recognizer
+      // can cancel that recognizer after the pointer-down lift, even though
+      // the raw pointer still reaches this row's listener. In that case the
+      // package may settle its own visuals without reporting onChanged. Keep
+      // the form value authoritative, but never duplicate a successful callback.
+      if (reconcileIfUnchanged && _allDay == startingValue) {
+        _toggleAllDay(!startingValue);
+      }
+      _allDaySwitchPointer = null;
+    });
+  }
+
+  void _clearAllDaySwitchPointer(PointerCancelEvent event) {
+    if (_allDaySwitchPointer != event.pointer) return;
+    final elapsed = event.timeStamp - _allDaySwitchDownTime;
+    final tapLikeCancel =
+        !_allDaySwitchMovedPastSlop &&
+        elapsed <= const Duration(milliseconds: 300);
+    _finishAllDaySwitchPointer(
+      event,
+      reconcileIfUnchanged: tapLikeCancel,
+    );
+  }
 
   // ── Date/time row (Starts / Ends) — date pill opens inline picker ─────────
 
@@ -15627,7 +15706,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _switchRow('All-day', _allDay, _toggleAllDay),
+                                  _switchRow(
+                                    'All-day',
+                                    _allDay,
+                                    _toggleAllDay,
+                                    reconcilePointerUp: true,
+                                  ),
                                   _sep(),
                                   _buildDateRow('Starts', _starts, 'starts'),
                                   // Starts picker — slides in below the Starts row.

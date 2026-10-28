@@ -79,6 +79,15 @@ void main() {
       return tester.widget<Positioned>(thumbPosition).height!;
     }
 
+    double glassThumbLeft() {
+      final thumbPosition = find
+          .ancestor(of: switchLens.first, matching: find.byType(Positioned))
+          .first;
+      return tester.widget<Positioned>(thumbPosition).left!;
+    }
+
+    final initialThumbLeft = glassThumbLeft();
+    expect(tester.widget<LiquidGlassLens>(switchLens.first).visibility, isFalse);
     expect(
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(1, 0.001),
@@ -99,6 +108,8 @@ void main() {
     expect(pillCount(endsRow), 1);
     expect(glassThumbWidth(), closeTo(37, 0.1));
     expect(glassThumbHeight(), closeTo(24, 0.1));
+    expect(glassThumbLeft(), greaterThan(initialThumbLeft));
+    expect(tester.widget<LiquidGlassLens>(switchLens.first).visibility, isFalse);
 
     await tester.tap(find.text('All-day'));
     await tester.pumpAndSettle();
@@ -111,6 +122,8 @@ void main() {
     expect(pillCount(endsRow), 2);
     expect(glassThumbWidth(), closeTo(37, 0.1));
     expect(glassThumbHeight(), closeTo(24, 0.1));
+    expect(glassThumbLeft(), closeTo(initialThumbLeft, 0.1));
+    expect(tester.widget<LiquidGlassLens>(switchLens.first).visibility, isFalse);
   });
 
   testWidgets('editing an all-day event toggles back and forth by touch', (
@@ -268,6 +281,32 @@ void main() {
     expect(
       tester.widget<AdaptiveLabelPillRow>(startsRow).pills.length,
       2,
+    );
+
+    // A route-level gesture cancellation can settle the glass switch without
+    // delivering its value callback. The form still must take the user's
+    // tap-like interaction as the source of truth.
+    final cancelledTap = await tester.startGesture(
+      tester.getCenter(allDaySwitch),
+    );
+    await tester.pump(const Duration(milliseconds: 60));
+    await cancelledTap.cancel();
+    await tester.pumpAndSettle();
+    expect(tester.widget<LiquidGlassSwitch>(allDaySwitch).value, isTrue);
+    expect(
+      tester.widget<AdaptiveLabelPillRow>(startsRow).pills.length,
+      1,
+    );
+    expect(
+      tester.widget<AdaptiveLabelPillRow>(
+        find
+            .ancestor(
+              of: find.text('Ends'),
+              matching: find.byType(AdaptiveLabelPillRow),
+            )
+            .first,
+      ).pills.length,
+      1,
     );
   });
 }
