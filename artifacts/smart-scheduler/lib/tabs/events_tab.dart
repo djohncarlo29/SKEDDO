@@ -1752,7 +1752,6 @@ class EventsTabState extends State<EventsTab>
   bool _activatedFromOffScreen = false;
   bool _restoringSearchParent = false;
   double _savedScrollOffset = 0;
-  double? _savedHeaderScrollOffset;
   // Re-entrancy guard for _enforceScrollLock — prevents jumpTo from
   // triggering the listener a second time and causing an infinite loop.
   bool _lockingScrollDrift = false;
@@ -6955,22 +6954,6 @@ class EventsTabState extends State<EventsTab>
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
       AppHeaderScrollView.jumpBodyTo(_scrollController, restoredOffset);
-      final headerPosition = AppHeaderScrollView.headerPositionFor(
-        _scrollController,
-      );
-      final savedHeaderOffset = _savedHeaderScrollOffset;
-      if (headerPosition != null &&
-          headerPosition.hasContentDimensions &&
-          savedHeaderOffset != null) {
-        headerPosition.jumpTo(
-          savedHeaderOffset
-              .clamp(
-                headerPosition.minScrollExtent,
-                headerPosition.maxScrollExtent,
-              )
-              .toDouble(),
-        );
-      }
     });
   }
 
@@ -7033,8 +7016,6 @@ class EventsTabState extends State<EventsTab>
   void prepareParentForSearch() {
     _restoringSearchParent = false;
     _savedScrollOffset = _settleParentScrollForSearch();
-    _savedHeaderScrollOffset =
-        AppHeaderScrollView.headerPositionFor(_scrollController)?.pixels;
   }
 
   Timer? _midnightTimer;
@@ -8061,9 +8042,15 @@ class EventsTabState extends State<EventsTab>
       if (_scrollController.hasClients) {
         AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
       }
-      // Remove the overlay but briefly keep _activatedFromOffScreen=true so
-      // _enforceScrollLock can prevent keyboard dismissal from correcting the
-      // saved parent offset. The shell header itself stays stationary.
+      // Remove the overlay but intentionally keep _activatedFromOffScreen=true
+      // so the _enforceScrollLock listener stays active throughout the 250 ms
+      // header re-expansion animation.  During that animation the viewport
+      // height changes each frame and BouncingScrollPhysics can silently
+      // correct the position away from _savedScrollOffset — the listener
+      // prevents that correction from ever taking effect.  The main sliver
+      // stays as SizedBox(height:58) while the lock is held; because the
+      // user has scrolled past the search bar, that placeholder is off-screen
+      // and completely invisible.
       setState(() {
         _searchFocused = false;
         _searchText = '';
@@ -8071,24 +8058,22 @@ class EventsTabState extends State<EventsTab>
         _greyActive = false;
         // _activatedFromOffScreen intentionally NOT cleared here.
       });
-      // Release the lock once the keyboard/viewport has settled.
+      // Release the lock once the header animation finishes reversing.
+      // At that point the viewport is stable, the position is exactly
+      // _savedScrollOffset, and no further correction is needed.
       void Function(AnimationStatus)? animListener;
       animListener = (AnimationStatus status) {
         if (status == AnimationStatus.dismissed) {
-          if (mounted) {
-            setState(() => _activatedFromOffScreen = false);
-            _restoreParentScrollAfterSearch();
-          }
+          if (mounted) setState(() => _activatedFromOffScreen = false);
           widget.searchModeAnimation?.removeStatusListener(animListener!);
         }
       };
       widget.searchModeAnimation?.addStatusListener(animListener!);
-      // Safety valve for platforms that do not deliver the expected status
-      // transition while the keyboard is dismissing.
+      // Safety valve: release lock at most 400 ms later even if the animation
+      // is interrupted (e.g. user immediately re-enters search mode).
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _activatedFromOffScreen && !_greyActive) {
           setState(() => _activatedFromOffScreen = false);
-          _restoreParentScrollAfterSearch();
           widget.searchModeAnimation?.removeStatusListener(animListener!);
         }
       });
@@ -8296,7 +8281,6 @@ class EventsTabState extends State<EventsTab>
             key: _searchCancelKey,
             animation: widget.searchModeAnimation,
             searchFocused: _searchFocused,
-            instant: _activatedFromOffScreen,
             onTap: _cancelSearch,
           ),
         ],
@@ -8561,7 +8545,7 @@ class EventsTabState extends State<EventsTab>
     // Impeller/Skia, which was the root cause of the 1-frame flicker.
     // No PageView means no separate GPU compositor layers per page, so there
     // is also no layer-promotion flash when content changes.
-    final page = _CategoryTapCallback(
+    return _CategoryTapCallback(
       onTileTapped: (label, color, sourceContext) {
         _masterFocusAnchorContext = sourceContext;
         _masterFocusAnchorKey = _gridFocusAnchorKeyForLabel(label);
@@ -8946,30 +8930,14 @@ class EventsTabState extends State<EventsTab>
         ],
       ),
     );
-    return SearchHeaderOverlayPortal(
-      visible: _activatedFromOffScreen && _greyActive,
-      top: MediaQuery.paddingOf(context).top,
-      header: SearchModeHeader(
-        searchBarRow: widget.activeDCV == null
-            ? searchBarRow
-            : _buildDcvSearchBarRow(),
-      ),
-      child: page,
-    );
   }
 
   Widget _buildGridSearchOverlay(Widget searchBarRow) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    return Positioned(
-      top: _activatedFromOffScreen
-          ? -appHeaderToolbarHeightForOverlay(context)
-          : 0.0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+    return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
-        duration: Duration.zero,
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
         // No onEnd: exit is instant (overlay removed directly in
         // _cancelSearch), so there is no fade-out to wait for.
@@ -8979,10 +8947,7 @@ class EventsTabState extends State<EventsTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_activatedFromOffScreen)
-                  SizedBox(height: searchBarHeaderExtent(context))
-                else
-                  SearchModeHeader(searchBarRow: searchBarRow),
+                SearchModeHeader(searchBarRow: searchBarRow),
                 Expanded(
                   child: CustomScrollView(
                     primary: false,
@@ -9024,8 +8989,9 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  Widget _buildDcvSearchBarRow() {
-    return Padding(
+  Widget _buildDcvSearchOverlay() {
+    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
         children: [
@@ -9041,27 +9007,15 @@ class EventsTabState extends State<EventsTab>
             key: _dcvSearchCancelKey,
             animation: widget.searchModeAnimation,
             searchFocused: _searchFocused,
-            instant: _activatedFromOffScreen,
             onTap: _cancelSearch,
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildDcvSearchOverlay() {
-    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final searchBarRow = _buildDcvSearchBarRow();
-    return Positioned(
-      top: _activatedFromOffScreen
-          ? -appHeaderToolbarHeightForOverlay(context)
-          : 0.0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+    return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
-        duration: Duration.zero,
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
         onEnd: () {
           if (!_greyFadeIn && mounted) {
@@ -9076,10 +9030,7 @@ class EventsTabState extends State<EventsTab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_activatedFromOffScreen)
-                SizedBox(height: searchBarHeaderExtent(context))
-              else
-                SearchModeHeader(searchBarRow: searchBarRow),
+              SearchModeHeader(searchBarRow: searchBarRow),
               Expanded(
                 child: AppWindowContentPadding(
                   child: SmartDcvSearchResults(

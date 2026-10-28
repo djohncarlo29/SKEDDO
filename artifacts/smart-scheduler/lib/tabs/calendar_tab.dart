@@ -2794,8 +2794,9 @@ class CalendarTabState extends State<CalendarTab>
     );
   }
 
-  Widget _buildSearchBarRow() {
-    return Padding(
+  // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
+  Widget _buildSearchOverlay() {
+    final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
         children: [
@@ -2809,32 +2810,23 @@ class CalendarTabState extends State<CalendarTab>
           SearchCancelButton(
             key: _searchCancelKey,
             searchFocused: true,
-            instant: true,
             onTap: cancelSearch,
             animation: widget.searchModeAnimation,
           ),
         ],
       ),
     );
-  }
-
-  // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
-  Widget _buildSearchOverlay() {
-    return Positioned(
-      top: -appHeaderToolbarHeightForOverlay(context),
-      left: 0,
-      right: 0,
-      bottom: 0,
+    return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
-        duration: Duration.zero,
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: searchBarHeaderExtent(context)),
+              SearchModeHeader(searchBarRow: searchBarRow),
               Expanded(
                 child: CustomScrollView(
                   primary: false,
@@ -3804,14 +3796,6 @@ class CalendarTabState extends State<CalendarTab>
 
                     // ── Full-screen search overlay (same pattern as EventsTab) ──
                     if (_greyActive) _buildSearchOverlay(),
-                    SearchHeaderOverlayPortal(
-                      visible: _searchFocused && _greyActive,
-                      top: MediaQuery.paddingOf(context).top,
-                      header: SearchModeHeader(
-                        searchBarRow: _buildSearchBarRow(),
-                      ),
-                      child: const SizedBox.shrink(),
-                    ),
                   ],
                 ),
               ),

@@ -206,7 +206,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   bool _activatedFromOffScreen = false;
   bool _restoringSearchParent = false;
   double _savedScrollOffset = 0;
-  double? _savedHeaderScrollOffset;
   // Re-entrancy guard for _enforceScrollLock — prevents jumpTo from
   // triggering the listener a second time and causing an infinite loop.
   bool _lockingScrollDrift = false;
@@ -268,22 +267,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
       AppHeaderScrollView.jumpBodyTo(_scrollController, restoredOffset);
-      final headerPosition = AppHeaderScrollView.headerPositionFor(
-        _scrollController,
-      );
-      final savedHeaderOffset = _savedHeaderScrollOffset;
-      if (headerPosition != null &&
-          headerPosition.hasContentDimensions &&
-          savedHeaderOffset != null) {
-        headerPosition.jumpTo(
-          savedHeaderOffset
-              .clamp(
-                headerPosition.minScrollExtent,
-                headerPosition.maxScrollExtent,
-              )
-              .toDouble(),
-        );
-      }
     });
   }
 
@@ -345,8 +328,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   void prepareParentForSearch() {
     _restoringSearchParent = false;
     _savedScrollOffset = _settleParentScrollForSearch();
-    _savedHeaderScrollOffset =
-        AppHeaderScrollView.headerPositionFor(_scrollController)?.pixels;
   }
 
   bool get _appIsBackgrounded {
@@ -546,9 +527,15 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       if (_scrollController.hasClients) {
         AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
       }
-      // Remove the overlay but briefly keep _activatedFromOffScreen=true so
-      // _enforceScrollLock can prevent keyboard dismissal from correcting the
-      // saved parent offset. The shell header itself stays stationary.
+      // Remove the overlay but intentionally keep _activatedFromOffScreen=true
+      // so the _enforceScrollLock listener stays active throughout the 250 ms
+      // header re-expansion animation.  During that animation the viewport
+      // height changes each frame and BouncingScrollPhysics can silently
+      // correct the position away from _savedScrollOffset — the listener
+      // prevents that correction from ever taking effect.  The main sliver
+      // stays as SizedBox(height:58) while the lock is held; because the
+      // user has scrolled past the search bar, that placeholder is off-screen
+      // and completely invisible.
       setState(() {
         _searchFocused = false;
         _searchText = '';
@@ -557,24 +544,22 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         _greyActive = false;
         // _activatedFromOffScreen intentionally NOT cleared here.
       });
-      // Release the lock once the keyboard/viewport has settled.
+      // Release the lock once the header animation finishes reversing.
+      // At that point the viewport is stable, the position is exactly
+      // _savedScrollOffset, and no further correction is needed.
       void Function(AnimationStatus)? animListener;
       animListener = (AnimationStatus status) {
         if (status == AnimationStatus.dismissed) {
-          if (mounted) {
-            setState(() => _activatedFromOffScreen = false);
-            _restoreParentScrollAfterSearch();
-          }
+          if (mounted) setState(() => _activatedFromOffScreen = false);
           widget.searchModeAnimation?.removeStatusListener(animListener!);
         }
       };
       widget.searchModeAnimation?.addStatusListener(animListener!);
-      // Safety valve for platforms that do not deliver the expected status
-      // transition while the keyboard is dismissing.
+      // Safety valve: release lock at most 400 ms later even if the animation
+      // is interrupted (e.g. user immediately re-enters search mode).
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _activatedFromOffScreen && !_greyActive) {
           setState(() => _activatedFromOffScreen = false);
-          _restoreParentScrollAfterSearch();
           widget.searchModeAnimation?.removeStatusListener(animListener!);
         }
       });
@@ -622,14 +607,13 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
             key: _searchCancelKey,
             animation: widget.searchModeAnimation,
             searchFocused: _searchFocused,
-            instant: _activatedFromOffScreen,
             onTap: _cancelSearch,
           ),
         ],
       ),
     );
 
-    final page = AppHeaderScrollStack(
+    return AppHeaderScrollStack(
       children: [
         // ── Main scroll view ──────────────────────────────────────────────
         // Never structurally modified when off-screen search is active.
@@ -769,18 +753,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // here while the overlay is present, moving back to the scroll view
         // sliver once _greyActive / _activatedFromOffScreen are cleared.
         if (_greyActive)
-          Positioned(
-            top: _activatedFromOffScreen
-                ? -appHeaderToolbarHeightForOverlay(context)
-                : 0.0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AnimatedOpacity(
+          AnimatedOpacity(
             opacity: _greyFadeIn ? 1.0 : 0.0,
-            duration: _activatedFromOffScreen
-                ? Duration.zero
-                : const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
             // No onEnd: exit is instant (overlay removed directly in
             // _cancelSearch), so there is no fade-out to wait for.
@@ -792,10 +767,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (_activatedFromOffScreen)
-                      SizedBox(height: searchBarHeaderExtent(context))
-                    else
-                      SearchModeHeader(searchBarRow: searchBarRow),
+                    SearchModeHeader(searchBarRow: searchBarRow),
                     Expanded(
                       child: CustomScrollView(
                         primary: false,
@@ -845,14 +817,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               ),
             ),
           ),
-          ),
       ],
-    );
-    return SearchHeaderOverlayPortal(
-      visible: _activatedFromOffScreen && _greyActive,
-      top: MediaQuery.paddingOf(context).top,
-      header: SearchModeHeader(searchBarRow: searchBarRow),
-      child: page,
     );
   }
 }

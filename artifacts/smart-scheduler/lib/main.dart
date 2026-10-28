@@ -2095,10 +2095,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _setSearchFocused(bool focused) {
     if (_searchFocused == focused) return;
-    final wasOffScreenSearch = _searchEnteredOffScreen;
     _searchToolbarHidden.value = false;
-    _searchToolbarInteractionsEnabled.value =
-        wasOffScreenSearch && !focused;
+    _searchToolbarInteractionsEnabled.value = false;
     if (focused) {
       // The tab settles its own scroll position before reporting focus. Sync
       // the shell title from that settled parent so a stale overscroll value
@@ -2111,15 +2109,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (focused) {
       _searchToolbarSlideController.forward();
       _searchModeController.forward();
-    } else if (wasOffScreenSearch) {
-      // The overlay already occupies the shell header slot. The parent header
-      // and scroll layout never moved, so dismissal only removes the overlay.
     } else {
       _searchToolbarSlideController.reverse();
-      // Inline search moves the shared header in and out with its search bar.
-      _searchModeController.reverse();
+      if (_searchEnteredOffScreen) {
+        // Off-screen entry: snap header back to full size instantly so the
+        // user never sees it growing — the tab's scroll position was already
+        // locked at _savedScrollOffset and the lock releases the moment the
+        // animation reaches dismissed (which is immediate here).
+        _searchModeController.value = 0.0;
+      } else {
+        // Normal (visible) entry: animate the header back down.
+        _searchModeController.reverse();
+      }
+      _searchEnteredOffScreen = false;
     }
-    if (!focused) _searchEnteredOffScreen = false;
   }
 
   /// Called by the header search icon.  Focuses whichever tab's search bar is
@@ -2139,14 +2142,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _syncHeaderScrollOffsetToParent();
 
-    // Calendar always uses the overlay search surface. Hide the parent chrome
-    // immediately and let the overlay occupy the same top slot as inline search.
+    // Calendar tab: always use the off-screen path so the header collapses
+    // instantly and the calendar's own search overlay slides in from above.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = true;
+      _searchToolbarHidden.value = false;
       _searchToolbarInteractionsEnabled.value = false;
-      _syncToolbarDestination();
+      _searchModeController.value = 1.0;
       setState(() => _searchFocused = true);
+      _syncToolbarDestination();
+      _searchToolbarSlideController.forward();
       _calendarTabKey.currentState?.activateSearchMode();
       return;
     }
@@ -2156,7 +2161,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         : _eventsTabKey.currentState?.scrollController;
 
     // In DCV the search bar lives on page 0 of the PageView and is completely
-    // hidden, so use the stationary overlay path.
+    // hidden — always force the off-screen animation path so the slide plays.
     final bool isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final headerPosition = AppHeaderScrollView.headerPositionFor(scrollCtrl);
@@ -2170,13 +2175,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
-      // Search bar is off-screen. Hide the parent chrome immediately and let
-      // the tab's overlay cover its header slot without changing parent layout.
+      // Search bar is off-screen. Collapse the header immediately, then let
+      // the tab animate its own off-screen transition and focus the keyboard.
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = true;
+      _searchToolbarHidden.value = false;
       _searchToolbarInteractionsEnabled.value = false;
-      _syncToolbarDestination();
+      _searchModeController.value = 1.0; // collapse header instantly
       setState(() => _searchFocused = true); // AppShell state
+      _syncToolbarDestination();
+      _searchToolbarSlideController.forward();
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
       } else {
@@ -2812,10 +2819,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  Route<void> _toolbarStateRouteForKey(
-    String key, {
-    Duration? transitionDuration,
-  }) {
+  Route<void> _toolbarStateRouteForKey(String key) {
     final tabIndex = key == 'tab-3' ? 3 : 0;
     final isDcv = key == 'events-dcv';
 
@@ -2862,8 +2866,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 );
               },
             ),
-      transitionDuration:
-          transitionDuration ?? const Duration(milliseconds: 360),
     );
     _toolbarStateRoutes.add(route);
     _currentToolbarStateRoute = route;
@@ -2884,12 +2886,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
-    final instantSearchChange =
-        key == 'search' || _activeToolbarRouteKey == 'search';
-    final route = _toolbarStateRouteForKey(
-      key,
-      transitionDuration: instantSearchChange ? Duration.zero : null,
-    );
+    final route = _toolbarStateRouteForKey(key);
     _activeToolbarRouteKey = key;
     unawaited(navigator.push<void>(route));
 
@@ -3380,15 +3377,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 );
               },
               child: navigation_glass.GlassNavigationShell(
-                // The off-screen search overlay replaces the whole pinned
-                // chrome row. Disable the shell itself as well as the
-                // in-route header so no stale pinned item or hit layer remains
-                // above the search field.
-                enabled: !_searchEnteredOffScreen,
                 effectTransition:
-                    _searchEnteredOffScreen
-                    ? navigation_glass.GlassEffectTransition.identity
-                    : navigation_glass.GlassEffectTransition.materialize,
+                    navigation_glass.GlassEffectTransition.materialize,
                 child: AnimatedBuilder(
                   animation: _searchToolbarSlideProgress,
                   builder: (context, child) {
@@ -3449,22 +3439,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               child: _buildContent(),
                             ),
 
-                            // The parent chrome is absent during off-screen
-                            // search; the tab's overlay takes this same top slot
-                            // immediately, without animating the parent header.
-                            if (!_searchEnteredOffScreen)
-                              Positioned(
+                            // Header — last Stack child so it paints above the content.
+                            // While the search bar is focused the header collapses to
+                            // just the status-bar inset (icons row + title slide off
+                            // screen) and the border + shadow fade out so the surface
+                            // reads as continuous.
+                            Positioned(
                               top: 0,
                               left: 0,
                               right: 0,
-                              child: IgnorePointer(
-                                // Search surfaces are drawn in the tab layer
-                                // beneath this stationary shell header. Keep
-                                // the header visible for off-screen search,
-                                // but let the search field and cancel control
-                                // receive their taps.
-                                ignoring: _searchFocused,
-                                child: AnimatedBuilder(
+                              child: AnimatedBuilder(
                                 // Both _searchModeAnim and _dcvSlideController are
                                 // AnimationControllers owned by AppShell.  EventsTab's
                                 // SlideTransitions also listen to _dcvSlideController —
@@ -4018,7 +4002,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     ),
                                   );
                                 },
-                                ),
                               ),
                             ),
                           ],

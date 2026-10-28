@@ -18,11 +18,3 @@ Portrait inline search keeps the same search-bar widget in the pinned header whi
 **Why:** The inline result viewport must bounce independently, while the search bar and separator remain fixed. The shared header slot preserves the search field state and avoids a frame-long disappearance during entry or exit.
 
 **How to apply:** Keep the fixed search header in the shared third-level header slot, pin that slot during inline search, and disable its normal rubberband translation. Do not change the off-screen overlay path.
-
-Off-screen search must use the same top search header and separator as inline search. Hide the parent header and toolbar immediately, without sliding or animating them. Keep the parent content geometry and saved scroll state unchanged behind the overlay, then restore them on exit. Inline search keeps its existing animated header transition.
-
-**Why:** The user clarified that off-screen search should look like inline search; only the parent header/toolbar animation should differ. Leaving parent header elements visible inside the search screen is incorrect.
-
-**Why:** A negatively positioned header inside the padded tab body can paint in the reserved toolbar slot while falling outside its ancestors' hit-test bounds. The screen looks correct, but taps on Cancel fall through to AppShell; a stale pinned shell layer can add another obstruction.
-
-**How to apply:** Keep search results/background in the tab body, but host the off-screen search header in a viewport-level overlay at the safe-area top. Disable pinned shell chrome for off-screen search, switch toolbar registration to the empty search destination instantly, and verify Cancel with a real pointer tap. Do not animate parent chrome or change scroll geometry.

@@ -649,7 +649,6 @@ class AppSearchBarState extends State<AppSearchBar>
 class SearchCancelButton extends StatefulWidget {
   final Animation<double>? animation;
   final bool searchFocused;
-  final bool instant;
   final VoidCallback onTap;
 
   const SearchCancelButton({
@@ -657,7 +656,6 @@ class SearchCancelButton extends StatefulWidget {
     required this.searchFocused,
     required this.onTap,
     this.animation,
-    this.instant = false,
   });
 
   @override
@@ -693,21 +691,6 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
     final circleSize = _circleSize(context);
     final rowHeight = _rowHeight(context, circleSize);
     final circle = _buildCircle(context, circleSize: circleSize);
-    if (widget.instant) {
-      return widget.searchFocused
-          ? SizedBox(
-              width: kSearchBarCancelGap + circleSize,
-              height: rowHeight,
-              child: Padding(
-                padding: const EdgeInsets.only(left: kSearchBarCancelGap),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: circle,
-                ),
-              ),
-            )
-          : SizedBox(height: rowHeight);
-    }
     if (widget.animation != null) {
       return AnimatedBuilder(
         animation: widget.animation!,
@@ -889,57 +872,6 @@ class SearchModeHeader extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Hosts the off-screen search header in the root overlay so it stays inside
-/// the viewport's hit-test bounds even when the tab body is padded below the
-/// shared AppShell header.
-class SearchHeaderOverlayPortal extends StatefulWidget {
-  const SearchHeaderOverlayPortal({
-    super.key,
-    required this.visible,
-    required this.top,
-    required this.header,
-    required this.child,
-  });
-
-  final bool visible;
-  final double top;
-  final Widget header;
-  final Widget child;
-
-  @override
-  State<SearchHeaderOverlayPortal> createState() =>
-      _SearchHeaderOverlayPortalState();
-}
-
-class _SearchHeaderOverlayPortalState extends State<SearchHeaderOverlayPortal> {
-  final OverlayPortalController _controller = OverlayPortalController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _controller.show();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return OverlayPortal(
-      controller: _controller,
-      overlayLocation: OverlayChildLocation.rootOverlay,
-      overlayChildBuilder: (_) => widget.visible
-          ? Positioned(
-              top: widget.top,
-              left: 0,
-              right: 0,
-              child: widget.header,
-            )
-          : const SizedBox.shrink(),
-      child: widget.child,
     );
   }
 }
