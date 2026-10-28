@@ -240,6 +240,22 @@ void main() {
         await tester.pumpAndSettle();
       }
 
+      void expectShellChromeAtRest() {
+        for (final key in const [
+          'app-shell-search-toolbar-offset',
+          'app-shell-search-header-offset',
+        ]) {
+          final transform = tester.widget<Transform>(
+            find.byKey(ValueKey<String>(key)),
+          );
+          expect(
+            transform.transform.getTranslation().y,
+            closeTo(0, 0.01),
+            reason: '$key should not move during off-screen search',
+          );
+        }
+      }
+
       final searchBar = find.byType(AppSearchBar).first;
       tester.widget<AppSearchBar>(searchBar).onFocusChanged!(true);
       await tester.pumpAndSettle();
@@ -262,6 +278,7 @@ void main() {
       await tester.tapAt(const Offset(323, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      expectShellChromeAtRest();
 
       await tapTabIcon('Events');
       expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 2);
@@ -270,6 +287,33 @@ void main() {
       await tapTabIcon('Home');
       expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 0);
       expect(find.byType(SearchModeHeader), findsNothing);
+
+      final restoredNotes = tester.state<NotesTabState>(
+        find.byType(NotesTab),
+      );
+      final restoredHeaderPosition = AppHeaderScrollView.headerPositionFor(
+        restoredNotes.scrollController,
+      )!;
+      restoredHeaderPosition.jumpTo(restoredHeaderPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+      expectShellChromeAtRest();
+      restoredNotes.cancelSearch();
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsNothing);
+      expectShellChromeAtRest();
+
+      await tapTabIcon('Calendar');
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+      expectShellChromeAtRest();
+      await tester.tap(find.byType(SearchCancelButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsNothing);
+      expectShellChromeAtRest();
       expect(tester.takeException(), isNull);
     },
   );

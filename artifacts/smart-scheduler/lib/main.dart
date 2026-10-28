@@ -2095,7 +2095,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _setSearchFocused(bool focused) {
     if (_searchFocused == focused) return;
-    _searchToolbarHidden.value = false;
+    final enteredOffScreen = _searchEnteredOffScreen;
+    _searchToolbarHidden.value = focused && enteredOffScreen;
     _searchToolbarInteractionsEnabled.value = false;
     if (focused) {
       // The tab settles its own scroll position before reporting focus. Sync
@@ -2107,18 +2108,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() => _searchFocused = focused);
     _syncToolbarDestination();
     if (focused) {
-      _searchToolbarSlideController.forward();
-      _searchModeController.forward();
-    } else {
-      _searchToolbarSlideController.reverse();
-      if (_searchEnteredOffScreen) {
-        // Off-screen entry: snap header back to full size instantly so the
-        // user never sees it growing — the tab's scroll position was already
-        // locked at _savedScrollOffset and the lock releases the moment the
-        // animation reaches dismissed (which is immediate here).
-        _searchModeController.value = 0.0;
+      if (enteredOffScreen) {
+        // Off-screen search is an overlay over the settled page. Keep the
+        // shell chrome at its resting geometry; only switch to the established
+        // search appearance while the tab's overlay covers the page.
+        _searchToolbarSlideController.value = 0.0;
+        _searchModeController.value = 1.0;
       } else {
-        // Normal (visible) entry: animate the header back down.
+        _searchToolbarSlideController.forward();
+        _searchModeController.forward();
+      }
+    } else {
+      if (enteredOffScreen) {
+        // The overlay is removed directly. Restore the parent's normal shell
+        // layout without playing the inline-search chrome slide in reverse.
+        _searchToolbarSlideController.value = 0.0;
+        _searchModeController.value = 0.0;
+        _searchToolbarInteractionsEnabled.value = true;
+      } else {
+        _searchToolbarSlideController.reverse();
         _searchModeController.reverse();
       }
       _searchEnteredOffScreen = false;
@@ -2142,16 +2150,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _syncHeaderScrollOffsetToParent();
 
-    // Calendar tab: always use the off-screen path so the header collapses
-    // instantly and the calendar's own search overlay slides in from above.
+    // Calendar tab: always use the off-screen path so its own search overlay
+    // appears while the parent shell chrome remains at its resting position.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = false;
+      _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
       _searchModeController.value = 1.0;
+      _searchToolbarSlideController.value = 0.0;
       setState(() => _searchFocused = true);
       _syncToolbarDestination();
-      _searchToolbarSlideController.forward();
       _calendarTabKey.currentState?.activateSearchMode();
       return;
     }
@@ -2175,15 +2183,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
-      // Search bar is off-screen. Collapse the header immediately, then let
-      // the tab animate its own off-screen transition and focus the keyboard.
+      // Search bar is off-screen. Keep the parent chrome stationary and let
+      // the tab present its existing overlay and focus the keyboard.
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = false;
+      _searchToolbarHidden.value = true;
       _searchToolbarInteractionsEnabled.value = false;
-      _searchModeController.value = 1.0; // collapse header instantly
+      _searchModeController.value = 1.0;
+      _searchToolbarSlideController.value = 0.0;
       setState(() => _searchFocused = true); // AppShell state
       _syncToolbarDestination();
-      _searchToolbarSlideController.forward();
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
       } else {
