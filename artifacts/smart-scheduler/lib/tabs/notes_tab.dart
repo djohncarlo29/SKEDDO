@@ -634,18 +634,21 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               child: AppHeaderScrollInset(
                 collapseAnimation: widget.searchModeAnimation,
                 enabled: !isLandscape,
-                // Keep inline search in this same pinned-header slot while
-                // focus enters and exits. The shell's header animation moves
-                // the row vertically; moving it to a sibling overlay made it
-                // disappear for a frame during the handoff.
+                // Inline search keeps the same keyed field in the shared
+                // header, but adds the fixed search surface and separator.
                 searchBar: isLandscape
                     ? null
                     : (_activatedFromOffScreen
                           ? const SizedBox.shrink()
-                          : searchBarRow),
+                          : (_searchFocused
+                                ? SearchModeHeader(searchBarRow: searchBarRow)
+                                : searchBarRow)),
                 searchBarExtent: isLandscape
                     ? 0
-                    : searchBarHostRowHeight(context),
+                    : (_searchFocused && !_activatedFromOffScreen
+                          ? searchBarHeaderExtent(context)
+                          : searchBarHostRowHeight(context)),
+                pinSearchBar: _searchFocused && !_activatedFromOffScreen,
               ),
             ),
 

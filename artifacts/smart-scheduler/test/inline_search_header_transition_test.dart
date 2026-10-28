@@ -14,9 +14,14 @@ Future<void> verifyInlineSearchMotion(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
 
-  expect(find.byType(SearchModeHeader), findsNothing);
+  expect(find.byType(SearchModeHeader), findsOneWidget);
   expect(searchBar, findsOneWidget);
   expect(tester.state<AppSearchBarState>(searchBar), same(searchBarState));
+  expect(
+    tester.getSize(find.byType(SearchModeHeader)).height,
+    greaterThan(tester.getSize(searchBar).height),
+    reason: 'Inline mode restores the fixed search surface and separator.',
+  );
   final enteringTop = tester.getTopLeft(searchBar).dy;
   expect(enteringTop, lessThan(initialTop));
   expect(tester.getSize(searchBar).height, greaterThan(0));
@@ -24,6 +29,17 @@ Future<void> verifyInlineSearchMotion(WidgetTester tester) async {
   await tester.pumpAndSettle();
   final searchTop = tester.getTopLeft(searchBar).dy;
   expect(searchTop, lessThan(enteringTop));
+
+  final pull = await tester.startGesture(const Offset(200, 500));
+  await pull.moveBy(const Offset(0, 64));
+  await tester.pump();
+  expect(
+    tester.getTopLeft(searchBar).dy,
+    closeTo(searchTop, 0.5),
+    reason: 'The inline search header must not follow content rubberbanding.',
+  );
+  await pull.up();
+  await tester.pumpAndSettle();
 
   final cancel = tester
       .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))

@@ -1430,6 +1430,7 @@ class _AppHeaderNestedScrollViewState
               titleExtent: extent,
               searchBar: widget.titleInset.searchBar,
               searchBarExtent: widget.titleInset.searchBarExtent,
+              pinSearchBar: widget.titleInset.pinSearchBar,
               bodyLeadingOverscroll: _bodyLeadingOverscroll,
               controller: _searchPhaseController,
             ),
@@ -1457,6 +1458,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     required this.bodyLeadingOverscroll,
     this.searchBar,
     this.searchBarExtent = 0,
+    this.pinSearchBar = false,
   });
 
   final double extent;
@@ -1467,9 +1469,11 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
   final ValueNotifier<double> bodyLeadingOverscroll;
   final Widget? searchBar;
   final double searchBarExtent;
+  final bool pinSearchBar;
 
   @override
-  double get minExtent => collapsedExtent;
+  double get minExtent =>
+      collapsedExtent + (pinSearchBar ? searchBarExtent : 0.0);
 
   @override
   double get maxExtent => extent;
@@ -1487,9 +1491,11 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
             ? -rawOffset
             : 0.0;
         final bodyOverscroll = bodyLeadingOverscroll.value;
-        final searchBarStretchOffset = bodyOverscroll > outerOverscroll
-            ? bodyOverscroll
-            : outerOverscroll;
+        final searchBarStretchOffset = pinSearchBar
+            ? 0.0
+            : (bodyOverscroll > outerOverscroll
+                  ? bodyOverscroll
+                  : outerOverscroll);
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -1516,11 +1522,15 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                   child: Align(
                     alignment: Alignment.topCenter,
                     // Use GlassLargeTitle's package-controlled second phase.
-                    heightFactor: 1.0 - controller.searchBarCollapseProgress,
+                    heightFactor: pinSearchBar
+                        ? 1.0
+                        : 1.0 - controller.searchBarCollapseProgress,
                     child: Opacity(
-                      opacity: Curves.easeIn.transform(
-                        1.0 - controller.searchBarCollapseProgress,
-                      ),
+                      opacity: pinSearchBar
+                          ? 1.0
+                          : Curves.easeIn.transform(
+                              1.0 - controller.searchBarCollapseProgress,
+                            ),
                       child: SizedBox(
                         height: searchBarExtent,
                         child: searchBar,
@@ -1543,6 +1553,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
       titleExtent != oldDelegate.titleExtent ||
       searchBar != oldDelegate.searchBar ||
       searchBarExtent != oldDelegate.searchBarExtent ||
+      pinSearchBar != oldDelegate.pinSearchBar ||
       controller != oldDelegate.controller;
 }
 
@@ -1584,6 +1595,7 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.child,
     this.searchBar,
     this.searchBarExtent = 0,
+    this.pinSearchBar = false,
   }) : assert(searchBarExtent >= 0),
        assert(searchBar != null || searchBarExtent == 0);
 
@@ -1593,6 +1605,8 @@ class AppHeaderScrollInset extends StatelessWidget {
   /// Optional third header level; the package collapses it after the title.
   final Widget? searchBar;
   final double searchBarExtent;
+  /// Keeps the search row pinned and stationary during inline search.
+  final bool pinSearchBar;
 
   @override
   Widget build(BuildContext context) {

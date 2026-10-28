@@ -8339,16 +8339,22 @@ class EventsTabState extends State<EventsTab>
             collapseAnimation: widget.searchModeAnimation,
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
-            // Inline search remains in the pinned header for the entire
-            // transition. Its position follows the shared shell animation,
-            // rather than being removed and recreated in a sibling overlay.
+            // Inline search stays in the shared header but restores its fixed
+            // background and separator while the results body scrolls.
             searchBar: isLandscape
                 ? null
                 : (_activatedFromOffScreen
                       ? const SizedBox.shrink()
-                      : searchBarRow),
+                      : (_searchFocused
+                            ? SearchModeHeader(searchBarRow: searchBarRow)
+                            : searchBarRow)),
             searchBarExtent:
-                isLandscape ? 0 : searchBarHostRowHeight(context),
+                isLandscape
+                    ? 0
+                    : (_searchFocused && !_activatedFromOffScreen
+                          ? searchBarHeaderExtent(context)
+                          : searchBarHostRowHeight(context)),
+            pinSearchBar: _searchFocused && !_activatedFromOffScreen,
           ),
         ),
 
