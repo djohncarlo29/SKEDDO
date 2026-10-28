@@ -2127,6 +2127,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _searchToolbarSlideController.value = 0.0;
         _searchModeController.value = 0.0;
         _searchToolbarInteractionsEnabled.value = true;
+        // Offscreen search temporarily changes the page viewport. Rebind only
+        // after the tab has restored its saved position in the next frame.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || _searchFocused || _searchEnteredOffScreen) return;
+            _syncHeaderScrollOffsetToParent();
+          });
+        });
       } else {
         _searchToolbarSlideController.reverse();
         _searchModeController.reverse();

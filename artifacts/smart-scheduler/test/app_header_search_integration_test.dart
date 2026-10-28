@@ -8,6 +8,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/main.dart';
+import 'package:smart_scheduler/tabs/events_tab.dart';
 import 'package:smart_scheduler/tabs/notes_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
@@ -360,6 +361,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
 
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      final searchHeader = find.byType(SearchModeHeader);
+      expect(
+        tester.getTopLeft(searchHeader).dy,
+        closeTo(MediaQuery.paddingOf(tester.element(searchHeader)).top, 0.5),
+      );
       final toolbarDuringSearch = toolbarShell.resolveState();
       expect(
         toolbarDuringSearch == null || toolbarDuringSearch.settled,
@@ -405,6 +411,75 @@ void main() {
       expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
       expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'repeated offscreen Events searches preserve the parent body offset',
+    (tester) async {
+      void drainKnownGridRoundingOverflow() {
+        FlutterError? overflow;
+        while (true) {
+          final error = tester.takeException();
+          if (error == null) break;
+          expect(error, isA<FlutterError>());
+          overflow = error as FlutterError;
+        }
+        if (overflow != null) {
+          expect(
+            overflow.toString(),
+            'A RenderFlex overflowed by 0.500 pixels on the bottom.',
+          );
+        }
+      }
+
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+
+      final eventsLabel = find.text('Events').last;
+      await tester.tapAt(tester.getCenter(eventsLabel) - const Offset(0, 24));
+      await tester.pumpAndSettle();
+      drainKnownGridRoundingOverflow();
+
+      final events = tester.state<EventsTabState>(find.byType(EventsTab));
+      final scrollController = events.scrollController;
+      expect(scrollController.hasClients, isTrue);
+      expect(scrollController.position.maxScrollExtent, greaterThan(0));
+      scrollController.jumpTo(scrollController.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      drainKnownGridRoundingOverflow();
+      final originalOffset = scrollController.offset;
+
+      for (var cycle = 0; cycle < 3; cycle++) {
+        await tester.tapAt(const Offset(323, 30));
+        await tester.pumpAndSettle();
+        drainKnownGridRoundingOverflow();
+        final searchHeader = find.byType(SearchModeHeader);
+        expect(searchHeader, findsOneWidget);
+        expect(
+          tester.getTopLeft(searchHeader).dy,
+          closeTo(MediaQuery.paddingOf(tester.element(searchHeader)).top, 0.5),
+        );
+        final cancel = tester
+            .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
+            .firstWhere((button) => button.searchFocused);
+        cancel.onTap();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
+        drainKnownGridRoundingOverflow();
+        expect(
+          scrollController.offset,
+          closeTo(originalOffset, 0.5),
+          reason: 'Offscreen search cycle ${cycle + 1} moved the Events page.',
+        );
+      }
+      drainKnownGridRoundingOverflow();
     },
   );
 }

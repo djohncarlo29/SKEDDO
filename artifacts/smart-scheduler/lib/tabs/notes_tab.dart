@@ -260,7 +260,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
 
   void _restoreParentScrollAfterSearch() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _searchFocused || !_scrollController.hasClients) return;
+      if (!mounted || _searchFocused) return;
+      if (!_scrollController.hasClients) return;
       final position = _scrollController.position;
       if (!position.hasContentDimensions) return;
       final restoredOffset = _savedScrollOffset
@@ -275,6 +276,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     late final void Function(AnimationStatus) animListener;
     void releaseLock() {
       if (mounted && _restoringSearchParent) {
+        _restoreParentScrollAfterSearch();
         setState(() => _restoringSearchParent = false);
       }
       animation?.removeStatusListener(animListener);
@@ -303,7 +305,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   /// _searchFocused in _activateTabSearch().  Then focuses the native field.
   void activateSearchMode() {
     if (_searchFocused) return;
-    prepareParentForSearch();
+    // AppShell already captured the parent position before changing the
+    // viewport. Preparing here would overwrite it after the inset clamps.
     _activatedFromOffScreen = true;
     _greyActive = true;
     _greyFadeIn = true;
@@ -507,8 +510,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       _searchSuggestion = null;
       _searchHits = [];
     });
-    _restoreParentScrollAfterSearch();
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
+    _restoreParentScrollAfterSearch();
   }
 
   void _cancelSearch() {
@@ -522,11 +525,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     NativeTextInput.unfocusAll();
     FocusManager.instance.primaryFocus?.unfocus();
     if (wasOffScreen) {
-      // Snap BEFORE removing the overlay — overlay still covers scroll view
-      // so the jump is invisible, and any keyboard-induced drift is gone.
-      if (_scrollController.hasClients) {
-        AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
-      }
       // Remove the overlay but intentionally keep _activatedFromOffScreen=true
       // so the _enforceScrollLock listener stays active throughout the 250 ms
       // header re-expansion animation.  During that animation the viewport
@@ -547,6 +545,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       // Release the lock once the header animation finishes reversing.
       // At that point the viewport is stable, the position is exactly
       // _savedScrollOffset, and no further correction is needed.
+      // Release the lock after the parent viewport has fully returned.
       void Function(AnimationStatus)? animListener;
       animListener = (AnimationStatus status) {
         if (status == AnimationStatus.dismissed) {
@@ -555,8 +554,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         }
       };
       widget.searchModeAnimation?.addStatusListener(animListener!);
-      // Safety valve: release lock at most 400 ms later even if the animation
-      // is interrupted (e.g. user immediately re-enters search mode).
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _activatedFromOffScreen && !_greyActive) {
           setState(() => _activatedFromOffScreen = false);
@@ -579,6 +576,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       _holdParentScrollUntilSearchHeaderSettles();
     }
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
+    if (wasOffScreen) _restoreParentScrollAfterSearch();
   }
 
   @override
@@ -754,68 +752,73 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // sliver once _greyActive / _activatedFromOffScreen are cleared.
         if (_greyActive)
           AnimatedOpacity(
-            opacity: _greyFadeIn ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            // No onEnd: exit is instant (overlay removed directly in
-            // _cancelSearch), so there is no fade-out to wait for.
-            child: ColoredBox(
-              color: resolveThemeColor(kBackgroundColor, context),
-              // The header is a fixed sibling above this independently
-              // rubber-banding content viewport.
-              child: AppWindowContentPadding(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SearchModeHeader(searchBarRow: searchBarRow),
-                    Expanded(
-                      child: CustomScrollView(
-                        primary: false,
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.manual,
-                        slivers: [
-                          SmartSearchResultsSliver(
-                            hits: _searchText.isEmpty
-                                ? const []
-                                : _searchHits,
-                            suggestedQuery: _searchText.isEmpty
-                                ? null
-                                : _searchSuggestion,
-                            onSuggestionTap: _applySearchSuggestion,
-                            eventTopPadding: 16,
-                            eventTileWrapper: (hit, child, previewBuilder) =>
-                                wrapSearchEventTileWithActions(
-                                  hit: hit,
-                                  child: child,
-                                  previewBuilder: previewBuilder,
-                                  onEdit: widget.onEditEvent == null
-                                      ? null
-                                      : () => widget.onEditEvent!(hit.event),
-                                  onDelete: () =>
-                                      confirmDeleteEvent(context, hit.event),
-                                ),
-                            eventTilePressWrapper:
-                                wrapSearchEventTileWithPressScale,
+              opacity: _greyFadeIn ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              // No onEnd: exit is instant (overlay removed directly in
+              // _cancelSearch), so there is no fade-out to wait for.
+              child: ColoredBox(
+                color: resolveThemeColor(kBackgroundColor, context),
+                // The header is a fixed sibling above this independently
+                // rubber-banding content viewport.
+                child: AppWindowContentPadding(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SearchModeHeader(searchBarRow: searchBarRow),
+                      Expanded(
+                        child: CustomScrollView(
+                          primary: false,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
                           ),
-                          if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
-                            SliverToBoxAdapter(
-                              child: SizedBox(
-                                height:
-                                    floatingTabBarContentBottomClearance(
-                                  context,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.manual,
+                          slivers: [
+                            SmartSearchResultsSliver(
+                              hits: _searchText.isEmpty
+                                  ? const []
+                                  : _searchHits,
+                              suggestedQuery: _searchText.isEmpty
+                                  ? null
+                                  : _searchSuggestion,
+                              onSuggestionTap: _applySearchSuggestion,
+                              eventTopPadding: 16,
+                              eventTileWrapper:
+                                  (hit, child, previewBuilder) =>
+                                      wrapSearchEventTileWithActions(
+                                        hit: hit,
+                                        child: child,
+                                        previewBuilder: previewBuilder,
+                                        onEdit: widget.onEditEvent == null
+                                            ? null
+                                            : () =>
+                                                widget.onEditEvent!(hit.event),
+                                        onDelete: () => confirmDeleteEvent(
+                                          context,
+                                          hit.event,
+                                        ),
+                                      ),
+                              eventTilePressWrapper:
+                                  wrapSearchEventTileWithPressScale,
+                            ),
+                            if (_searchText.isNotEmpty &&
+                                _searchHits.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: SizedBox(
+                                  height:
+                                      floatingTabBarContentBottomClearance(
+                                    context,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
           ),
       ],
     );

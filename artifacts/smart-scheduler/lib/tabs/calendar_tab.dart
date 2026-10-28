@@ -1100,7 +1100,8 @@ class CalendarTabState extends State<CalendarTab>
 
   void activateSearchMode() {
     if (_searchFocused) return;
-    prepareParentForSearch();
+    // AppShell prepared the parent before changing the viewport. Repeating
+    // that here would save the already-clamped position instead.
     setState(() {
       _greyActive = true;
       _greyFadeIn = true;
@@ -1148,6 +1149,33 @@ class CalendarTabState extends State<CalendarTab>
       _searchHits = [];
     });
     widget.onSearchCancel?.call();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScrollController? controller;
+      double? offset;
+      if (_view == CalendarView.year) {
+        controller = _yearScrollCtrl;
+        offset = _savedYearScrollOffset;
+      } else if (_view == CalendarView.month) {
+        controller = _monthViewScrollCtrl;
+        offset = _savedMonthScrollOffset;
+      }
+      if (controller != null && offset != null && controller.hasClients) {
+        for (final position in List<ScrollPosition>.of(controller.positions)) {
+          if (!position.hasContentDimensions) continue;
+          AppHeaderScrollView.jumpBodyPositionTo(
+            position,
+            offset
+                .clamp(position.minScrollExtent, position.maxScrollExtent)
+                .toDouble(),
+          );
+        }
+      }
+      setState(() {
+        _greyActive = false;
+        _greyFadeIn = false;
+      });
+    });
   }
 
   /// Debounced 150 ms smart search across all events.

@@ -6947,7 +6947,8 @@ class EventsTabState extends State<EventsTab>
 
   void _restoreParentScrollAfterSearch() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _searchFocused || !_scrollController.hasClients) return;
+      if (!mounted || _searchFocused) return;
+      if (!_scrollController.hasClients) return;
       final position = _scrollController.position;
       if (!position.hasContentDimensions) return;
       final restoredOffset = _savedScrollOffset
@@ -6962,6 +6963,7 @@ class EventsTabState extends State<EventsTab>
     late final void Function(AnimationStatus) animListener;
     void releaseLock() {
       if (mounted && _restoringSearchParent) {
+        _restoreParentScrollAfterSearch();
         setState(() => _restoringSearchParent = false);
       }
       animation?.removeStatusListener(animListener);
@@ -6985,7 +6987,8 @@ class EventsTabState extends State<EventsTab>
 
   void activateSearchMode() {
     if (_searchFocused) return;
-    prepareParentForSearch();
+    // AppShell already captured the parent position before changing the
+    // viewport. Preparing here would overwrite it after the inset clamps.
     _activatedFromOffScreen = true;
     _greyActive = true;
     _greyFadeIn = true;
@@ -8020,8 +8023,8 @@ class EventsTabState extends State<EventsTab>
       _searchOverflow = [];
       _searchAll = [];
     });
-    _restoreParentScrollAfterSearch();
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
+    _restoreParentScrollAfterSearch();
   }
 
   void _cancelSearch() {
@@ -8037,11 +8040,6 @@ class EventsTabState extends State<EventsTab>
     NativeTextInput.unfocusAll();
     FocusManager.instance.primaryFocus?.unfocus();
     if (wasOffScreen) {
-      // Snap BEFORE removing the overlay — overlay still covers scroll view
-      // so the jump is invisible, and any keyboard-induced drift is gone.
-      if (_scrollController.hasClients) {
-        AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
-      }
       // Remove the overlay but intentionally keep _activatedFromOffScreen=true
       // so the _enforceScrollLock listener stays active throughout the 250 ms
       // header re-expansion animation.  During that animation the viewport
@@ -8069,8 +8067,6 @@ class EventsTabState extends State<EventsTab>
         }
       };
       widget.searchModeAnimation?.addStatusListener(animListener!);
-      // Safety valve: release lock at most 400 ms later even if the animation
-      // is interrupted (e.g. user immediately re-enters search mode).
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _activatedFromOffScreen && !_greyActive) {
           setState(() => _activatedFromOffScreen = false);
@@ -8092,6 +8088,7 @@ class EventsTabState extends State<EventsTab>
       _holdParentScrollUntilSearchHeaderSettles();
     }
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
+    if (wasOffScreen) _restoreParentScrollAfterSearch();
   }
 
   @override

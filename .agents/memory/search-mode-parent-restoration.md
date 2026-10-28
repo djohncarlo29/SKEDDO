@@ -24,3 +24,9 @@ Off-screen search is an overlay, not a toolbar destination: keep the parent tool
 **Why:** Switching to an empty toolbar route on off-screen search exit replays the package's materialize/blur transition, making the parent chrome react to a temporary overlay.
 
 **How to apply:** Do not push an empty toolbar route for off-screen search. Let the overlay hide the chrome on the existing route, and verify no toolbar morph runs during entry or exit; keep inline-search route behavior separate.
+
+Off-screen search can change the parent viewport's leading inset. Do not restore a saved scroll offset before AppShell has restored that inset: the temporary smaller max extent clamps the jump. Restore after the parent layout returns, then rebind the shared header transition from the active screen's restored scroll position.
+
+**Why:** A pre-layout restore can appear correct at first but lose toolbar-height distance on every repeated search cycle, while the shared transition remains suspended on stale header state.
+
+**How to apply:** Notes and Events restore their saved body offsets in a post-frame callback after notifying AppShell that search ended. Calendar restores the active Year/Month scroll offset after its shell callback. Rebind the shared header only after that restoration frame.
