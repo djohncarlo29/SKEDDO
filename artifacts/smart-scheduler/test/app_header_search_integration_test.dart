@@ -10,6 +10,7 @@ import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
+import 'package:smart_scheduler/widgets/app_shell_toolbar.dart';
 
 void main() {
   testWidgets(
@@ -252,6 +253,17 @@ void main() {
       expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 2);
       expect(find.byType(SearchModeHeader), findsNothing);
 
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+      expect(find.byType(AppShellPinnedToolbar), findsNothing);
+      await tester.tap(find.bySemanticsLabel('Cancel search'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsNothing);
+      expect(tester.takeException(), isNull, reason: 'Events search cancel');
+
       await tapTabIcon('Home');
       expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 0);
       expect(find.byType(SearchModeHeader), findsNothing);
@@ -269,6 +281,7 @@ void main() {
       await tester.tapAt(const Offset(323, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      expect(find.byType(AppShellPinnedToolbar), findsNothing);
       final shellSearchTransform = tester.widget<Transform>(
         find.byKey(const ValueKey('app-shell-search-toolbar-offset')),
       );
@@ -290,10 +303,8 @@ void main() {
         closeTo(MediaQuery.paddingOf(notesContext).top, 0.01),
       );
 
-      tester
-          .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
-          .firstWhere((widget) => widget.searchFocused)
-          .onTap();
+      final cancelFinder = find.bySemanticsLabel('Cancel search');
+      await tester.tap(cancelFinder);
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
@@ -366,10 +377,9 @@ void main() {
           0.01,
         ),
       );
-      tester
-          .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
-          .firstWhere((widget) => widget.searchFocused)
-          .onTap();
+      await tester.tap(find.bySemanticsLabel('Cancel search'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsNothing);
       expect(

@@ -8561,7 +8561,7 @@ class EventsTabState extends State<EventsTab>
     // Impeller/Skia, which was the root cause of the 1-frame flicker.
     // No PageView means no separate GPU compositor layers per page, so there
     // is also no layer-promotion flash when content changes.
-    return _CategoryTapCallback(
+    final page = _CategoryTapCallback(
       onTileTapped: (label, color, sourceContext) {
         _masterFocusAnchorContext = sourceContext;
         _masterFocusAnchorKey = _gridFocusAnchorKeyForLabel(label);
@@ -8946,6 +8946,16 @@ class EventsTabState extends State<EventsTab>
         ],
       ),
     );
+    return SearchHeaderOverlayPortal(
+      visible: _activatedFromOffScreen && _greyActive,
+      top: MediaQuery.paddingOf(context).top,
+      header: SearchModeHeader(
+        searchBarRow: widget.activeDCV == null
+            ? searchBarRow
+            : _buildDcvSearchBarRow(),
+      ),
+      child: page,
+    );
   }
 
   Widget _buildGridSearchOverlay(Widget searchBarRow) {
@@ -8969,7 +8979,10 @@ class EventsTabState extends State<EventsTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SearchModeHeader(searchBarRow: searchBarRow),
+                if (_activatedFromOffScreen)
+                  SizedBox(height: searchBarHeaderExtent(context))
+                else
+                  SearchModeHeader(searchBarRow: searchBarRow),
                 Expanded(
                   child: CustomScrollView(
                     primary: false,
@@ -9011,9 +9024,8 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  Widget _buildDcvSearchOverlay() {
-    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final searchBarRow = Padding(
+  Widget _buildDcvSearchBarRow() {
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
         children: [
@@ -9035,6 +9047,11 @@ class EventsTabState extends State<EventsTab>
         ],
       ),
     );
+  }
+
+  Widget _buildDcvSearchOverlay() {
+    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final searchBarRow = _buildDcvSearchBarRow();
     return Positioned(
       top: _activatedFromOffScreen
           ? -appHeaderToolbarHeightForOverlay(context)
@@ -9059,7 +9076,10 @@ class EventsTabState extends State<EventsTab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SearchModeHeader(searchBarRow: searchBarRow),
+              if (_activatedFromOffScreen)
+                SizedBox(height: searchBarHeaderExtent(context))
+              else
+                SearchModeHeader(searchBarRow: searchBarRow),
               Expanded(
                 child: AppWindowContentPadding(
                   child: SmartDcvSearchResults(

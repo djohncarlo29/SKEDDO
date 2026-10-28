@@ -629,7 +629,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       ),
     );
 
-    return AppHeaderScrollStack(
+    final page = AppHeaderScrollStack(
       children: [
         // ── Main scroll view ──────────────────────────────────────────────
         // Never structurally modified when off-screen search is active.
@@ -792,7 +792,10 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SearchModeHeader(searchBarRow: searchBarRow),
+                    if (_activatedFromOffScreen)
+                      SizedBox(height: searchBarHeaderExtent(context))
+                    else
+                      SearchModeHeader(searchBarRow: searchBarRow),
                     Expanded(
                       child: CustomScrollView(
                         primary: false,
@@ -844,6 +847,12 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           ),
           ),
       ],
+    );
+    return SearchHeaderOverlayPortal(
+      visible: _activatedFromOffScreen && _greyActive,
+      top: MediaQuery.paddingOf(context).top,
+      header: SearchModeHeader(searchBarRow: searchBarRow),
+      child: page,
     );
   }
 }

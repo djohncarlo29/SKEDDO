@@ -2794,9 +2794,8 @@ class CalendarTabState extends State<CalendarTab>
     );
   }
 
-  // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
-  Widget _buildSearchOverlay() {
-    final searchBarRow = Padding(
+  Widget _buildSearchBarRow() {
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
         children: [
@@ -2817,6 +2816,10 @@ class CalendarTabState extends State<CalendarTab>
         ],
       ),
     );
+  }
+
+  // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
+  Widget _buildSearchOverlay() {
     return Positioned(
       top: -appHeaderToolbarHeightForOverlay(context),
       left: 0,
@@ -2831,7 +2834,7 @@ class CalendarTabState extends State<CalendarTab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SearchModeHeader(searchBarRow: searchBarRow),
+              SizedBox(height: searchBarHeaderExtent(context)),
               Expanded(
                 child: CustomScrollView(
                   primary: false,
@@ -3801,6 +3804,14 @@ class CalendarTabState extends State<CalendarTab>
 
                     // ── Full-screen search overlay (same pattern as EventsTab) ──
                     if (_greyActive) _buildSearchOverlay(),
+                    SearchHeaderOverlayPortal(
+                      visible: _searchFocused && _greyActive,
+                      top: MediaQuery.paddingOf(context).top,
+                      header: SearchModeHeader(
+                        searchBarRow: _buildSearchBarRow(),
+                      ),
+                      child: const SizedBox.shrink(),
+                    ),
                   ],
                 ),
               ),

@@ -3380,6 +3380,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 );
               },
               child: navigation_glass.GlassNavigationShell(
+                // The off-screen search overlay replaces the whole pinned
+                // chrome row. Disable the shell itself as well as the
+                // in-route header so no stale pinned item or hit layer remains
+                // above the search field.
+                enabled: !_searchEnteredOffScreen,
                 effectTransition:
                     _searchEnteredOffScreen
                     ? navigation_glass.GlassEffectTransition.identity
