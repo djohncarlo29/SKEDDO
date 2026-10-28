@@ -14,6 +14,34 @@ import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
 void main() {
+  testWidgets('modal back chevron is optically centered by default', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: ModalToolbarGlassButton(
+            icon: CupertinoIcons.chevron_left,
+            iconColor: CupertinoColors.black,
+            surfaceColor: CupertinoColors.white,
+            onTap: _ignoreTap,
+          ),
+        ),
+      ),
+    );
+
+    final chevron = find.byIcon(CupertinoIcons.chevron_left);
+    final opticalOffset = find.ancestor(
+      of: chevron,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Transform &&
+            (widget.transform.getTranslation().x + 2).abs() < 0.001,
+      ),
+    );
+    expect(opticalOffset, findsOneWidget);
+  });
+
   testWidgets('modal toolbar uses package glass icon button in both themes', (
     tester,
   ) async {

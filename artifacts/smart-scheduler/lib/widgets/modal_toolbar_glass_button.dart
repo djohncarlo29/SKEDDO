@@ -44,6 +44,10 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final double iconSize;
   final bool isCheckmark;
   final bool enabled;
+
+  /// Fine pixel offset applied to the glyph inside the circle. A back
+  /// chevron defaults to the app's optical-centering correction when this is
+  /// left at [Offset.zero].
   final Offset iconOffset;
   final bool flipHorizontal;
   final Duration tapDelay;
@@ -127,9 +131,14 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         : followsActionColor
         ? skeddoTintedActionGlassSettingsFor(brightness, resolvedSurface)
         : skeddoBottomBarGlassSettingsFor(brightness);
-    final positionedIcon = widget.iconOffset == Offset.zero
+    final iconOffset = widget.iconOffset != Offset.zero
+        ? widget.iconOffset
+        : widget.icon == CupertinoIcons.chevron_left
+        ? const Offset(-2, 0)
+        : Offset.zero;
+    final positionedIcon = iconOffset == Offset.zero
         ? iconWidget
-        : Transform.translate(offset: widget.iconOffset, child: iconWidget);
+        : Transform.translate(offset: iconOffset, child: iconWidget);
     final transformedIcon = widget.flipHorizontal
         ? Transform.scale(scaleX: -1, child: positionedIcon)
         : positionedIcon;

@@ -17151,7 +17151,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       child: _CalModalCircleButton(
                         icon: CupertinoIcons.chevron_left,
                         iconColor: kPrimaryLabel,
-                        iconOffset: const Offset(-1.5, 0),
+                        iconOffset: const Offset(-2, 0),
                         tapDelay: const Duration(milliseconds: 130),
                         onTap: _dismiss,
                       ),

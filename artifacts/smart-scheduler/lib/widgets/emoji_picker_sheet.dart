@@ -1640,7 +1640,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       iconColor: labelColor,
       surfaceColor: cardColor,
       semanticLabel: 'Back',
-      iconOffset: const Offset(-1.5, 0),
+      iconOffset: const Offset(-2, 0),
       tapDelay: const Duration(milliseconds: 130),
       disableTouchMotion: true,
       onTap: _close,

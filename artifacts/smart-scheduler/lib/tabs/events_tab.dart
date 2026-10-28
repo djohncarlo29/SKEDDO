@@ -23353,7 +23353,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       child: _ModalCircleButton(
                         icon: CupertinoIcons.chevron_left,
                         iconColor: resolveThemeColor(kPrimaryLabel, context),
-                        iconOffset: const Offset(-1.5, 0),
+                        iconOffset: const Offset(-2, 0),
                         tapDelay: const Duration(milliseconds: 130),
                         onTap: _dismiss,
                       ),
