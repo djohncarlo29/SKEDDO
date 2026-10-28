@@ -79,7 +79,7 @@ void main() {
             .transform
             .getTranslation()
             .y,
-        lessThan(0),
+        closeTo(0, 0.01),
       );
       expect(
         tester
@@ -89,7 +89,7 @@ void main() {
             .transform
             .getTranslation()
             .y,
-        lessThan(0),
+        closeTo(0, 0.01),
       );
       final cancel = tester
           .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
@@ -259,6 +259,49 @@ void main() {
       )!;
       headerPosition.jumpTo(headerPosition.maxScrollExtent);
       await tester.pumpAndSettle();
+      final notesContext = tester.element(find.byType(NotesTab));
+      final headerInsetBeforeOffscreenSearch =
+          AppHeaderScrollInsetScope.maybeOf(notesContext);
+      final parentOffsetBeforeOffscreenSearch = notes.scrollController.offset;
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsOneWidget);
+      final shellSearchTransform = tester.widget<Transform>(
+        find.byKey(const ValueKey('app-shell-search-toolbar-offset')),
+      );
+      expect(
+        shellSearchTransform.transform.getTranslation().y,
+        closeTo(0, 0.01),
+        reason: 'Off-screen search must not slide the shared toolbar.',
+      );
+      expect(
+        AppHeaderScrollInsetScope.maybeOf(
+          tester.element(find.byType(NotesTab)),
+        ),
+        closeTo(headerInsetBeforeOffscreenSearch, 0.01),
+        reason: 'Off-screen search must leave the shared header in place.',
+      );
+
+      await tester.tap(find.byType(SearchCancelButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(SearchModeHeader), findsNothing);
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('app-shell-search-toolbar-offset')),
+            )
+            .transform
+            .getTranslation()
+            .y,
+        closeTo(0, 0.01),
+        reason: 'Exiting off-screen search must not move the shared toolbar.',
+      );
+      expect(
+        notes.scrollController.offset,
+        closeTo(parentOffsetBeforeOffscreenSearch, 0.01),
+        reason: 'Off-screen search must restore the original parent position.',
+      );
+
       await tester.tapAt(const Offset(323, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);

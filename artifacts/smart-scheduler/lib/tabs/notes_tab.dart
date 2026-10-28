@@ -527,15 +527,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       if (_scrollController.hasClients) {
         AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
       }
-      // Remove the overlay but intentionally keep _activatedFromOffScreen=true
-      // so the _enforceScrollLock listener stays active throughout the 250 ms
-      // header re-expansion animation.  During that animation the viewport
-      // height changes each frame and BouncingScrollPhysics can silently
-      // correct the position away from _savedScrollOffset — the listener
-      // prevents that correction from ever taking effect.  The main sliver
-      // stays as SizedBox(height:58) while the lock is held; because the
-      // user has scrolled past the search bar, that placeholder is off-screen
-      // and completely invisible.
+      // Remove the overlay but briefly keep _activatedFromOffScreen=true so
+      // _enforceScrollLock can prevent keyboard dismissal from correcting the
+      // saved parent offset. The shell header itself stays stationary.
       setState(() {
         _searchFocused = false;
         _searchText = '';
@@ -544,9 +538,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         _greyActive = false;
         // _activatedFromOffScreen intentionally NOT cleared here.
       });
-      // Release the lock once the header animation finishes reversing.
-      // At that point the viewport is stable, the position is exactly
-      // _savedScrollOffset, and no further correction is needed.
+      // Release the lock once the keyboard/viewport has settled.
       void Function(AnimationStatus)? animListener;
       animListener = (AnimationStatus status) {
         if (status == AnimationStatus.dismissed) {
@@ -555,8 +547,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         }
       };
       widget.searchModeAnimation?.addStatusListener(animListener!);
-      // Safety valve: release lock at most 400 ms later even if the animation
-      // is interrupted (e.g. user immediately re-enters search mode).
+      // Safety valve for platforms that do not deliver the expected status
+      // transition while the keyboard is dismissing.
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted && _activatedFromOffScreen && !_greyActive) {
           setState(() => _activatedFromOffScreen = false);
@@ -607,6 +599,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
             key: _searchCancelKey,
             animation: widget.searchModeAnimation,
             searchFocused: _searchFocused,
+            instant: _activatedFromOffScreen,
             onTap: _cancelSearch,
           ),
         ],
@@ -755,7 +748,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         if (_greyActive)
           AnimatedOpacity(
             opacity: _greyFadeIn ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 250),
+            duration: _activatedFromOffScreen
+                ? Duration.zero
+                : const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
             // No onEnd: exit is instant (overlay removed directly in
             // _cancelSearch), so there is no fade-out to wait for.

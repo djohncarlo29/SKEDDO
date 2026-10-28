@@ -2810,6 +2810,7 @@ class CalendarTabState extends State<CalendarTab>
           SearchCancelButton(
             key: _searchCancelKey,
             searchFocused: true,
+            instant: true,
             onTap: cancelSearch,
             animation: widget.searchModeAnimation,
           ),
@@ -2819,7 +2820,7 @@ class CalendarTabState extends State<CalendarTab>
     return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 250),
+        duration: Duration.zero,
         curve: Curves.easeInOut,
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
