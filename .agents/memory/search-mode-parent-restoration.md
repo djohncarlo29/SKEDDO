@@ -18,3 +18,9 @@ Portrait inline search keeps the same search-bar widget in the pinned header whi
 **Why:** The inline result viewport must bounce independently, while the search bar and separator remain fixed. The shared header slot preserves the search field state and avoids a frame-long disappearance during entry or exit.
 
 **How to apply:** Keep the fixed search header in the shared third-level header slot, pin that slot during inline search, and disable its normal rubberband translation. Do not change the off-screen overlay path.
+
+Off-screen search is an overlay, not a toolbar destination: keep the parent toolbar route stable while the overlay hides its pinned chrome. Inline search may use its own toolbar transition.
+
+**Why:** Switching to an empty toolbar route on off-screen search exit replays the package's materialize/blur transition, making the parent chrome react to a temporary overlay.
+
+**How to apply:** Do not push an empty toolbar route for off-screen search. Let the overlay hide the chrome on the existing route, and verify no toolbar morph runs during entry or exit; keep inline-search route behavior separate.

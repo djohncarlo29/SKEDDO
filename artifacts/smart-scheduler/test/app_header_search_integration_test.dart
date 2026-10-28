@@ -1,5 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
+    show
+        GlassNavigationShell,
+        GlassNavigationShellState;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/main.dart';
@@ -332,6 +337,13 @@ void main() {
       final transition = AppHeaderScrollInsetScope.titleTransitionOf(
         tester.element(notes),
       )!;
+      final toolbarShell = tester.state<
+        navigation_glass.GlassNavigationShellState
+      >(find.byType(navigation_glass.GlassNavigationShell));
+      final toolbarBeforeSearch = toolbarShell.resolveState();
+      expect(toolbarBeforeSearch, isNotNull);
+      final initialToolbar = toolbarBeforeSearch!;
+      expect(initialToolbar.settled, isTrue);
       expect(transition.collapseProgress, closeTo(0, 0.001));
       expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
 
@@ -344,9 +356,17 @@ void main() {
       final parentHeaderPosition = transition.position!;
       final parentHeaderPixels = parentHeaderPosition.pixels;
       await tester.tapAt(const Offset(323, 30));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
 
       expect(find.byType(SearchModeHeader), findsOneWidget);
+      final toolbarDuringSearch = toolbarShell.resolveState();
+      expect(
+        toolbarDuringSearch == null || toolbarDuringSearch.settled,
+        isTrue,
+        reason: 'Offscreen search must not start a toolbar morph.',
+      );
+      await tester.pumpAndSettle();
       expect(transition.collapseProgress, closeTo(0, 0.001));
       expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
       expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));
@@ -355,9 +375,32 @@ void main() {
           .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
           .firstWhere((button) => button.searchFocused);
       cancel.onTap();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      final toolbarDuringExit = toolbarShell.resolveState();
+      expect(
+        toolbarDuringExit == null || toolbarDuringExit.settled,
+        isTrue,
+        reason: 'Closing offscreen search must not start a toolbar morph.',
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(SearchModeHeader), findsNothing);
+      final toolbarAfterSearch = toolbarShell.resolveState();
+      expect(toolbarAfterSearch, isNotNull);
+      expect(
+        toolbarAfterSearch!.settled,
+        isTrue,
+        reason: 'Closing offscreen search must not rematerialize the toolbar.',
+      );
+      expect(
+        toolbarAfterSearch.to.leading,
+        hasLength(initialToolbar.to.leading.length),
+      );
+      expect(
+        toolbarAfterSearch.to.actions,
+        hasLength(initialToolbar.to.actions.length),
+      );
       expect(transition.collapseProgress, closeTo(0, 0.001));
       expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
       expect(parentHeaderPosition.pixels, closeTo(parentHeaderPixels, 0.5));

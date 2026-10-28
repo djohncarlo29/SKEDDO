@@ -2826,7 +2826,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   String _toolbarDestinationKey() {
     return appShellToolbarConfigurationKey(
-      searchFocused: _searchToolbarHidden.value,
+      // Offscreen search covers the page; it is not a new toolbar
+      // destination. Keep the existing route so leaving the overlay cannot
+      // replay the package's materialize/blur transition.
+      searchFocused: _searchToolbarHidden.value && !_searchEnteredOffScreen,
       selectedTabIndex: _selectedIndex,
       dcvToolbarVisible: _dcvToolbarVisible,
     );
