@@ -4174,27 +4174,38 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ), // GlassNavigationShell / outer chrome animation
                 if (_searchEnteredOffScreen && _searchFocused)
                   Positioned(
-                    top: MediaQuery.paddingOf(context).top,
+                    top: 0,
                     left: 0,
                     right: 0,
                     bottom: floatingTabBarContentBottomClearance(
                       context,
                       finalContentGap: 0,
                     ),
-                    child: ValueListenableBuilder<int>(
-                      valueListenable: _searchOverlayRevision,
-                      builder: (context, _, __) {
-                        final overlay = switch (_selectedIndex) {
-                          0 => _notesTabKey.currentState
-                              ?.buildOffscreenSearchOverlay(),
-                          1 => _calendarTabKey.currentState
-                              ?.buildOffscreenSearchOverlay(),
-                          2 => _eventsTabKey.currentState
-                              ?.buildOffscreenSearchOverlay(),
-                          _ => null,
-                        };
-                        return overlay ?? const SizedBox.shrink();
-                      },
+                    child: ColoredBox(
+                      key: const ValueKey(
+                        'offscreen-search-safe-area-background',
+                      ),
+                      color: backgroundColor,
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.paddingOf(context).top,
+                        ),
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _searchOverlayRevision,
+                          builder: (context, _, __) {
+                            final overlay = switch (_selectedIndex) {
+                              0 => _notesTabKey.currentState
+                                  ?.buildOffscreenSearchOverlay(),
+                              1 => _calendarTabKey.currentState
+                                  ?.buildOffscreenSearchOverlay(),
+                              2 => _eventsTabKey.currentState
+                                  ?.buildOffscreenSearchOverlay(),
+                              _ => null,
+                            };
+                            return overlay ?? const SizedBox.shrink();
+                          },
+                        ),
+                      ),
                     ),
                   ),
               ],

@@ -362,6 +362,17 @@ void main() {
 
       expect(find.byType(SearchModeHeader), findsOneWidget);
       final searchHeader = find.byType(SearchModeHeader);
+      final safeAreaSearchBackground = find.byKey(
+        const ValueKey('offscreen-search-safe-area-background'),
+      );
+      expect(safeAreaSearchBackground, findsOneWidget);
+      expect(tester.getTopLeft(safeAreaSearchBackground).dy, 0);
+      expect(
+        tester
+            .widget<ColoredBox>(safeAreaSearchBackground)
+            .color,
+        resolveThemeColor(kBackgroundColor, tester.element(searchHeader)),
+      );
       expect(
         tester.getTopLeft(searchHeader).dy,
         closeTo(MediaQuery.paddingOf(tester.element(searchHeader)).top, 0.5),
