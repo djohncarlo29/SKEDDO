@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
+    show LiquidGlassLens, LiquidGlassShape, LiquidGlassView;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
     show GlassButton, GlassButtonStyle, GlassQuality, LiquidOval;
@@ -28,6 +30,7 @@ class ModalToolbarGlassButton extends StatefulWidget {
     this.peakScale,
     this.disableTouchMotion = false,
     this.groupedGlass = false,
+    this.useSliderRenderer = false,
     this.semanticLabel,
   });
 
@@ -60,6 +63,10 @@ class ModalToolbarGlassButton extends StatefulWidget {
   /// Uses the settings and render layer from an enclosing
   /// AdaptiveLiquidGlassLayer so adjacent glass controls can blend.
   final bool groupedGlass;
+
+  /// Paints the glass with the LiquidGlassSlider renderer while retaining
+  /// this button's existing press-scale and stretch interaction.
+  final bool useSliderRenderer;
   final String? semanticLabel;
 
   @override
@@ -157,7 +164,49 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         : 'Action';
 
     final Widget renderedButton;
-    if (activeTintedCheckmark) {
+    if (widget.useSliderRenderer && !activeTintedCheckmark) {
+      final lens = slider_glass.LiquidGlassLens(
+        style: skeddoSliderGlassStyleFor(
+          brightness,
+          shape: slider_glass.LiquidGlassShape.squircle(
+            cornerRadius: widget.size / 2,
+          ),
+        ),
+        child: ClipOval(child: transformedIcon),
+      );
+      final interactiveShell = navigation_glass.GlassButton.custom(
+        onTap: _handleTap,
+        width: widget.size,
+        height: widget.size,
+        shape: const navigation_glass.LiquidOval(),
+        quality: navigation_glass.GlassQuality.premium,
+        interactionScale: interactionScale,
+        stretch: stretch,
+        anchorStretch: anchorStretch,
+        resistance: 0.01,
+        enabled: _canTap,
+        style: navigation_glass.GlassButtonStyle.transparent,
+        settings: null,
+        useOwnLayer: false,
+        glowColor: const Color(0x00000000),
+        glowOpacity: 0,
+        glowBlurRadius: 0,
+        glowSpreadRadius: 0,
+        ambientBaseLight: 0,
+        label: widget.semanticLabel ?? fallbackLabel,
+        child: lens,
+      );
+      renderedButton = widget.groupedGlass
+          ? interactiveShell
+          : slider_glass.LiquidGlassView(
+              backgroundWidget: ColoredBox(
+                color: resolveThemeColor(kBackgroundColor, context),
+              ),
+              realTimeCapture: false,
+              useSync: true,
+              child: interactiveShell,
+            );
+    } else if (activeTintedCheckmark) {
       // Keep all visual layers inside one transparent package GlassButton so
       // its LiquidStretch transforms the color fill, refraction, lighting, and
       // glyph together.

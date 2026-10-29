@@ -5,12 +5,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart'
     show DeviceGestureSettings, kTouchSlop;
 import 'package:flutter_sficon/flutter_sficon.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass
-    show
-        AdaptiveLiquidGlassLayer,
-        GlassContainer,
-        GlassQuality,
-        LiquidRoundedSuperellipse;
+import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
+    show LiquidGlassBlender, LiquidGlassLens, LiquidGlassShape, LiquidGlassView;
 import '../app_settings.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
@@ -653,25 +649,34 @@ class AppSearchBarState extends State<AppSearchBar>
           ),
         ),
     );
-    Widget buildGlassSurface({required bool grouped}) => DecoratedBox(
-      decoration: ShapeDecoration(
-        color: const Color(0x00000000),
-        shape: searchBarShape,
-        shadows: resolveThemeShadows(kCardShadow, context),
-      ),
-      child: liquid_glass.GlassContainer(
-        shape: const liquid_glass.LiquidRoundedSuperellipse(
-          borderRadius: kSearchBarCornerRadius,
-        ),
-        settings: grouped
-            ? null
-            : skeddoPinnedNavigationGlassSettingsFor(
-                MediaQuery.platformBrightnessOf(context),
-              ),
-        useOwnLayer: !grouped,
+    Widget buildGlassSurface({required bool grouped}) {
+      final brightness = CupertinoTheme.brightnessOf(context);
+      final lensShape = slider_glass.LiquidGlassShape.squircle(
+        cornerRadius: kSearchBarCornerRadius,
+      );
+      final lens = slider_glass.LiquidGlassLens(
+        style: skeddoSliderGlassStyleFor(brightness, shape: lensShape),
         child: searchBarContents,
-      ),
-    );
+      );
+      final decorated = DecoratedBox(
+        decoration: ShapeDecoration(
+          color: const Color(0x00000000),
+          shape: searchBarShape,
+          shadows: resolveThemeShadows(kCardShadow, context),
+        ),
+        child: lens,
+      );
+
+      if (grouped) return decorated;
+      return slider_glass.LiquidGlassView(
+        backgroundWidget: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, context),
+        ),
+        realTimeCapture: false,
+        useSync: true,
+        child: decorated,
+      );
+    }
 
     if (widget.groupedGlass) {
       return buildGlassSurface(grouped: true);
@@ -694,17 +699,28 @@ class SearchBarGlassGroup extends StatelessWidget {
   Widget build(BuildContext context) => ValueListenableBuilder<double>(
     valueListenable: appLiquidGlassOpacityNotifier,
     child: child,
-    builder: (context, _, child) => liquid_glass.AdaptiveLiquidGlassLayer(
-      settings: skeddoPinnedNavigationGlassSettingsFor(
-        MediaQuery.platformBrightnessOf(context),
-      ),
-      quality: liquid_glass.GlassQuality.premium,
-      clipExpansion: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 15,
-      ),
-      child: child!,
-    ),
+    builder: (context, _, child) {
+      final brightness = CupertinoTheme.brightnessOf(context);
+      return slider_glass.LiquidGlassView(
+        backgroundWidget: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, context),
+        ),
+        realTimeCapture: false,
+        useSync: true,
+        child: slider_glass.LiquidGlassBlender(
+          style: skeddoSliderGlassStyleFor(
+            brightness,
+            shape: slider_glass.LiquidGlassShape.squircle(
+              cornerRadius: kSearchBarCornerRadius,
+            ),
+          ),
+          // The two lenses stay distinct at rest and form one liquid surface
+          // as the cancel circle is stretched into the search field.
+          smoothness: kSearchBarCancelGap,
+          child: child!,
+        ),
+      );
+    },
   );
 }
 
@@ -841,6 +857,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
           iconColor: primaryLabel,
           surfaceColor: surfaceColor,
           groupedGlass: widget.groupedGlass,
+          useSliderRenderer: true,
           size: circleSize,
           iconSize: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
           semanticLabel: 'Cancel search',

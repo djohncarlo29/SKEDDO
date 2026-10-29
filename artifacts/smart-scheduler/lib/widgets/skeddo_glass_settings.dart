@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassThemeVariant, LiquidGlassSettings;
+import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
+    show LiquidGlassShape, LiquidGlassSlider, LiquidGlassStyle;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass;
 
@@ -209,6 +211,24 @@ LiquidGlassSettings _settingsForSharedGlassPosition(
     glassColor: base.glassColor.withValues(
       alpha: skeddoSharedGlassOpacityForPosition(position, brightness),
     ),
+  );
+}
+
+/// Uses the LiquidGlassSlider's renderer and base optics for shared search
+/// surfaces, while keeping their tint and blur connected to the app slider.
+slider_glass.LiquidGlassStyle skeddoSliderGlassStyleFor(
+  Brightness brightness, {
+  required slider_glass.LiquidGlassShape shape,
+  double? sliderPosition,
+}) {
+  final shared = skeddoBottomBarGlassSettingsFor(
+    brightness,
+    sliderPosition: sliderPosition,
+  );
+  return slider_glass.LiquidGlassSlider.defaultStyle.copyWith(
+    shape: shape,
+    color: shared.glassColor,
+    blur: shared.blur,
   );
 }
 
