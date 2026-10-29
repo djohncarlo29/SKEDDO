@@ -89,7 +89,7 @@ void main() {
       expect(stretchShell.width, 40);
       expect(stretchShell.height, 40);
       expect(stretchShell.interactionScale, isNull);
-      expect(stretchShell.stretch, 0.15);
+      expect(stretchShell.stretch, 0.5);
       expect(stretchShell.style, navigation_glass.GlassButtonStyle.transparent);
       expect(stretchShell.child, isA<Stack>());
       expect(
@@ -223,7 +223,7 @@ void main() {
     expect(button.settings!.glassColor.a, closeTo(0.614, 0.001));
   });
 
-  testWidgets('modal toolbars match pinned AppShell press motion', (
+  testWidgets('modal toolbars match standalone AppShell press motion', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -253,7 +253,7 @@ void main() {
       find.byType(navigation_glass.GlassButton).first,
     );
     expect(standardButton.interactionScale, isNull);
-    expect(standardButton.stretch, 0.15);
+    expect(standardButton.stretch, 0.5);
     expect(standardButton.anchorStretch, isTrue);
 
     final shellFinder = find.byWidgetPredicate(
@@ -265,7 +265,7 @@ void main() {
       shellFinder,
     );
     expect(checkmarkShell.interactionScale, isNull);
-    expect(checkmarkShell.stretch, 0.15);
+    expect(checkmarkShell.stretch, 0.5);
     expect(checkmarkShell.anchorStretch, isTrue);
   });
 

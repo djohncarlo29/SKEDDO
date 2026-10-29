@@ -58,6 +58,10 @@ dependency_overrides:
   # Forward the built-in Light Mode shadow through GlassPopover's morph layer.
   flutter_liquid_glass_widgets:
     path: packages/flutter_liquid_glass_widgets
+  # Keep the pinned AppShell capsule stretch aligned with standalone glass
+  # buttons and the tab-bar extra action.
+  liquid_glass_widgets:
+    path: packages/liquid_glass_widgets
 
 flutter:
   uses-material-design: true

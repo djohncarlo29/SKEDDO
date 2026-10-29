@@ -100,7 +100,7 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         checkmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
     _canTap = widget.enabled && !disabledBySurface;
     final interactionScale = widget.disableTouchMotion ? 1.0 : widget.peakScale;
-    final stretch = widget.disableTouchMotion ? 0.0 : 0.15;
+    final stretch = widget.disableTouchMotion ? 0.0 : 0.5;
     final anchorStretch = !widget.disableTouchMotion;
 
     final neutralSurfaces = [
