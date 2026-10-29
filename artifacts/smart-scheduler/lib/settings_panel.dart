@@ -610,7 +610,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         final selectedSwatch = _kAccentSwatches[appAccentNotifier.value];
         final swatch = usesSystemAccent
             ? _AccentSwatch(
-                'System Setting',
+                'System',
                 appSystemAccentColorNotifier.value,
               )
             : selectedSwatch;
