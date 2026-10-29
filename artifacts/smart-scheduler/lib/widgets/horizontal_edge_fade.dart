@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'edge_fade_metrics.dart';
 
 /// Adds the same edge treatment used by the large header title scroller to a
 /// one-line horizontal content surface.
@@ -27,6 +28,12 @@ class HorizontalEdgeFade extends StatefulWidget {
   final double trailingInset;
   final TextEditingController? controller;
   final ScrollController? scrollController;
+  /// Optional metrics from a text input whose scrolling is hosted outside
+  /// Flutter's Scrollable tree (for example, the web DOM input).
+  final ValueListenable<EdgeFadeMetrics?>? metricsListenable;
+  /// Fades the wrapped text by masking its alpha rather than painting a
+  /// surface-colored gradient over it.
+  final bool alphaMask;
   /// Keeps the Large Header behavior for short, rubberbandable content:
   /// show the trailing fade at rest and reveal the leading fade while the
   /// content is pulled toward that edge even when maxScrollExtent is zero.
@@ -66,6 +73,8 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.trailingInset = 0,
     this.controller,
     this.scrollController,
+    this.metricsListenable,
+    this.alphaMask = false,
     this.fadeWhenContentFits = false,
     this.fadeOnRubberbandWhenContentFits = false,
     this.showLeadingFadeWhenContentFits = false,
@@ -94,6 +103,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   bool _showTrailingFade = false;
   TextEditingValue? _lastControllerValue;
   ScrollController? _attachedScrollController;
+  ValueListenable<EdgeFadeMetrics?>? _attachedMetricsListenable;
   FocusNode? _attachedPlaceholderFocusNode;
   ValueListenable<bool>? _attachedPlaceholderFocusListenable;
   double _rubberbandOffset = 0;
@@ -107,6 +117,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     _attachPlaceholderFocusNode();
     _attachPlaceholderFocusListenable();
     _attachScrollController();
+    _attachMetricsListenable();
   }
 
   @override
@@ -120,6 +131,10 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     if (oldWidget.scrollController != widget.scrollController) {
       _detachScrollController();
       _attachScrollController();
+    }
+    if (oldWidget.metricsListenable != widget.metricsListenable) {
+      _detachMetricsListenable();
+      _attachMetricsListenable();
     }
     if (oldWidget.placeholderFocusNode != widget.placeholderFocusNode) {
       _detachPlaceholderFocusNode();
@@ -151,6 +166,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     _detachPlaceholderFocusNode();
     _detachPlaceholderFocusListenable();
     _detachScrollController();
+    _detachMetricsListenable();
     super.dispose();
   }
 
@@ -202,6 +218,34 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void _detachScrollController() {
     _attachedScrollController?.removeListener(_handleScrollControllerChanged);
     _attachedScrollController = null;
+  }
+
+  void _attachMetricsListenable() {
+    final listenable = widget.metricsListenable;
+    if (listenable == null) return;
+    _attachedMetricsListenable = listenable;
+    listenable.addListener(_handleExternalMetricsChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _attachedMetricsListenable != listenable) return;
+      _handleExternalMetricsChanged();
+    });
+  }
+
+  void _detachMetricsListenable() {
+    _attachedMetricsListenable?.removeListener(_handleExternalMetricsChanged);
+    _attachedMetricsListenable = null;
+  }
+
+  void _handleExternalMetricsChanged() {
+    final metrics = _attachedMetricsListenable?.value;
+    if (metrics == null) return;
+    _syncMetrics(
+      pixels: metrics.pixels,
+      minScrollExtent: metrics.minScrollExtent,
+      maxScrollExtent: metrics.maxScrollExtent,
+      extentBefore: metrics.extentBefore,
+      extentAfter: metrics.extentAfter,
+    );
   }
 
   void _handleScrollControllerChanged() {
@@ -292,8 +336,24 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   }
 
   void _sync(ScrollMetrics metrics) {
+    _syncMetrics(
+      pixels: metrics.pixels,
+      minScrollExtent: metrics.minScrollExtent,
+      maxScrollExtent: metrics.maxScrollExtent,
+      extentBefore: metrics.extentBefore,
+      extentAfter: metrics.extentAfter,
+    );
+  }
+
+  void _syncMetrics({
+    required double pixels,
+    required double minScrollExtent,
+    required double maxScrollExtent,
+    required double extentBefore,
+    required double extentAfter,
+  }) {
     if (_resetting) return;
-    final rubberbandOffset = metrics.pixels - metrics.minScrollExtent;
+    final rubberbandOffset = pixels - minScrollExtent;
     // Metrics can lag behind a controller clear by a frame. Text itself is
     // authoritative: an empty field cannot have hidden content on either end.
     if (widget.controller?.text.isEmpty == true) {
@@ -318,7 +378,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       }
       return;
     }
-    final canScroll = metrics.maxScrollExtent > 1.0;
+    final canScroll = maxScrollExtent > 1.0;
     // Most fields only show fades when content is genuinely clipped. Selected
     // modal fields opt into the Large Header behavior, where a short field
     // still fades at its edge during native rubberband motion.
@@ -331,17 +391,17 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     // hidden pixels are produced by a rubberband overscroll: pulling past the
     // start moves the content toward the right edge, while pulling past the
     // end moves it toward the left edge.
-    final isPulledPastStart = metrics.pixels < metrics.minScrollExtent - 1.0;
-    final isPulledPastEnd = metrics.pixels > metrics.maxScrollExtent + 1.0;
+    final isPulledPastStart = pixels < minScrollExtent - 1.0;
+    final isPulledPastEnd = pixels > maxScrollExtent + 1.0;
     final showLeading = fadeEdges &&
         (canScroll
-            ? metrics.extentBefore > 1.0
+            ? extentBefore > 1.0
             : widget.showLeadingFadeWhenContentFits || isPulledPastEnd);
     final showTrailing =
         fadeEdges &&
         widget.showTrailingFade &&
         (canScroll
-            ? metrics.extentAfter > 1.0
+            ? extentAfter > 1.0
             : widget.fadeWhenContentFits || isPulledPastStart);
 
     if (_canScroll == canScroll &&
@@ -357,6 +417,76 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       _showTrailingFade = showTrailing;
       _rubberbandOffset = rubberbandOffset;
     });
+  }
+
+  Shader _alphaMaskShader(
+    Rect bounds, {
+    required bool leading,
+    required bool trailing,
+  }) {
+    final width = bounds.width;
+    if (width <= 0 || (!leading && !trailing)) {
+      return const LinearGradient(
+        colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+      ).createShader(bounds);
+    }
+
+    final availableFadeWidth = math.max(
+      0.0,
+      (width - widget.leadingInset - widget.trailingInset) / 2,
+    );
+    final fadeWidth = math.min(widget.fadeWidth, availableFadeWidth);
+    final leadingStart = (widget.leadingInset / width).clamp(0.0, 1.0);
+    final leadingEnd =
+        ((widget.leadingInset + fadeWidth) / width).clamp(0.0, 1.0);
+    final trailingStart =
+        ((width - widget.trailingInset - fadeWidth) / width).clamp(0.0, 1.0);
+    final trailingEnd =
+        ((width - widget.trailingInset) / width).clamp(0.0, 1.0);
+
+    final stops = <double>{0.0, 1.0};
+    if (leading) {
+      stops
+        ..add(leadingStart)
+        ..add(leadingEnd);
+    }
+    if (trailing) {
+      stops
+        ..add(trailingStart)
+        ..add(trailingEnd);
+    }
+    final sortedStops = stops.toList()..sort();
+
+    double alphaAt(double stop) {
+      var alpha = 1.0;
+      if (leading) {
+        if (stop <= leadingStart) {
+          alpha = 0.0;
+        } else if (stop < leadingEnd && leadingEnd > leadingStart) {
+          alpha = (stop - leadingStart) / (leadingEnd - leadingStart);
+        }
+      }
+      if (trailing) {
+        if (stop >= trailingEnd) {
+          alpha = 0.0;
+        } else if (stop > trailingStart && trailingEnd > trailingStart) {
+          alpha = math.min(
+            alpha,
+            (trailingEnd - stop) / (trailingEnd - trailingStart),
+          );
+        }
+      }
+      return alpha.clamp(0.0, 1.0).toDouble();
+    }
+
+    return LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      stops: sortedStops,
+      colors: sortedStops
+          .map((stop) => const Color(0xFFFFFFFF).withValues(alpha: alphaAt(stop)))
+          .toList(),
+    ).createShader(bounds);
   }
 
   Widget _fade({
@@ -513,6 +643,26 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         // gradient is the edge treatment; this wrapper must not add a second
         // ClipRect boundary before the fade. TextField/scroll-view children
         // still own their normal viewport clipping.
+        final content = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            widget.child,
+            _buildPlaceholder(context, constraints.maxWidth),
+          ],
+        );
+        final fadedContent = widget.alphaMask &&
+                (_showLeadingFade || showTrailingFade)
+            ? ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => _alphaMaskShader(
+                  bounds,
+                  leading: _showLeadingFade,
+                  trailing: showTrailingFade,
+                ),
+                child: content,
+              )
+            : content;
+
         return NotificationListener<ScrollNotification>(
           onNotification: _handleScrollNotification,
           child: NotificationListener<ScrollMetricsNotification>(
@@ -523,35 +673,36 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               // this stack in an unbounded modal Column can make the entire
               // sheet body fail layout while its header still renders.
               children: [
-                widget.child,
-                _buildPlaceholder(context, constraints.maxWidth),
-                Positioned(
-                  // Paint the leading fade from the wrapper edge. Its opaque
-                  // tail covers the reserved control gap before the text
-                  // viewport, so rubberbanded text cannot leak through that
-                  // otherwise transparent padding.
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _fade(
-                    visible: _showLeadingFade,
-                    opaqueAtStart: true,
-                    solidTailWidth: widget.leadingInset,
+                fadedContent,
+                if (!widget.alphaMask) ...[
+                  Positioned(
+                    // Paint the leading fade from the wrapper edge. Its opaque
+                    // tail covers the reserved control gap before the text
+                    // viewport, so rubberbanded text cannot leak through that
+                    // otherwise transparent padding.
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: _fade(
+                      visible: _showLeadingFade,
+                      opaqueAtStart: true,
+                      solidTailWidth: widget.leadingInset,
+                    ),
                   ),
-                ),
-                Positioned(
-                  // Run the trailing gradient continuously through the inset.
-                  // A hard stop at a fractional inset creates the visible slit
-                  // between the fade and the text field's action reservation.
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _fade(
-                    visible: showTrailingFade,
-                    opaqueAtStart: false,
-                    solidTailWidth: widget.trailingInset,
+                  Positioned(
+                    // Run the trailing gradient continuously through the inset.
+                    // A hard stop at a fractional inset creates the visible slit
+                    // between the fade and the text field's action reservation.
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: _fade(
+                      visible: showTrailingFade,
+                      opaqueAtStart: false,
+                      solidTailWidth: widget.trailingInset,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

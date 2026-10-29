@@ -74,7 +74,7 @@
 - [Events search overlay rendering](events-search-overlay-rendering.md) — search overlays must render the shared result widgets; DCV scopes ranking only, never visibility.
 - [DCV offscreen search keyboard viewport](dcv-search-keyboard-viewport.md) — reserve keyboard height around results, remove inner viewInsets, and restore tab-bar clearance after dismissal.
 - [Edge-fade layout bounds](horizontal-fade-layout-bounds.md) — shared horizontal and vertical fade wrappers must use natural-height Stack sizing; StackFit.expand breaks modal Column layouts.
-- [Horizontal fade surface matching](horizontal-fade-surface-matching.md) — fade endpoints must resolve to the exact surface behind each text row, especially modal cards in dark mode.
+- [Horizontal fade rendering](horizontal-fade-surface-matching.md) — use exact surface colors for blends; alpha-only fades need Flutter and DOM masks, since web inputs bypass ShaderMask.
 - [Horizontal fade control gaps](horizontal-fade-control-gaps.md) — calculate the 16px visual gap from the actual control, accounting for existing layout spacing and overlaid icon width.
 - [Temporal composition API compatibility](temporal-composition-api.md) — shared event temporal composition must use the canonical model copy API and keep date/time precision enums distinct.
 - [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.

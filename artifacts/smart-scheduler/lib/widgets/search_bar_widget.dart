@@ -5,6 +5,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart'
     show DeviceGestureSettings, kTouchSlop;
 import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass
+    show GlassContainer, LiquidRoundedSuperellipse;
+import '../app_settings.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
 import 'app_window_content_boundary.dart';
@@ -12,8 +15,10 @@ import 'native_text_input.dart';
 import 'selection_handle_haptics.dart';
 import 'fixed_size_icon.dart';
 import 'horizontal_edge_fade.dart';
+import 'edge_fade_metrics.dart';
 import 'modal_toolbar_glass_button.dart';
 import 'app_shell_navigation_scope.dart';
+import 'skeddo_glass_settings.dart';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 // kSbCornerRadius is the shared 24 px card/section radius. The search bar's
@@ -197,6 +202,7 @@ class AppSearchBarState extends State<AppSearchBar>
 
   late final AnimationController _pulseCtrl;
   late final ScrollController _scrollController;
+  late final ValueNotifier<EdgeFadeMetrics?> _edgeFadeMetricsNotifier;
   late final ValueNotifier<bool> _placeholderFocusNotifier;
   late final ValueNotifier<Color> _selectionColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
@@ -212,6 +218,7 @@ class AppSearchBarState extends State<AppSearchBar>
       _selectionColorNotifier,
     );
     _scrollController = ScrollController();
+    _edgeFadeMetricsNotifier = ValueNotifier<EdgeFadeMetrics?>(null);
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -224,6 +231,7 @@ class AppSearchBarState extends State<AppSearchBar>
   void dispose() {
     _pulseCtrl.dispose();
     _scrollController.dispose();
+    _edgeFadeMetricsNotifier.dispose();
     _placeholderFocusNotifier.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
@@ -426,16 +434,10 @@ class AppSearchBarState extends State<AppSearchBar>
     const searchBarShape = BoundedSquircleStadiumBorder(
       radius: kSearchBarCornerRadius,
     );
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: surfaceColor,
-        shape: searchBarShape,
-        shadows: resolveThemeShadows(kCardShadow, context),
-      ),
-      child: ClipPath(
-        clipper: ShapeBorderClipper(shape: searchBarShape),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
+    final searchBarContents = ClipPath(
+      clipper: ShapeBorderClipper(shape: searchBarShape),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
           padding: const EdgeInsets.symmetric(
             vertical: kSearchBarVerticalPadding,
           ),
@@ -471,12 +473,14 @@ class AppSearchBarState extends State<AppSearchBar>
                           // is pulled past that edge; resting fitting text has
                           // no hidden content and therefore no fade.
                           fadeOnRubberbandWhenContentFits: true,
+                          alphaMask: true,
                           // The editable viewport spans from icon edge to icon
                           // edge. Its content has one 8 px inset on each side,
                           // and the fades begin exactly at those usable-field
                           // boundaries.
                           leadingInset: kSearchFieldFadeEdgeGap,
                           trailingInset: kSearchFieldFadeEdgeGap,
+                          metricsListenable: _edgeFadeMetricsNotifier,
                           placeholderText: widget.placeholder,
                           placeholderTextStyle: placeholderStyle,
                           placeholderFocusListenable:
@@ -487,6 +491,11 @@ class AppSearchBarState extends State<AppSearchBar>
                             controller: widget.controller,
                             caretToEndOnFirstTap: true,
                             scrollController: _scrollController,
+                            metricsListenable: _edgeFadeMetricsNotifier,
+                            alphaEdgeFade: true,
+                            alphaFadeWidth: 36,
+                            alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
+                            alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
                             onFocusChanged: (focused) {
                               _placeholderFocusNotifier.value = focused;
                               widget.onFocusChanged?.call(focused);
@@ -635,7 +644,30 @@ class AppSearchBarState extends State<AppSearchBar>
             ),
           ),
         ),
-      ),
+    );
+    return ValueListenableBuilder<double>(
+      valueListenable: appLiquidGlassOpacityNotifier,
+      child: searchBarContents,
+      builder: (context, _, child) {
+        final settings = skeddoPinnedNavigationGlassSettingsFor(
+          MediaQuery.platformBrightnessOf(context),
+        );
+        return DecoratedBox(
+          decoration: ShapeDecoration(
+            color: const Color(0x00000000),
+            shape: searchBarShape,
+            shadows: resolveThemeShadows(kCardShadow, context),
+          ),
+          child: liquid_glass.GlassContainer(
+            shape: const liquid_glass.LiquidRoundedSuperellipse(
+              borderRadius: kSearchBarCornerRadius,
+            ),
+            settings: settings,
+            useOwnLayer: true,
+            child: child!,
+          ),
+        );
+      },
     );
   }
 }

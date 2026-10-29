@@ -26,6 +26,10 @@ class NativeTextInput extends StatefulWidget {
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
   final bool caretToEndOnFirstTap;
+  final bool alphaEdgeFade;
+  final double alphaFadeWidth;
+  final double alphaFadeLeadingInset;
+  final double alphaFadeTrailingInset;
 
   final ValueChanged<bool>? onFocusChanged;
 
@@ -43,6 +47,10 @@ class NativeTextInput extends StatefulWidget {
     this.selectionColor,
     this.selectionControls,
     this.caretToEndOnFirstTap = false,
+    this.alphaEdgeFade = false,
+    this.alphaFadeWidth = 36,
+    this.alphaFadeLeadingInset = 0,
+    this.alphaFadeTrailingInset = 0,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,
@@ -121,6 +129,7 @@ class NativeTextInput extends StatefulWidget {
 class _NativeTextInputState extends State<NativeTextInput> {
   late final String _viewType;
   late final html.HtmlElement _element;
+  late final html.CanvasRenderingContext2D _measureContext;
   StreamSubscription<html.Event>? _inputSub;
   StreamSubscription<html.Event>? _scrollSub;
   StreamSubscription<html.Event>? _focusSub;
@@ -130,6 +139,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
   bool _updatingFromNative = false;
   bool _metricsScheduled = false;
   bool _wasFocusedAtPointerDown = false;
+  String? _lastAlphaEdgeMask;
 
   @override
   void initState() {
@@ -140,6 +150,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _element = widget.multiline
         ? html.TextAreaElement()
         : html.InputElement(type: 'text');
+    _measureContext = html.CanvasElement().context2D;
     _setNativeText(widget.controller.text);
     _inputSub = _element.onInput.listen((_) => _syncTextFromNative());
     _scrollSub = _element.onScroll.listen((_) => _publishScrollMetrics());
@@ -279,12 +290,44 @@ class _NativeTextInputState extends State<NativeTextInput> {
   }
 
   void _publishScrollMetrics() {
+    if (widget.multiline) {
+      final notifier = widget.metricsListenable;
+      if (notifier == null) return;
+      final viewport = _element.clientHeight.toDouble();
+      final content = _element.scrollHeight.toDouble();
+      final maxExtent = math.max(0.0, content - viewport);
+      final pixels = _element.scrollTop.toDouble();
+      notifier.value = EdgeFadeMetrics(
+        pixels: pixels,
+        minScrollExtent: 0,
+        maxScrollExtent: maxExtent,
+        extentBefore: math.max(0.0, pixels),
+        extentAfter: math.max(0.0, maxExtent - pixels),
+      );
+      return;
+    }
+
+    final horizontalContentWidth = _measureSingleLineContentWidth();
+    final horizontalViewportWidth = math.max(
+      0.0,
+      _element.clientWidth -
+          widget.padding.left -
+          widget.padding.right,
+    );
+    final maxExtent = math.max(
+      0.0,
+      horizontalContentWidth - horizontalViewportWidth,
+    );
+    final pixels = _element.scrollLeft.toDouble();
+    _updateAlphaEdgeMask(
+      contentWidth: horizontalContentWidth,
+      viewportWidth: horizontalViewportWidth,
+      pixels: pixels,
+      maxExtent: maxExtent,
+    );
+
     final notifier = widget.metricsListenable;
     if (notifier == null) return;
-    final viewport = _element.clientHeight.toDouble();
-    final content = _element.scrollHeight.toDouble();
-    final maxExtent = math.max(0.0, content - viewport);
-    final pixels = _element.scrollTop.toDouble();
     notifier.value = EdgeFadeMetrics(
       pixels: pixels,
       minScrollExtent: 0,
@@ -292,6 +335,76 @@ class _NativeTextInputState extends State<NativeTextInput> {
       extentBefore: math.max(0.0, pixels),
       extentAfter: math.max(0.0, maxExtent - pixels),
     );
+  }
+
+  double _measureSingleLineContentWidth() {
+    final text = _nativeText;
+    if (text.isEmpty) return 0;
+    _measureContext.font =
+        '${widget.style.fontWeight?.value ?? 400} ${_element.style.fontSize} ${_element.style.fontFamily}';
+    final letterSpacing = widget.style.letterSpacing ?? 0;
+    final measuredWidth = _measureContext.measureText(text).width ?? 0;
+    return (
+      measuredWidth +
+      math.max(0, text.runes.length - 1) * letterSpacing
+    ).toDouble();
+  }
+
+  void _updateAlphaEdgeMask({
+    required double contentWidth,
+    required double viewportWidth,
+    required double pixels,
+    required double maxExtent,
+  }) {
+    if (!widget.alphaEdgeFade ||
+        _nativeText.isEmpty ||
+        contentWidth <= viewportWidth + 1 ||
+        viewportWidth <= 0) {
+      _setAlphaEdgeMask('none');
+      return;
+    }
+
+    final showLeading = pixels > 1;
+    final showTrailing = pixels < maxExtent - 1;
+    if (!showLeading && !showTrailing) {
+      _setAlphaEdgeMask('none');
+      return;
+    }
+
+    final fadeWidth = widget.alphaFadeWidth;
+    final leadingInset = widget.alphaFadeLeadingInset;
+    final trailingInset = widget.alphaFadeTrailingInset;
+    final stops = <String>[];
+    if (showLeading) {
+      stops
+        ..add('transparent 0px')
+        ..add('transparent ${leadingInset}px')
+        ..add('white ${leadingInset + fadeWidth}px');
+    } else {
+      stops.add('white 0px');
+    }
+    if (showTrailing) {
+      stops
+        ..add('white calc(100% - ${trailingInset + fadeWidth}px)')
+        ..add('transparent calc(100% - ${trailingInset}px)')
+        ..add('transparent 100%');
+    } else {
+      stops.add('white 100%');
+    }
+    _setAlphaEdgeMask('linear-gradient(to right, ${stops.join(', ')})');
+  }
+
+  void _setAlphaEdgeMask(String value) {
+    if (_lastAlphaEdgeMask == value) return;
+    _lastAlphaEdgeMask = value;
+    _element.style
+      ..setProperty('mask-mode', 'alpha')
+      ..setProperty('mask-repeat', 'no-repeat')
+      ..setProperty('mask-size', '100% 100%')
+      ..setProperty('mask-image', value)
+      ..setProperty('-webkit-mask-repeat', 'no-repeat')
+      ..setProperty('-webkit-mask-size', '100% 100%')
+      ..setProperty('-webkit-mask-image', value);
   }
 
   String get _nativeText {

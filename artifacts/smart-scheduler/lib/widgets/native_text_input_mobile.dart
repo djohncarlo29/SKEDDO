@@ -37,6 +37,12 @@ class NativeTextInput extends StatefulWidget {
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
   final bool caretToEndOnFirstTap;
+  /// Web-only alpha edge mask configuration. On mobile the enclosing
+  /// HorizontalEdgeFade applies the mask to the Flutter text field.
+  final bool alphaEdgeFade;
+  final double alphaFadeWidth;
+  final double alphaFadeLeadingInset;
+  final double alphaFadeTrailingInset;
   // Fired when the field gains or loses focus. Used by the Notes tab to
   // collapse the header / show the Cancel button when the user taps into
   // the search bar.
@@ -56,6 +62,10 @@ class NativeTextInput extends StatefulWidget {
     this.selectionColor,
     this.selectionControls,
     this.caretToEndOnFirstTap = false,
+    this.alphaEdgeFade = false,
+    this.alphaFadeWidth = 36,
+    this.alphaFadeLeadingInset = 0,
+    this.alphaFadeTrailingInset = 0,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,
