@@ -1242,6 +1242,9 @@ class _SubScreenState extends State<_SubScreen> {
             selectedOption: _selected,
             accentColor: widget.accentColor,
             onSelect: _onSelect,
+            footer: widget.route.title == 'Date Format'
+                ? AppDateFormat.fromSample(_selected)?.contextFooter
+                : null,
           ),
 
         // SliverPadding is intentionally unpainted: this is transparent
@@ -1899,12 +1902,14 @@ class _SubScreenSection extends StatelessWidget {
   // checkmarks and selected-row labels so they match the live accent.
   final Color accentColor;
   final ValueChanged<String> onSelect;
+  final String? footer;
 
   const _SubScreenSection({
     required this.options,
     required this.selectedOption,
     required this.accentColor,
     required this.onSelect,
+    this.footer,
   });
 
   @override
@@ -1927,10 +1932,32 @@ class _SubScreenSection extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: _SettingsCard(
-          rows: rows,
-          cardBg: cardBg,
-          shadowColor: shadowColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsCard(
+              rows: rows,
+              cardBg: cardBg,
+              shadowColor: shadowColor,
+            ),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 8,
+                ),
+                child: Text(
+                  footer!,
+                  style: TextStyle(
+                    fontFamily: kSFProText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: resolveThemeColor(kSecondaryLabel, context),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

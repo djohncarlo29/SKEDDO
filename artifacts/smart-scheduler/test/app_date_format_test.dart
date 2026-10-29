@@ -27,6 +27,61 @@ void main() {
     );
   });
 
+  test('each date format has its requested context footer examples', () {
+    final expected = <String>[
+      'Format Example:\n\n'
+          '- Short: 19/08/2026\n'
+          '- Medium: 19 Aug 2026\n'
+          '- Long: 19 August 2026\n'
+          '- Full: Wednesday, 19 August 2026',
+      'Format Example:\n\n'
+          '- Short: 08/19/26\n'
+          '- Medium: Aug 19, 2026\n'
+          '- Long: August 19, 2026\n'
+          '- Full: Wednesday, August 19, 2026',
+      'Format Example:\n\n'
+          '- Short: 19/08/26\n'
+          '- Medium: 19 Aug 2026\n'
+          '- Long: 19 August 2026\n'
+          '- Full: Wednesday, 19 August 2026',
+      'Format Example:\n\n'
+          '- Short: 08/19/2026\n'
+          '- Medium: Aug 19, 2026\n'
+          '- Long: August 19, 2026\n'
+          '- Full: Wednesday, August 19, 2026',
+      'Format Example:\n\n'
+          '- Short: 19.08.2026\n'
+          '- Medium: 19 Aug 2026\n'
+          '- Long: 19 August 2026\n'
+          '- Full: Wednesday, 19 August 2026',
+      'Format Example:\n\n'
+          '- Short: 19-08-2026\n'
+          '- Medium: 19 Aug 2026\n'
+          '- Long: 19 August 2026\n'
+          '- Full: Wednesday, 19 August 2026',
+      'Format Example:\n\n'
+          '- Short: 2026/08/19\n'
+          '- Medium: Aug 19, 2026\n'
+          '- Long: August 19, 2026\n'
+          '- Full: Wednesday, August 19, 2026',
+      'Format Example:\n\n'
+          '- Short: 2026.08.19\n'
+          '- Medium: Aug 19, 2026\n'
+          '- Long: August 19, 2026\n'
+          '- Full: Wednesday, August 19, 2026',
+      'Format Example:\n\n'
+          '- Short: 2026-08-19\n'
+          '- Medium: Aug 19, 2026\n'
+          '- Long: August 19, 2026\n'
+          '- Full: Wednesday, August 19, 2026',
+    ];
+
+    expect(
+      AppDateFormat.values.map((format) => format.contextFooter).toList(),
+      expected,
+    );
+  });
+
   test('the test default is 08/19/2026', () {
     expect(appDateFormatNotifier.value, AppDateFormat.monthDayYearSlash);
     expect(formatAppDate(sampleDate), '08/19/2026');

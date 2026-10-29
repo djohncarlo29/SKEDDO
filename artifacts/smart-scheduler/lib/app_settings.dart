@@ -601,6 +601,21 @@ enum AppDateFormat {
     };
   }
 
+  String get contextFooter {
+    final dayFirst = parserLocalePreference == DateLocalePreference.dayFirst;
+    final medium = dayFirst ? '19 Aug 2026' : 'Aug 19, 2026';
+    final long = dayFirst ? '19 August 2026' : 'August 19, 2026';
+    final full = dayFirst
+        ? 'Wednesday, 19 August 2026'
+        : 'Wednesday, August 19, 2026';
+
+    return 'Format Example:\n\n'
+        '- Short: $sample\n'
+        '- Medium: $medium\n'
+        '- Long: $long\n'
+        '- Full: $full';
+  }
+
   /// Keep the AI parser's existing ambiguity behavior aligned with formats
   /// that put the day before the month. Year-first display formats retain the
   /// app's established month-first parsing fallback.
