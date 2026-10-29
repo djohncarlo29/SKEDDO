@@ -83,7 +83,7 @@
 - [Targeted style patch context](targeted-style-patch-context.md) — repeated font-size edits need unique surrounding labels plus a diff check to prevent adjacent UI styles changing.
 - [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
 - [Flutter web preview builds](flutter-web-preview-build.md) — restart the managed preview for dependency resolution and compilation; a running server can still serve a stale bundle.
-- [Search cancel and checkmark glass edges](search-cancel-glass-reparenting.md) — preserve search reveal; checkmarks use a 50%-white inner contour over LiquidGlass, thinnest at upper-right/lower-left.
+- [Search cancel and checkmark glass edges](search-cancel-glass-reparenting.md) — keep cancel solid and shared-layer blended; checkmarks retain their 50%-white inner contour.
 - [Editable DCV section keyboard reveal](editable-dcv-section-keyboard.md) — focused section headers near the viewport bottom need post-inset ensureVisible, including after wrapped text grows.
 - [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile new events before permuting headers to avoid stale membership.
 - [Flexible label-value wrapping](flexible-label-value-wrapping.md) — normal rows alternate value wrap, label wrap, value wrap, then label wrap while preserving the gap.

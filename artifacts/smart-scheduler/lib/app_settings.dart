@@ -20,6 +20,7 @@ import 'services/local_storage.dart';
 //   appDefaultViewNotifier   — 'Day' | 'Week' | 'Month' | 'Year'.
 //   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
 //   appDateLocaleNotifier    — monthFirst or dayFirst for ambiguous numeric dates.
+//   appDateFormatNotifier    — the app-wide date display format.
 //   appLiquidGlassOpacityNotifier — 0.2..0.8 material opacity for Liquid Glass
 //     controls, including the floating tab bar and AppShell menu button. Its
 //     slider position is quantized to whole percentage points.
@@ -565,6 +566,169 @@ String get appDefaultCategoryId {
 final ValueNotifier<DateLocalePreference> appDateLocaleNotifier =
     ValueNotifier<DateLocalePreference>(DateLocalePreference.monthFirst);
 
+/// Date formats shown throughout the app. The sample values are also the
+/// visible labels in Settings, so the selected format is always unambiguous.
+enum AppDateFormat {
+  dayMonthYearSlash('19/08/2026'),
+  monthDayYearShortSlash('08/19/26'),
+  dayMonthYearShortSlash('19/08/26'),
+  monthDayYearSlash('08/19/2026'),
+  dayMonthYearDot('19.08.2026'),
+  dayMonthYearDash('19-08-2026'),
+  yearMonthDaySlash('2026/08/19'),
+  yearMonthDayDot('2026.08.19'),
+  yearMonthDayDash('2026-08-19');
+
+  const AppDateFormat(this.sample);
+
+  final String sample;
+
+  String format(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString().padLeft(4, '0');
+    final shortYear = year.substring(year.length - 2);
+    return switch (this) {
+      AppDateFormat.dayMonthYearSlash => '$day/$month/$year',
+      AppDateFormat.monthDayYearShortSlash => '$month/$day/$shortYear',
+      AppDateFormat.dayMonthYearShortSlash => '$day/$month/$shortYear',
+      AppDateFormat.monthDayYearSlash => '$month/$day/$year',
+      AppDateFormat.dayMonthYearDot => '$day.$month.$year',
+      AppDateFormat.dayMonthYearDash => '$day-$month-$year',
+      AppDateFormat.yearMonthDaySlash => '$year/$month/$day',
+      AppDateFormat.yearMonthDayDot => '$year.$month.$day',
+      AppDateFormat.yearMonthDayDash => '$year-$month-$day',
+    };
+  }
+
+  /// Keep the AI parser's existing ambiguity behavior aligned with formats
+  /// that put the day before the month. Year-first display formats retain the
+  /// app's established month-first parsing fallback.
+  DateLocalePreference get parserLocalePreference => switch (this) {
+    AppDateFormat.dayMonthYearSlash ||
+    AppDateFormat.dayMonthYearShortSlash ||
+    AppDateFormat.dayMonthYearDot ||
+    AppDateFormat.dayMonthYearDash => DateLocalePreference.dayFirst,
+    _ => DateLocalePreference.monthFirst,
+  };
+
+  static AppDateFormat? fromName(String? name) {
+    for (final format in AppDateFormat.values) {
+      if (format.name == name) return format;
+    }
+    return null;
+  }
+
+  static AppDateFormat? fromSample(String sample) {
+    for (final format in AppDateFormat.values) {
+      if (format.sample == sample) return format;
+    }
+    return null;
+  }
+}
+
+/// New installs and legacy Date Format settings use MM/DD/YYYY for this test.
+final ValueNotifier<AppDateFormat> appDateFormatNotifier =
+    ValueNotifier<AppDateFormat>(AppDateFormat.monthDayYearSlash);
+
+String formatAppDate(DateTime date, {AppDateFormat? format}) =>
+    (format ?? appDateFormatNotifier.value).format(date);
+
+/// Formats a persisted/event-source date for display without changing its
+/// stored representation. Supports the app's legacy month-name strings, ISO
+/// dates, and numeric dates imported from outside the app.
+String formatStoredAppDate(String raw, {DateTime? resolvedDate}) {
+  final date = resolvedDate ?? _parseStoredAppDate(raw);
+  return date == null ? raw : formatAppDate(date);
+}
+
+DateTime? _parseStoredAppDate(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return null;
+
+  final iso = DateTime.tryParse(value);
+  if (iso != null) return iso;
+
+  const months = <String, int>{
+    'jan': 1,
+    'january': 1,
+    'feb': 2,
+    'february': 2,
+    'mar': 3,
+    'march': 3,
+    'apr': 4,
+    'april': 4,
+    'may': 5,
+    'jun': 6,
+    'june': 6,
+    'jul': 7,
+    'july': 7,
+    'aug': 8,
+    'august': 8,
+    'sep': 9,
+    'sept': 9,
+    'september': 9,
+    'oct': 10,
+    'october': 10,
+    'nov': 11,
+    'november': 11,
+    'dec': 12,
+    'december': 12,
+  };
+  final namedDate = RegExp(
+    r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{2,4})$',
+  ).firstMatch(value);
+  if (namedDate != null) {
+    final month = months[namedDate.group(1)!.toLowerCase()];
+    final day = int.tryParse(namedDate.group(2)!);
+    final year = _expandDateYear(namedDate.group(3)!);
+    if (month != null && day != null && year != null) {
+      return _validDate(year, month, day);
+    }
+  }
+
+  final numericDate = RegExp(
+    r'^(\d{1,4})[./-](\d{1,2})[./-](\d{1,4})$',
+  ).firstMatch(value);
+  if (numericDate == null) return null;
+  final first = numericDate.group(1)!;
+  final second = numericDate.group(2)!;
+  final third = numericDate.group(3)!;
+  final int year;
+  final int month;
+  final int day;
+  if (first.length == 4) {
+    year = int.parse(first);
+    month = int.parse(second);
+    day = int.parse(third);
+  } else {
+    year = _expandDateYear(third) ?? 0;
+    if (appDateFormatNotifier.value.parserLocalePreference ==
+        DateLocalePreference.dayFirst) {
+      day = int.parse(first);
+      month = int.parse(second);
+    } else {
+      month = int.parse(first);
+      day = int.parse(second);
+    }
+  }
+  return year == 0 ? null : _validDate(year, month, day);
+}
+
+int? _expandDateYear(String digits) {
+  final year = int.tryParse(digits);
+  if (year == null) return null;
+  if (digits.length >= 3) return year;
+  return year >= 70 ? 1900 + year : 2000 + year;
+}
+
+DateTime? _validDate(int year, int month, int day) {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  final date = DateTime(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) return null;
+  return date;
+}
+
 /// Minimum material opacity used by the Liquid Glass control.
 ///
 /// The Appearance slider maps its user-facing 0–100% range to 0.2–0.8
@@ -632,6 +796,7 @@ const _kFullMonthNameKey = 'app_full_month_name';
 const _kEventDurationKey = 'app_event_duration';
 const _kDefaultCategoryKey = 'app_default_category';
 const _kDateLocaleKey = 'app_date_locale';
+const _kDateFormatKey = 'app_date_format';
 const _kLiquidGlassOpacityKey = 'app_liquid_glass_opacity';
 const _kPersistedUserCategoriesKey = 'events_user_categories';
 const _kPersistedPinnedCategoriesKey = 'events_pinned_categories';
@@ -745,17 +910,11 @@ Future<void> loadAppSettings() async {
     }
   }
 
-  final dateLocale = prefs.getString(_kDateLocaleKey);
-  DateLocalePreference? savedPreference;
-  for (final item in DateLocalePreference.values) {
-    if (item.name == dateLocale) {
-      savedPreference = item;
-      break;
-    }
-  }
-  if (savedPreference != null) {
-    appDateLocaleNotifier.value = savedPreference;
-  }
+  appDateFormatNotifier.value =
+      AppDateFormat.fromName(prefs.getString(_kDateFormatKey)) ??
+      AppDateFormat.monthDayYearSlash;
+  appDateLocaleNotifier.value =
+      appDateFormatNotifier.value.parserLocalePreference;
 
   final liquidGlassOpacity = prefs.getDouble(_kLiquidGlassOpacityKey);
   if (liquidGlassOpacity != null) {
@@ -771,6 +930,8 @@ Future<void> loadAppSettings() async {
 Future<void> saveAppSetting(String routeTitle, String value) {
   final mode = appTextSizeUsesSystemNotifier.value ? 'system' : 'custom';
   final index = appTextSizeIndexNotifier.value;
+  final dateLocale = appDateLocaleNotifier.value.name;
+  final dateFormat = appDateFormatNotifier.value.name;
   final startOfWeekMode = appStartOfWeekUsesSystemNotifier.value
       ? 'system'
       : 'custom';
@@ -798,10 +959,8 @@ Future<void> saveAppSetting(String routeTitle, String value) {
           appDefaultCategoryNotifier.value,
         );
       case 'Date Format':
-        await prefs.setString(
-          _kDateLocaleKey,
-          appDateLocaleNotifier.value.name,
-        );
+        await prefs.setString(_kDateLocaleKey, dateLocale);
+        await prefs.setString(_kDateFormatKey, dateFormat);
       case 'Liquid Glass':
         final opacity = double.tryParse(value);
         if (opacity != null && opacity.isFinite) {

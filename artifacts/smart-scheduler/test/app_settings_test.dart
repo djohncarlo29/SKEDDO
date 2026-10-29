@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_scheduler/ai/parsed_date.dart';
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/services/app_database.dart';
 import 'package:smart_scheduler/services/local_storage.dart';
@@ -22,6 +23,8 @@ void main() {
     appSystemFirstDayOfWeekNotifier.value = 'Sunday';
     appStartOfWeekUsesSystemNotifier.value = true;
     appStartOfWeekNotifier.value = 'Sunday';
+    appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appDateLocaleNotifier.value = DateLocalePreference.monthFirst;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(systemCalendarChannel, (call) async => 0);
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
@@ -166,5 +169,26 @@ void main() {
       liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value),
       changedPosition,
     );
+  });
+
+  test('Date Format defaults to the requested test selection', () async {
+    await loadAppSettings();
+
+    expect(appDateFormatNotifier.value, AppDateFormat.monthDayYearSlash);
+    expect(appDateFormatNotifier.value.sample, '08/19/2026');
+  });
+
+  test('Date Format selection persists and keeps parser order aligned', () async {
+    appDateFormatNotifier.value = AppDateFormat.dayMonthYearDot;
+    appDateLocaleNotifier.value =
+        AppDateFormat.dayMonthYearDot.parserLocalePreference;
+    await saveAppSetting('Date Format', appDateFormatNotifier.value.sample);
+
+    appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appDateLocaleNotifier.value = DateLocalePreference.monthFirst;
+    await loadAppSettings();
+
+    expect(appDateFormatNotifier.value, AppDateFormat.dayMonthYearDot);
+    expect(appDateLocaleNotifier.value, DateLocalePreference.dayFirst);
   });
 }

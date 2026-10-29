@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 
 import '../app_theme.dart';
+import '../app_settings.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import 'search_bar_widget.dart';
@@ -416,29 +417,6 @@ class _SearchEventTile extends StatelessWidget {
     this.eventTilePressWrapper,
   });
 
-  static String _formatDate(String raw) {
-    const months = {
-      'January': '01',
-      'February': '02',
-      'March': '03',
-      'April': '04',
-      'May': '05',
-      'June': '06',
-      'July': '07',
-      'August': '08',
-      'September': '09',
-      'October': '10',
-      'November': '11',
-      'December': '12',
-    };
-    final parts = raw.split(' ');
-    if (parts.length < 3) return raw;
-    final month = months[parts[0]];
-    if (month == null) return raw;
-    final day = parts[1].replaceAll(',', '').padLeft(2, '0');
-    return '$month/$day/${parts[2]}';
-  }
-
   String _subtitle() {
     final event = hit.event;
     final String? date;
@@ -456,10 +434,10 @@ class _SearchEventTile extends StatelessWidget {
         } else if (eventDay == tomorrow) {
           date = 'Tomorrow';
         } else {
-          date = _formatDate(event.date!);
+          date = formatStoredAppDate(event.date!, resolvedDate: absolute);
         }
       } else {
-        date = _formatDate(event.date!);
+        date = formatStoredAppDate(event.date!);
       }
     }
 

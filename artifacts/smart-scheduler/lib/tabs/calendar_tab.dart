@@ -914,7 +914,7 @@ class CalendarTabState extends State<CalendarTab>
       case CalendarView.month:
         return _monthHeaderName(_dispMonth);
       case CalendarView.day:
-        return '${_kShortMonthNames[_selected.month - 1]} ${_selected.day}';
+        return formatAppDate(_selected);
     }
   }
 
@@ -8230,8 +8230,7 @@ class _DayBannerState extends State<_DayBanner>
   }
 
   String _shortLabel(DateTime d) =>
-      '${_kWeekdaysShort[d.weekday - 1]}, '
-      '${_kMonths[d.month - 1]} ${d.day.toString().padLeft(2, '0')}';
+      '${_kWeekdaysShort[d.weekday - 1]}, ${formatAppDate(d)}';
 
   static double _lineHeight(BuildContext context) {
     final style = resolveThemeTextStyle(_kLabelStyleBase, context);
@@ -8269,8 +8268,7 @@ class _DayBannerState extends State<_DayBanner>
     final style = resolveThemeTextStyle(_kLabelStyleBase, context);
     final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     final contentWidth = math.max(0.0, width - horizontalInset * 2);
-    final datePart =
-        '${_kMonths[date.month - 1]} ${date.day.toString().padLeft(2, '0')}';
+    final datePart = formatAppDate(date);
     final labelWidth = daySubMode == DayViewSubMode.multiDay
         ? math.max(
             0.0,
@@ -8280,7 +8278,7 @@ class _DayBannerState extends State<_DayBanner>
         : contentWidth;
     final currentText = daySubMode == DayViewSubMode.multiDay
         ? '${_kWeekdaysShort[date.weekday - 1]}, $datePart'
-        : '${_kWeekdays[date.weekday - 1]} \u2013 $datePart, ${date.year}';
+        : '${_kWeekdays[date.weekday - 1]} \u2013 $datePart';
     var needsWrap = !_fitsSingleLine(
       context,
       text: currentText,
@@ -8290,8 +8288,7 @@ class _DayBannerState extends State<_DayBanner>
 
     if (daySubMode == DayViewSubMode.multiDay) {
       final nextDate = date.add(const Duration(days: 1));
-      final nextDatePart =
-          '${_kMonths[nextDate.month - 1]} ${nextDate.day.toString().padLeft(2, '0')}';
+      final nextDatePart = formatAppDate(nextDate);
       needsWrap |= !_fitsSingleLine(
         context,
         text: '${_kWeekdaysShort[nextDate.weekday - 1]}, $nextDatePart',
@@ -8317,11 +8314,10 @@ class _DayBannerState extends State<_DayBanner>
     final weekday = short
         ? _kWeekdaysShort[date.weekday - 1]
         : _kWeekdays[date.weekday - 1];
-    final monthDay =
-        '${_kMonths[date.month - 1]} ${date.day.toString().padLeft(2, '0')}';
-    final secondLine = short ? monthDay : '$monthDay, ${date.year}';
+    final formattedDate = formatAppDate(date);
+    final secondLine = formattedDate;
     final singleLine = short
-        ? '$weekday, $monthDay'
+        ? '$weekday, $formattedDate'
         : '$weekday \u2013 $secondLine';
 
     if (_fitsSingleLine(
@@ -8462,10 +8458,7 @@ class _DayBannerState extends State<_DayBanner>
               final tailDay = _kWeekdays[widget.date.weekday - 1].substring(
                 shortDay.length,
               ); // e.g. "day", "sday"
-              final monthDay =
-                  '${_kMonths[widget.date.month - 1]} '
-                  '${widget.date.day.toString().padLeft(2, '0')}';
-              final yearStr = ', ${widget.date.year}';
+              final monthDay = formatAppDate(widget.date);
 
               // ── Multi Day sliding layout ─────────────────────────────────
               // When fully morphed into Multi Day mode AND the user is actively
@@ -8652,7 +8645,7 @@ class _DayBannerState extends State<_DayBanner>
                     ctx,
                     text:
                         '${_kWeekdays[widget.date.weekday - 1]} \u2013 '
-                        '$monthDay$yearStr',
+                        '$monthDay',
                     style: _styleFor(widget.date, ctx),
                     width: math.max(0.0, totalW - inset * 2),
                   )) {
@@ -8686,15 +8679,15 @@ class _DayBannerState extends State<_DayBanner>
                   //   • tailDay   — clips out rightward as t→1 ("day")
                   //   • " – "     — clips out rightward as t→1
                   //   • ", "      — clips  in from left   as t→1
-                  //   • monthDay  — static ("Jul 06") — shared by both states
-                  //   • yearStr   — clips out rightward as t→1 (", 2026")
+                  //   • monthDay  — selected date format, shared by both states
                   Positioned(
                     left: inset + labelColW * t,
                     right: inset + (totalW - inset - midX) * t,
                     top: 0,
                     bottom: 0,
                     child: ClipRect(
-                      child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -8743,19 +8736,6 @@ class _DayBannerState extends State<_DayBanner>
                               ),
                             ),
                             Text(monthDay, style: _styleFor(widget.date, ctx)),
-                            // ", 2026" clips out from the right
-                            ClipRect(
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                widthFactor: (1.0 - t).clamp(0.0, 1.0),
-                                child: Text(
-                                  yearStr,
-                                  style: _styleFor(widget.date, ctx),
-                                  softWrap: false,
-                                  overflow: TextOverflow.clip,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -11007,23 +10987,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Formatting ────────────────────────────────────────────────────────────
 
-  static const _kMonthAbbr = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  String _fmtDate(DateTime d) =>
-      '${_kMonthAbbr[d.month - 1]} ${d.day}, ${d.year}';
+  String _fmtDate(DateTime d) => formatAppDate(d);
 
   String _fmtTime(DateTime d) {
     final h = d.hour == 0 ? 12 : (d.hour > 12 ? d.hour - 12 : d.hour);
@@ -13450,8 +13414,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   ];
   List<String> get _kRepeatDayLabels => calendarWeekdayHeaderLetters();
 
-  String _formatEndDate(DateTime d) =>
-      '${_kRepeatMonthNames[d.month - 1]} ${d.day}, ${d.year}';
+  String _formatEndDate(DateTime d) => formatAppDate(d);
 
   Widget _buildEndDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -13462,9 +13425,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       pills: [
         AdaptivePillSpec(
           text: _formatEndDate(_endDate),
-          compactText:
-              '${_kRepeatMonthNames[_endDate.month - 1].substring(0, 3)} '
-              '${_endDate.day}, ${_endDate.year}',
+          compactText: formatAppDate(_endDate),
           backgroundColor: resolveThemeColor(kPillColor, context),
           style: TextStyle(
             inherit: false,

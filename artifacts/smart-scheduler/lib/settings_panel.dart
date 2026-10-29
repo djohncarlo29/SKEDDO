@@ -158,8 +158,18 @@ const _kRoutes = <String, _SettingsRoute>{
   ),
   'Date Format': _SettingsRoute(
     title: 'Date Format',
-    options: ['Month first (M/D/Y)', 'Day first (D/M/Y)'],
-    defaultValue: 'Month first (M/D/Y)',
+    options: [
+      '19/08/2026',
+      '08/19/26',
+      '19/08/26',
+      '08/19/2026',
+      '19.08.2026',
+      '19-08-2026',
+      '2026/08/19',
+      '2026.08.19',
+      '2026-08-19',
+    ],
+    defaultValue: '08/19/2026',
   ),
   'Privacy': _SettingsRoute(
     title: 'Privacy',
@@ -602,7 +612,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         appEventDurationNotifier,
         appDefaultCategoryNotifier,
         appDefaultCategoryLabelNotifier,
-        appDateLocaleNotifier,
+        appDateFormatNotifier,
         appLiquidGlassOpacityNotifier,
       ]),
       builder: (context, _) {
@@ -634,10 +644,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         final fullMonthName = appFullMonthNameNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
         final defaultCategoryLabel = appDefaultCategoryLabelNotifier.value;
-        final dateFormatLabel =
-            appDateLocaleNotifier.value == DateLocalePreference.dayFirst
-            ? 'Day first (D/M/Y)'
-            : 'Month first (M/D/Y)';
+        final dateFormatLabel = appDateFormatNotifier.value.sample;
         final liquidGlassOpacityLabel =
             '${(liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value) * 100).round()}%';
 
@@ -1148,10 +1155,7 @@ class _SubScreenState extends State<_SubScreen> {
       'Default View' => appDefaultViewNotifier.value,
       'Default Event Duration' => appEventDurationNotifier.value,
       'Default Category' => appDefaultCategoryLabelNotifier.value,
-      'Date Format' =>
-        appDateLocaleNotifier.value == DateLocalePreference.dayFirst
-            ? 'Day first (D/M/Y)'
-            : 'Month first (M/D/Y)',
+      'Date Format' => appDateFormatNotifier.value.sample,
       _ => widget.route.defaultValue,
     };
   }
@@ -1185,9 +1189,10 @@ class _SubScreenState extends State<_SubScreen> {
         appEventDurationNotifier.value = opt;
         saveAppSetting('Default Event Duration', opt);
       case 'Date Format':
-        final preference = opt.startsWith('Day')
-            ? DateLocalePreference.dayFirst
-            : DateLocalePreference.monthFirst;
+        final format =
+            AppDateFormat.fromSample(opt) ?? AppDateFormat.monthDayYearSlash;
+        appDateFormatNotifier.value = format;
+        final preference = format.parserLocalePreference;
         appDateLocaleNotifier.value = preference;
         AIServices.setDateLocalePreference(preference);
         saveAppSetting('Date Format', opt);

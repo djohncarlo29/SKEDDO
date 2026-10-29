@@ -12,6 +12,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
+import '../app_settings.dart';
 import '../app_theme.dart';
 import '../widgets/modal_toolbar_glass_button.dart';
 import '../widgets/fixed_size_icon.dart';
@@ -2336,10 +2337,11 @@ class _EventRow extends StatelessWidget {
                   _DetailLine(
                     icon: CupertinoIcons.calendar,
                     text: [
-                      if (event.date != null) event.date!,
+                      if (event.date != null)
+                        formatStoredAppDate(event.date!),
                       if (event.time != null) event.time!,
                       if (event.endDate != null && event.endDate != event.date)
-                        'until ${event.endDate}',
+                        'until ${formatStoredAppDate(event.endDate!)}',
                       if (event.endTime != null) 'ends ${event.endTime}',
                     ].join('  ·  '),
                   ),

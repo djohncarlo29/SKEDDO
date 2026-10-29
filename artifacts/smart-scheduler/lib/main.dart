@@ -745,6 +745,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             appAccentUsesSystemNotifier,
             appSystemAccentColorNotifier,
             appDateLocaleNotifier,
+            appDateFormatNotifier,
             appFullMonthNameNotifier,
           ]),
           builder: (context, _) {

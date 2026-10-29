@@ -37,6 +37,17 @@ void main() {
       ),
       findsOneWidget,
     );
+    final fieldFinder = find.byType(HorizontalEdgeFade);
+    final fieldClipFinder = find.ancestor(
+      of: fieldFinder,
+      matching: find.byType(ClipRect),
+    );
+    expect(fieldClipFinder, findsOneWidget);
+    expect(
+      tester.widget<ClipRect>(fieldClipFinder).clipBehavior,
+      Clip.hardEdge,
+    );
+    expect(tester.getRect(fieldClipFinder), tester.getRect(fieldFinder));
     expect(find.byType(SearchWeightedIcon), findsOneWidget);
     expect(find.byKey(const ValueKey('search-mic')), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
@@ -104,6 +115,16 @@ void main() {
     );
     expect(cancelSurface.useOwnLayer, isFalse);
     expect(cancelSurface.settings, isNull);
+    final cancelFill = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('search-cancel-solid-surface')),
+    );
+    final cancelFillDecoration = cancelFill.decoration as ShapeDecoration;
+    expect(cancelFillDecoration.color!.a, 1.0);
+    expect(cancelFillDecoration.shape, isA<CircleBorder>());
+    expect(
+      find.byKey(const ValueKey('search-cancel-rim-cover')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('search-bar-rim-cover')), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());

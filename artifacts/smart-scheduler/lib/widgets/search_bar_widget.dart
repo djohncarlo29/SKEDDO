@@ -474,64 +474,71 @@ class AppSearchBarState extends State<AppSearchBar>
                       ).copyWith(primaryColor: selectionTint),
                       child: DefaultSelectionStyle(
                         selectionColor: selectionTint.withOpacity(0.20),
-                        child: HorizontalEdgeFade(
-                          fadeColor: solidSurfaceColor,
-                          // Short search text still participates in the native
-                          // rubberband gesture. Show an edge fade only while it
-                          // is pulled past that edge; resting fitting text has
-                          // no hidden content and therefore no fade.
-                          fadeOnRubberbandWhenContentFits: true,
-                          rubberbandWhenContentFits: true,
-                          alphaMask: true,
-                          // The editable viewport spans from icon edge to icon
-                          // edge. Its content has one 8 px inset on each side,
-                          // and the fades begin exactly at those usable-field
-                          // boundaries.
-                          leadingInset: kSearchFieldFadeEdgeGap,
-                          trailingInset: kSearchFieldFadeEdgeGap,
-                          metricsListenable: _edgeFadeMetricsNotifier,
-                          placeholderText: widget.placeholder,
-                          placeholderTextStyle: placeholderStyle,
-                          placeholderFocusListenable:
-                              _placeholderFocusNotifier,
-                          controller: widget.controller,
-                          scrollController: _scrollController,
-                          child: NativeTextInput(
-                            controller: widget.controller,
-                            caretToEndOnFirstTap: true,
-                            scrollController: _scrollController,
-                            metricsListenable: _edgeFadeMetricsNotifier,
-                            alphaEdgeFade: true,
+                        child: ClipRect(
+                          clipBehavior: Clip.hardEdge,
+                          // Rubberbanding deliberately translates the entire
+                          // editable/fade subtree. Clip that final result to
+                          // the text slot so a missed or late alpha-mask frame
+                          // can never paint into either neighboring icon slot.
+                          child: HorizontalEdgeFade(
+                            fadeColor: solidSurfaceColor,
+                            // Short search text still participates in the native
+                            // rubberband gesture. Show an edge fade only while it
+                            // is pulled past that edge; resting fitting text has
+                            // no hidden content and therefore no fade.
+                            fadeOnRubberbandWhenContentFits: true,
                             rubberbandWhenContentFits: true,
-                            alphaFadeWidth: 36,
-                            alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
-                            alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
-                            onFocusChanged: (focused) {
-                              _placeholderFocusNotifier.value = focused;
-                              widget.onFocusChanged?.call(focused);
-                            },
-                            // Keep the native field's hint empty. The shared
-                            // edge-fade layer paints the visible hint and
-                            // follows the same rubberband offset as text.
-                            placeholder: '',
-                            placeholderStyle: placeholderStyle,
-                            style: TextStyle(
-                              inherit: false,
-                              fontSize: kSearchBarTextFontSize,
-                              color: primaryLabel,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                              height: kLineHeight,
+                            alphaMask: true,
+                            // The editable viewport spans from icon edge to icon
+                            // edge. Its content has one 8 px inset on each side,
+                            // and the fades begin exactly at those usable-field
+                            // boundaries.
+                            leadingInset: kSearchFieldFadeEdgeGap,
+                            trailingInset: kSearchFieldFadeEdgeGap,
+                            metricsListenable: _edgeFadeMetricsNotifier,
+                            placeholderText: widget.placeholder,
+                            placeholderTextStyle: placeholderStyle,
+                            placeholderFocusListenable:
+                                _placeholderFocusNotifier,
+                            controller: widget.controller,
+                            scrollController: _scrollController,
+                            child: NativeTextInput(
+                              controller: widget.controller,
+                              caretToEndOnFirstTap: true,
+                              scrollController: _scrollController,
+                              metricsListenable: _edgeFadeMetricsNotifier,
+                              alphaEdgeFade: true,
+                              rubberbandWhenContentFits: true,
+                              alphaFadeWidth: 36,
+                              alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
+                              alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
+                              onFocusChanged: (focused) {
+                                _placeholderFocusNotifier.value = focused;
+                                widget.onFocusChanged?.call(focused);
+                              },
+                              // Keep the native field's hint empty. The shared
+                              // edge-fade layer paints the visible hint and
+                              // follows the same rubberband offset as text.
+                              placeholder: '',
+                              placeholderStyle: placeholderStyle,
+                              style: TextStyle(
+                                inherit: false,
+                                fontSize: kSearchBarTextFontSize,
+                                color: primaryLabel,
+                                fontFamily: kSFProText,
+                                fontWeight: FontWeight.w400,
+                                fontStyle: FontStyle.normal,
+                                letterSpacing: kTracking16,
+                                height: kLineHeight,
+                              ),
+                              padding: const EdgeInsets.only(
+                                left: kSearchFieldFadeEdgeGap,
+                                right: kSearchFieldFadeEdgeGap,
+                              ),
+                              cursorColor: selectionTint,
+                              selectionColor: selectionTint.withOpacity(0.20),
+                              selectionControls: _selectionControls,
                             ),
-                            padding: const EdgeInsets.only(
-                              left: kSearchFieldFadeEdgeGap,
-                              right: kSearchFieldFadeEdgeGap,
-                            ),
-                            cursorColor: selectionTint,
-                            selectionColor: selectionTint.withOpacity(0.20),
-                            selectionControls: _selectionControls,
                           ),
                         ),
                       ),
@@ -692,7 +699,7 @@ class AppSearchBarState extends State<AppSearchBar>
             child: IgnorePointer(
               child: CustomPaint(
                 key: const ValueKey('search-bar-rim-cover'),
-                painter: _SearchBarRimCoverPainter(
+                 painter: _SearchOpaqueSurfaceRimCoverPainter(
                   shape: searchBarShape,
                   color: solidSurfaceColor,
                 ),
@@ -735,13 +742,16 @@ class SearchBarGlassGroup extends StatelessWidget {
   );
 }
 
-/// Covers the renderer's hairline at the opaque search field's outer edge.
+/// Covers the renderer's hairline at an opaque search surface's outer edge.
 ///
-/// The glass shape remains in the shared layer for morphing with the cancel
-/// control; this matching-color stroke prevents that shape's rim from reading
-/// as an outline around the deliberately solid search fill.
-class _SearchBarRimCoverPainter extends CustomPainter {
-  const _SearchBarRimCoverPainter({required this.shape, required this.color});
+/// The glass shape remains in the shared layer for blending; this
+/// matching-color stroke prevents its rim from reading as an outline around
+/// the deliberately solid search fill.
+class _SearchOpaqueSurfaceRimCoverPainter extends CustomPainter {
+  const _SearchOpaqueSurfaceRimCoverPainter({
+    required this.shape,
+    required this.color,
+  });
 
   final ShapeBorder shape;
   final Color color;
@@ -759,7 +769,9 @@ class _SearchBarRimCoverPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SearchBarRimCoverPainter oldDelegate) =>
+  bool shouldRepaint(
+    covariant _SearchOpaqueSurfaceRimCoverPainter oldDelegate,
+  ) =>
       oldDelegate.shape != shape || oldDelegate.color != color;
 }
 
@@ -874,7 +886,9 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
     BuildContext context, {
     required double circleSize,
   }) {
-    final surfaceColor = resolveThemeColor(kCardColor, context);
+    final surfaceColor = resolveThemeColor(kSbSurface, context).withValues(
+      alpha: 1.0,
+    );
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     return TapRegion(
       groupId: kSbGroupId,
@@ -902,19 +916,43 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
           tapDelay: _kTapDelay,
           onTap: widget.onTap,
           child: SizedBox.expand(
-            child: Center(
-              child: Transform.translate(
-                offset: const Offset(0, -0.5),
-                child: SearchWeightedIcon(
-                  CupertinoIcons.xmark,
-                  // Keep the default 20:40 glyph-to-circle ratio as one
-                  // united element. It stays horizontally centered, with the
-                  // subtle upward optical adjustment applied inside the circle.
-                  size:
-                      circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
-                  color: primaryLabel,
-                  weight: kGelBloomIconWeight,
-                ),
+            child: ClipOval(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    key: const ValueKey('search-cancel-solid-surface'),
+                    decoration: ShapeDecoration(
+                      color: surfaceColor,
+                      shape: const CircleBorder(),
+                    ),
+                  ),
+                  IgnorePointer(
+                    child: CustomPaint(
+                      key: const ValueKey('search-cancel-rim-cover'),
+                      painter: _SearchOpaqueSurfaceRimCoverPainter(
+                        shape: const CircleBorder(),
+                        color: surfaceColor,
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Transform.translate(
+                      offset: const Offset(0, -0.5),
+                      child: SearchWeightedIcon(
+                        CupertinoIcons.xmark,
+                        // Keep the default 20:40 glyph-to-circle ratio as one
+                        // united element. It stays horizontally centered, with
+                        // the subtle upward optical adjustment inside the circle.
+                        size:
+                            circleSize *
+                            (_kDefaultXmarkSize / _kDefaultCircleSize),
+                        color: primaryLabel,
+                        weight: kGelBloomIconWeight,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

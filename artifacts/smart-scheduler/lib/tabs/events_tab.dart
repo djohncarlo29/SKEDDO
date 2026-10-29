@@ -16010,8 +16010,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     'November',
     'December',
   ];
-  String _formatEndDate(DateTime d) =>
-      '${_kMonthNames[d.month - 1]} ${d.day}, ${d.year}';
+  String _formatEndDate(DateTime d) => formatAppDate(d);
 
   Widget _buildEndDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -16022,9 +16021,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       pills: [
         AdaptivePillSpec(
           text: _formatEndDate(_endDate),
-          compactText:
-              '${_kMonthNames[_endDate.month - 1].substring(0, 3)} '
-              '${_endDate.day}, ${_endDate.year}',
+          compactText: formatAppDate(_endDate),
           backgroundColor: resolveThemeColor(kPillColor, context),
           style: TextStyle(
             inherit: false,
@@ -20737,35 +20734,6 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     'Saturday',
     'Sunday',
   ];
-  static const _kShortMonths = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  static const _kLongMonths = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   /// Priority-level labels indexed by [ScheduledEvent.priority] (0–3).
   static const _kPriorityLabels = [
     'None',
@@ -20779,15 +20747,14 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   static String? _eventDateLabel(ScheduledEvent e) {
     final abs = e.parsedDate?.absoluteDate;
     if (abs == null) return null;
-    return '${_kWeekdays[abs.weekday - 1]} - '
-        '${_kShortMonths[abs.month - 1]} ${abs.day}, ${abs.year}';
+    return '${_kWeekdays[abs.weekday - 1]} - ${formatAppDate(abs)}';
   }
 
   /// "August 12, 2026" — date-only header used by Deadline and Creation Date
   /// sort modes.  Returns null when [date] is null.
   static String? _dateOnlyLabel(DateTime? date) {
     if (date == null) return null;
-    return '${_kLongMonths[date.month - 1]} ${date.day}, ${date.year}';
+    return formatAppDate(date);
   }
 
   /// "3:00 PM" → minutes since midnight, used for chronological sort.
@@ -21848,30 +21815,6 @@ class _ScheduledEventCard extends StatelessWidget {
 
   /// Converts "August 8, 2026" → "08/08/2026".
   /// Returns [raw] unchanged if the format is not recognised.
-  static String _formatDate(String raw) {
-    const months = {
-      'January': '01',
-      'February': '02',
-      'March': '03',
-      'April': '04',
-      'May': '05',
-      'June': '06',
-      'July': '07',
-      'August': '08',
-      'September': '09',
-      'October': '10',
-      'November': '11',
-      'December': '12',
-    };
-    final parts = raw.split(' ');
-    if (parts.length < 3) return raw;
-    final mm = months[parts[0]];
-    final dd = parts[1].replaceAll(',', '').padLeft(2, '0');
-    final yyyy = parts[2];
-    if (mm == null) return raw;
-    return '$mm/$dd/$yyyy';
-  }
-
   // ── Content helpers ──────────────────────────────────────────────────────────
 
   String _subtitle(BuildContext context) {
@@ -21890,9 +21833,9 @@ class _ScheduledEventCard extends StatelessWidget {
         else if (absDay == tomorrow)
           dateStr = 'Tomorrow';
         else
-          dateStr = _formatDate(event.date!);
+          dateStr = formatStoredAppDate(event.date!, resolvedDate: abs);
       } else {
-        dateStr = _formatDate(event.date!);
+        dateStr = formatStoredAppDate(event.date!);
       }
     }
     final String? timeStr;
