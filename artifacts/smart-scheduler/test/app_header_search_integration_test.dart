@@ -373,13 +373,18 @@ void main() {
             .color,
         resolveThemeColor(kBackgroundColor, tester.element(searchHeader)),
       );
-      final tabBarBackground = find.byKey(
-        const ValueKey('offscreen-search-tabbar-background'),
-      );
-      expect(tabBarBackground, findsOneWidget);
       expect(
-        tester.getBottomRight(tabBarBackground).dy,
+        find.byKey(const ValueKey('offscreen-search-tabbar-background')),
+        findsNothing,
+      );
+      expect(
+        tester.getBottomRight(safeAreaSearchBackground).dy,
         closeTo(tester.view.physicalSize.height, 0.5),
+      );
+      expect(find.byType(FloatingTabPill), findsOneWidget);
+      expect(
+        tester.widget<FloatingTabPill>(find.byType(FloatingTabPill)).selectedIndex,
+        1,
       );
       expect(
         tester.getTopLeft(searchHeader).dy,

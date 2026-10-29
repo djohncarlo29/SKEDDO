@@ -2853,12 +2853,12 @@ class CalendarTabState extends State<CalendarTab>
                       ),
                       sliver: SmartSearchResultsSliver(
                         hits: _searchText.isEmpty ? const [] : _searchHits,
-                        emptyStateBottomClearance: 0,
-                        viewportBottomOffset:
+                        emptyStateBottomClearance:
                             floatingTabBarContentBottomClearance(
                               context,
                               finalContentGap: 0,
                             ),
+                        viewportBottomOffset: 0,
                         suggestedQuery: _searchText.isEmpty
                             ? null
                             : _searchSuggestion,
@@ -2894,7 +2894,7 @@ class CalendarTabState extends State<CalendarTab>
                           height: floatingTabBarContentBottomClearance(
                             context,
                             existingTrailingContentPadding: 32,
-                            finalContentGap: 20,
+                            finalContentGap: 16,
                           ),
                         ),
                       ),

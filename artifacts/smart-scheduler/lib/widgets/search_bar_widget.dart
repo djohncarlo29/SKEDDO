@@ -209,6 +209,7 @@ class AppSearchBarState extends State<AppSearchBar>
   late final AnimationController _pulseCtrl;
   late final ScrollController _scrollController;
   late final ValueNotifier<EdgeFadeMetrics?> _edgeFadeMetricsNotifier;
+  late final ValueNotifier<bool> _placeholderFocusNotifier;
   late final ValueNotifier<Color> _selectionColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
 
@@ -223,6 +224,7 @@ class AppSearchBarState extends State<AppSearchBar>
     );
     _scrollController = ScrollController();
     _edgeFadeMetricsNotifier = ValueNotifier<EdgeFadeMetrics?>(null);
+    _placeholderFocusNotifier = ValueNotifier<bool>(false);
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -236,6 +238,7 @@ class AppSearchBarState extends State<AppSearchBar>
     _pulseCtrl.dispose();
     _scrollController.dispose();
     _edgeFadeMetricsNotifier.dispose();
+    _placeholderFocusNotifier.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
   }
@@ -489,7 +492,8 @@ class AppSearchBarState extends State<AppSearchBar>
                           metricsListenable: _edgeFadeMetricsNotifier,
                           placeholderText: widget.placeholder,
                           placeholderTextStyle: placeholderStyle,
-                          placeholderInChild: true,
+                          placeholderFocusListenable: _placeholderFocusNotifier,
+                          placeholderInChild: false,
                           controller: widget.controller,
                           scrollController: _scrollController,
                           child: NativeTextInput(
@@ -503,12 +507,17 @@ class AppSearchBarState extends State<AppSearchBar>
                             alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
                             alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
                             onFocusChanged: (focused) {
+                              if (_placeholderFocusNotifier.value != focused) {
+                                _placeholderFocusNotifier.value = focused;
+                              }
                               widget.onFocusChanged?.call(focused);
                             },
-                            // Keep the placeholder inside the same child
-                            // subtree as the field so the shared rubberband
-                            // translation and alpha fade move it as one.
-                            placeholder: widget.placeholder,
+                            // HorizontalEdgeFade paints the placeholder in
+                            // the same clipped, transformed subtree as the
+                            // field, matching the New Event Title field. Keep
+                            // the platform text-field placeholder empty so
+                            // it cannot bypass the shared alpha fade.
+                            placeholder: '',
                             placeholderStyle: placeholderStyle,
                             style: TextStyle(
                               inherit: false,
@@ -1035,9 +1044,10 @@ class SearchNoResultsCentered extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
-    // Some search overlays are already bounded above the floating tab bar.
-    // Convert the window-relative keyboard inset into the portion that actually
-    // overlaps this viewport, rather than subtracting the tab-bar region twice.
+    // Convert the window-relative keyboard inset into the portion that overlaps
+    // this viewport. Full-height offscreen search passes a zero bottom offset
+    // and reserves the tab bar through bottomClearance; bounded hosts can pass
+    // their already-removed bottom region here.
     final keyboardOverlap = math.max(
       0.0,
       keyboardBottom - viewportBottomOffset,

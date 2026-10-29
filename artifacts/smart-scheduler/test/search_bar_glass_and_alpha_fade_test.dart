@@ -233,19 +233,21 @@ void main() {
 
     final inputFinder = find.byType(NativeTextInput);
     final input = tester.widget<NativeTextInput>(inputFinder);
-    expect(input.placeholder, 'Search');
+    expect(input.placeholder, isEmpty);
     final edgeFade = tester.widget<HorizontalEdgeFade>(
       find.byType(HorizontalEdgeFade),
     );
-    expect(edgeFade.placeholderInChild, isTrue);
+    expect(edgeFade.placeholderInChild, isFalse);
+    expect(edgeFade.placeholderFocusListenable, isNotNull);
     final inputBefore = tester.getRect(inputFinder);
-    final placeholderBefore = tester.getRect(find.text('Search'));
-    final gesture = await tester.startGesture(inputBefore.center);
+    final placeholderFinder = find.text('Search');
+    final placeholderBefore = tester.getRect(placeholderFinder);
+    final gesture = await tester.startGesture(placeholderBefore.center);
     await gesture.moveBy(const Offset(-24, 0));
     await tester.pump(const Duration(milliseconds: 16));
 
     final inputDuringDrag = tester.getRect(inputFinder);
-    final placeholderDuringDrag = tester.getRect(find.text('Search'));
+    final placeholderDuringDrag = tester.getRect(placeholderFinder);
     expect(inputDuringDrag.left, lessThan(inputBefore.left - 5));
     expect(
       placeholderDuringDrag.left,
@@ -256,7 +258,7 @@ void main() {
     await gesture.up();
     await tester.pump(const Duration(milliseconds: 100));
     final inputDuringReturn = tester.getRect(inputFinder);
-    final placeholderDuringReturn = tester.getRect(find.text('Search'));
+    final placeholderDuringReturn = tester.getRect(placeholderFinder);
     expect(
       inputDuringReturn.left - inputBefore.left,
       closeTo(
@@ -269,7 +271,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getRect(inputFinder).left, closeTo(inputBefore.left, 0.1));
     expect(
-      tester.getRect(find.text('Search')).left,
+      tester.getRect(placeholderFinder).left,
+      closeTo(placeholderBefore.left, 0.1),
+    );
+
+    final gestureRight = await tester.startGesture(placeholderBefore.center);
+    await gestureRight.moveBy(const Offset(24, 0));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(
+      tester.getRect(placeholderFinder).left,
+      greaterThan(placeholderBefore.left + 5),
+    );
+    await gestureRight.up();
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(placeholderFinder).left,
       closeTo(placeholderBefore.left, 0.1),
     );
 

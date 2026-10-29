@@ -163,13 +163,13 @@ class SmartDcvSearchResults extends StatelessWidget {
     final resolvedResultsBottomClearance =
         resultsBottomClearance ??
         floatingTabBarContentBottomClearance(
-            context,
-            existingTrailingContentPadding: 32,
-            finalContentGap: 20,
-          );
+          context,
+          finalContentGap: 16,
+        );
     final isEmpty = primary.isEmpty && overflow.isEmpty;
     // Account only for the part of the keyboard that overlaps this viewport.
-    // Its bottom may already be reserved by an enclosing overlay.
+    // Full-height offscreen overlays use a zero viewport offset and reserve the
+    // tab bar separately for empty states and populated-result bottom padding.
     final bottomObstruction = isEmpty
         ? math.max(keyboardOverlap, tabBarClearance)
         : keyboardOverlap;
@@ -314,7 +314,7 @@ class SmartDcvSearchResults extends StatelessWidget {
           child: SizedBox(
             height: keyboardSafeViewport
                 ? 0
-                : math.max(0.0, bottomClearance - 32 + 20),
+                : math.max(0.0, bottomClearance - 32),
           ),
         ),
       ],

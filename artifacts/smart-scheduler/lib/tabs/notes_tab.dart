@@ -533,12 +533,12 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                   slivers: [
                     SmartSearchResultsSliver(
                       hits: _searchText.isEmpty ? const [] : _searchHits,
-                      emptyStateBottomClearance: 0,
-                      viewportBottomOffset:
+                      emptyStateBottomClearance:
                           floatingTabBarContentBottomClearance(
                             context,
                             finalContentGap: 0,
                           ),
+                      viewportBottomOffset: 0,
                       suggestedQuery:
                           _searchText.isEmpty ? null : _searchSuggestion,
                       onSuggestionTap: _applySearchSuggestion,
@@ -559,7 +559,11 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                     if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
                       SliverToBoxAdapter(
                         child: SizedBox(
-                          height: floatingTabBarContentBottomClearance(context),
+                          height: floatingTabBarContentBottomClearance(
+                            context,
+                            existingTrailingContentPadding: 32,
+                            finalContentGap: 16,
+                          ),
                         ),
                       ),
                   ],

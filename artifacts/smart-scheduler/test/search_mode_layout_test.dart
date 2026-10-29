@@ -131,10 +131,10 @@ void main() {
   );
 
   testWidgets(
-    'offscreen empty results account for the tab bar and keyboard only once',
+    'full-height offscreen results center above the tab bar and keyboard',
     (tester) async {
       const surfaceSize = Size(390, 800);
-      const viewportBottomOffset = 80.0;
+      const tabBarClearance = 80.0;
       const headerHeight = 120.0;
       tester.view.physicalSize = surfaceSize;
       tester.view.devicePixelRatio = 1;
@@ -151,7 +151,7 @@ void main() {
             child: Align(
               alignment: Alignment.topCenter,
               child: SizedBox(
-                height: surfaceSize.height - viewportBottomOffset,
+                 height: surfaceSize.height,
                 child: Column(
                   children: [
                     const SizedBox(height: headerHeight),
@@ -161,8 +161,8 @@ void main() {
                         slivers: [
                           const SmartSearchResultsSliver(
                             hits: [],
-                            emptyStateBottomClearance: 0,
-                            viewportBottomOffset: viewportBottomOffset,
+                            emptyStateBottomClearance: tabBarClearance,
+                            viewportBottomOffset: 0,
                           ),
                         ],
                       ),
@@ -181,7 +181,7 @@ void main() {
       final centerWithoutKeyboard = tester.getCenter(placeholder).dy;
       expect(
         centerWithoutKeyboard,
-        closeTo((headerHeight + surfaceSize.height - viewportBottomOffset) / 2, 1),
+        closeTo((headerHeight + surfaceSize.height - tabBarClearance) / 2, 1),
       );
 
       await tester.pumpWidget(buildApp(200));

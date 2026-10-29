@@ -115,7 +115,7 @@
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.
-- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — keep placeholder motion in-field; web inputs need CSS alpha masks during synthetic fitting-text drags.
+- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — paint search placeholders in the shared edge-fade layer; keep web typed-text masking CSS-driven.
 - [Flutter preview build directory](flutter-preview-build-directory.md) — native clean/build can remove build/web; restart the managed preview before debugging a resulting 404 or blank page.
 - [Family emoji skin-tone support](family-emoji-skin-tone-support.md) — gendered family ZWJ glyphs have no standardized skin-tone variants; per-person modifiers can decompose on Android.
 - [Screen-captured emoji transparency](emoji-sprite-transparency.md) — validate screenshot-derived sprites on a contrasting background; aggressive flood-fill can erase dark hair and body pixels.
@@ -143,7 +143,7 @@
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
 - [Search-mode parent preservation](search-mode-parent-restoration.md) — offscreen search is a shell-level overlay; never mutate or restore the parent scroll position.
-- [Search empty-state viewport geometry](search-empty-state-viewport.md) — account for tab-bar reservation once and subtract only keyboard overlap with the results viewport.
+- [Search empty-state viewport geometry](search-empty-state-viewport.md) — offscreen results fill behind the tab bar; center empty states above it and keep 16px result clearance.
 - [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets keep AppShell stationary; only nested sheets scale the parent.
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.

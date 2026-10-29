@@ -8999,12 +8999,12 @@ class EventsTabState extends State<EventsTab>
                     slivers: [
                       SmartSearchResultsSliver(
                         hits: _searchText.isEmpty ? const [] : _searchAll,
-                        emptyStateBottomClearance: 0,
-                        viewportBottomOffset:
+                        emptyStateBottomClearance:
                             floatingTabBarContentBottomClearance(
                               context,
                               finalContentGap: 0,
                             ),
+                        viewportBottomOffset: 0,
                         suggestedQuery: _searchText.isEmpty
                             ? null
                             : _searchSuggestion,
@@ -9020,7 +9020,7 @@ class EventsTabState extends State<EventsTab>
                             height: floatingTabBarContentBottomClearance(
                               context,
                               existingTrailingContentPadding: 32,
-                              finalContentGap: 24,
+                              finalContentGap: 16,
                             ),
                           ),
                         ),
@@ -9066,13 +9066,17 @@ class EventsTabState extends State<EventsTab>
                     primary: _searchText.isEmpty ? const [] : _searchPrimary,
                     overflow:
                         _searchText.isEmpty ? const [] : _searchOverflow,
-                    emptyStateBottomClearance: 0,
-                    resultsBottomClearance: 0,
-                    viewportBottomOffset:
+                    emptyStateBottomClearance:
                         floatingTabBarContentBottomClearance(
                           context,
                           finalContentGap: 0,
                         ),
+                    resultsBottomClearance:
+                        floatingTabBarContentBottomClearance(
+                          context,
+                          finalContentGap: 16,
+                        ),
+                    viewportBottomOffset: 0,
                     suggestedQuery:
                         _searchText.isEmpty ? null : _searchSuggestion,
                     onSuggestionTap: _applySearchSuggestion,

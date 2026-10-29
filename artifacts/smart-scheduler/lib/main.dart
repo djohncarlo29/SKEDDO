@@ -865,6 +865,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final _notesTabKey = GlobalKey<NotesTabState>();
   final _calendarTabKey = GlobalKey<CalendarTabState>();
   final _eventsTabKey = GlobalKey<EventsTabState>();
+  final _floatingTabPillKey = GlobalKey();
 
   // Kept in AppShell so the header AnimatedBuilder rebuilds immediately when
   // the CalendarTab transitions views (via the onViewChanged callback).
@@ -3325,6 +3326,45 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildFloatingTabBar() {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_dcvSlideController, appAccentNotifier]),
+      builder: (context, _) {
+        final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
+        final isDCVVisual =
+            pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
+        final eventsAccent = isDCVVisual
+            ? (_dcvColor ?? resolveAccentColor(context))
+            : resolveAccentColor(context);
+        _syncNativeTabBarColors(
+          _selectedIndex == 2 ? eventsAccent : resolveAccentColor(context),
+          CupertinoDynamicColor.resolve(kTabBarInactiveColor, context),
+        );
+        return Positioned.fill(
+          child: AppWindowContentPadding(
+            child: _usesNativeTabBar
+                ? const SizedBox.shrink()
+                : FloatingTabPill(
+                    key: _floatingTabPillKey,
+                    selectedIndex: _selectedIndex,
+                    eventsAccent: eventsAccent,
+                    onTabSelected: _switchTab,
+                    onCreateEvent: () => _calendarTabKey.currentState
+                        ?.showNewEventSheet(
+                          context,
+                          initialCategoryId: _selectedIndex == 2
+                              ? _eventsTabKey
+                                    .currentState
+                                    ?.activeStandardDcvCategoryId
+                              : null,
+                        ),
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLandscape =
@@ -4095,72 +4135,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // Cover the parent content beneath the translucent tab bar
-              // while leaving the tab bar itself as the top interactive layer.
-              if (_searchEnteredOffScreen && _searchFocused)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: floatingTabBarContentBottomClearance(
-                    context,
-                    finalContentGap: 0,
-                  ),
-                  child: IgnorePointer(
-                    child: ColoredBox(
-                      key: const ValueKey(
-                        'offscreen-search-tabbar-background',
-                      ),
-                      color: backgroundColor,
-                    ),
-                  ),
-                ),
-
-              // The tab bar is shared across tabs. Full-screen Navigator
-              // routes naturally cover it while they are presented.
-              AnimatedBuilder(
-                animation: Listenable.merge([
-                  _dcvSlideController,
-                  appAccentNotifier,
-                ]),
-                builder: (context, _) {
-                  final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
-                  final isDCVVisual =
-                      pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
-                  final eventsAccent = isDCVVisual
-                      ? (_dcvColor ?? resolveAccentColor(context))
-                      : resolveAccentColor(context);
-                  _syncNativeTabBarColors(
-                    _selectedIndex == 2
-                        ? eventsAccent
-                        : resolveAccentColor(context),
-                    CupertinoDynamicColor.resolve(
-                      kTabBarInactiveColor,
-                      context,
-                    ),
-                  );
-                  return Positioned.fill(
-                    child: AppWindowContentPadding(
-                      child: _usesNativeTabBar
-                          ? const SizedBox.shrink()
-                          : FloatingTabPill(
-                              selectedIndex: _selectedIndex,
-                              eventsAccent: eventsAccent,
-                              onTabSelected: _switchTab,
-                              onCreateEvent: () => _calendarTabKey.currentState
-                                  ?.showNewEventSheet(
-                                    context,
-                                    initialCategoryId: _selectedIndex == 2
-                                        ? _eventsTabKey
-                                              .currentState
-                                              ?.activeStandardDcvCategoryId
-                                        : null,
-                                  ),
-                            ),
-                    ),
-                  );
-                },
-              ),
+              // In normal navigation the pinned Navigator must remain above
+              // the tab bar so Settings and modal destinations cover it.
+              // Offscreen search reverses that order: its full-height results
+              // scroll under the tab bar, which remains the top interactive
+              // layer.
+              if (!_searchEnteredOffScreen || !_searchFocused)
+                _buildFloatingTabBar(),
 
               // Keep tab bodies mounted while the sibling Navigator owns the
               // toolbar destinations and Settings routes. Global modal routes
@@ -4194,14 +4175,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ),
             ), // GlassNavigationShell / outer chrome animation
                 if (_searchEnteredOffScreen && _searchFocused)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: floatingTabBarContentBottomClearance(
-                      context,
-                      finalContentGap: 0,
-                    ),
+                  Positioned.fill(
                     child: ColoredBox(
                       key: const ValueKey(
                         'offscreen-search-safe-area-background',
@@ -4229,6 +4203,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+
+                if (_searchEnteredOffScreen && _searchFocused)
+                  _buildFloatingTabBar(),
               ],
             ),
           ),
