@@ -160,19 +160,20 @@ class SmartDcvSearchResults extends StatelessWidget {
     final tabBarClearance =
         emptyStateBottomClearance ??
         floatingTabBarContentBottomClearance(context);
+    final remainingEmptyStateClearance = math.max(
+      0.0,
+      tabBarClearance - keyboardOverlap,
+    );
     final resolvedResultsBottomClearance =
         resultsBottomClearance ??
         floatingTabBarContentBottomClearance(
           context,
           finalContentGap: 16,
         );
-    final isEmpty = primary.isEmpty && overflow.isEmpty;
-    // Account only for the part of the keyboard that overlaps this viewport.
-    // Full-height offscreen overlays use a zero viewport offset and reserve the
-    // tab bar separately for empty states and populated-result bottom padding.
-    final bottomObstruction = isEmpty
-        ? math.max(keyboardOverlap, tabBarClearance)
-        : keyboardOverlap;
+    // The results viewport itself continues behind the tab bar. Only the
+    // keyboard shortens that viewport; empty-state centering reserves the bar
+    // inside SliverFillRemaining below.
+    final bottomObstruction = keyboardOverlap;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -183,6 +184,7 @@ class SmartDcvSearchResults extends StatelessWidget {
         child: _buildResults(
           context,
           keyboardSafeViewport: keyboardBottom > 0,
+          emptyStateBottomClearance: remainingEmptyStateClearance,
           bottomClearance: resolvedResultsBottomClearance,
         ),
       ),
@@ -192,13 +194,13 @@ class SmartDcvSearchResults extends StatelessWidget {
   Widget _buildResults(
     BuildContext context, {
     required bool keyboardSafeViewport,
+    required double emptyStateBottomClearance,
     required double bottomClearance,
   }) {
     if (primary.isEmpty && overflow.isEmpty) {
       // Keep the empty state inside the same bouncing scroll surface as
-      // populated DCV results. The outer inset defines the usable viewport;
-      // AlwaysScrollable gives the placeholder native rubber-band response
-      // even when it fits.
+      // populated DCV results. The scroll viewport stays full-height; the
+      // placeholder alone reserves the tab-bar clearance for its center.
       return CustomScrollView(
         primary: false,
         physics: const AlwaysScrollableScrollPhysics(
@@ -208,7 +210,8 @@ class SmartDcvSearchResults extends StatelessWidget {
         slivers: [
           SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(
+            child: SearchNoResultsCentered(
+              bottomClearance: emptyStateBottomClearance,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

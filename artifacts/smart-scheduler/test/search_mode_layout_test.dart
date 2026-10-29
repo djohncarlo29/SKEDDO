@@ -179,6 +179,12 @@ void main() {
       await tester.pumpAndSettle();
       final placeholder = find.byType(SearchNoResults);
       final centerWithoutKeyboard = tester.getCenter(placeholder).dy;
+      final resultsViewport = tester.getRect(find.byType(CustomScrollView));
+      expect(
+        resultsViewport.bottom,
+        closeTo(surfaceSize.height, 1),
+        reason: 'DCV results viewport must extend behind the tab bar.',
+      );
       expect(
         centerWithoutKeyboard,
         closeTo((headerHeight + surfaceSize.height - tabBarClearance) / 2, 1),

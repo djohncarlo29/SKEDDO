@@ -785,6 +785,13 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
             : rubberbandedContent;
 
         return Listener(
+          // A painted placeholder is IgnorePointer so taps still reach the
+          // editable child. Keep the wrapper in the hit-test path as well;
+          // native/platform text inputs do not always report the empty hint's
+          // hit region back through their child hit test.
+          behavior: widget.rubberbandWhenContentFits
+              ? HitTestBehavior.translucent
+              : HitTestBehavior.deferToChild,
           onPointerDown: (event) =>
               _handleRubberbandPointerDown(event, constraints.maxWidth),
           onPointerMove: _handleRubberbandPointerMove,

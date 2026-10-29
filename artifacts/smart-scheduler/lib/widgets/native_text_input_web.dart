@@ -235,6 +235,8 @@ class _NativeTextInputState extends State<NativeTextInput> {
       widget.selectionColor ?? widget.cursorColor,
       alpha: 0.28,
     );
+    final placeholderColor =
+        widget.placeholderStyle?.color ?? const Color(0xFF9A9AA0);
     // HtmlElementView does not receive Flutter's ambient TextScaler
     // automatically. Apply the same scaler explicitly so the visible DOM
     // input matches the Flutter placeholder ghost and the mobile field,
@@ -264,6 +266,10 @@ class _NativeTextInputState extends State<NativeTextInput> {
       ..style.resize = 'none'
       ..style.setProperty('caret-color', caret)
       ..style.setProperty('--smart-scheduler-selection-color', selection)
+      ..style.setProperty(
+        '--smart-scheduler-placeholder-color',
+        _cssColor(placeholderColor, alpha: placeholderColor.a),
+      )
       ..style.setProperty('-webkit-appearance', 'none')
       ..style.setProperty('appearance', 'none');
 
@@ -557,8 +563,11 @@ class _NativeTextInputState extends State<NativeTextInput> {
       ..id = 'smart-scheduler-native-input-style'
       ..text = '''
 .smart-scheduler-native-text-input::placeholder {
-  color: rgb(154, 154, 160);
+  color: var(--smart-scheduler-placeholder-color, rgb(154, 154, 160));
   opacity: 1;
+}
+.smart-scheduler-native-text-input:focus:placeholder-shown {
+  text-indent: 4px;
 }
 .smart-scheduler-native-text-input::selection {
   background: var(--smart-scheduler-selection-color, rgba(0, 122, 255, 0.28));

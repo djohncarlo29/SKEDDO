@@ -209,7 +209,6 @@ class AppSearchBarState extends State<AppSearchBar>
   late final AnimationController _pulseCtrl;
   late final ScrollController _scrollController;
   late final ValueNotifier<EdgeFadeMetrics?> _edgeFadeMetricsNotifier;
-  late final ValueNotifier<bool> _placeholderFocusNotifier;
   late final ValueNotifier<Color> _selectionColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
 
@@ -224,7 +223,6 @@ class AppSearchBarState extends State<AppSearchBar>
     );
     _scrollController = ScrollController();
     _edgeFadeMetricsNotifier = ValueNotifier<EdgeFadeMetrics?>(null);
-    _placeholderFocusNotifier = ValueNotifier<bool>(false);
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -238,7 +236,6 @@ class AppSearchBarState extends State<AppSearchBar>
     _pulseCtrl.dispose();
     _scrollController.dispose();
     _edgeFadeMetricsNotifier.dispose();
-    _placeholderFocusNotifier.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
   }
@@ -492,8 +489,7 @@ class AppSearchBarState extends State<AppSearchBar>
                           metricsListenable: _edgeFadeMetricsNotifier,
                           placeholderText: widget.placeholder,
                           placeholderTextStyle: placeholderStyle,
-                          placeholderFocusListenable: _placeholderFocusNotifier,
-                          placeholderInChild: false,
+                          placeholderInChild: true,
                           controller: widget.controller,
                           scrollController: _scrollController,
                           child: NativeTextInput(
@@ -507,17 +503,12 @@ class AppSearchBarState extends State<AppSearchBar>
                             alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
                             alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
                             onFocusChanged: (focused) {
-                              if (_placeholderFocusNotifier.value != focused) {
-                                _placeholderFocusNotifier.value = focused;
-                              }
                               widget.onFocusChanged?.call(focused);
                             },
-                            // HorizontalEdgeFade paints the placeholder in
-                            // the same clipped, transformed subtree as the
-                            // field, matching the New Event Title field. Keep
-                            // the platform text-field placeholder empty so
-                            // it cannot bypass the shared alpha fade.
-                            placeholder: '',
+                            // NativeTextInput owns placeholder layout and
+                            // gesture handling; HorizontalEdgeFade still
+                            // supplies the shared clipping and alpha fade.
+                            placeholder: widget.placeholder,
                             placeholderStyle: placeholderStyle,
                             style: TextStyle(
                               inherit: false,

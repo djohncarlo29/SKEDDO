@@ -218,6 +218,51 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets(
+    'placeholder drag is tracked when the editable child ignores hit tests',
+    (tester) async {
+      final controller = TextEditingController();
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: SizedBox(
+              width: 240,
+              height: 48,
+              child: HorizontalEdgeFade(
+                fadeColor: const Color(0xFFFFFFFF),
+                controller: controller,
+                placeholderText: 'Search',
+                placeholderTextStyle: const TextStyle(fontSize: 18),
+                rubberbandWhenContentFits: true,
+                fadeOnRubberbandWhenContentFits: true,
+                child: const IgnorePointer(child: SizedBox.expand()),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final placeholder = find.text('Search');
+      final before = tester.getRect(placeholder);
+      final gesture = await tester.startGesture(before.center);
+      await gesture.moveBy(const Offset(-24, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        tester.getRect(placeholder).left,
+        lessThan(before.left - 5),
+        reason: 'The wrapper must observe drags on its painted placeholder.',
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.getRect(placeholder).left, closeTo(before.left, 0.1));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      controller.dispose();
+    },
+  );
+
   testWidgets('short placeholder follows the drag and bounce-back together', (
     tester,
   ) async {
@@ -233,12 +278,15 @@ void main() {
 
     final inputFinder = find.byType(NativeTextInput);
     final input = tester.widget<NativeTextInput>(inputFinder);
-    expect(input.placeholder, isEmpty);
+    expect(input.placeholder, 'Search');
+    expect(input.placeholderStyle?.color?.alpha, greaterThan(0));
+    expect(input.rubberbandWhenContentFits, isTrue);
     final edgeFade = tester.widget<HorizontalEdgeFade>(
       find.byType(HorizontalEdgeFade),
     );
-    expect(edgeFade.placeholderInChild, isFalse);
-    expect(edgeFade.placeholderFocusListenable, isNotNull);
+    expect(edgeFade.placeholderInChild, isTrue);
+    expect(edgeFade.placeholderFocusListenable, isNull);
+    expect(edgeFade.rubberbandWhenContentFits, isTrue);
     final inputBefore = tester.getRect(inputFinder);
     final placeholderFinder = find.text('Search');
     final placeholderBefore = tester.getRect(placeholderFinder);
