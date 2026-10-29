@@ -3,10 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  dynamic_color
   file_selector_linux
   flutter_onnxruntime
   irondash_engine_context
   super_native_extensions
+  system_theme
   url_launcher_linux
 )
 

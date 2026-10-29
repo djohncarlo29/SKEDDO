@@ -566,9 +566,6 @@ class _NativeTextInputState extends State<NativeTextInput> {
   color: var(--smart-scheduler-placeholder-color, rgb(154, 154, 160));
   opacity: 1;
 }
-.smart-scheduler-native-text-input:focus:placeholder-shown {
-  text-indent: 4px;
-}
 .smart-scheduler-native-text-input::selection {
   background: var(--smart-scheduler-selection-color, rgba(0, 122, 255, 0.28));
   color: inherit;

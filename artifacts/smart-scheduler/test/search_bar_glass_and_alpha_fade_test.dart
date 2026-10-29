@@ -278,17 +278,21 @@ void main() {
 
     final inputFinder = find.byType(NativeTextInput);
     final input = tester.widget<NativeTextInput>(inputFinder);
-    expect(input.placeholder, 'Search');
-    expect(input.placeholderStyle?.color?.alpha, greaterThan(0));
+    expect(input.placeholder, isEmpty);
     expect(input.rubberbandWhenContentFits, isTrue);
     final edgeFade = tester.widget<HorizontalEdgeFade>(
       find.byType(HorizontalEdgeFade),
     );
-    expect(edgeFade.placeholderInChild, isTrue);
-    expect(edgeFade.placeholderFocusListenable, isNull);
+    expect(edgeFade.placeholderInChild, isFalse);
+    expect(edgeFade.placeholderFocusListenable, isNotNull);
     expect(edgeFade.rubberbandWhenContentFits, isTrue);
-    final inputBefore = tester.getRect(inputFinder);
     final placeholderFinder = find.text('Search');
+    expect(
+      find.descendant(of: inputFinder, matching: placeholderFinder),
+      findsNothing,
+      reason: 'The hint must be owned by the moving edge-fade layer.',
+    );
+    final inputBefore = tester.getRect(inputFinder);
     final placeholderBefore = tester.getRect(placeholderFinder);
     final gesture = await tester.startGesture(placeholderBefore.center);
     await gesture.moveBy(const Offset(-24, 0));

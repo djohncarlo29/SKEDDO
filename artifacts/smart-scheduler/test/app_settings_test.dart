@@ -17,6 +17,8 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     SharedPreferences.resetStatic();
+    appAccentNotifier.value = 5;
+    appAccentUsesSystemNotifier.value = false;
     appSystemFirstDayOfWeekNotifier.value = 'Sunday';
     appStartOfWeekUsesSystemNotifier.value = true;
     appStartOfWeekNotifier.value = 'Sunday';
@@ -45,6 +47,25 @@ void main() {
     expect(appSystemFirstDayOfWeekNotifier.value, 'Wednesday');
     expect(appStartOfWeekUsesSystemNotifier.value, isTrue);
     expect(appStartOfWeekNotifier.value, 'Wednesday');
+  });
+
+  test('system accent mode restores independently of the selected swatch', () async {
+    SharedPreferences.setMockInitialValues({
+      'app_accent_index': 2,
+      'app_accent_uses_system': true,
+    });
+
+    await loadAppSettings();
+
+    expect(appAccentNotifier.value, 2);
+    expect(appAccentUsesSystemNotifier.value, isTrue);
+  });
+
+  test('accent mode defaults to the existing app-only selection', () async {
+    await loadAppSettings();
+
+    expect(appAccentUsesSystemNotifier.value, isFalse);
+    expect(appAccentNotifier.value, 5);
   });
 
   test('mirrored settings use a consistent System trailing value', () {

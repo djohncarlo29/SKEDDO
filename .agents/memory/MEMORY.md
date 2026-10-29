@@ -115,7 +115,7 @@
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.
-- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — keep AppSearchBar's hint in the editable field so placeholder and typed-text drags share one path.
+- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — AppSearchBar's hint belongs in the edge-fade overlay, which must track the input's rubberband movement.
 - [Flutter preview build directory](flutter-preview-build-directory.md) — native clean/build can remove build/web; restart the managed preview before debugging a resulting 404 or blank page.
 - [Family emoji skin-tone support](family-emoji-skin-tone-support.md) — gendered family ZWJ glyphs have no standardized skin-tone variants; per-person modifiers can decompose on Android.
 - [Screen-captured emoji transparency](emoji-sprite-transparency.md) — validate screenshot-derived sprites on a contrasting background; aggressive flood-fill can erase dark hair and body pixels.
@@ -149,3 +149,4 @@
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.
 - [Independent GlassPopover surfaces](glass-popover-nested-surfaces.md) — nested controls needing their own optics must render in their own glass layer.
 - [GlassPopover placement boundaries](glass-popover-safe-area.md) — avoid doubled insets; the 4px upper-left morph offset applies only to discard confirmation.
+- [System accent support](native-accent-color-source.md) — Android 12+ uses wallpaper palettes; iOS exposes SwiftUI accentColor, not a user-configurable global accent.

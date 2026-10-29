@@ -10,6 +10,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
 
 import '../app_settings.dart';
 import '../app_theme.dart';
+import '../services/system_accent_color.dart';
 import 'app_shell_navigation_scope.dart';
 import 'skeddo_glass_settings.dart';
 
@@ -85,6 +86,8 @@ class AppShellPinnedToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final listenables = <Listenable>[
       appAccentNotifier,
+      appAccentUsesSystemNotifier,
+      appSystemAccentColorNotifier,
       appLiquidGlassOpacityNotifier,
     ];
     final routeChanges = AppShellNavigationScope.routeChangesOf(context);

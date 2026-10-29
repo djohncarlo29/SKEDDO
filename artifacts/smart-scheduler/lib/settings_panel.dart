@@ -10,6 +10,7 @@ import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
 import 'app_settings.dart';
 import 'services/local_storage.dart';
+import 'services/system_accent_color.dart';
 import 'app_theme.dart';
 import 'widgets/app_switch.dart';
 import 'widgets/accent_tinted_image.dart';
@@ -64,6 +65,27 @@ const List<_AccentSwatch> _kAccentSwatches = [
   _AccentSwatch('Slate', kCatSlate),
   _AccentSwatch('Sand', kCatSand),
 ];
+
+String _systemAccentColorName(BuildContext context) {
+  final systemColor = CupertinoDynamicColor.resolve(
+    appSystemAccentColorNotifier.value,
+    context,
+  );
+  var closestName = _kAccentSwatches.first.name;
+  var closestDistance = double.infinity;
+  for (final swatch in _kAccentSwatches) {
+    final color = CupertinoDynamicColor.resolve(swatch.color, context);
+    final red = systemColor.r - color.r;
+    final green = systemColor.g - color.g;
+    final blue = systemColor.b - color.b;
+    final distance = red * red + green * green + blue * blue;
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestName = swatch.name;
+    }
+  }
+  return closestName;
+}
 
 // ── Route descriptor ──────────────────────────────────────────────────────────
 class _SettingsRoute {
@@ -586,6 +608,8 @@ class _SettingsPanelState extends State<SettingsPanel>
     return ListenableBuilder(
       listenable: Listenable.merge([
         appAccentNotifier,
+        appAccentUsesSystemNotifier,
+        appSystemAccentColorNotifier,
         appBrightnessNotifier,
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
@@ -602,11 +626,15 @@ class _SettingsPanelState extends State<SettingsPanel>
         appLiquidGlassOpacityNotifier,
       ]),
       builder: (context, _) {
-        final swatch = _kAccentSwatches[appAccentNotifier.value];
-        final accentColor = CupertinoDynamicColor.resolve(
-          swatch.color,
-          context,
-        );
+        final usesSystemAccent = appAccentUsesSystemNotifier.value;
+        final selectedSwatch = _kAccentSwatches[appAccentNotifier.value];
+        final swatch = usesSystemAccent
+            ? _AccentSwatch(
+                'System (${_systemAccentColorName(context)})',
+                appSystemAccentColorNotifier.value,
+              )
+            : selectedSwatch;
+        final accentColor = resolveAccentColor(context);
 
         final themeLabel = mirrorSystemSettingTrailingValue(
           usesSystem: appBrightnessNotifier.value == null,
@@ -783,12 +811,13 @@ class _SettingsSubScreenRoute extends StatelessWidget {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
 
     return ListenableBuilder(
-        listenable: appAccentNotifier,
+        listenable: Listenable.merge([
+          appAccentNotifier,
+          appAccentUsesSystemNotifier,
+          appSystemAccentColorNotifier,
+        ]),
         builder: (context, _) {
-          final accentColor = CupertinoDynamicColor.resolve(
-            _kAccentSwatches[appAccentNotifier.value].color,
-            context,
-          );
+          final accentColor = resolveAccentColor(context);
           return NotificationListener<ScrollMetricsNotification>(
             onNotification: _bindHeaderMetrics,
             child: NotificationListener<ScrollNotification>(
@@ -2136,11 +2165,13 @@ class SkeddoAppOnlySettingsSection extends StatelessWidget {
 class MirrorSystemSettingSection extends StatelessWidget {
   final Widget systemSettingRow;
   final String settingsScreenName;
+  final String? footer;
 
   const MirrorSystemSettingSection({
     super.key,
     required this.systemSettingRow,
     required this.settingsScreenName,
+    this.footer,
   });
 
   @override
@@ -2149,6 +2180,7 @@ class MirrorSystemSettingSection extends StatelessWidget {
       title: _mirrorSystemSettingSectionTitle,
       rows: [systemSettingRow],
       footer:
+          footer ??
           'When selected, Skeddo will use the setting from $settingsScreenName.',
     );
   }
@@ -3132,12 +3164,14 @@ class _OptionRow extends StatefulWidget {
   final String title;
   final bool selected;
   final Color accentColor;
+  final Color? leadingColor;
   final VoidCallback? onTap;
 
   const _OptionRow({
     required this.title,
     required this.selected,
     required this.accentColor,
+    this.leadingColor,
     this.onTap,
   });
 
@@ -3170,6 +3204,17 @@ class _OptionRowState extends State<_OptionRow> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (widget.leadingColor != null) ...[
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: widget.leadingColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Text(
                 widget.title,
@@ -3196,10 +3241,7 @@ class _OptionRowState extends State<_OptionRow> {
 // Accent-color picker section (sub-screen body)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Full card of 12 swatch rows.  Wraps in ValueListenableBuilder so only this
-// section rebuilds when the notifier changes — the outer ListenableBuilder in
-// _SettingsPanelState handles the accent-dependent rebuild of the rest of the
-// panel (trailing swatch, checkmarks in other sub-screens, etc.).
+// The system-backed accent and SKEDDO-only swatches are separate sections.
 class _AccentColorSection extends StatelessWidget {
   final ValueNotifier<int> accentNotifier;
 
@@ -3207,18 +3249,20 @@ class _AccentColorSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardBg = CupertinoDynamicColor.resolve(kCardColor, context);
-    final shadowColor = CupertinoDynamicColor.resolve(
-      kCardShadowColor,
-      context,
-    );
-    return ValueListenableBuilder<int>(
-      valueListenable: accentNotifier,
-      builder: (context, selectedIndex, _) {
-        final resolvedAccent = CupertinoDynamicColor.resolve(
-          _kAccentSwatches[selectedIndex].color,
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        accentNotifier,
+        appAccentUsesSystemNotifier,
+        appSystemAccentColorNotifier,
+      ]),
+      builder: (context, _) {
+        final usesSystem = appAccentUsesSystemNotifier.value;
+        final systemAccentColor = CupertinoDynamicColor.resolve(
+          appSystemAccentColorNotifier.value,
           context,
         );
+        final resolvedAccent = resolveAccentColor(context);
+        final systemAccentName = _systemAccentColorName(context);
         final rows = List.generate(_kAccentSwatches.length, (i) {
           final swatch = _kAccentSwatches[i];
           final resolvedColor = CupertinoDynamicColor.resolve(
@@ -3228,9 +3272,11 @@ class _AccentColorSection extends StatelessWidget {
           return _AccentSwatchRow(
             swatch: swatch,
             resolvedColor: resolvedColor,
-            selected: i == selectedIndex,
+            selected: !usesSystem && i == accentNotifier.value,
             accentColor: resolvedAccent,
             onTap: () {
+              appAccentUsesSystemNotifier.value = false;
+              saveAccentUsesSystem(false);
               accentNotifier.value = i;
               saveAccentIndex(i);
             },
@@ -3239,10 +3285,28 @@ class _AccentColorSection extends StatelessWidget {
         return SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _SettingsCard(
-              rows: rows,
-              cardBg: cardBg,
-              shadowColor: shadowColor,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                MirrorSystemSettingSection(
+                  systemSettingRow: _OptionRow(
+                    title: 'System Setting ($systemAccentName)',
+                    selected: usesSystem,
+                    accentColor: resolvedAccent,
+                    leadingColor: systemAccentColor,
+                    onTap: () {
+                      if (appAccentUsesSystemNotifier.value) return;
+                      appAccentUsesSystemNotifier.value = true;
+                      saveAccentUsesSystem(true);
+                    },
+                  ),
+                  settingsScreenName: 'your device',
+                  footer:
+                      'When selected, Skeddo uses your device’s system accent color.',
+                ),
+                const SizedBox(height: 20),
+                SkeddoAppOnlySettingsSection(rows: rows),
+              ],
             ),
           ),
         );

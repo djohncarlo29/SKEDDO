@@ -4,6 +4,8 @@ import 'dart:math' show max, min;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:dynamic_color/dynamic_color.dart'
+    show DynamicColorBuilder, DynamicColorBuilderState;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show LiquidGlassWidgets;
@@ -24,6 +26,7 @@ import 'ai/event_pipeline.dart';
 import 'app_theme.dart';
 import 'services/event_store.dart';
 import 'services/local_storage.dart';
+import 'services/system_accent_color.dart';
 import 'services/window_caption_appearance.dart';
 import 'tabs/calendar_tab.dart';
 import 'tabs/events_tab.dart';
@@ -611,6 +614,10 @@ class SKEDDOApp extends StatefulWidget {
 
 class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   Timer? _textScalePollTimer;
+  final GlobalKey<DynamicColorBuilderState> _dynamicColorBuilderKey =
+      GlobalKey<DynamicColorBuilderState>();
+  CupertinoDynamicColor? _pendingDynamicAccent;
+  CupertinoDynamicColor? _cachedDynamicAccent;
   // Keep the root route stack attached to the same Navigator across window
   // metric changes and app-shell rebuilds. In particular, an open modal route
   // owns unsaved form controllers and focus nodes that must not be recreated
@@ -622,6 +629,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(refreshSystemAccentColor());
     appSystemBrightnessNotifier.value =
         WidgetsBinding.instance.platformDispatcher.platformBrightness;
     _textScalePollTimer = Timer.periodic(
@@ -681,25 +689,65 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
       // System thumb and captured scaler track the newly selected OS value.
       unawaited(initializeDeviceTextScaleProfile());
       unawaited(refreshSystemFirstDayOfWeek());
+      unawaited(refreshSystemAccentColor());
+      final dynamicColorState = _dynamicColorBuilderKey.currentState;
+      if (dynamicColorState != null) {
+        unawaited(dynamicColorState.initPlatformState());
+      }
     }
+  }
+
+  void _publishDynamicAccent(CupertinoDynamicColor accent) {
+    if (hasSameAccentColorPair(appSystemAccentColorNotifier.value, accent) ||
+        (_pendingDynamicAccent != null &&
+            hasSameAccentColorPair(_pendingDynamicAccent!, accent))) {
+      return;
+    }
+    _pendingDynamicAccent = accent;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pending = _pendingDynamicAccent;
+      if (!mounted ||
+          pending == null ||
+          !hasSameAccentColorPair(pending, accent)) {
+        return;
+      }
+      _pendingDynamicAccent = null;
+      if (!hasSameAccentColorPair(appSystemAccentColorNotifier.value, accent)) {
+        appSystemAccentColorNotifier.value = accent;
+      }
+    });
+  }
+
+  CupertinoDynamicColor _cacheDynamicAccent(CupertinoDynamicColor accent) {
+    final cached = _cachedDynamicAccent;
+    if (cached != null && hasSameAccentColorPair(cached, accent)) {
+      return cached;
+    }
+    _cachedDynamicAccent = accent;
+    return accent;
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        appBrightnessNotifier,
-        appSystemBrightnessNotifier,
-        appTextSizeUsesSystemNotifier,
-        appTextSizeIndexNotifier,
-        appSystemTextScaleNotifier,
-        appSkeddoTextScaleMappingNotifier,
-        appCustomTextScalerNotifier,
-        appAccentNotifier,
-        appDateLocaleNotifier,
-        appFullMonthNameNotifier,
-      ]),
-      builder: (context, _) {
+    return DynamicColorBuilder(
+      key: _dynamicColorBuilderKey,
+      builder: (lightDynamic, darkDynamic) {
+        return ListenableBuilder(
+          listenable: Listenable.merge([
+            appBrightnessNotifier,
+            appSystemBrightnessNotifier,
+            appTextSizeUsesSystemNotifier,
+            appTextSizeIndexNotifier,
+            appSystemTextScaleNotifier,
+            appSkeddoTextScaleMappingNotifier,
+            appCustomTextScalerNotifier,
+            appAccentNotifier,
+            appAccentUsesSystemNotifier,
+            appSystemAccentColorNotifier,
+            appDateLocaleNotifier,
+            appFullMonthNameNotifier,
+          ]),
+          builder: (context, _) {
         final brightness = appBrightnessNotifier.value;
         final followsSystemTextSize = appTextSizeUsesSystemNotifier.value;
         final customTextSizeIndex = appTextSizeIndexNotifier.value;
@@ -712,8 +760,22 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             appSystemTextScaleNotifier.value != systemTextScale) {
           appSystemTextScaleNotifier.value = systemTextScale;
         }
-        // The selected accent swatch (strongly typed CupertinoDynamicColor).
-        final accentSwatch = kAccentSwatches[appAccentNotifier.value];
+        final selectedAppAccent = kAccentSwatches[appAccentNotifier.value];
+        final dynamicAccentCandidate = systemAccentFromDynamicColors(
+          lightDynamic?.primary,
+          darkDynamic?.primary,
+        );
+        final dynamicAccent = dynamicAccentCandidate == null
+            ? null
+            : _cacheDynamicAccent(dynamicAccentCandidate);
+        if (dynamicAccent != null) {
+          _publishDynamicAccent(dynamicAccent);
+        }
+        final systemAccent =
+            dynamicAccent ?? appSystemAccentColorNotifier.value;
+        final targetAccent = appAccentUsesSystemNotifier.value
+            ? systemAccent
+            : selectedAppAccent;
         final effectiveBrightness =
             brightness ?? MediaQuery.platformBrightnessOf(context);
         WindowCaptionAppearance.synchronize(effectiveBrightness);
@@ -733,7 +795,15 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
           systemNavigationBarContrastEnforced: false,
         );
 
-        return AnnotatedRegion<SystemUiOverlayStyle>(
+        return TweenAnimationBuilder<CupertinoDynamicColor>(
+          tween: _CupertinoAccentColorTween(
+            begin: targetAccent,
+            end: targetAccent,
+          ),
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeInOut,
+          builder: (context, accentSwatch, _) =>
+              AnnotatedRegion<SystemUiOverlayStyle>(
           value: dynamicOverlayStyle,
           child: CupertinoApp(
             debugShowCheckedModeBanner: false,
@@ -831,8 +901,28 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             },
             home: const AppShell(),
           ),
+        ),
+        );
+          },
         );
       },
+    );
+  }
+}
+
+class _CupertinoAccentColorTween extends Tween<CupertinoDynamicColor> {
+  _CupertinoAccentColorTween({
+    required super.begin,
+    required super.end,
+  });
+
+  @override
+  CupertinoDynamicColor lerp(double t) {
+    final start = begin ?? end!;
+    final finish = end ?? start;
+    return CupertinoDynamicColor.withBrightness(
+      color: Color.lerp(start.color, finish.color, t)!,
+      darkColor: Color.lerp(start.darkColor, finish.darkColor, t)!,
     );
   }
 }
@@ -2844,6 +2934,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           : (routeContext) => AnimatedBuilder(
               animation: Listenable.merge([
                 appAccentNotifier,
+                appAccentUsesSystemNotifier,
+                appSystemAccentColorNotifier,
                 _dcvToolbarAccent,
                 _searchToolbarInteractionsEnabled,
               ]),
@@ -3328,7 +3420,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   Widget _buildFloatingTabBar() {
     return AnimatedBuilder(
-      animation: Listenable.merge([_dcvSlideController, appAccentNotifier]),
+      animation: Listenable.merge([
+        _dcvSlideController,
+        appAccentNotifier,
+        appAccentUsesSystemNotifier,
+        appSystemAccentColorNotifier,
+      ]),
       builder: (context, _) {
         final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
         final isDCVVisual =
@@ -4086,6 +4183,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _dcvSlideController,
                   _searchModeAnim,
                   appAccentNotifier,
+                  appAccentUsesSystemNotifier,
+                  appSystemAccentColorNotifier,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);

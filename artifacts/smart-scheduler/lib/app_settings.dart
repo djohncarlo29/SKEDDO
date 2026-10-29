@@ -526,6 +526,12 @@ Future<void> refreshDeviceTextScaleProfileIfChanged() async {
 /// Persisted across settings sub-screen lifetimes via module-level storage.
 final ValueNotifier<int> appAccentNotifier = ValueNotifier<int>(5);
 
+/// Whether the app accent follows the native system accent instead of the
+/// selected SKEDDO-only swatch.
+final ValueNotifier<bool> appAccentUsesSystemNotifier = ValueNotifier<bool>(
+  false,
+);
+
 /// Calendar — which view to open when the Calendar tab is tapped.
 final ValueNotifier<String> appDefaultViewNotifier = ValueNotifier<String>(
   'Month',
@@ -618,6 +624,7 @@ const _kTextSizeKey = 'app_text_size';
 const _kTextSizeModeKey = 'app_text_size_mode';
 const _kTextSizeIndexKey = 'app_text_size_index';
 const _kAccentIndexKey = 'app_accent_index';
+const _kAccentUsesSystemKey = 'app_accent_uses_system';
 const _kStartOfWeekKey = 'app_start_of_week';
 const _kStartOfWeekModeKey = 'app_start_of_week_mode';
 const _kDefaultViewKey = 'app_default_view';
@@ -679,6 +686,8 @@ Future<void> loadAppSettings() async {
   // Accent color index
   final accentIndex = prefs.getInt(_kAccentIndexKey);
   if (accentIndex != null) appAccentNotifier.value = accentIndex;
+  appAccentUsesSystemNotifier.value =
+      prefs.getBool(_kAccentUsesSystemKey) ?? false;
 
   // New installations mirror the system's first weekday. Values saved by
   // older versions are treated as explicit app-only choices during migration.
@@ -815,5 +824,12 @@ Future<void> _settingsWriteQueue = Future<void>.value();
 void saveAccentIndex(int index) {
   SharedPreferences.getInstance().then(
     (p) => p.setInt(_kAccentIndexKey, index),
+  );
+}
+
+/// Persist whether the system accent is active.
+void saveAccentUsesSystem(bool usesSystem) {
+  SharedPreferences.getInstance().then(
+    (p) => p.setBool(_kAccentUsesSystemKey, usesSystem),
   );
 }
