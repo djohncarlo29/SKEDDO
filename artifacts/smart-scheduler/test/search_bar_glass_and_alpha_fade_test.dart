@@ -345,6 +345,42 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('search placeholder tracks editable-field overscroll metrics', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SizedBox(width: 360, child: AppSearchBar(controller: controller)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final input = tester.widget<NativeTextInput>(find.byType(NativeTextInput));
+    final scrollController = input.scrollController!;
+    expect(scrollController.hasClients, isTrue);
+    expect(scrollController.position.maxScrollExtent, 0);
+
+    final placeholder = find.text('Search');
+    final before = tester.getRect(placeholder);
+    scrollController.jumpTo(-18);
+    await tester.pump(const Duration(milliseconds: 1));
+    final nativeOverscroll = scrollController.position.pixels;
+    expect(nativeOverscroll, lessThan(-1));
+
+    expect(
+      tester.getRect(placeholder).left,
+      closeTo(before.left - nativeOverscroll, 0.5),
+      reason:
+          'The visible hint must track the editable text viewport’s own '
+          'rubberband offset, not only the wrapper’s synthetic drag offset.',
+    );
+
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+  });
+
   testWidgets('fitting placeholder follows the web rubberband fallback', (
     tester,
   ) async {

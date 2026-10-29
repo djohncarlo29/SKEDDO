@@ -705,12 +705,19 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         ),
       ),
     );
-    final Widget rubberbandedPlaceholder = widget.rubberbandWhenContentFits
-        ? focusedPlaceholder
-        : Transform.translate(
-            offset: Offset(-_rubberbandOffset, 0),
-            child: focusedPlaceholder,
-          );
+    // The synthetic fitting-content fallback translates the entire child
+    // subtree, including this overlay. Native editable scrolling only moves
+    // EditableText's viewport, so the overlay must mirror its reported offset
+    // separately. Never apply both translations during the fallback gesture.
+    final wrapperOwnsRubberband =
+        widget.rubberbandWhenContentFits && _manualRubberbandActive;
+    final placeholderOffset = wrapperOwnsRubberband
+        ? Offset.zero
+        : Offset(-_rubberbandOffset, 0);
+    final Widget rubberbandedPlaceholder = Transform.translate(
+      offset: placeholderOffset,
+      child: focusedPlaceholder,
+    );
     return Positioned.fill(
       child: IgnorePointer(
         child: ClipRect(

@@ -115,7 +115,7 @@
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.
-- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — AppSearchBar's hint belongs in the edge-fade overlay, which must track the input's rubberband movement.
+- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — native overscroll must translate the overlay separately; skip that only when the wrapper fallback already moves it.
 - [Flutter preview build directory](flutter-preview-build-directory.md) — native clean/build can remove build/web; restart the managed preview before debugging a resulting 404 or blank page.
 - [Family emoji skin-tone support](family-emoji-skin-tone-support.md) — gendered family ZWJ glyphs have no standardized skin-tone variants; per-person modifiers can decompose on Android.
 - [Screen-captured emoji transparency](emoji-sprite-transparency.md) — validate screenshot-derived sprites on a contrasting background; aggressive flood-fill can erase dark hair and body pixels.
