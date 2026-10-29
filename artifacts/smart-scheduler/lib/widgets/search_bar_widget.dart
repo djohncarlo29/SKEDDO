@@ -209,7 +209,6 @@ class AppSearchBarState extends State<AppSearchBar>
   late final AnimationController _pulseCtrl;
   late final ScrollController _scrollController;
   late final ValueNotifier<EdgeFadeMetrics?> _edgeFadeMetricsNotifier;
-  late final ValueNotifier<bool> _placeholderFocusNotifier;
   late final ValueNotifier<Color> _selectionColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
 
@@ -219,7 +218,6 @@ class AppSearchBarState extends State<AppSearchBar>
     _selectionColorNotifier = ValueNotifier<Color>(
       widget.selectionTint ?? kAccentColor,
     );
-    _placeholderFocusNotifier = ValueNotifier<bool>(false);
     _selectionControls = TintedCupertinoTextSelectionControls(
       _selectionColorNotifier,
     );
@@ -238,7 +236,6 @@ class AppSearchBarState extends State<AppSearchBar>
     _pulseCtrl.dispose();
     _scrollController.dispose();
     _edgeFadeMetricsNotifier.dispose();
-    _placeholderFocusNotifier.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
   }
@@ -440,6 +437,7 @@ class AppSearchBarState extends State<AppSearchBar>
     );
     const searchBarShape = BoundedSquircleStadiumBorder(
       radius: kSearchBarCornerRadius,
+      side: BorderSide.none,
     );
     final searchBarContents = ClipPath(
       clipper: ShapeBorderClipper(shape: searchBarShape),
@@ -491,8 +489,7 @@ class AppSearchBarState extends State<AppSearchBar>
                           metricsListenable: _edgeFadeMetricsNotifier,
                           placeholderText: widget.placeholder,
                           placeholderTextStyle: placeholderStyle,
-                          placeholderFocusListenable:
-                              _placeholderFocusNotifier,
+                          placeholderInChild: true,
                           controller: widget.controller,
                           scrollController: _scrollController,
                           child: NativeTextInput(
@@ -506,13 +503,12 @@ class AppSearchBarState extends State<AppSearchBar>
                             alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
                             alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
                             onFocusChanged: (focused) {
-                              _placeholderFocusNotifier.value = focused;
                               widget.onFocusChanged?.call(focused);
                             },
-                            // HorizontalEdgeFade paints the full intrinsic
-                            // placeholder so it can fade and rubberband like
-                            // normal one-line content.
-                            placeholder: '',
+                            // Keep the placeholder inside the same child
+                            // subtree as the field so the shared rubberband
+                            // translation and alpha fade move it as one.
+                            placeholder: widget.placeholder,
                             placeholderStyle: placeholderStyle,
                             style: TextStyle(
                               inherit: false,
@@ -687,6 +683,17 @@ class AppSearchBarState extends State<AppSearchBar>
             ),
           ),
           solidSearchSurface,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                key: const ValueKey('search-bar-rim-cover'),
+                painter: _SearchBarRimCoverPainter(
+                  shape: searchBarShape,
+                  color: solidSurfaceColor,
+                ),
+              ),
+            ),
+          ),
         ],
       );
     }
@@ -721,6 +728,34 @@ class SearchBarGlassGroup extends StatelessWidget {
       child: child!,
     ),
   );
+}
+
+/// Covers the renderer's hairline at the opaque search field's outer edge.
+///
+/// The glass shape remains in the shared layer for morphing with the cancel
+/// control; this matching-color stroke prevents that shape's rim from reading
+/// as an outline around the deliberately solid search fill.
+class _SearchBarRimCoverPainter extends CustomPainter {
+  const _SearchBarRimCoverPainter({required this.shape, required this.color});
+
+  final ShapeBorder shape;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = shape.getOuterPath(Offset.zero & size);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SearchBarRimCoverPainter oldDelegate) =>
+      oldDelegate.shape != shape || oldDelegate.color != color;
 }
 
 // ── SearchCancelButton ────────────────────────────────────────────────────────

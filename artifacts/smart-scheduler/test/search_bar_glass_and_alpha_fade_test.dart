@@ -104,6 +104,7 @@ void main() {
     );
     expect(cancelSurface.useOwnLayer, isFalse);
     expect(cancelSurface.settings, isNull);
+    expect(find.byKey(const ValueKey('search-bar-rim-cover')), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
@@ -231,6 +232,12 @@ void main() {
     await tester.pumpAndSettle();
 
     final inputFinder = find.byType(NativeTextInput);
+    final input = tester.widget<NativeTextInput>(inputFinder);
+    expect(input.placeholder, 'Search');
+    final edgeFade = tester.widget<HorizontalEdgeFade>(
+      find.byType(HorizontalEdgeFade),
+    );
+    expect(edgeFade.placeholderInChild, isTrue);
     final inputBefore = tester.getRect(inputFinder);
     final placeholderBefore = tester.getRect(find.text('Search'));
     final gesture = await tester.startGesture(inputBefore.center);

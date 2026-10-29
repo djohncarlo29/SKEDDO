@@ -61,6 +61,9 @@ class HorizontalEdgeFade extends StatefulWidget {
   final Alignment placeholderAlignment;
   final FocusNode? placeholderFocusNode;
   final ValueListenable<bool>? placeholderFocusListenable;
+  /// The child already paints this placeholder. The text and style are still
+  /// used to calculate placeholder overflow fades.
+  final bool placeholderInChild;
   /// Whether the empty placeholder receives the small focus-time nudge.
   ///
   /// Centered placeholders can opt out so focus does not change their visual
@@ -91,6 +94,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.placeholderAlignment = Alignment.centerLeft,
     this.placeholderFocusNode,
     this.placeholderFocusListenable,
+    this.placeholderInChild = false,
     this.placeholderMovesOnFocus = true,
   });
 
@@ -674,6 +678,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     if (text == null ||
         text.isEmpty ||
         style == null ||
+        widget.placeholderInChild ||
         widget.controller?.text.isEmpty != true ||
         !width.isFinite) {
       return const SizedBox.shrink();
@@ -701,18 +706,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       ),
     );
     final Widget rubberbandedPlaceholder = widget.rubberbandWhenContentFits
-        ? AnimatedContainer(
-            duration: _manualRubberbandActive
-                ? Duration.zero
-                : const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            transform: Matrix4.translationValues(
-              _manualChildOffset,
-              0,
-              0,
-            ),
-            child: focusedPlaceholder,
-          )
+        ? focusedPlaceholder
         : Transform.translate(
             offset: Offset(-_rubberbandOffset, 0),
             child: focusedPlaceholder,
@@ -756,8 +750,12 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         final content = Stack(
           clipBehavior: Clip.none,
           children: [
-            if (widget.rubberbandWhenContentFits)
-              AnimatedContainer(
+            widget.child,
+            _buildPlaceholder(context, constraints.maxWidth),
+          ],
+        );
+        final rubberbandedContent = widget.rubberbandWhenContentFits
+            ? AnimatedContainer(
                 duration: _manualRubberbandActive
                     ? Duration.zero
                     : const Duration(milliseconds: 260),
@@ -767,13 +765,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                   0,
                   0,
                 ),
-                child: widget.child,
+                child: content,
               )
-            else
-              widget.child,
-            _buildPlaceholder(context, constraints.maxWidth),
-          ],
-        );
+            : content;
         // Keep the ShaderMask mounted for the full gesture lifecycle. When no
         // edge is faded, _alphaMaskShader returns opaque white; removing the
         // wrapper at release would reparent the AnimatedContainer children and
@@ -786,9 +780,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                   leading: _showLeadingFade,
                   trailing: showTrailingFade,
                 ),
-                child: content,
+                child: rubberbandedContent,
               )
-            : content;
+            : rubberbandedContent;
 
         return Listener(
           onPointerDown: (event) =>
