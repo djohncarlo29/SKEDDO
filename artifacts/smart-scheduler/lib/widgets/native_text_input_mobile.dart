@@ -40,6 +40,9 @@ class NativeTextInput extends StatefulWidget {
   /// Web-only alpha edge mask configuration. On mobile the enclosing
   /// HorizontalEdgeFade applies the mask to the Flutter text field.
   final bool alphaEdgeFade;
+  /// The enclosing HorizontalEdgeFade handles the fitting-text fallback on
+  /// Flutter platforms; this flag is a web-only parity setting.
+  final bool rubberbandWhenContentFits;
   final double alphaFadeWidth;
   final double alphaFadeLeadingInset;
   final double alphaFadeTrailingInset;
@@ -63,6 +66,7 @@ class NativeTextInput extends StatefulWidget {
     this.selectionControls,
     this.caretToEndOnFirstTap = false,
     this.alphaEdgeFade = false,
+    this.rubberbandWhenContentFits = false,
     this.alphaFadeWidth = 36,
     this.alphaFadeLeadingInset = 0,
     this.alphaFadeTrailingInset = 0,

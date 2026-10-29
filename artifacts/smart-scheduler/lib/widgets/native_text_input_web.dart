@@ -27,6 +27,7 @@ class NativeTextInput extends StatefulWidget {
   final TextSelectionControls? selectionControls;
   final bool caretToEndOnFirstTap;
   final bool alphaEdgeFade;
+  final bool rubberbandWhenContentFits;
   final double alphaFadeWidth;
   final double alphaFadeLeadingInset;
   final double alphaFadeTrailingInset;
@@ -48,6 +49,7 @@ class NativeTextInput extends StatefulWidget {
     this.selectionControls,
     this.caretToEndOnFirstTap = false,
     this.alphaEdgeFade = false,
+    this.rubberbandWhenContentFits = false,
     this.alphaFadeWidth = 36,
     this.alphaFadeLeadingInset = 0,
     this.alphaFadeTrailingInset = 0,
@@ -139,6 +141,12 @@ class _NativeTextInputState extends State<NativeTextInput> {
   bool _updatingFromNative = false;
   bool _metricsScheduled = false;
   bool _wasFocusedAtPointerDown = false;
+  int? _rubberbandPointerId;
+  double _rubberbandStartX = 0;
+  double _rubberbandStartY = 0;
+  double _rubberbandViewportWidth = 0;
+  double _rubberbandSyntheticPixels = 0;
+  bool _rubberbandPointerActive = false;
   String? _lastAlphaEdgeMask;
 
   @override
@@ -154,6 +162,11 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _setNativeText(widget.controller.text);
     _inputSub = _element.onInput.listen((_) => _syncTextFromNative());
     _scrollSub = _element.onScroll.listen((_) => _publishScrollMetrics());
+    _element
+      ..addEventListener('pointerdown', _handleRubberbandPointerDown)
+      ..addEventListener('pointermove', _handleRubberbandPointerMove)
+      ..addEventListener('pointerup', _handleRubberbandPointerEnd)
+      ..addEventListener('pointercancel', _handleRubberbandPointerEnd);
     if (widget.caretToEndOnFirstTap) {
       _pointerDownSub = _element.onMouseDown.listen((_) {
         _wasFocusedAtPointerDown = html.document.activeElement == _element;
@@ -206,6 +219,11 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _blurSub?.cancel();
     _pointerDownSub?.cancel();
     _pointerUpSub?.cancel();
+    _element
+      ..removeEventListener('pointerdown', _handleRubberbandPointerDown)
+      ..removeEventListener('pointermove', _handleRubberbandPointerMove)
+      ..removeEventListener('pointerup', _handleRubberbandPointerEnd)
+      ..removeEventListener('pointercancel', _handleRubberbandPointerEnd);
     _element.remove();
     super.dispose();
   }
@@ -289,6 +307,71 @@ class _NativeTextInputState extends State<NativeTextInput> {
     });
   }
 
+  void _handleRubberbandPointerDown(html.Event rawEvent) {
+    if (!widget.rubberbandWhenContentFits || widget.multiline) return;
+    final event = rawEvent as html.PointerEvent;
+    final viewportWidth = math.max(
+      0.0,
+      _element.clientWidth -
+          widget.padding.left -
+          widget.padding.right,
+    );
+    if (_measureSingleLineContentWidth() > viewportWidth + 1.0) return;
+    _rubberbandPointerId = event.pointerId;
+    _rubberbandStartX = event.client.x.toDouble();
+    _rubberbandStartY = event.client.y.toDouble();
+    _rubberbandViewportWidth = viewportWidth;
+    _rubberbandSyntheticPixels = 0;
+    _rubberbandPointerActive = false;
+  }
+
+  void _handleRubberbandPointerMove(html.Event rawEvent) {
+    if (_rubberbandPointerId == null) return;
+    final event = rawEvent as html.PointerEvent;
+    if (event.pointerId != _rubberbandPointerId) return;
+    final deltaX = event.client.x.toDouble() - _rubberbandStartX;
+    final deltaY = event.client.y.toDouble() - _rubberbandStartY;
+    if (deltaY.abs() > 8 && deltaY.abs() > deltaX.abs()) {
+      _endRubberbandPointer(event);
+      return;
+    }
+    if (deltaX.abs() < 8) return;
+
+    final maxShift = math.min(32.0, _rubberbandViewportWidth * 0.16);
+    final childOffset = (deltaX * 0.55)
+        .clamp(-maxShift, maxShift)
+        .toDouble();
+    _rubberbandPointerActive = true;
+    _rubberbandSyntheticPixels = -childOffset;
+    _publishSyntheticRubberbandMetrics(_rubberbandSyntheticPixels);
+  }
+
+  void _handleRubberbandPointerEnd(html.Event rawEvent) {
+    final event = rawEvent as html.PointerEvent;
+    if (event.pointerId == _rubberbandPointerId) {
+      _endRubberbandPointer(event);
+    }
+  }
+
+  void _endRubberbandPointer(html.PointerEvent event) {
+    if (event.pointerId != _rubberbandPointerId) return;
+    _rubberbandPointerId = null;
+    _rubberbandPointerActive = false;
+    _rubberbandSyntheticPixels = 0;
+    _publishSyntheticRubberbandMetrics(0);
+    _schedulePublishScrollMetrics();
+  }
+
+  void _publishSyntheticRubberbandMetrics(double pixels) {
+    widget.metricsListenable?.value = EdgeFadeMetrics(
+      pixels: pixels,
+      minScrollExtent: 0,
+      maxScrollExtent: 0,
+      extentBefore: 0,
+      extentAfter: 0,
+    );
+  }
+
   void _publishScrollMetrics() {
     if (widget.multiline) {
       final notifier = widget.metricsListenable;
@@ -318,6 +401,18 @@ class _NativeTextInputState extends State<NativeTextInput> {
       0.0,
       horizontalContentWidth - horizontalViewportWidth,
     );
+    if (_rubberbandPointerActive &&
+        widget.rubberbandWhenContentFits &&
+        maxExtent <= 1.0) {
+      _updateAlphaEdgeMask(
+        contentWidth: horizontalContentWidth,
+        viewportWidth: horizontalViewportWidth,
+        pixels: 0,
+        maxExtent: 0,
+      );
+      _publishSyntheticRubberbandMetrics(_rubberbandSyntheticPixels);
+      return;
+    }
     final pixels = _element.scrollLeft.toDouble();
     _updateAlphaEdgeMask(
       contentWidth: horizontalContentWidth,

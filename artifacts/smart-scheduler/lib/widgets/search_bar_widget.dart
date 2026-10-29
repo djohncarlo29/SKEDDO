@@ -6,7 +6,11 @@ import 'package:flutter/gestures.dart'
     show DeviceGestureSettings, kTouchSlop;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass
-    show GlassContainer, LiquidRoundedSuperellipse;
+    show
+        AdaptiveLiquidGlassLayer,
+        GlassContainer,
+        GlassQuality,
+        LiquidRoundedSuperellipse;
 import '../app_settings.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
@@ -178,6 +182,7 @@ class AppSearchBar extends StatefulWidget {
   /// DCV search bars use the active category colour; regular search bars
   /// continue to use the app accent.
   final Color? selectionTint;
+  final bool groupedGlass;
 
   const AppSearchBar({
     super.key,
@@ -185,6 +190,7 @@ class AppSearchBar extends StatefulWidget {
     this.onFocusChanged,
     this.placeholder = 'Search',
     this.selectionTint,
+    this.groupedGlass = false,
   });
 
   @override
@@ -473,6 +479,7 @@ class AppSearchBarState extends State<AppSearchBar>
                           // is pulled past that edge; resting fitting text has
                           // no hidden content and therefore no fade.
                           fadeOnRubberbandWhenContentFits: true,
+                          rubberbandWhenContentFits: true,
                           alphaMask: true,
                           // The editable viewport spans from icon edge to icon
                           // edge. Its content has one 8 px inset on each side,
@@ -493,6 +500,7 @@ class AppSearchBarState extends State<AppSearchBar>
                             scrollController: _scrollController,
                             metricsListenable: _edgeFadeMetricsNotifier,
                             alphaEdgeFade: true,
+                            rubberbandWhenContentFits: true,
                             alphaFadeWidth: 36,
                             alphaFadeLeadingInset: kSearchFieldFadeEdgeGap,
                             alphaFadeTrailingInset: kSearchFieldFadeEdgeGap,
@@ -645,31 +653,59 @@ class AppSearchBarState extends State<AppSearchBar>
           ),
         ),
     );
+    Widget buildGlassSurface({required bool grouped}) => DecoratedBox(
+      decoration: ShapeDecoration(
+        color: const Color(0x00000000),
+        shape: searchBarShape,
+        shadows: resolveThemeShadows(kCardShadow, context),
+      ),
+      child: liquid_glass.GlassContainer(
+        shape: const liquid_glass.LiquidRoundedSuperellipse(
+          borderRadius: kSearchBarCornerRadius,
+        ),
+        settings: grouped
+            ? null
+            : skeddoPinnedNavigationGlassSettingsFor(
+                MediaQuery.platformBrightnessOf(context),
+              ),
+        useOwnLayer: !grouped,
+        child: searchBarContents,
+      ),
+    );
+
+    if (widget.groupedGlass) {
+      return buildGlassSurface(grouped: true);
+    }
     return ValueListenableBuilder<double>(
       valueListenable: appLiquidGlassOpacityNotifier,
-      child: searchBarContents,
-      builder: (context, _, child) {
-        final settings = skeddoPinnedNavigationGlassSettingsFor(
-          MediaQuery.platformBrightnessOf(context),
-        );
-        return DecoratedBox(
-          decoration: ShapeDecoration(
-            color: const Color(0x00000000),
-            shape: searchBarShape,
-            shadows: resolveThemeShadows(kCardShadow, context),
-          ),
-          child: liquid_glass.GlassContainer(
-            shape: const liquid_glass.LiquidRoundedSuperellipse(
-              borderRadius: kSearchBarCornerRadius,
-            ),
-            settings: settings,
-            useOwnLayer: true,
-            child: child!,
-          ),
-        );
-      },
+      builder: (context, _, __) => buildGlassSurface(grouped: false),
     );
   }
+}
+
+/// Provides one package glass layer to the separate search field and cancel
+/// button. Their edges blend only when their animated geometries overlap.
+class SearchBarGlassGroup extends StatelessWidget {
+  const SearchBarGlassGroup({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+    valueListenable: appLiquidGlassOpacityNotifier,
+    child: child,
+    builder: (context, _, child) => liquid_glass.AdaptiveLiquidGlassLayer(
+      settings: skeddoPinnedNavigationGlassSettingsFor(
+        MediaQuery.platformBrightnessOf(context),
+      ),
+      quality: liquid_glass.GlassQuality.premium,
+      clipExpansion: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 15,
+      ),
+      child: child!,
+    ),
+  );
 }
 
 // ── SearchCancelButton ────────────────────────────────────────────────────────
@@ -682,12 +718,14 @@ class SearchCancelButton extends StatefulWidget {
   final Animation<double>? animation;
   final bool searchFocused;
   final VoidCallback onTap;
+  final bool groupedGlass;
 
   const SearchCancelButton({
     super.key,
     required this.searchFocused,
     required this.onTap,
     this.animation,
+    this.groupedGlass = false,
   });
 
   @override
@@ -802,6 +840,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
           icon: CupertinoIcons.xmark,
           iconColor: primaryLabel,
           surfaceColor: surfaceColor,
+          groupedGlass: widget.groupedGlass,
           size: circleSize,
           iconSize: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
           semanticLabel: 'Cancel search',

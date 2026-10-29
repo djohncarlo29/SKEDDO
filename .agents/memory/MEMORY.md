@@ -43,6 +43,7 @@
 - [Package-rendered navigation buttons](static-liquid-glass-action-buttons.md) — app-shell navigation and search-cancel actions share ModalToolbarGlassButton with modal toolbars.
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.
+- [Separate glass control blending](shared-glass-control-blending.md) — neighboring controls need one AdaptiveLiquidGlassLayer to blend only when their shapes overlap.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — keep DEFAULT_JVM_OPTS in gradlew; daemon=false ignores org.gradle.jvmargs.
 - [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — key toolbar routes by visible configuration; push, morph, then prune, while global sheets stay on root.

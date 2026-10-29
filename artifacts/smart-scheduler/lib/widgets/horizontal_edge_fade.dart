@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'edge_fade_metrics.dart';
 
@@ -42,6 +43,9 @@ class HorizontalEdgeFade extends StatefulWidget {
   /// while it is being rubberbanded past an edge. Unlike
   /// [fadeWhenContentFits], this does not show a fade at rest.
   final bool fadeOnRubberbandWhenContentFits;
+  /// Adds a restrained drag-following fallback when short content has no
+  /// scroll extent to rubberband through its native editable viewport.
+  final bool rubberbandWhenContentFits;
   /// Shows the leading edge treatment at rest when content fits. This is
   /// useful for static labels whose two ends should share the same treatment.
   final bool showLeadingFadeWhenContentFits;
@@ -77,6 +81,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.alphaMask = false,
     this.fadeWhenContentFits = false,
     this.fadeOnRubberbandWhenContentFits = false,
+    this.rubberbandWhenContentFits = false,
     this.showLeadingFadeWhenContentFits = false,
     this.overflowText,
     this.overflowTextStyle,
@@ -107,6 +112,11 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   FocusNode? _attachedPlaceholderFocusNode;
   ValueListenable<bool>? _attachedPlaceholderFocusListenable;
   double _rubberbandOffset = 0;
+  int? _rubberbandPointer;
+  Offset? _rubberbandStartPosition;
+  double _manualChildOffset = 0;
+  bool _manualRubberbandActive = false;
+  double _rubberbandViewportWidth = 0;
   int _editSyncTicket = 0;
 
   @override
@@ -239,6 +249,15 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void _handleExternalMetricsChanged() {
     final metrics = _attachedMetricsListenable?.value;
     if (metrics == null) return;
+    if (widget.rubberbandWhenContentFits && metrics.maxScrollExtent <= 1.0) {
+      if (metrics.pixels.abs() > 1.0) {
+        _manualRubberbandActive = true;
+        _manualChildOffset = -metrics.pixels;
+      } else if (_manualRubberbandActive && _rubberbandPointer == null) {
+        _manualRubberbandActive = false;
+        _manualChildOffset = 0;
+      }
+    }
     _syncMetrics(
       pixels: metrics.pixels,
       minScrollExtent: metrics.minScrollExtent,
@@ -246,6 +265,79 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       extentBefore: metrics.extentBefore,
       extentAfter: metrics.extentAfter,
     );
+  }
+
+  void _handleRubberbandPointerDown(
+    PointerDownEvent event,
+    double viewportWidth,
+  ) {
+    if (!widget.rubberbandWhenContentFits ||
+        _canScroll ||
+        !viewportWidth.isFinite) {
+      return;
+    }
+    _rubberbandPointer = event.pointer;
+    _rubberbandStartPosition = event.position;
+    _rubberbandViewportWidth = viewportWidth;
+  }
+
+  void _handleRubberbandPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _rubberbandPointer) return;
+    final start = _rubberbandStartPosition;
+    if (start == null) return;
+    final delta = event.position - start;
+    if (delta.dy.abs() > kTouchSlop && delta.dy.abs() > delta.dx.abs()) {
+      _finishRubberbandPointer(event.pointer);
+      return;
+    }
+    if (delta.dx.abs() < kTouchSlop || _canScroll) return;
+    // Let native editable scrolling win if it has already reported an
+    // overscroll. This fallback covers fitting text whose internal scroll
+    // extent remains exactly zero.
+    if (!_manualRubberbandActive && _rubberbandOffset.abs() > 1.0) return;
+
+    final maxShift = math.min(32.0, _rubberbandViewportWidth * 0.16);
+    final childOffset = (delta.dx * 0.55)
+        .clamp(-maxShift, maxShift)
+        .toDouble();
+    if ((_manualChildOffset - childOffset).abs() < 0.1) return;
+    setState(() {
+      _manualRubberbandActive = true;
+      _manualChildOffset = childOffset;
+    });
+    _syncMetrics(
+      pixels: -childOffset,
+      minScrollExtent: 0,
+      maxScrollExtent: 0,
+      extentBefore: 0,
+      extentAfter: 0,
+    );
+  }
+
+  void _finishRubberbandPointer(int pointer) {
+    if (_rubberbandPointer != pointer) return;
+    _rubberbandPointer = null;
+    _rubberbandStartPosition = null;
+    if (!_manualRubberbandActive) return;
+    setState(() {
+      _manualRubberbandActive = false;
+      _manualChildOffset = 0;
+    });
+    _syncMetrics(
+      pixels: 0,
+      minScrollExtent: 0,
+      maxScrollExtent: 0,
+      extentBefore: 0,
+      extentAfter: 0,
+    );
+  }
+
+  void _handleRubberbandPointerUp(PointerUpEvent event) {
+    _finishRubberbandPointer(event.pointer);
+  }
+
+  void _handleRubberbandPointerCancel(PointerCancelEvent event) {
+    _finishRubberbandPointer(event.pointer);
   }
 
   void _handleScrollControllerChanged() {
@@ -646,7 +738,21 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         final content = Stack(
           clipBehavior: Clip.none,
           children: [
-            widget.child,
+            if (widget.rubberbandWhenContentFits)
+              AnimatedContainer(
+                duration: _manualRubberbandActive
+                    ? Duration.zero
+                    : const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                transform: Matrix4.translationValues(
+                  _manualChildOffset,
+                  0,
+                  0,
+                ),
+                child: widget.child,
+              )
+            else
+              widget.child,
             _buildPlaceholder(context, constraints.maxWidth),
           ],
         );
@@ -663,11 +769,17 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               )
             : content;
 
-        return NotificationListener<ScrollNotification>(
-          onNotification: _handleScrollNotification,
-          child: NotificationListener<ScrollMetricsNotification>(
-            onNotification: _handleMetricsNotification,
-            child: Stack(
+        return Listener(
+          onPointerDown: (event) =>
+              _handleRubberbandPointerDown(event, constraints.maxWidth),
+          onPointerMove: _handleRubberbandPointerMove,
+          onPointerUp: _handleRubberbandPointerUp,
+          onPointerCancel: _handleRubberbandPointerCancel,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: NotificationListener<ScrollMetricsNotification>(
+              onNotification: _handleMetricsNotification,
+              child: Stack(
               clipBehavior: Clip.none,
               // Let one-line fields establish their natural height. Expanding
               // this stack in an unbounded modal Column can make the entire
@@ -704,6 +816,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                   ),
                 ],
               ],
+              ),
             ),
           ),
         );

@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass
-    show GlassContainer;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as liquid_glass
+    show AdaptiveLiquidGlassLayer, GlassButton, GlassContainer;
 import 'package:smart_scheduler/widgets/edge_fade_metrics.dart';
 import 'package:smart_scheduler/widgets/horizontal_edge_fade.dart';
 import 'package:smart_scheduler/widgets/native_text_input.dart';
@@ -14,10 +15,7 @@ void main() {
     final controller = TextEditingController();
     await tester.pumpWidget(
       CupertinoApp(
-        home: SizedBox(
-          width: 360,
-          child: AppSearchBar(controller: controller),
-        ),
+        home: SizedBox(width: 360, child: AppSearchBar(controller: controller)),
       ),
     );
     await tester.pumpAndSettle();
@@ -31,6 +29,52 @@ void main() {
     expect(find.byKey(const ValueKey('search-mic')), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
 
+    controller.dispose();
+  });
+
+  testWidgets('search field and cancel circle share a blend layer', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SizedBox(
+          width: 360,
+          child: SearchBarGlassGroup(
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSearchBar(
+                    controller: controller,
+                    groupedGlass: true,
+                  ),
+                ),
+                SearchCancelButton(
+                  searchFocused: true,
+                  groupedGlass: true,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(liquid_glass.AdaptiveLiquidGlassLayer), findsOneWidget);
+    final searchSurface = tester.widget<liquid_glass.GlassContainer>(
+      find.byType(liquid_glass.GlassContainer),
+    );
+    expect(searchSurface.useOwnLayer, isFalse);
+    expect(searchSurface.settings, isNull);
+    final cancelSurface = tester.widget<liquid_glass.GlassButton>(
+      find.byType(liquid_glass.GlassButton),
+    );
+    expect(cancelSurface.useOwnLayer, isFalse);
+    expect(cancelSurface.settings, isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
   });
 
@@ -91,10 +135,7 @@ void main() {
     final controller = TextEditingController(text: 'short');
     await tester.pumpWidget(
       CupertinoApp(
-        home: SizedBox(
-          width: 360,
-          child: AppSearchBar(controller: controller),
-        ),
+        home: SizedBox(width: 360, child: AppSearchBar(controller: controller)),
       ),
     );
     await tester.pumpAndSettle();
@@ -105,12 +146,21 @@ void main() {
     expect(scrollController.hasClients, isTrue);
     expect(scrollController.position.maxScrollExtent, 0);
 
-    final gesture = await tester.startGesture(tester.getRect(inputFinder).center);
+    final inputRectBefore = tester.getRect(inputFinder);
+    final gesture = await tester.startGesture(inputRectBefore.center);
     await gesture.moveBy(const Offset(-24, 0));
     await tester.pump();
-    expect(scrollController.position.pixels, greaterThan(0));
+    expect(
+      tester.getRect(inputFinder).left,
+      lessThan(inputRectBefore.left - 5),
+    );
+    expect(scrollController.position.pixels, 0);
     await gesture.up();
     await tester.pumpAndSettle();
+    expect(
+      tester.getRect(inputFinder).left,
+      closeTo(inputRectBefore.left, 0.1),
+    );
     expect(scrollController.position.pixels, closeTo(0, 0.1));
 
     await tester.pumpWidget(const SizedBox.shrink());
