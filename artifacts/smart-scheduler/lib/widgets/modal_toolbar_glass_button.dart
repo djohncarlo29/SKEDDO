@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
     show LiquidGlassLens, LiquidGlassShape, LiquidGlassView;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
@@ -164,7 +166,10 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         : 'Action';
 
     final Widget renderedButton;
-    if (widget.useSliderRenderer && !activeTintedCheckmark) {
+    if (widget.useSliderRenderer &&
+        !kIsWeb &&
+        ImageFilter.isShaderFilterSupported &&
+        !activeTintedCheckmark) {
       final lens = slider_glass.LiquidGlassLens(
         style: skeddoSliderGlassStyleFor(
           brightness,

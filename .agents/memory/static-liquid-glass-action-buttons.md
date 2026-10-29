@@ -11,8 +11,27 @@ Fixed-color action circles retain the historical app-owned LiquidGlassView + Liq
 
 **Why:** The modal-card-matched shadow was too blurred and spread out, and the earlier 18% / 12 px revision still needed to be tighter; the user wants a lighter, more defined but still soft shadow across all Light Mode circular actions, with no Dark Mode shadow.
 
-Modal sheet and Notes attachment-preview buttons, plus search-cancel, use the shared `ModalToolbarGlassButton` wrapper. These controls use `liquid_glass_widgets` `GlassButton` with app optical settings bridged from the shared slider; active confirmations retain their action accent/category fill and inactive confirmations remain visually glassy but disabled. App-shell navigation uses the pinned `GlassAppBar` route.
+Modal sheet and Notes attachment-preview buttons use the shared
+`ModalToolbarGlassButton` wrapper with `liquid_glass_widgets` `GlassButton`;
+active confirmations retain their action accent/category fill and inactive
+confirmations remain visually glassy but disabled. Search field and cancel
+surfaces instead use `liquid_glass_easy`'s `LiquidGlassLens` pipeline from
+`LiquidGlassSlider`, grouped through `LiquidGlassBlender` so their shapes merge
+when they overlap. The cancel button keeps its existing package interaction
+shell for press scaling and stretch, but that shell is transparent. The CPU-only
+web preview retains its working `liquid_glass_widgets` glass fallback.
+App-shell navigation uses the pinned `GlassAppBar` route.
 
 **Why:** The user explicitly wants the package's toolbar-glass rendering for modal actions while retaining SKEDDO's checkmark styling and live shared optical settings rather than using package defaults or the `liquid_glass_easy` button implementation.
 
+The search surfaces have a separate renderer requirement: use the same
+`liquid_glass_easy` lens renderer and slider-based optical values as
+`LiquidGlassSlider`. The current web preview has no WebGL shader support, so it
+uses the established package fallback instead of blanking the app.
+
 **How to apply:** Reuse `ModalToolbarGlassButton` for modal icon controls and keep authored glyphs, tap routing, active/inactive checkmark fill treatment, and shared settings conversion. Do not replace modal sheet presentation or header layout as part of a button-renderer change. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested.
+
+For search, keep the two `LiquidGlassLens` descendants inside one
+`LiquidGlassView` and `LiquidGlassBlender`; preserve the existing text/fade
+content and button motion. Use the package glass fallback in the CPU-only web
+preview.

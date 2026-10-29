@@ -1,10 +1,18 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart'
     show DeviceGestureSettings, kTouchSlop;
 import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as fallback_glass
+    show
+        AdaptiveLiquidGlassLayer,
+        GlassContainer,
+        GlassQuality,
+        LiquidRoundedSuperellipse;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
     show LiquidGlassBlender, LiquidGlassLens, LiquidGlassShape, LiquidGlassView;
 import '../app_settings.dart';
@@ -651,6 +659,28 @@ class AppSearchBarState extends State<AppSearchBar>
     );
     Widget buildGlassSurface({required bool grouped}) {
       final brightness = CupertinoTheme.brightnessOf(context);
+      // The browser preview currently runs without WebGL shader support.
+      // Keep its existing package renderer rather than blanking the surface.
+      if (kIsWeb || !ImageFilter.isShaderFilterSupported) {
+        return DecoratedBox(
+          decoration: ShapeDecoration(
+            color: const Color(0x00000000),
+            shape: searchBarShape,
+            shadows: resolveThemeShadows(kCardShadow, context),
+          ),
+          child: fallback_glass.GlassContainer(
+            shape: const fallback_glass.LiquidRoundedSuperellipse(
+              borderRadius: kSearchBarCornerRadius,
+            ),
+            settings: grouped
+                ? null
+                : skeddoPinnedNavigationGlassSettingsFor(brightness),
+            useOwnLayer: !grouped,
+            child: searchBarContents,
+          ),
+        );
+      }
+
       final lensShape = slider_glass.LiquidGlassShape.squircle(
         cornerRadius: kSearchBarCornerRadius,
       );
@@ -688,8 +718,9 @@ class AppSearchBarState extends State<AppSearchBar>
   }
 }
 
-/// Provides one package glass layer to the separate search field and cancel
-/// button. Their edges blend only when their animated geometries overlap.
+/// Shares the LiquidGlassSlider lens renderer between the search field and
+/// cancel button so their silhouettes blend when their geometries overlap.
+/// The CPU-only web preview keeps its existing package-glass fallback.
 class SearchBarGlassGroup extends StatelessWidget {
   const SearchBarGlassGroup({super.key, required this.child});
 
@@ -701,6 +732,17 @@ class SearchBarGlassGroup extends StatelessWidget {
     child: child,
     builder: (context, _, child) {
       final brightness = CupertinoTheme.brightnessOf(context);
+      if (kIsWeb || !ImageFilter.isShaderFilterSupported) {
+        return fallback_glass.AdaptiveLiquidGlassLayer(
+          settings: skeddoPinnedNavigationGlassSettingsFor(brightness),
+          quality: fallback_glass.GlassQuality.premium,
+          clipExpansion: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          child: child!,
+        );
+      }
       return slider_glass.LiquidGlassView(
         backgroundWidget: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),

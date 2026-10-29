@@ -40,7 +40,7 @@
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
 - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
 - [Modal toolbar package glass](light-mode-checkmark-glass.md) — use GlassIconButton with shared tab-bar optics, action-tinted checks, and disabled confirmation state.
-- [Package-rendered navigation buttons](static-liquid-glass-action-buttons.md) — app-shell navigation and search-cancel actions share ModalToolbarGlassButton with modal toolbars.
+- [Shared Liquid Glass controls](static-liquid-glass-action-buttons.md) — modal actions keep package glass; search surfaces use the LiquidGlassSlider renderer where shaders are supported.
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.
 - [Separate glass control blending](shared-glass-control-blending.md) — neighboring controls need one AdaptiveLiquidGlassLayer to blend only when their shapes overlap.
