@@ -223,7 +223,7 @@ void main() {
     expect(button.settings!.glassColor.a, closeTo(0.614, 0.001));
   });
 
-  testWidgets('modal toolbars can keep their buttons rigid on touch', (
+  testWidgets('modal toolbars scale and stretch on press by default', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -235,7 +235,6 @@ void main() {
               icon: CupertinoIcons.xmark,
               iconColor: CupertinoColors.label,
               surfaceColor: Color(0xFFFFFFFF),
-              disableTouchMotion: true,
               onTap: _ignoreTap,
             ),
             ModalToolbarGlassButton(
@@ -243,7 +242,6 @@ void main() {
               iconColor: CupertinoColors.white,
               surfaceColor: Color(0xFF007AFF),
               isCheckmark: true,
-              disableTouchMotion: true,
               onTap: _ignoreTap,
             ),
           ],
@@ -254,9 +252,9 @@ void main() {
     final standardButton = tester.widget<navigation_glass.GlassButton>(
       find.byType(navigation_glass.GlassButton).first,
     );
-    expect(standardButton.interactionScale, 1);
-    expect(standardButton.stretch, 0);
-    expect(standardButton.anchorStretch, isFalse);
+    expect(standardButton.interactionScale, 1.15);
+    expect(standardButton.stretch, 0.5);
+    expect(standardButton.anchorStretch, isTrue);
 
     final shellFinder = find.byWidgetPredicate(
       (widget) =>
@@ -266,9 +264,9 @@ void main() {
     final checkmarkShell = tester.widget<navigation_glass.GlassButton>(
       shellFinder,
     );
-    expect(checkmarkShell.interactionScale, 1);
-    expect(checkmarkShell.stretch, 0);
-    expect(checkmarkShell.anchorStretch, isFalse);
+    expect(checkmarkShell.interactionScale, 1.15);
+    expect(checkmarkShell.stretch, 0.5);
+    expect(checkmarkShell.anchorStretch, isTrue);
   });
 
   testWidgets(

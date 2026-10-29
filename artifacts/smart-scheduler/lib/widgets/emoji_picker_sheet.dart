@@ -1642,7 +1642,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       semanticLabel: 'Back',
       iconOffset: const Offset(-2, 0),
       tapDelay: const Duration(milliseconds: 130),
-      disableTouchMotion: true,
       onTap: _close,
     );
 

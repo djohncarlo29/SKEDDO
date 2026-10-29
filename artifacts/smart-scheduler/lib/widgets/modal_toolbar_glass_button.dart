@@ -50,7 +50,8 @@ class ModalToolbarGlassButton extends StatefulWidget {
 
   /// Disables press scaling and drag-following deformation.
   ///
-  /// Use for modal toolbar actions that should keep a fixed circular shape.
+  /// Use only for controls that intentionally need a fixed shape; modal
+  /// toolbar actions normally keep press scaling and stretch enabled.
   final bool disableTouchMotion;
   final String? semanticLabel;
 

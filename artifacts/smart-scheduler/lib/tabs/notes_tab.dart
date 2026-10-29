@@ -3970,7 +3970,6 @@ class _PreviewCircleButton extends StatelessWidget {
       iconColor: resolvedIconColor,
       surfaceColor: resolvedContainerColor,
       isCheckmark: isCheckmark,
-      disableTouchMotion: true,
       tapDelay: tapDelay,
       onTap: onTap,
       child: Center(
