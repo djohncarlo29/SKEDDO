@@ -428,6 +428,17 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   }
 
   void _sync(ScrollMetrics metrics) {
+    // A fitting search field uses the wrapper's drag-following fallback.
+    // EditableText may still emit idle (zero-offset) metrics for the same
+    // pointer sequence; those must not erase the synthetic rubberband or its
+    // edge fade while the fallback gesture is active.
+    if (widget.rubberbandWhenContentFits &&
+        _manualRubberbandActive &&
+        _rubberbandPointer != null &&
+        metrics.maxScrollExtent <= 1.0 &&
+        metrics.pixels.abs() <= 1.0) {
+      return;
+    }
     _syncMetrics(
       pixels: metrics.pixels,
       minScrollExtent: metrics.minScrollExtent,
@@ -673,6 +684,39 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     );
     final focusedOffset =
         widget.placeholderMovesOnFocus && _placeholderIsFocused ? 4.0 : 0.0;
+    final focusedPlaceholder = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      transform: Matrix4.translationValues(focusedOffset, 0, 0),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: availableWidth),
+        child: Text(
+          text,
+          style: style,
+          textAlign: widget.placeholderTextAlign,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.clip,
+        ),
+      ),
+    );
+    final Widget rubberbandedPlaceholder = widget.rubberbandWhenContentFits
+        ? AnimatedContainer(
+            duration: _manualRubberbandActive
+                ? Duration.zero
+                : const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            transform: Matrix4.translationValues(
+              _manualChildOffset,
+              0,
+              0,
+            ),
+            child: focusedPlaceholder,
+          )
+        : Transform.translate(
+            offset: Offset(-_rubberbandOffset, 0),
+            child: focusedPlaceholder,
+          );
     return Positioned.fill(
       child: IgnorePointer(
         child: ClipRect(
@@ -686,33 +730,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const NeverScrollableScrollPhysics(),
-                child: Transform.translate(
-                  // Keep rubberband movement immediate so the placeholder
-                  // tracks the field's native scroll gesture, while the
-                  // focus-only 4 px nudge gets the same tap-time animation
-                  // as the native text input.
-                  offset: Offset(-_rubberbandOffset, 0),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    transform: Matrix4.translationValues(
-                      focusedOffset,
-                      0,
-                      0,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: availableWidth),
-                      child: Text(
-                        text,
-                        style: style,
-                        textAlign: widget.placeholderTextAlign,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.clip,
-                      ),
-                    ),
-                  ),
-                ),
+                child: rubberbandedPlaceholder,
               ),
             ),
           ),
@@ -756,8 +774,11 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
             _buildPlaceholder(context, constraints.maxWidth),
           ],
         );
-        final fadedContent = widget.alphaMask &&
-                (_showLeadingFade || showTrailingFade)
+        // Keep the ShaderMask mounted for the full gesture lifecycle. When no
+        // edge is faded, _alphaMaskShader returns opaque white; removing the
+        // wrapper at release would reparent the AnimatedContainer children and
+        // snap their rubberband animation instead of settling them.
+        final fadedContent = widget.alphaMask
             ? ShaderMask(
                 blendMode: BlendMode.dstIn,
                 shaderCallback: (bounds) => _alphaMaskShader(

@@ -27,6 +27,10 @@ void main() {
     final decoration = surface.decoration as ShapeDecoration;
     expect(decoration.color!.a, 1.0);
     expect(
+      (decoration.shape as ContinuousRectangleBorder).side,
+      BorderSide.none,
+    );
+    expect(
       find.descendant(
         of: find.byKey(const ValueKey('search-bar-solid-surface')),
         matching: find.byType(NativeTextInput),
@@ -76,6 +80,17 @@ void main() {
     );
     expect(searchSurface.useOwnLayer, isFalse);
     expect(searchSurface.settings, isNull);
+    final proxyClipFinder = find.ancestor(
+      of: find.byType(liquid_glass.GlassContainer),
+      matching: find.byType(ClipPath),
+    );
+    expect(proxyClipFinder, findsOneWidget);
+    final proxyClip = tester.widget<ClipPath>(proxyClipFinder);
+    expect(proxyClip.clipBehavior, Clip.antiAlias);
+    expect(
+      (proxyClip.clipper as ShapeBorderClipper).shape,
+      isA<ContinuousRectangleBorder>(),
+    );
     expect(
       find.descendant(
         of: find.byType(liquid_glass.GlassContainer),
@@ -145,7 +160,7 @@ void main() {
     metrics.dispose();
   });
 
-  testWidgets('short typed search text keeps its horizontal rubberband', (
+  testWidgets('short typed search text keeps its fitting-content rubberband', (
     tester,
   ) async {
     final controller = TextEditingController(text: 'short');
@@ -183,22 +198,145 @@ void main() {
 
     final inputRectBefore = tester.getRect(inputFinder);
     final gesture = await tester.startGesture(inputRectBefore.center);
-    await gesture.moveBy(const Offset(-24, 0));
-    await tester.pump();
+    await gesture.moveBy(const Offset(-12, 0));
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.moveBy(const Offset(-12, 0));
+    await tester.pump(const Duration(milliseconds: 16));
     expect(
       tester.getRect(inputFinder).left,
       lessThan(inputRectBefore.left - 5),
     );
+    expect(find.byType(ShaderMask), findsOneWidget);
     expect(scrollController.position.pixels, 0);
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(
-      tester.getRect(inputFinder).left,
-      closeTo(inputRectBefore.left, 0.1),
-    );
+    expect(tester.getRect(inputFinder).left, closeTo(inputRectBefore.left, 0.1));
     expect(scrollController.position.pixels, closeTo(0, 0.1));
 
     await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
+  });
+
+  testWidgets('short placeholder follows the drag and bounce-back together', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SizedBox(width: 360, child: AppSearchBar(controller: controller)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    NativeTextInput.focus(controller);
+    await tester.pumpAndSettle();
+
+    final inputFinder = find.byType(NativeTextInput);
+    final inputBefore = tester.getRect(inputFinder);
+    final placeholderBefore = tester.getRect(find.text('Search'));
+    final gesture = await tester.startGesture(inputBefore.center);
+    await gesture.moveBy(const Offset(-24, 0));
+    await tester.pump(const Duration(milliseconds: 16));
+
+    final inputDuringDrag = tester.getRect(inputFinder);
+    final placeholderDuringDrag = tester.getRect(find.text('Search'));
+    expect(inputDuringDrag.left, lessThan(inputBefore.left - 5));
+    expect(
+      placeholderDuringDrag.left,
+      lessThan(placeholderBefore.left - 5),
+    );
+    expect(find.byType(ShaderMask), findsOneWidget);
+
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 100));
+    final inputDuringReturn = tester.getRect(inputFinder);
+    final placeholderDuringReturn = tester.getRect(find.text('Search'));
+    expect(
+      inputDuringReturn.left - inputBefore.left,
+      closeTo(
+        placeholderDuringReturn.left - placeholderBefore.left,
+        0.5,
+      ),
+    );
+    expect(inputDuringReturn.left, lessThan(inputBefore.left));
+
+    await tester.pumpAndSettle();
+    expect(tester.getRect(inputFinder).left, closeTo(inputBefore.left, 0.1));
+    expect(
+      tester.getRect(find.text('Search')).left,
+      closeTo(placeholderBefore.left, 0.1),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+  });
+
+  testWidgets('fitting placeholder follows the web rubberband fallback', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    final metrics = ValueNotifier<EdgeFadeMetrics?>(
+      const EdgeFadeMetrics(
+        pixels: 0,
+        minScrollExtent: 0,
+        maxScrollExtent: 0,
+        extentBefore: 0,
+        extentAfter: 0,
+      ),
+    );
+    const fadeKey = ValueKey('fitting-placeholder-fade');
+    const contentKey = ValueKey('fitting-placeholder-content');
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SizedBox(
+          width: 240,
+          height: 44,
+          child: HorizontalEdgeFade(
+            key: fadeKey,
+            controller: controller,
+            metricsListenable: metrics,
+            fadeColor: CupertinoColors.systemBackground,
+            fadeOnRubberbandWhenContentFits: true,
+            rubberbandWhenContentFits: true,
+            alphaMask: true,
+            placeholderText: 'Search',
+            placeholderTextStyle: const TextStyle(fontSize: 17),
+            child: const SizedBox.expand(key: contentKey),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final contentBefore = tester.getRect(find.byKey(contentKey));
+    final placeholderBefore = tester.getRect(find.text('Search'));
+    metrics.value = const EdgeFadeMetrics(
+      pixels: -18,
+      minScrollExtent: 0,
+      maxScrollExtent: 0,
+      extentBefore: 0,
+      extentAfter: 0,
+    );
+    await tester.pump();
+
+    expect(
+      tester.getRect(find.byKey(contentKey)).left,
+      closeTo(contentBefore.left + 18, 0.5),
+    );
+    expect(
+      tester.getRect(find.text('Search')).left,
+      closeTo(placeholderBefore.left + 18, 0.5),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(fadeKey),
+        matching: find.byType(ShaderMask),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+    metrics.dispose();
   });
 }

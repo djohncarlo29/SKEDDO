@@ -674,12 +674,16 @@ class AppSearchBarState extends State<AppSearchBar>
         fit: StackFit.passthrough,
         children: [
           Positioned.fill(
-            child: liquid_glass.GlassContainer(
-              shape: const liquid_glass.LiquidRoundedSuperellipse(
-                borderRadius: kSearchBarCornerRadius,
+            child: ClipPath(
+              clipper: ShapeBorderClipper(shape: searchBarShape),
+              clipBehavior: Clip.antiAlias,
+              child: liquid_glass.GlassContainer(
+                shape: const liquid_glass.LiquidRoundedSuperellipse(
+                  borderRadius: kSearchBarCornerRadius,
+                ),
+                useOwnLayer: false,
+                child: const SizedBox.expand(),
               ),
-              useOwnLayer: false,
-              child: const SizedBox.expand(),
             ),
           ),
           solidSearchSurface,
