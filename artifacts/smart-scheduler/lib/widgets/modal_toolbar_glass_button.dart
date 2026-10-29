@@ -1,20 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show
-        GlassButton,
-        GlassButtonStyle,
-        GlassIconButton,
-        GlassIconButtonShape,
-        GlassQuality,
-        LiquidOval;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
+    show GlassButton, GlassButtonStyle, GlassQuality, LiquidOval;
 
 import '../app_settings.dart';
 import '../app_theme.dart';
 import 'skeddo_glass_settings.dart';
 
-/// Shared package GlassIconButton for modal sheet toolbar actions.
+/// Shared liquid_glass_widgets button for modal sheet toolbar actions.
 class ModalToolbarGlassButton extends StatefulWidget {
   const ModalToolbarGlassButton({
     super.key,
@@ -131,6 +126,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         : followsActionColor
         ? skeddoTintedActionGlassSettingsFor(brightness, resolvedSurface)
         : skeddoBottomBarGlassSettingsFor(brightness);
+    final navigationGlassSettings = skeddoNavigationGlassSettingsFromShared(
+      glassSettings,
+    );
     final iconOffset = widget.iconOffset != Offset.zero
         ? widget.iconOffset
         : widget.icon == CupertinoIcons.chevron_left
@@ -152,9 +150,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
 
     final Widget renderedButton;
     if (activeTintedCheckmark) {
-      // The package's GlassIconButton stretches only its own layer. Keep all
-      // visual layers inside one transparent GlassButton so its LiquidStretch
-      // transforms the color fill, refraction, lighting, and glyph together.
+      // Keep all visual layers inside one transparent package GlassButton so
+      // its LiquidStretch transforms the color fill, refraction, lighting, and
+      // glyph together.
       final composite = Stack(
         fit: StackFit.expand,
         children: [
@@ -169,36 +167,54 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
             child: ExcludeSemantics(
               child: Opacity(
                 opacity: kSkeddoActiveCheckmarkRefractionOverlayOpacity,
-                child: GlassIconButton(
-                  icon: const SizedBox.shrink(),
-                  onPressed: () {},
-                  size: widget.size,
-                  iconSize: widget.iconSize,
-                  shape: GlassIconButtonShape.circle,
-                  settings: skeddoActiveCheckmarkRefractionSettingsFor(
-                    brightness,
+                child: navigation_glass.GlassButton.custom(
+                  onTap: _ignoreTap,
+                  width: widget.size,
+                  height: widget.size,
+                  shape: const navigation_glass.LiquidOval(),
+                  settings: skeddoNavigationGlassSettingsFromShared(
+                    skeddoActiveCheckmarkRefractionSettingsFor(brightness),
                   ),
-                  quality: GlassQuality.premium,
+                  quality: navigation_glass.GlassQuality.premium,
                   useOwnLayer: true,
                   interactionScale: 1,
-                  semanticLabel: '',
+                  stretch: 0,
+                  anchorStretch: false,
+                  glowColor: const Color(0x00000000),
+                  glowOpacity: 0,
+                  glowBlurRadius: 0,
+                  glowSpreadRadius: 0,
+                  ambientBaseLight: 0,
+                  isStationary: true,
+                  excludeFromSemantics: true,
+                  label: '',
+                  child: const SizedBox.expand(),
                 ),
               ),
             ),
           ),
           IgnorePointer(
             child: ExcludeSemantics(
-              child: GlassIconButton(
-                icon: const SizedBox.shrink(),
-                onPressed: () {},
-                size: widget.size,
-                iconSize: widget.iconSize,
-                shape: GlassIconButtonShape.circle,
-                settings: glassSettings,
-                quality: GlassQuality.premium,
+              child: navigation_glass.GlassButton.custom(
+                onTap: _ignoreTap,
+                width: widget.size,
+                height: widget.size,
+                shape: const navigation_glass.LiquidOval(),
+                settings: navigationGlassSettings,
+                quality: navigation_glass.GlassQuality.premium,
                 useOwnLayer: true,
                 interactionScale: 1,
-                semanticLabel: '',
+                stretch: 0,
+                anchorStretch: false,
+                glowColor: const Color(0x00000000),
+                glowOpacity: 0,
+                glowBlurRadius: 0,
+                glowSpreadRadius: 0,
+                ambientBaseLight: 0,
+                isStationary: true,
+                excludeFromSemantics: true,
+                label: '',
+                child: const SizedBox.expand(),
               ),
             ),
           ),
@@ -208,18 +224,18 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         ],
       );
 
-      renderedButton = GlassButton.custom(
+      renderedButton = navigation_glass.GlassButton.custom(
         onTap: _handleTap,
         width: widget.size,
         height: widget.size,
-        shape: const LiquidOval(),
-        quality: GlassQuality.premium,
+        shape: const navigation_glass.LiquidOval(),
+        quality: navigation_glass.GlassQuality.premium,
         interactionScale: interactionScale,
         stretch: stretch,
         anchorStretch: anchorStretch,
         resistance: 0.01,
-        enabled: _canTap,
-        style: GlassButtonStyle.transparent,
+        enabled: true,
+        style: navigation_glass.GlassButtonStyle.transparent,
         glowOpacity: 0,
         glowBlurRadius: 0,
         glowSpreadRadius: 0,
@@ -228,22 +244,21 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         child: composite,
       );
     } else {
-      renderedButton = GlassIconButton(
-        icon: transformedIcon,
-        // Keep checkmark glass fully styled even when its action is unavailable;
-        // _handleTap still blocks the action while the package renders it active.
-        onPressed: checkmark ? _handleTap : (_canTap ? _handleTap : null),
-        size: widget.size,
-        iconSize: widget.iconSize,
-        shape: GlassIconButtonShape.circle,
-        settings: glassSettings,
-        quality: GlassQuality.premium,
+      renderedButton = navigation_glass.GlassButton.custom(
+        onTap: _handleTap,
+        width: widget.size,
+        height: widget.size,
+        shape: const navigation_glass.LiquidOval(),
+        settings: navigationGlassSettings,
+        quality: navigation_glass.GlassQuality.premium,
         useOwnLayer: true,
         interactionScale: interactionScale,
         stretch: stretch,
         anchorStretch: anchorStretch,
+        enabled: checkmark || _canTap,
         glowColor: checkmark && !_canTap ? const Color(0x00000000) : null,
-        semanticLabel: widget.semanticLabel ?? fallbackLabel,
+        label: widget.semanticLabel ?? fallbackLabel,
+        child: transformedIcon,
       );
     }
     if (checkmark && !_canTap) {
@@ -258,3 +273,5 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
     return renderedButton;
   }
 }
+
+void _ignoreTap() {}

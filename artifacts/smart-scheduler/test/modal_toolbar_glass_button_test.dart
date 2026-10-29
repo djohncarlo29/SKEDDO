@@ -1,12 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show
-        GlassButton,
-        GlassButtonStyle,
-        GlassIconButton,
-        GlassIconButtonShape,
-        GlassQuality;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
+    show GlassButton, GlassButtonStyle, GlassQuality, LiquidOval;
 
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/app_settings.dart';
@@ -42,7 +38,7 @@ void main() {
     expect(opticalOffset, findsOneWidget);
   });
 
-  testWidgets('modal toolbar uses package glass icon button in both themes', (
+  testWidgets('modal toolbar uses package glass buttons in both themes', (
     tester,
   ) async {
     const actionColor = Color(0xFF7B3FE4);
@@ -64,32 +60,38 @@ void main() {
         ),
       );
 
-      final buttons = tester
-          .widgetList<GlassIconButton>(find.byType(GlassIconButton))
+      final allButtons = tester
+          .widgetList<navigation_glass.GlassButton>(
+            find.byType(navigation_glass.GlassButton),
+          )
           .toList();
-      expect(buttons, hasLength(2));
-      final refractionLayer = buttons.first;
-      final lightingLayer = buttons.last;
+      expect(allButtons, hasLength(3));
       final stretchShellFinder = find.byWidgetPredicate(
         (widget) =>
-            widget is GlassButton &&
-            widget.style == GlassButtonStyle.transparent,
+            widget is navigation_glass.GlassButton &&
+            widget.style == navigation_glass.GlassButtonStyle.transparent,
       );
-      final stretchShell = tester.widget<GlassButton>(stretchShellFinder);
+      final stretchShell = tester.widget<navigation_glass.GlassButton>(
+        stretchShellFinder,
+      );
+      final innerButtons = tester
+          .widgetList<navigation_glass.GlassButton>(
+            find.descendant(
+              of: stretchShellFinder,
+              matching: find.byType(navigation_glass.GlassButton),
+            ),
+          )
+          .toList();
+      expect(innerButtons, hasLength(2));
+      final refractionLayer = innerButtons.first;
+      final lightingLayer = innerButtons.last;
       final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
       expect(stretchShell.width, 40);
       expect(stretchShell.height, 40);
       expect(stretchShell.interactionScale, 1.15);
       expect(stretchShell.stretch, 0.5);
-      expect(stretchShell.style, GlassButtonStyle.transparent);
+      expect(stretchShell.style, navigation_glass.GlassButtonStyle.transparent);
       expect(stretchShell.child, isA<Stack>());
-      expect(
-        find.descendant(
-          of: stretchShellFinder,
-          matching: find.byType(GlassIconButton),
-        ),
-        findsNWidgets(2),
-      );
       expect(
         find.descendant(
           of: stretchShellFinder,
@@ -108,12 +110,14 @@ void main() {
       );
       expect(
         lightingLayer.settings,
-        skeddoActiveCheckmarkGlassSettingsFor(brightness),
+        skeddoNavigationGlassSettingsFromShared(
+          skeddoActiveCheckmarkGlassSettingsFor(brightness),
+        ),
       );
-      expect(lightingLayer.size, 40);
-      expect(lightingLayer.iconSize, 20);
-      expect(lightingLayer.shape, GlassIconButtonShape.circle);
-      expect(lightingLayer.quality, GlassQuality.premium);
+      expect(lightingLayer.width, 40);
+      expect(lightingLayer.height, 40);
+      expect(lightingLayer.shape, const navigation_glass.LiquidOval());
+      expect(lightingLayer.quality, navigation_glass.GlassQuality.premium);
       expect(lightingLayer.useOwnLayer, isTrue);
       expect(lightingLayer.interactionScale, 1);
       expect(lightingLayer.settings!.glassColor.a, 0);
@@ -136,7 +140,9 @@ void main() {
       expect(lightingLayer.settings!.shadowElevation, 0);
       expect(
         refractionLayer.settings,
-        skeddoActiveCheckmarkRefractionSettingsFor(brightness),
+        skeddoNavigationGlassSettingsFromShared(
+          skeddoActiveCheckmarkRefractionSettingsFor(brightness),
+        ),
       );
       expect(
         refractionLayer.settings!.refractiveIndex,
@@ -144,8 +150,8 @@ void main() {
       );
       expect(refractionLayer.settings!.fresnelStrength, 0);
       expect(refractionLayer.interactionScale, 1);
-      expect(refractionLayer.onPressed, isNotNull);
-      expect(lightingLayer.onPressed, isNotNull);
+      expect(refractionLayer.onTap, isNotNull);
+      expect(lightingLayer.onTap, isNotNull);
       expect(
         find.byWidgetPredicate(
           (widget) =>
@@ -199,7 +205,9 @@ void main() {
       ),
     );
 
-    var button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
+    var button = tester.widget<navigation_glass.GlassButton>(
+      find.byType(navigation_glass.GlassButton),
+    );
     expect(button.settings!.blur, closeTo(0.57, 0.000001));
     expect(button.settings!.glassColor.a, closeTo(0.371, 0.001));
 
@@ -208,7 +216,9 @@ void main() {
     );
     await tester.pump();
 
-    button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
+    button = tester.widget<navigation_glass.GlassButton>(
+      find.byType(navigation_glass.GlassButton),
+    );
     expect(button.settings!.blur, closeTo(4.41, 0.000001));
     expect(button.settings!.glassColor.a, closeTo(0.614, 0.001));
   });
@@ -241,8 +251,8 @@ void main() {
       ),
     );
 
-    final standardButton = tester.widget<GlassIconButton>(
-      find.byType(GlassIconButton).first,
+    final standardButton = tester.widget<navigation_glass.GlassButton>(
+      find.byType(navigation_glass.GlassButton).first,
     );
     expect(standardButton.interactionScale, 1);
     expect(standardButton.stretch, 0);
@@ -250,9 +260,12 @@ void main() {
 
     final shellFinder = find.byWidgetPredicate(
       (widget) =>
-          widget is GlassButton && widget.style == GlassButtonStyle.transparent,
+          widget is navigation_glass.GlassButton &&
+          widget.style == navigation_glass.GlassButtonStyle.transparent,
     );
-    final checkmarkShell = tester.widget<GlassButton>(shellFinder);
+    final checkmarkShell = tester.widget<navigation_glass.GlassButton>(
+      shellFinder,
+    );
     expect(checkmarkShell.interactionScale, 1);
     expect(checkmarkShell.stretch, 0);
     expect(checkmarkShell.anchorStretch, isFalse);
@@ -286,18 +299,29 @@ void main() {
         final inactiveTint = resolveThemeColor(kDisabledActionSurface, context);
         expect(inactiveTint.toARGB32(), entry.$2.toARGB32());
 
-        final button = tester.widget<GlassIconButton>(
-          find.byType(GlassIconButton),
+        final button = tester.widget<navigation_glass.GlassButton>(
+          find.byType(navigation_glass.GlassButton),
         );
-        expect(find.byType(GlassIconButton), findsOneWidget);
+        expect(find.byType(navigation_glass.GlassButton), findsOneWidget);
         final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
-        expect(button.onPressed, isNotNull);
+        expect(button.onTap, isNotNull);
         expect(
           button.settings!.glassColor,
-          inactiveTint.withValues(alpha: kSkeddoTintedActionGlassOpacity),
+          skeddoNavigationGlassSettingsFromShared(
+            skeddoTintedActionGlassSettingsFor(entry.$1, inactiveTint),
+          ).glassColor,
         );
-        expect(button.settings!.chromaticAberration, 0.3);
-        expect(button.settings!.glassColor.a, closeTo(0.85, 0.001));
+        expect(
+          button.settings!.chromaticAberration,
+          skeddoTintedActionGlassSettingsFor(
+            entry.$1,
+            inactiveTint,
+          ).chromaticAberration,
+        );
+        expect(
+          button.settings!.glassColor.a,
+          closeTo(kSkeddoTintedActionGlassOpacity, 0.001),
+        );
         expect(button.glowColor, const Color(0x00000000));
         expect(icon.color!.toARGB32(), CupertinoColors.white.toARGB32());
 

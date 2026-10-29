@@ -11,8 +11,8 @@ Fixed-color action circles retain the historical app-owned LiquidGlassView + Liq
 
 **Why:** The modal-card-matched shadow was too blurred and spread out, and the earlier 18% / 12 px revision still needed to be tighter; the user wants a lighter, more defined but still soft shadow across all Light Mode circular actions, with no Dark Mode shadow.
 
-Modal sheet and attachment-preview toolbars, the app-shell hamburger/back control, and the search-cancel control use the shared `ModalToolbarGlassButton` wrapper around `flutter_liquid_glass_widgets` `GlassIconButton`. Active confirmations are tinted to the action accent/category color; unavailable confirmations remain visually glassy but disabled.
+Modal sheet and Notes attachment-preview buttons, plus search-cancel, use the shared `ModalToolbarGlassButton` wrapper. These controls use `liquid_glass_widgets` `GlassButton` with app optical settings bridged from the shared slider; active confirmations retain their action accent/category fill and inactive confirmations remain visually glassy but disabled. App-shell navigation uses the pinned `GlassAppBar` route.
 
-**Why:** The user explicitly wants the package's toolbar-glass rendering for these navigation and modal actions, using the shared SKEDDO optical settings rather than the `liquid_glass_easy` button implementation.
+**Why:** The user explicitly wants the package's toolbar-glass rendering for modal actions while retaining SKEDDO's checkmark styling and live shared optical settings rather than using package defaults or the `liquid_glass_easy` button implementation.
 
-**How to apply:** Reuse `ModalToolbarGlassButton` for these icon controls and keep authored glyphs, tap routing, and stable search-cancel identity. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested.
+**How to apply:** Reuse `ModalToolbarGlassButton` for modal icon controls and keep authored glyphs, tap routing, active/inactive checkmark fill treatment, and shared settings conversion. Do not replace modal sheet presentation or header layout as part of a button-renderer change. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested.
