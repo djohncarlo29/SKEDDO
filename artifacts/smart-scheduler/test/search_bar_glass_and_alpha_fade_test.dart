@@ -1,20 +1,15 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as liquid_glass
     show AdaptiveLiquidGlassLayer, GlassButton, GlassContainer;
-import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
-    show LiquidGlassBlender, LiquidGlassLens, LiquidGlassView;
 import 'package:smart_scheduler/widgets/edge_fade_metrics.dart';
 import 'package:smart_scheduler/widgets/horizontal_edge_fade.dart';
 import 'package:smart_scheduler/widgets/native_text_input.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
-  testWidgets('AppSearchBar selects the supported glass renderer', (
+  testWidgets('AppSearchBar uses the package glass surface only', (
     tester,
   ) async {
     final controller = TextEditingController();
@@ -25,12 +20,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    if (!kIsWeb && ImageFilter.isShaderFilterSupported) {
-      expect(find.byType(slider_glass.LiquidGlassView), findsOneWidget);
-      expect(find.byType(slider_glass.LiquidGlassLens), findsOneWidget);
-    } else {
-      expect(find.byType(liquid_glass.GlassContainer), findsOneWidget);
-    }
+    final glass = tester.widget<liquid_glass.GlassContainer>(
+      find.byType(liquid_glass.GlassContainer),
+    );
+    expect(glass.useOwnLayer, isTrue);
+    expect(glass.settings, isNotNull);
     expect(find.byType(SearchWeightedIcon), findsOneWidget);
     expect(find.byKey(const ValueKey('search-mic')), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
@@ -38,7 +32,7 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('search field and cancel circle share a glass group', (
+  testWidgets('search field and cancel circle share a blend layer', (
     tester,
   ) async {
     final controller = TextEditingController();
@@ -68,18 +62,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    if (!kIsWeb && ImageFilter.isShaderFilterSupported) {
-      expect(find.byType(slider_glass.LiquidGlassView), findsOneWidget);
-      expect(find.byType(slider_glass.LiquidGlassBlender), findsOneWidget);
-      expect(find.byType(slider_glass.LiquidGlassLens), findsNWidgets(2));
-    } else {
-      expect(find.byType(liquid_glass.AdaptiveLiquidGlassLayer), findsOneWidget);
-      final searchSurface = tester.widget<liquid_glass.GlassContainer>(
-        find.byType(liquid_glass.GlassContainer),
-      );
-      expect(searchSurface.useOwnLayer, isFalse);
-      expect(searchSurface.settings, isNull);
-    }
+    expect(find.byType(liquid_glass.AdaptiveLiquidGlassLayer), findsOneWidget);
+    final searchSurface = tester.widget<liquid_glass.GlassContainer>(
+      find.byType(liquid_glass.GlassContainer),
+    );
+    expect(searchSurface.useOwnLayer, isFalse);
+    expect(searchSurface.settings, isNull);
     final cancelSurface = tester.widget<liquid_glass.GlassButton>(
       find.byType(liquid_glass.GlassButton),
     );

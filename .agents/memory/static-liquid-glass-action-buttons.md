@@ -22,16 +22,6 @@ shell for press scaling and stretch, but that shell is transparent. The CPU-only
 web preview retains its working `liquid_glass_widgets` glass fallback.
 App-shell navigation uses the pinned `GlassAppBar` route.
 
-**Why:** The user explicitly wants the package's toolbar-glass rendering for modal actions while retaining SKEDDO's checkmark styling and live shared optical settings rather than using package defaults or the `liquid_glass_easy` button implementation.
+**Why:** The user explicitly wants the package's toolbar-glass rendering for modal actions while retaining SKEDDO's checkmark styling and live shared optical settings rather than using package defaults or the `liquid_glass_easy` button implementation. Shared optics originate in `flutter_liquid_glass_widgets`, are bridged into `liquid_glass_widgets` for surfaces, and are not rendered by the slider thumb's separate `liquid_glass_easy` lens.
 
-The search surfaces have a separate renderer requirement: use the same
-`liquid_glass_easy` lens renderer and slider-based optical values as
-`LiquidGlassSlider`. The current web preview has no WebGL shader support, so it
-uses the established package fallback instead of blanking the app.
-
-**How to apply:** Reuse `ModalToolbarGlassButton` for modal icon controls and keep authored glyphs, tap routing, active/inactive checkmark fill treatment, and shared settings conversion. Do not replace modal sheet presentation or header layout as part of a button-renderer change. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested.
-
-For search, keep the two `LiquidGlassLens` descendants inside one
-`LiquidGlassView` and `LiquidGlassBlender`; preserve the existing text/fade
-content and button motion. Use the package glass fallback in the CPU-only web
-preview.
+**How to apply:** Reuse `ModalToolbarGlassButton` for modal icon controls and keep authored glyphs, tap routing, active/inactive checkmark fill treatment, and shared settings conversion. Do not replace modal sheet presentation or header layout as part of a button-renderer change. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested. Keep the search field and cancel button grouped under one `AdaptiveLiquidGlassLayer` so their edges blend when their animated geometry overlaps; pass shared settings from the app slider.
