@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
@@ -8,6 +9,65 @@ import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/view_mode_icons.dart';
 
 void main() {
+  testWidgets(
+    'Day View shell title updates immediately when date format changes',
+    (tester) async {
+      const screenSize = Size(402, 874);
+      const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final transition = AppHeaderTitleTransition();
+      addTearDown(transition.dispose);
+      final previousFormat = appDateFormatNotifier.value;
+      addTearDown(() => appDateFormatNotifier.value = previousFormat);
+      appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+
+      final calendarKey = GlobalKey<CalendarTabState>();
+      var reportedTitle = '';
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppHeaderScrollInsetScope(
+            leadingInset: appShellLeadingInset,
+            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+            titleTransition: transition,
+            child: AppWindowContentBoundary(
+              child: Padding(
+                padding: const EdgeInsets.only(top: appShellLeadingInset),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          home: CalendarTab(
+            key: calendarKey,
+            onViewChanged: (view, _, _, currentTitle, _, _) {
+              reportedTitle = currentTitle;
+              if (view == CalendarView.day) {
+                transition.bindTo(null, preserveCollapseProgress: true);
+              }
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendar = calendarKey.currentState!;
+      await calendar.advanceCurrentHeader();
+      await tester.pumpAndSettle();
+      final monthFirstTitle = reportedTitle;
+
+      appDateFormatNotifier.value = AppDateFormat.dayMonthYearDot;
+      await tester.pump();
+
+      expect(calendar.headerTitle, isNot(monthFirstTitle));
+      expect(reportedTitle, calendar.headerTitle);
+      expect(reportedTitle, matches(RegExp(r'^\d{1,2} [A-Za-z]{3}$')));
+    },
+  );
+
   testWidgets(
     'entering Day View preserves expanded shared-header geometry',
     (tester) async {

@@ -78,7 +78,12 @@ final ValueNotifier<String> appStartOfWeekNotifier =
 String mirrorSystemSettingTrailingValue({
   required bool usesSystem,
   required String appOnlyValue,
-}) => usesSystem ? 'System' : appOnlyValue;
+  String? systemDetail,
+}) {
+  if (!usesSystem) return appOnlyValue;
+  final detail = systemDetail?.trim();
+  return detail == null || detail.isEmpty ? 'System' : 'System ($detail)';
+}
 
 int firstDayOfWeekIndexForName(String name) {
   final index = kFirstDayOfWeekOptions.indexOf(name);
@@ -223,6 +228,38 @@ Future<void> refreshSystemFirstDayOfWeek() async {
     // The web preview and older native binaries do not expose this bridge.
   } on PlatformException {
     // Keep the last known value if the OS query is temporarily unavailable.
+  }
+}
+
+/// Reads the current OS short-date pattern and maps it to the closest format
+/// supported by SKEDDO. Native platforms provide their regional pattern; web
+/// and older native binaries keep the initialized fallback.
+Future<void> refreshSystemDateFormat() async {
+  if (kIsWeb) return;
+  try {
+    final pattern = await _systemCalendarChannel.invokeMethod<String>(
+      'getDateFormatPattern',
+    );
+    if (pattern == null || pattern.isEmpty) return;
+    appSystemDateFormatPatternNotifier.value = pattern;
+    appSystemDateFormatSampleNotifier.value = _formatSystemDatePattern(
+      DateTime(2026, 8, 19),
+      pattern,
+    );
+
+    final format = AppDateFormat.fromSystemPattern(pattern);
+    if (format != null) {
+      appSystemDateFormatNotifier.value = format;
+    }
+    if (format != null && appDateFormatUsesSystemNotifier.value) {
+      appDateFormatNotifier.value = format;
+      appDateLocaleNotifier.value = format.parserLocalePreference;
+      AIServices.setDateLocalePreference(appDateLocaleNotifier.value);
+    }
+  } on MissingPluginException {
+    // Older native binaries do not expose the date-format bridge.
+  } on PlatformException {
+    // Keep the last known system value if the OS query is temporarily unavailable.
   }
 }
 
@@ -659,6 +696,57 @@ enum AppDateFormat {
     }
     return null;
   }
+
+  /// Maps native numeric date patterns to one of the app's supported formats.
+  /// Field order, year width, and supported separators are preserved.
+  static AppDateFormat? fromSystemPattern(String? pattern) {
+    if (pattern == null || pattern.isEmpty) return null;
+    final tokens = RegExp(r'[yY]+|[ML]+|[dD]+').allMatches(pattern).toList();
+    if (tokens.length != 3) return null;
+
+    final fields = tokens.map((token) {
+      final first = token.group(0)![0];
+      if (first == 'y' || first == 'Y') return 'y';
+      if (first == 'M' || first == 'L') return 'M';
+      return 'd';
+    }).toList();
+    if (fields.toSet().length != 3) return null;
+
+    final order = fields.join();
+    final yearIndex = fields.indexOf('y');
+    final yearWidth = tokens[yearIndex].group(0)!.length;
+    final separators = <String>[];
+    for (var index = 0; index < tokens.length - 1; index++) {
+      final separator = pattern
+          .substring(tokens[index].end, tokens[index + 1].start)
+          .replaceAll(RegExp(r'[\s,"]'), '');
+      if (separator.isNotEmpty) separators.add(separator);
+    }
+    final separator = separators.isNotEmpty &&
+            separators.every((value) => value == separators.first)
+        ? separators.first
+        : '/';
+    final shortYear = yearWidth <= 2;
+
+    return switch (order) {
+      'dMy' => switch (separator) {
+        '/' when shortYear => AppDateFormat.dayMonthYearShortSlash,
+        '/' => AppDateFormat.dayMonthYearSlash,
+        '.' when !shortYear => AppDateFormat.dayMonthYearDot,
+        '-' when !shortYear => AppDateFormat.dayMonthYearDash,
+        _ => AppDateFormat.dayMonthYearSlash,
+      },
+      'Mdy' => shortYear
+          ? AppDateFormat.monthDayYearShortSlash
+          : AppDateFormat.monthDayYearSlash,
+      'yMd' => switch (separator) {
+        '.' => AppDateFormat.yearMonthDayDot,
+        '-' => AppDateFormat.yearMonthDayDash,
+        _ => AppDateFormat.yearMonthDaySlash,
+      },
+      _ => null,
+    };
+  }
 }
 
 const _kDateFormatMonthAbbreviations = <String>[
@@ -704,9 +792,53 @@ const _kDateFormatWeekdayNames = <String>[
 /// New installs and legacy Date Format settings use MM/DD/YYYY for this test.
 final ValueNotifier<AppDateFormat> appDateFormatNotifier =
     ValueNotifier<AppDateFormat>(AppDateFormat.monthDayYearSlash);
+/// The saved App Only choice remains intact while System mode is active.
+final ValueNotifier<AppDateFormat> appCustomDateFormatNotifier =
+    ValueNotifier<AppDateFormat>(AppDateFormat.monthDayYearSlash);
+final ValueNotifier<AppDateFormat> appSystemDateFormatNotifier =
+    ValueNotifier<AppDateFormat>(AppDateFormat.monthDayYearSlash);
+final ValueNotifier<String?> appSystemDateFormatPatternNotifier =
+    ValueNotifier<String?>(null);
+final ValueNotifier<String?> appSystemDateFormatSampleNotifier =
+    ValueNotifier<String?>(null);
+final ValueNotifier<bool> appDateFormatUsesSystemNotifier =
+    ValueNotifier<bool>(false);
 
-String formatAppDate(DateTime date, {AppDateFormat? format}) =>
-    (format ?? appDateFormatNotifier.value).format(date);
+String formatAppDate(DateTime date, {AppDateFormat? format}) {
+  final systemPattern = appSystemDateFormatPatternNotifier.value;
+  if (format == null &&
+      appDateFormatUsesSystemNotifier.value &&
+      systemPattern != null) {
+    return _formatSystemDatePattern(date, systemPattern);
+  }
+  return (format ?? appDateFormatNotifier.value).format(date);
+}
+
+String _formatSystemDatePattern(DateTime date, String pattern) {
+  return pattern.replaceAllMapped(
+    RegExp(r'[yY]+|[ML]+|[dD]+'),
+    (match) {
+      final token = match.group(0)!;
+      final width = token.length;
+      switch (token[0]) {
+        case 'y':
+        case 'Y':
+          final year = date.year.toString().padLeft(4, '0');
+          return width == 2 ? year.substring(year.length - 2) : year;
+        case 'M':
+        case 'L':
+          final month = date.month.toString();
+          return width == 1 ? month : month.padLeft(2, '0');
+        case 'd':
+        case 'D':
+          final day = date.day.toString();
+          return width == 1 ? day : day.padLeft(2, '0');
+        default:
+          return token;
+      }
+    },
+  );
+}
 
 String formatAppDateMedium(
   DateTime date, {
@@ -880,6 +1012,7 @@ const _kEventDurationKey = 'app_event_duration';
 const _kDefaultCategoryKey = 'app_default_category';
 const _kDateLocaleKey = 'app_date_locale';
 const _kDateFormatKey = 'app_date_format';
+const _kDateFormatUsesSystemKey = 'app_date_format_uses_system';
 const _kLiquidGlassOpacityKey = 'app_liquid_glass_opacity';
 const _kPersistedUserCategoriesKey = 'events_user_categories';
 const _kPersistedPinnedCategoriesKey = 'events_pinned_categories';
@@ -993,9 +1126,15 @@ Future<void> loadAppSettings() async {
     }
   }
 
-  appDateFormatNotifier.value =
+  appCustomDateFormatNotifier.value =
       AppDateFormat.fromName(prefs.getString(_kDateFormatKey)) ??
       AppDateFormat.monthDayYearSlash;
+  appDateFormatUsesSystemNotifier.value =
+      prefs.getBool(_kDateFormatUsesSystemKey) ?? false;
+  appDateFormatNotifier.value = appDateFormatUsesSystemNotifier.value
+      ? appSystemDateFormatNotifier.value
+      : appCustomDateFormatNotifier.value;
+  await refreshSystemDateFormat();
   appDateLocaleNotifier.value =
       appDateFormatNotifier.value.parserLocalePreference;
 
@@ -1014,7 +1153,7 @@ Future<void> saveAppSetting(String routeTitle, String value) {
   final mode = appTextSizeUsesSystemNotifier.value ? 'system' : 'custom';
   final index = appTextSizeIndexNotifier.value;
   final dateLocale = appDateLocaleNotifier.value.name;
-  final dateFormat = appDateFormatNotifier.value.name;
+  final dateFormat = appCustomDateFormatNotifier.value.name;
   final startOfWeekMode = appStartOfWeekUsesSystemNotifier.value
       ? 'system'
       : 'custom';
@@ -1044,6 +1183,10 @@ Future<void> saveAppSetting(String routeTitle, String value) {
       case 'Date Format':
         await prefs.setString(_kDateLocaleKey, dateLocale);
         await prefs.setString(_kDateFormatKey, dateFormat);
+        await prefs.setBool(
+          _kDateFormatUsesSystemKey,
+          appDateFormatUsesSystemNotifier.value,
+        );
       case 'Liquid Glass':
         final opacity = double.tryParse(value);
         if (opacity != null && opacity.isFinite) {

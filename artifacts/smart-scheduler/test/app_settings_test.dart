@@ -24,9 +24,21 @@ void main() {
     appStartOfWeekUsesSystemNotifier.value = true;
     appStartOfWeekNotifier.value = 'Sunday';
     appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appCustomDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appSystemDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appSystemDateFormatPatternNotifier.value = null;
+    appSystemDateFormatSampleNotifier.value = null;
+    appDateFormatUsesSystemNotifier.value = false;
     appDateLocaleNotifier.value = DateLocalePreference.monthFirst;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(systemCalendarChannel, (call) async => 0);
+        .setMockMethodCallHandler(
+          systemCalendarChannel,
+          (call) async => switch (call.method) {
+            'getFirstDayOfWeekIndex' => 0,
+            'getDateFormatPattern' => 'M/d/yyyy',
+            _ => null,
+          },
+        );
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       kDefaultLiquidGlassSliderPosition,
     );
@@ -43,7 +55,14 @@ void main() {
 
   test('first weekday defaults to the detected system value', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(systemCalendarChannel, (call) async => 3);
+        .setMockMethodCallHandler(
+          systemCalendarChannel,
+          (call) async => switch (call.method) {
+            'getFirstDayOfWeekIndex' => 3,
+            'getDateFormatPattern' => 'M/d/yyyy',
+            _ => null,
+          },
+        );
 
     await loadAppSettings();
 
@@ -72,6 +91,14 @@ void main() {
   });
 
   test('mirrored settings use a consistent System trailing value', () {
+    expect(
+      mirrorSystemSettingTrailingValue(
+        usesSystem: true,
+        appOnlyValue: 'Monday',
+        systemDetail: 'Monday',
+      ),
+      'System (Monday)',
+    );
     expect(
       mirrorSystemSettingTrailingValue(
         usesSystem: true,
@@ -180,15 +207,56 @@ void main() {
 
   test('Date Format selection persists and keeps parser order aligned', () async {
     appDateFormatNotifier.value = AppDateFormat.dayMonthYearDot;
+    appCustomDateFormatNotifier.value = AppDateFormat.dayMonthYearDot;
+    appDateFormatUsesSystemNotifier.value = false;
     appDateLocaleNotifier.value =
         AppDateFormat.dayMonthYearDot.parserLocalePreference;
     await saveAppSetting('Date Format', appDateFormatNotifier.value.sample);
 
     appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appCustomDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
     appDateLocaleNotifier.value = DateLocalePreference.monthFirst;
     await loadAppSettings();
 
     expect(appDateFormatNotifier.value, AppDateFormat.dayMonthYearDot);
     expect(appDateLocaleNotifier.value, DateLocalePreference.dayFirst);
+  });
+
+  test('native date patterns map to supported order and separators', () {
+    expect(
+      AppDateFormat.fromSystemPattern('M/d/yy'),
+      AppDateFormat.monthDayYearShortSlash,
+    );
+    expect(
+      AppDateFormat.fromSystemPattern('dd.MM.yyyy'),
+      AppDateFormat.dayMonthYearDot,
+    );
+    expect(
+      AppDateFormat.fromSystemPattern('yyyy-MM-dd'),
+      AppDateFormat.yearMonthDayDash,
+    );
+  });
+
+  test('System date format persists separately from App Only choice', () async {
+    appCustomDateFormatNotifier.value = AppDateFormat.dayMonthYearDot;
+    appSystemDateFormatNotifier.value = AppDateFormat.dayMonthYearSlash;
+    appDateFormatUsesSystemNotifier.value = true;
+    appDateFormatNotifier.value = AppDateFormat.dayMonthYearSlash;
+    await saveAppSetting('Date Format', 'System');
+
+    appCustomDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    appDateFormatUsesSystemNotifier.value = false;
+    appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
+    await loadAppSettings();
+
+    expect(appDateFormatUsesSystemNotifier.value, isTrue);
+    expect(appCustomDateFormatNotifier.value, AppDateFormat.dayMonthYearDot);
+    expect(appDateFormatNotifier.value, AppDateFormat.monthDayYearSlash);
+    expect(
+      formatAppDate(DateTime(2026, 8, 19)),
+      '8/19/2026',
+      reason: 'System mode should use the native pattern, not its mapped preset.',
+    );
+    expect(appSystemDateFormatSampleNotifier.value, '8/19/2026');
   });
 }

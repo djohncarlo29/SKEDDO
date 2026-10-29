@@ -123,7 +123,7 @@ void main() {
     expect(cancelFillDecoration.shape, isA<CircleBorder>());
     expect(
       find.byKey(const ValueKey('search-cancel-rim-cover')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.byKey(const ValueKey('search-bar-rim-cover')), findsOneWidget);
 

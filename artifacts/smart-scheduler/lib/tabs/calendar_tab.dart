@@ -2338,6 +2338,7 @@ class CalendarTabState extends State<CalendarTab>
   void initState() {
     super.initState();
     appStartOfWeekNotifier.addListener(_onFirstDayOfWeekChanged);
+    appDateFormatNotifier.addListener(_onCalendarDateFormatChanged);
     final now = DateTime.now();
     _today = now;
     _selected = now;
@@ -2432,6 +2433,10 @@ class CalendarTabState extends State<CalendarTab>
 
   void _onFirstDayOfWeekChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _onCalendarDateFormatChanged() {
+    if (_view == CalendarView.day) _notify();
   }
 
   // Advances selection to [now] across all views when midnight rolls over.
@@ -2615,6 +2620,7 @@ class CalendarTabState extends State<CalendarTab>
   @override
   void dispose() {
     appStartOfWeekNotifier.removeListener(_onFirstDayOfWeekChanged);
+    appDateFormatNotifier.removeListener(_onCalendarDateFormatChanged);
     CategoryRegistry.revision.removeListener(_onCategoryRegistryChanged);
     _clockTimer?.cancel();
     _searchDebounce?.cancel();

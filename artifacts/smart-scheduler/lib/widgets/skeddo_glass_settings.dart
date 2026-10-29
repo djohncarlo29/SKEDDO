@@ -249,6 +249,27 @@ navigation_glass.LiquidGlassSettings skeddoPinnedNavigationGlassSettingsFor(
   );
 }
 
+/// Search and cancel controls keep their shared shape-compositing layer, but
+/// render their own opaque matched fills rather than optical rims or refraction.
+navigation_glass.LiquidGlassSettings skeddoSearchOpaqueGlassSettingsFor(
+  Brightness brightness,
+) => skeddoPinnedNavigationGlassSettingsFor(brightness).copyWith(
+  glassColor: const Color(0x00000000),
+  thickness: 0,
+  blur: 0,
+  chromaticAberration: 0,
+  lightIntensity: 0,
+  ambientStrength: 0,
+  ambientRim: 0,
+  fresnelStrength: 0,
+  refractiveIndex: 1,
+  saturation: 1,
+  glowIntensity: 0,
+  shadowElevation: 0,
+  shadow: const [],
+  whitenStrength: 0,
+);
+
 /// Adapts an app-wide glass settings value to the separate navigation
 /// package's renderer without changing its slider-driven optical values.
 navigation_glass.LiquidGlassSettings skeddoNavigationGlassSettingsFromShared(

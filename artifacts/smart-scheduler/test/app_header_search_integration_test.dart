@@ -208,9 +208,34 @@ void main() {
       await tester.pumpAndSettle();
       transition.position!.jumpTo(0);
       await tester.pumpAndSettle();
+      expect(find.text('Mirror System Setting'), findsOneWidget);
+      expect(find.text('Skeddo App Only'), findsOneWidget);
+      final dateFormatSection = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget.runtimeType.toString() == '_DateFormatSettingsSection',
+          )
+          .last;
+      final systemFormatRow = find
+          .descendant(
+            of: dateFormatSection,
+            matching: find.byWidgetPredicate(
+              (widget) => widget.runtimeType.toString() == '_OptionRow',
+            ),
+          )
+          .first;
       expect(
-        tester.getTopLeft(firstOption).dy,
+        tester.getTopLeft(systemFormatRow).dy,
         greaterThan(settingsInset + kAppHeaderTitleHeight),
+      );
+      final formatFooter = tester.widget<Text>(
+        find.textContaining('Format Example:'),
+      );
+      expect(
+        formatFooter.data,
+        contains(
+          'This setting will apply in Skeddo only. Other apps will use the system setting.\n\nFormat Example:',
+        ),
       );
       await tester.timedDragFrom(
         const Offset(200, 450),
@@ -219,7 +244,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
-      expect(firstOption, findsOneWidget);
+      expect(systemFormatRow, findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

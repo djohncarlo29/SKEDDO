@@ -729,7 +729,7 @@ class SearchBarGlassGroup extends StatelessWidget {
     valueListenable: appLiquidGlassOpacityNotifier,
     child: child,
     builder: (context, _, child) => liquid_glass.AdaptiveLiquidGlassLayer(
-      settings: skeddoPinnedNavigationGlassSettingsFor(
+      settings: skeddoSearchOpaqueGlassSettingsFor(
         CupertinoTheme.brightnessOf(context),
       ),
       quality: liquid_glass.GlassQuality.premium,
@@ -925,15 +925,6 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
                     decoration: ShapeDecoration(
                       color: surfaceColor,
                       shape: const CircleBorder(),
-                    ),
-                  ),
-                  IgnorePointer(
-                    child: CustomPaint(
-                      key: const ValueKey('search-cancel-rim-cover'),
-                      painter: _SearchOpaqueSurfaceRimCoverPainter(
-                        shape: const CircleBorder(),
-                        color: surfaceColor,
-                      ),
                     ),
                   ),
                   Center(

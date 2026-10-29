@@ -689,6 +689,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
       // System thumb and captured scaler track the newly selected OS value.
       unawaited(initializeDeviceTextScaleProfile());
       unawaited(refreshSystemFirstDayOfWeek());
+      unawaited(refreshSystemDateFormat());
       unawaited(refreshSystemAccentColor());
       final dynamicColorState = _dynamicColorBuilderKey.currentState;
       if (dynamicColorState != null) {
@@ -746,6 +747,8 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             appSystemAccentColorNotifier,
             appDateLocaleNotifier,
             appDateFormatNotifier,
+            appDateFormatUsesSystemNotifier,
+            appSystemDateFormatPatternNotifier,
             appFullMonthNameNotifier,
           ]),
           builder: (context, _) {

@@ -67,30 +67,37 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, systemCalendarChannel)
             .setMethodCallHandler { call, result ->
-                if (call.method != "getFirstDayOfWeekIndex") {
-                    result.notImplemented()
-                    return@setMethodCallHandler
-                }
-
-                // AndroidX resolves the user's Regional Preferences override
-                // when available, then falls back to the active locale.
-                val firstDay = LocalePreferences.getFirstDayOfWeek()
-                    .lowercase(java.util.Locale.ROOT)
-                val index = when (firstDay) {
-                    "sun" -> 0
-                    "mon" -> 1
-                    "tue" -> 2
-                    "wed" -> 3
-                    "thu" -> 4
-                    "fri" -> 5
-                    "sat" -> 6
-                    else -> {
-                        val calendarDay =
-                            java.util.Calendar.getInstance().firstDayOfWeek
-                        calendarDay - java.util.Calendar.SUNDAY
+                when (call.method) {
+                    "getFirstDayOfWeekIndex" -> {
+                        // AndroidX resolves the user's Regional Preferences override
+                        // when available, then falls back to the active locale.
+                        val firstDay = LocalePreferences.getFirstDayOfWeek()
+                            .lowercase(java.util.Locale.ROOT)
+                        val index = when (firstDay) {
+                            "sun" -> 0
+                            "mon" -> 1
+                            "tue" -> 2
+                            "wed" -> 3
+                            "thu" -> 4
+                            "fri" -> 5
+                            "sat" -> 6
+                            else -> {
+                                val calendarDay =
+                                    java.util.Calendar.getInstance().firstDayOfWeek
+                                calendarDay - java.util.Calendar.SUNDAY
+                            }
+                        }
+                        result.success(index)
                     }
+                    "getDateFormatPattern" -> {
+                        val dateFormat =
+                            android.text.format.DateFormat.getDateFormat(this@MainActivity)
+                        result.success(
+                            (dateFormat as? java.text.SimpleDateFormat)?.toPattern()
+                        )
+                    }
+                    else -> result.notImplemented()
                 }
-                result.success(index)
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, windowAppearanceChannel)
             .setMethodCallHandler { call, result ->

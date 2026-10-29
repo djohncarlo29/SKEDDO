@@ -20,14 +20,22 @@ import UniformTypeIdentifiers
         binaryMessenger: controller.binaryMessenger
       )
       systemCalendarChannel.setMethodCallHandler { call, result in
-        guard call.method == "getFirstDayOfWeekIndex" else {
+        switch call.method {
+        case "getFirstDayOfWeekIndex":
+          // Foundation's Gregorian Calendar uses 1=Sunday through 7=Saturday.
+          // Convert to the app's stable Sunday-first 0...6 index.
+          let firstWeekday = Calendar.current.firstWeekday
+          result((firstWeekday - 1 + 7) % 7)
+        case "getDateFormatPattern":
+          let formatter = DateFormatter()
+          formatter.locale = Locale.current
+          formatter.calendar = Calendar.current
+          formatter.dateStyle = .short
+          formatter.timeStyle = .none
+          result(formatter.dateFormat)
+        default:
           result(FlutterMethodNotImplemented)
-          return
         }
-        // Foundation's Gregorian Calendar uses 1=Sunday through 7=Saturday.
-        // Convert to the app's stable Sunday-first 0...6 index.
-        let firstWeekday = Calendar.current.firstWeekday
-        result((firstWeekday - 1 + 7) % 7)
       }
       let windowGeometryChannel = FlutterMethodChannel(
         name: "com.smartscheduler/window_geometry",

@@ -612,38 +612,56 @@ class _SettingsPanelState extends State<SettingsPanel>
         appDefaultCategoryNotifier,
         appDefaultCategoryLabelNotifier,
         appDateFormatNotifier,
+        appCustomDateFormatNotifier,
+        appDateFormatUsesSystemNotifier,
+        appSystemDateFormatNotifier,
+        appSystemDateFormatSampleNotifier,
         appLiquidGlassOpacityNotifier,
       ]),
       builder: (context, _) {
         final usesSystemAccent = appAccentUsesSystemNotifier.value;
         final selectedSwatch = _kAccentSwatches[appAccentNotifier.value];
-        final swatch = usesSystemAccent
-            ? _AccentSwatch(
-                'System',
-                appSystemAccentColorNotifier.value,
-              )
-            : selectedSwatch;
+        final swatch = _AccentSwatch(
+          mirrorSystemSettingTrailingValue(
+            usesSystem: usesSystemAccent,
+            appOnlyValue: selectedSwatch.name,
+          ),
+          usesSystemAccent
+              ? appSystemAccentColorNotifier.value
+              : selectedSwatch.color,
+        );
         final accentColor = resolveAccentColor(context);
 
-        final themeLabel = switch (appBrightnessNotifier.value) {
-          null =>
-            'System (${appSystemBrightnessNotifier.value == Brightness.dark ? 'Dark' : 'Light'})',
-          Brightness.dark => 'Dark',
-          Brightness.light => 'Light',
-        };
+        final systemThemeDetail =
+            appSystemBrightnessNotifier.value == Brightness.dark
+            ? 'Dark'
+            : 'Light';
+        final themeLabel = mirrorSystemSettingTrailingValue(
+          usesSystem: appBrightnessNotifier.value == null,
+          systemDetail: systemThemeDetail,
+          appOnlyValue: appBrightnessNotifier.value == Brightness.dark
+              ? 'Dark'
+              : 'Light',
+        );
         final textSizeLabel = mirrorSystemSettingTrailingValue(
           usesSystem: appTextSizeUsesSystemNotifier.value,
           appOnlyValue: 'Custom',
         );
         final startOfWeekLabel = mirrorSystemSettingTrailingValue(
           usesSystem: appStartOfWeekUsesSystemNotifier.value,
+          systemDetail: appSystemFirstDayOfWeekNotifier.value,
           appOnlyValue: appStartOfWeekNotifier.value,
         );
         final defaultViewLabel = appDefaultViewNotifier.value;
         final fullMonthName = appFullMonthNameNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
         final defaultCategoryLabel = appDefaultCategoryLabelNotifier.value;
-        final dateFormatLabel = appDateFormatNotifier.value.sample;
+        final systemDateSample = appSystemDateFormatSampleNotifier.value;
+        final dateFormatLabel = mirrorSystemSettingTrailingValue(
+          usesSystem: appDateFormatUsesSystemNotifier.value,
+          systemDetail: systemDateSample,
+          appOnlyValue: appCustomDateFormatNotifier.value.sample,
+        );
         final liquidGlassOpacityLabel =
             '${(liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value) * 100).round()}%';
 
@@ -1154,7 +1172,9 @@ class _SubScreenState extends State<_SubScreen> {
       'Default View' => appDefaultViewNotifier.value,
       'Default Event Duration' => appEventDurationNotifier.value,
       'Default Category' => appDefaultCategoryLabelNotifier.value,
-      'Date Format' => appDateFormatNotifier.value.sample,
+      'Date Format' => appDateFormatUsesSystemNotifier.value
+          ? 'System'
+          : appCustomDateFormatNotifier.value.sample,
       _ => widget.route.defaultValue,
     };
   }
@@ -1188,8 +1208,12 @@ class _SubScreenState extends State<_SubScreen> {
         appEventDurationNotifier.value = opt;
         saveAppSetting('Default Event Duration', opt);
       case 'Date Format':
-        final format =
-            AppDateFormat.fromSample(opt) ?? AppDateFormat.monthDayYearSlash;
+        final useSystem = opt == 'System';
+        appDateFormatUsesSystemNotifier.value = useSystem;
+        final format = useSystem
+            ? appSystemDateFormatNotifier.value
+            : AppDateFormat.fromSample(opt) ?? AppDateFormat.monthDayYearSlash;
+        if (!useSystem) appCustomDateFormatNotifier.value = format;
         appDateFormatNotifier.value = format;
         final preference = format.parserLocalePreference;
         appDateLocaleNotifier.value = preference;
@@ -1234,6 +1258,11 @@ class _SubScreenState extends State<_SubScreen> {
             accentColor: widget.accentColor,
             onSelect: _onSelect,
           )
+        else if (widget.route.title == 'Date Format')
+          _DateFormatSettingsSection(
+            accentColor: widget.accentColor,
+            onSelect: _onSelect,
+          )
         else if (widget.route.isDefaultCategory)
           _DefaultCategorySection(accentColor: widget.accentColor)
         else
@@ -1242,9 +1271,6 @@ class _SubScreenState extends State<_SubScreen> {
             selectedOption: _selected,
             accentColor: widget.accentColor,
             onSelect: _onSelect,
-            footer: widget.route.title == 'Date Format'
-                ? AppDateFormat.fromSample(_selected)?.contextFooter
-                : null,
           ),
 
         // SliverPadding is intentionally unpainted: this is transparent
@@ -1902,14 +1928,12 @@ class _SubScreenSection extends StatelessWidget {
   // checkmarks and selected-row labels so they match the live accent.
   final Color accentColor;
   final ValueChanged<String> onSelect;
-  final String? footer;
 
   const _SubScreenSection({
     required this.options,
     required this.selectedOption,
     required this.accentColor,
     required this.onSelect,
-    this.footer,
   });
 
   @override
@@ -1940,23 +1964,6 @@ class _SubScreenSection extends StatelessWidget {
               cardBg: cardBg,
               shadowColor: shadowColor,
             ),
-            if (footer != null)
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 8,
-                ),
-                child: Text(
-                  footer!,
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: resolveThemeColor(kSecondaryLabel, context),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -2153,18 +2160,93 @@ class SettingsPanelSection extends StatelessWidget {
   }
 }
 
+class _DateFormatSettingsSection extends StatelessWidget {
+  final Color accentColor;
+  final ValueChanged<String> onSelect;
+
+  const _DateFormatSettingsSection({
+    required this.accentColor,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        appDateFormatUsesSystemNotifier,
+        appSystemDateFormatNotifier,
+        appSystemDateFormatSampleNotifier,
+        appCustomDateFormatNotifier,
+      ]),
+      builder: (context, _) {
+        final usesSystem = appDateFormatUsesSystemNotifier.value;
+        final appOnlyFormat = appCustomDateFormatNotifier.value;
+        final settingsScreenName = switch (defaultTargetPlatform) {
+          TargetPlatform.android => 'Regional preferences',
+          TargetPlatform.iOS => 'Language & Region',
+          _ => 'regional settings',
+        };
+        final optionRows = AppDateFormat.values
+            .map(
+              (format) => _OptionRow(
+                title: format.sample,
+                selected: !usesSystem && format == appOnlyFormat,
+                accentColor: accentColor,
+                onTap: () => onSelect(format.sample),
+              ),
+            )
+            .toList();
+
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                MirrorSystemSettingSection(
+                  systemSettingRow: _OptionRow(
+                    title: appSystemDateFormatSampleNotifier.value == null
+                        ? 'System Setting'
+                        : 'System Setting (${appSystemDateFormatSampleNotifier.value})',
+                    selected: usesSystem,
+                    accentColor: accentColor,
+                    onTap: () => onSelect('System'),
+                  ),
+                  settingsScreenName: settingsScreenName,
+                ),
+                const SizedBox(height: 20),
+                SkeddoAppOnlySettingsSection(
+                  rows: optionRows,
+                  additionalFooter: appOnlyFormat.contextFooter,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Standard "Skeddo App Only" section and its explanatory footer.
 class SkeddoAppOnlySettingsSection extends StatelessWidget {
   final List<Widget> rows;
+  final String? additionalFooter;
 
-  const SkeddoAppOnlySettingsSection({super.key, required this.rows});
+  const SkeddoAppOnlySettingsSection({
+    super.key,
+    required this.rows,
+    this.additionalFooter,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SettingsPanelSection(
       title: _skeddoAppOnlySectionTitle,
       rows: rows,
-      footer: _skeddoAppOnlySectionFooter,
+      footer: additionalFooter == null
+          ? _skeddoAppOnlySectionFooter
+          : '$_skeddoAppOnlySectionFooter\n\n$additionalFooter',
     );
   }
 }
