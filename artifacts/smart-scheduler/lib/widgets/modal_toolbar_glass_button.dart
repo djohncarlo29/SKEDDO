@@ -25,7 +25,7 @@ class ModalToolbarGlassButton extends StatefulWidget {
     this.iconOffset = Offset.zero,
     this.flipHorizontal = false,
     this.tapDelay = Duration.zero,
-    this.peakScale = 1.15,
+    this.peakScale,
     this.disableTouchMotion = false,
     this.semanticLabel,
   });
@@ -46,7 +46,10 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final Offset iconOffset;
   final bool flipHorizontal;
   final Duration tapDelay;
-  final double peakScale;
+
+  /// Optional fixed press scale. When null, use the package's native 17-point
+  /// press growth, matching the pinned AppShell toolbar.
+  final double? peakScale;
 
   /// Disables press scaling and drag-following deformation.
   ///
@@ -97,7 +100,7 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         checkmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
     _canTap = widget.enabled && !disabledBySurface;
     final interactionScale = widget.disableTouchMotion ? 1.0 : widget.peakScale;
-    final stretch = widget.disableTouchMotion ? 0.0 : 0.5;
+    final stretch = widget.disableTouchMotion ? 0.0 : 0.15;
     final anchorStretch = !widget.disableTouchMotion;
 
     final neutralSurfaces = [

@@ -88,8 +88,8 @@ void main() {
       final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
       expect(stretchShell.width, 40);
       expect(stretchShell.height, 40);
-      expect(stretchShell.interactionScale, 1.15);
-      expect(stretchShell.stretch, 0.5);
+      expect(stretchShell.interactionScale, isNull);
+      expect(stretchShell.stretch, 0.15);
       expect(stretchShell.style, navigation_glass.GlassButtonStyle.transparent);
       expect(stretchShell.child, isA<Stack>());
       expect(
@@ -223,7 +223,7 @@ void main() {
     expect(button.settings!.glassColor.a, closeTo(0.614, 0.001));
   });
 
-  testWidgets('modal toolbars scale and stretch on press by default', (
+  testWidgets('modal toolbars match pinned AppShell press motion', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -252,8 +252,8 @@ void main() {
     final standardButton = tester.widget<navigation_glass.GlassButton>(
       find.byType(navigation_glass.GlassButton).first,
     );
-    expect(standardButton.interactionScale, 1.15);
-    expect(standardButton.stretch, 0.5);
+    expect(standardButton.interactionScale, isNull);
+    expect(standardButton.stretch, 0.15);
     expect(standardButton.anchorStretch, isTrue);
 
     final shellFinder = find.byWidgetPredicate(
@@ -264,8 +264,8 @@ void main() {
     final checkmarkShell = tester.widget<navigation_glass.GlassButton>(
       shellFinder,
     );
-    expect(checkmarkShell.interactionScale, 1.15);
-    expect(checkmarkShell.stretch, 0.5);
+    expect(checkmarkShell.interactionScale, isNull);
+    expect(checkmarkShell.stretch, 0.15);
     expect(checkmarkShell.anchorStretch, isTrue);
   });
 
