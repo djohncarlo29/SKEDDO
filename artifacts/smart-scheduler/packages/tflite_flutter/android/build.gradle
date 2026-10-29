@@ -66,5 +66,4 @@ dependencies {
     def litert_version = "1.4.0"
 
     implementation("com.google.ai.edge.litert:litert:${litert_version}")
-    implementation("com.google.ai.edge.litert:litert-gpu:${litert_version}")
 }

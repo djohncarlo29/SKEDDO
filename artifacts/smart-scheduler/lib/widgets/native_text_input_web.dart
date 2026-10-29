@@ -363,6 +363,20 @@ class _NativeTextInputState extends State<NativeTextInput> {
   }
 
   void _publishSyntheticRubberbandMetrics(double pixels) {
+    final viewportWidth = _rubberbandViewportWidth > 0
+        ? _rubberbandViewportWidth
+        : math.max(
+            0.0,
+            _element.clientWidth -
+                widget.padding.left -
+                widget.padding.right,
+          );
+    _updateAlphaEdgeMask(
+      contentWidth: _measureSingleLineContentWidth(),
+      viewportWidth: viewportWidth,
+      pixels: pixels,
+      maxExtent: 0,
+    );
     widget.metricsListenable?.value = EdgeFadeMetrics(
       pixels: pixels,
       minScrollExtent: 0,
@@ -404,12 +418,6 @@ class _NativeTextInputState extends State<NativeTextInput> {
     if (_rubberbandPointerActive &&
         widget.rubberbandWhenContentFits &&
         maxExtent <= 1.0) {
-      _updateAlphaEdgeMask(
-        contentWidth: horizontalContentWidth,
-        viewportWidth: horizontalViewportWidth,
-        pixels: 0,
-        maxExtent: 0,
-      );
       _publishSyntheticRubberbandMetrics(_rubberbandSyntheticPixels);
       return;
     }
@@ -433,7 +441,10 @@ class _NativeTextInputState extends State<NativeTextInput> {
   }
 
   double _measureSingleLineContentWidth() {
-    final text = _nativeText;
+    // A visible placeholder is the field's content while the input is empty.
+    // Measure it so a fitting placeholder can receive the same drag/fade
+    // treatment as short typed text, rather than being treated as zero-width.
+    final text = _nativeText.isEmpty ? widget.placeholder : _nativeText;
     if (text.isEmpty) return 0;
     _measureContext.font =
         '${widget.style.fontWeight?.value ?? 400} ${_element.style.fontSize} ${_element.style.fontFamily}';
@@ -451,9 +462,12 @@ class _NativeTextInputState extends State<NativeTextInput> {
     required double pixels,
     required double maxExtent,
   }) {
+    final fittingRubberband =
+        widget.rubberbandWhenContentFits &&
+        maxExtent <= 1 &&
+        pixels.abs() > 1;
     if (!widget.alphaEdgeFade ||
-        _nativeText.isEmpty ||
-        contentWidth <= viewportWidth + 1 ||
+        (contentWidth <= viewportWidth + 1 && !fittingRubberband) ||
         viewportWidth <= 0) {
       _setAlphaEdgeMask('none');
       return;
