@@ -66,27 +66,6 @@ const List<_AccentSwatch> _kAccentSwatches = [
   _AccentSwatch('Sand', kCatSand),
 ];
 
-String _systemAccentColorName(BuildContext context) {
-  final systemColor = CupertinoDynamicColor.resolve(
-    appSystemAccentColorNotifier.value,
-    context,
-  );
-  var closestName = _kAccentSwatches.first.name;
-  var closestDistance = double.infinity;
-  for (final swatch in _kAccentSwatches) {
-    final color = CupertinoDynamicColor.resolve(swatch.color, context);
-    final red = systemColor.r - color.r;
-    final green = systemColor.g - color.g;
-    final blue = systemColor.b - color.b;
-    final distance = red * red + green * green + blue * blue;
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      closestName = swatch.name;
-    }
-  }
-  return closestName;
-}
-
 // ── Route descriptor ──────────────────────────────────────────────────────────
 class _SettingsRoute {
   final String title;
@@ -611,6 +590,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         appAccentUsesSystemNotifier,
         appSystemAccentColorNotifier,
         appBrightnessNotifier,
+        appSystemBrightnessNotifier,
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
         appSystemTextScaleNotifier,
@@ -630,18 +610,18 @@ class _SettingsPanelState extends State<SettingsPanel>
         final selectedSwatch = _kAccentSwatches[appAccentNotifier.value];
         final swatch = usesSystemAccent
             ? _AccentSwatch(
-                'System (${_systemAccentColorName(context)})',
+                'System Setting',
                 appSystemAccentColorNotifier.value,
               )
             : selectedSwatch;
         final accentColor = resolveAccentColor(context);
 
-        final themeLabel = mirrorSystemSettingTrailingValue(
-          usesSystem: appBrightnessNotifier.value == null,
-          appOnlyValue: appBrightnessNotifier.value == Brightness.dark
-              ? 'Dark'
-              : 'Light',
-        );
+        final themeLabel = switch (appBrightnessNotifier.value) {
+          null =>
+            'System (${appSystemBrightnessNotifier.value == Brightness.dark ? 'Dark' : 'Light'})',
+          Brightness.dark => 'Dark',
+          Brightness.light => 'Light',
+        };
         final textSizeLabel = mirrorSystemSettingTrailingValue(
           usesSystem: appTextSizeUsesSystemNotifier.value,
           appOnlyValue: 'Custom',
@@ -3262,7 +3242,6 @@ class _AccentColorSection extends StatelessWidget {
           context,
         );
         final resolvedAccent = resolveAccentColor(context);
-        final systemAccentName = _systemAccentColorName(context);
         final rows = List.generate(_kAccentSwatches.length, (i) {
           final swatch = _kAccentSwatches[i];
           final resolvedColor = CupertinoDynamicColor.resolve(
@@ -3290,7 +3269,7 @@ class _AccentColorSection extends StatelessWidget {
               children: [
                 MirrorSystemSettingSection(
                   systemSettingRow: _OptionRow(
-                    title: 'System Setting ($systemAccentName)',
+                    title: 'System Setting',
                     selected: usesSystem,
                     accentColor: resolvedAccent,
                     leadingColor: systemAccentColor,

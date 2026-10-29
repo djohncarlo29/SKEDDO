@@ -149,4 +149,5 @@
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.
 - [Independent GlassPopover surfaces](glass-popover-nested-surfaces.md) — nested controls needing their own optics must render in their own glass layer.
 - [GlassPopover placement boundaries](glass-popover-safe-area.md) — avoid doubled insets; the 4px upper-left morph offset applies only to discard confirmation.
-- [System accent support](native-accent-color-source.md) — Android 12+ uses wallpaper palettes; iOS exposes SwiftUI accentColor, not a user-configurable global accent.
+- [System accent support](native-accent-color-source.md) — system accent APIs provide colors, not canonical swatch names; never label by nearest app swatch.
+- [System theme and accent independence](system-theme-accent-independence.md) — accent changes are color-only; System theme labels and rendered brightness must use the same OS snapshot.

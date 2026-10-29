@@ -777,7 +777,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             ? systemAccent
             : selectedAppAccent;
         final effectiveBrightness =
-            brightness ?? MediaQuery.platformBrightnessOf(context);
+            brightness ?? appSystemBrightnessNotifier.value;
         WindowCaptionAppearance.synchronize(effectiveBrightness);
 
         // Status-bar icon brightness tracks the active mode so icons remain
@@ -809,9 +809,9 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             debugShowCheckedModeBanner: false,
             navigatorKey: _rootNavigatorKey,
             theme: CupertinoThemeData(
-              // null → follow platform brightness (System mode).
-              // Brightness.light / .dark → override.
-              brightness: brightness,
+              // Keep System mode on the same platform-brightness snapshot used
+              // by the Settings label; app-only modes override this value.
+              brightness: effectiveBrightness,
               // Drives the text-selection highlight + handles for every
               // CupertinoTextField in the app (cursor color is set per-field).
               // Updated live when the user changes the accent colour.
@@ -864,20 +864,14 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                   child: result,
                 );
               }
-              // Brightness override: propagate through MediaQuery so that
-              // CupertinoDynamicColor.resolve() returns the correct variant
-              // everywhere, including widgets that read platformBrightness
-              // rather than CupertinoTheme directly. This makes MediaQuery's
-              // platformBrightness the effective app theme below this point;
-              // OS-setting labels must use appSystemBrightnessNotifier instead.
-              if (brightness != null) {
-                result = MediaQuery(
-                  data: MediaQuery.of(
-                    context,
-                  ).copyWith(platformBrightness: brightness),
-                  child: result,
-                );
-              }
+              // Keep MediaQuery-based dynamic colors on the same effective
+              // brightness as CupertinoTheme in System and app-only modes.
+              result = MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(platformBrightness: effectiveBrightness),
+                child: result,
+              );
               // Publish the symmetric landscape positioning constraint above
               // the Navigator without constraining its full-width surfaces.
               result = AppWindowContentBoundary(child: result);
