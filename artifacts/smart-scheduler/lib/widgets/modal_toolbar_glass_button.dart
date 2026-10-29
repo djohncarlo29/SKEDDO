@@ -27,6 +27,7 @@ class ModalToolbarGlassButton extends StatefulWidget {
     this.tapDelay = Duration.zero,
     this.peakScale,
     this.disableTouchMotion = false,
+    this.groupedGlass = false,
     this.semanticLabel,
   });
 
@@ -56,6 +57,9 @@ class ModalToolbarGlassButton extends StatefulWidget {
   /// Use only for controls that intentionally need a fixed shape; modal
   /// toolbar actions normally keep press scaling and stretch enabled.
   final bool disableTouchMotion;
+  /// Uses the settings and render layer from an enclosing
+  /// AdaptiveLiquidGlassLayer so adjacent glass controls can blend.
+  final bool groupedGlass;
   final String? semanticLabel;
 
   @override
@@ -253,9 +257,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         width: widget.size,
         height: widget.size,
         shape: const navigation_glass.LiquidOval(),
-        settings: navigationGlassSettings,
+        settings: widget.groupedGlass ? null : navigationGlassSettings,
         quality: navigation_glass.GlassQuality.premium,
-        useOwnLayer: true,
+        useOwnLayer: !widget.groupedGlass,
         interactionScale: interactionScale,
         stretch: stretch,
         anchorStretch: anchorStretch,

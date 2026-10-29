@@ -480,26 +480,30 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     final controller = offscreen ? _offscreenSearchController : _searchController;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: AppSearchBar(
-              key: offscreen ? _offscreenSearchBarKey : _searchBarKey,
-              controller: controller,
-              onFocusChanged: _onSearchFocusChanged,
+      child: SearchBarGlassGroup(
+        child: Row(
+          children: [
+            Expanded(
+              child: AppSearchBar(
+                key: offscreen ? _offscreenSearchBarKey : _searchBarKey,
+                controller: controller,
+                onFocusChanged: _onSearchFocusChanged,
+                groupedGlass: true,
+              ),
             ),
-          ),
-          SearchCancelButton(
-            key: offscreen ? _offscreenSearchCancelKey : _searchCancelKey,
-            animation: offscreen
-                ? const AlwaysStoppedAnimation<double>(1.0)
-                : widget.searchModeAnimation,
-            searchFocused: offscreen
-                ? _searchFocused
-                : _searchFocused && !_activatedFromOffScreen,
-            onTap: _cancelSearch,
-          ),
-        ],
+            SearchCancelButton(
+              key: offscreen ? _offscreenSearchCancelKey : _searchCancelKey,
+              animation: offscreen
+                  ? const AlwaysStoppedAnimation<double>(1.0)
+                  : widget.searchModeAnimation,
+              searchFocused: offscreen
+                  ? _searchFocused
+                  : _searchFocused && !_activatedFromOffScreen,
+              onTap: _cancelSearch,
+              groupedGlass: true,
+            ),
+          ],
+        ),
       ),
     );
   }

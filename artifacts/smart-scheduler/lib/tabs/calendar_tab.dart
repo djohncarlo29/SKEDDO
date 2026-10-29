@@ -2805,22 +2805,26 @@ class CalendarTabState extends State<CalendarTab>
   Widget buildOffscreenSearchOverlay() {
     final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: AppSearchBar(
-              key: _searchBarKey,
-              controller: _searchCtrl,
-              placeholder: 'Search',
+      child: SearchBarGlassGroup(
+        child: Row(
+          children: [
+            Expanded(
+              child: AppSearchBar(
+                key: _searchBarKey,
+                controller: _searchCtrl,
+                placeholder: 'Search',
+                groupedGlass: true,
+              ),
             ),
-          ),
-          SearchCancelButton(
-            key: _searchCancelKey,
-            searchFocused: true,
-            onTap: cancelSearch,
-            animation: const AlwaysStoppedAnimation<double>(1.0),
-          ),
-        ],
+            SearchCancelButton(
+              key: _searchCancelKey,
+              searchFocused: true,
+              onTap: cancelSearch,
+              animation: const AlwaysStoppedAnimation<double>(1.0),
+              groupedGlass: true,
+            ),
+          ],
+        ),
       ),
     );
     return AnimatedOpacity(

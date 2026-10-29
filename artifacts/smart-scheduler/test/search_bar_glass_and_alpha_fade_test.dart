@@ -4,6 +4,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass
     show GlassContainer;
 import 'package:smart_scheduler/widgets/edge_fade_metrics.dart';
 import 'package:smart_scheduler/widgets/horizontal_edge_fade.dart';
+import 'package:smart_scheduler/widgets/native_text_input.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
@@ -82,5 +83,37 @@ void main() {
 
     textController.dispose();
     metrics.dispose();
+  });
+
+  testWidgets('short typed search text keeps its horizontal rubberband', (
+    tester,
+  ) async {
+    final controller = TextEditingController(text: 'short');
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SizedBox(
+          width: 360,
+          child: AppSearchBar(controller: controller),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final inputFinder = find.byType(NativeTextInput);
+    final input = tester.widget<NativeTextInput>(inputFinder);
+    final scrollController = input.scrollController!;
+    expect(scrollController.hasClients, isTrue);
+    expect(scrollController.position.maxScrollExtent, 0);
+
+    final gesture = await tester.startGesture(tester.getRect(inputFinder).center);
+    await gesture.moveBy(const Offset(-24, 0));
+    await tester.pump();
+    expect(scrollController.position.pixels, greaterThan(0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(scrollController.position.pixels, closeTo(0, 0.1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
   });
 }
