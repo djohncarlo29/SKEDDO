@@ -753,28 +753,42 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     return TapRegion(
       groupId: kSbGroupId,
-      child: ModalToolbarGlassButton(
-        icon: CupertinoIcons.xmark,
-        iconColor: primaryLabel,
-        surfaceColor: surfaceColor,
-        size: circleSize,
-        iconSize: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
-        semanticLabel: 'Cancel search',
-        peakScale: 1.15,
-        tapDelay: _kTapDelay,
-        onTap: widget.onTap,
-        child: SizedBox.expand(
-          child: Center(
-            child: Transform.translate(
-              offset: const Offset(0, -0.5),
-              child: SearchWeightedIcon(
-                CupertinoIcons.xmark,
-                // Keep the default 20:40 glyph-to-circle ratio as one
-                // united element. It stays horizontally centered, with the
-                // subtle upward optical adjustment applied inside the circle.
-                size: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
-                color: primaryLabel,
-                weight: kGelBloomIconWeight,
+      child: GestureDetector(
+        // GlassButton observes raw pointer movement for its stretch effect,
+        // but only claims taps. Claim drags here so an inline search cancel
+        // gesture cannot scroll the tab underneath the search header.
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragStart: (_) {},
+        onVerticalDragUpdate: (_) {},
+        onVerticalDragEnd: (_) {},
+        onVerticalDragCancel: () {},
+        onHorizontalDragStart: (_) {},
+        onHorizontalDragUpdate: (_) {},
+        onHorizontalDragEnd: (_) {},
+        onHorizontalDragCancel: () {},
+        child: ModalToolbarGlassButton(
+          icon: CupertinoIcons.xmark,
+          iconColor: primaryLabel,
+          surfaceColor: surfaceColor,
+          size: circleSize,
+          iconSize: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
+          semanticLabel: 'Cancel search',
+          tapDelay: _kTapDelay,
+          onTap: widget.onTap,
+          child: SizedBox.expand(
+            child: Center(
+              child: Transform.translate(
+                offset: const Offset(0, -0.5),
+                child: SearchWeightedIcon(
+                  CupertinoIcons.xmark,
+                  // Keep the default 20:40 glyph-to-circle ratio as one
+                  // united element. It stays horizontally centered, with the
+                  // subtle upward optical adjustment applied inside the circle.
+                  size:
+                      circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
+                  color: primaryLabel,
+                  weight: kGelBloomIconWeight,
+                ),
               ),
             ),
           ),

@@ -5,6 +5,12 @@ description: Stable identity required for the Liquid Glass cancel control while 
 
 The search cancel control must retain a stable GlobalKey when the search row moves between its inline scrollable location and the pinned off-screen search overlay. Its full-size `ModalToolbarGlassButton`/`GlassIconButton` must remain intact during the reveal animation without a rectangular clip; preserve the current X glyph, placement, and delayed cancel callback.
 
+The cancel circle must claim drag gestures locally while leaving `GlassButton`'s raw-pointer stretch tracking active. Keep its native package press scale unset and use the standard 0.5 stretch, matching the other circular toolbar controls.
+
+**Why:** The package stretch listener observes pointer movement but its button recognizer only claims taps. In inline search, a parent tab scroll view can otherwise win a drag beginning on the cancel button and move the screen beneath it.
+
+**How to apply:** Wrap the cancel button in an opaque `GestureDetector` with horizontal and vertical drag callbacks that consume movement. Leave the inner `GlassButton` tap handler intact so ordinary taps still cancel search, and do not add a second scale override.
+
 **Why:** Moving the row can remount the captured glass at the exact moment an overlay or sheet changes occlusion. The user also explicitly requested that search cancel use the shared package `GlassIconButton` renderer in both appearances.
 
 **How to apply:** Give each independent search surface its own stable key, build the cancel circle with `ModalToolbarGlassButton`, and use an overflow-safe scale reveal rather than constraining or rectangular-clipping the glass button. Preserve the established delayed cancel callback. Keep the X horizontally centered and 0.5 px above the circle’s center.
