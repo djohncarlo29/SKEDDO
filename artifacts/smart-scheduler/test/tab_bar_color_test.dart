@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassExtraButtonPlacement, GlassTabBar, GlassThemeVariant;
+    show GlassThemeVariant;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
+    show DefaultButtonSettings, GlassExtraButtonPlacement, GlassTabBar;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/fixed_size_icon.dart';
@@ -37,10 +40,11 @@ void main() {
   });
 
   testWidgets(
-    'Flutter tab bar matches native height and keeps action routing',
+    'navigation package tab bar preserves dimensions, colors, and routing',
     (tester) async {
       const eventsAccent = Color(0xFFDB5500);
       var createEventCalls = 0;
+      int? selectedTab;
       await tester.pumpWidget(
         CupertinoApp(
           theme: const CupertinoThemeData(brightness: Brightness.light),
@@ -50,7 +54,7 @@ void main() {
                 child: FloatingTabPill(
                   selectedIndex: 2,
                   eventsAccent: eventsAccent,
-                  onTabSelected: (_) {},
+                  onTabSelected: (index) => selectedTab = index,
                   onCreateEvent: () => createEventCalls++,
                 ),
               ),
@@ -60,7 +64,9 @@ void main() {
       );
 
       final context = tester.element(find.byType(FloatingTabPill));
-      final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+      final tabBar = tester.widget<navigation_glass.GlassTabBar>(
+        find.byType(navigation_glass.GlassTabBar),
+      );
       final inactiveColor = CupertinoDynamicColor.resolve(
         kTabBarInactiveColor,
         context,
@@ -85,14 +91,20 @@ void main() {
         (tabBar.tabs[3].activeIcon as FixedSFIcon).icon,
         SFIcons.sf_person_crop_circle_fill,
       );
-      expect(tabBar.selectedIconColor!.value, eventsAccent.value);
-      expect(tabBar.selectedLabelColor!.value, eventsAccent.value);
-      expect(tabBar.unselectedIconColor!.value, inactiveColor.value);
-      expect(tabBar.unselectedLabelColor!.value, inactiveColor.value);
+      expect(tabBar.selectedIconColor!.toARGB32(), eventsAccent.toARGB32());
+      expect(tabBar.selectedLabelColor!.toARGB32(), eventsAccent.toARGB32());
+      expect(tabBar.unselectedIconColor!.toARGB32(), inactiveColor.toARGB32());
+      expect(tabBar.unselectedLabelColor!.toARGB32(), inactiveColor.toARGB32());
       expect(tabBar.extraButton, isNotNull);
       expect(tabBar.extraButton!.label, 'New Event');
-      expect(tabBar.extraButton!.iconColor!.value, eventsAccent.value);
-      expect(tabBar.extraButton!.placement, GlassExtraButtonPlacement.right);
+      expect(
+        tabBar.extraButton!.iconColor!.toARGB32(),
+        eventsAccent.toARGB32(),
+      );
+      expect(
+        tabBar.extraButton!.placement,
+        navigation_glass.GlassExtraButtonPlacement.right,
+      );
       expect(tabBar.extraButton!.size, 49.0);
       expect(tabBar.barHeight, 49.0);
       expect(tabBar.preferredSize.height, 49.0);
@@ -108,7 +120,18 @@ void main() {
       expect(tabBar.labelFontSize, 9.0);
       expect(tabBar.iconLabelSpacing, 1.5);
       expect(tabBar.magnification, 1.0);
-      expect(tabBar.settings, skeddoTabBarGlassSettingsFor(Brightness.light));
+      expect(
+        tabBar.settings,
+        skeddoNavigationTabBarGlassSettingsFor(Brightness.light),
+      );
+      final extraButtonSettings = tester
+          .widget<navigation_glass.DefaultButtonSettings>(
+            find.byType(navigation_glass.DefaultButtonSettings),
+          );
+      expect(
+        extraButtonSettings.settings,
+        skeddoNavigationTabBarGlassSettingsFor(Brightness.light),
+      );
       expect(tabBar.settings!.blur, closeTo(1.7, 0.000001));
       expect(
         skeddoBottomBarGlassSettingsFor(Brightness.light).blur,
@@ -119,15 +142,22 @@ void main() {
       expect(tabBar.settings!.glassColor.a, closeTo(0.528, 0.001));
       expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x00FFFFFF);
       expect(
-        tabBar.indicatorColor!.value,
-        kFloatingTabBarLightIndicatorColor.value,
+        tabBar.indicatorColor!.toARGB32(),
+        kFloatingTabBarLightIndicatorColor.toARGB32(),
       );
-      expect(tabBar.indicatorSettings, kSkeddoLightLiftedTabIndicatorSettings);
+      expect(
+        tabBar.indicatorSettings,
+        skeddoNavigationTabIndicatorGlassSettings(),
+      );
       expect(
         tabBar.indicatorSettings!.glassColor,
         const Color.fromRGBO(0, 0, 0, 0.04),
       );
       expect(tabBar.indicatorSettings!.shadowElevation, 1.2);
+
+      await tester.tap(find.text('Calendar').first);
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(selectedTab, 1);
 
       await tester.tap(find.bySemanticsLabel('New Event'));
       await tester.pump();
@@ -156,8 +186,13 @@ void main() {
       ),
     );
 
-    final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
-    expect(tabBar.settings, skeddoTabBarGlassSettingsFor(Brightness.dark));
+    final tabBar = tester.widget<navigation_glass.GlassTabBar>(
+      find.byType(navigation_glass.GlassTabBar),
+    );
+    expect(
+      tabBar.settings,
+      skeddoNavigationTabBarGlassSettingsFor(Brightness.dark),
+    );
     expect(tabBar.settings!.blur, closeTo(1.7, 0.000001));
     expect(
       skeddoBottomBarGlassSettingsFor(Brightness.dark).blur,
@@ -166,8 +201,8 @@ void main() {
     expect(tabBar.innerBlur, closeTo(2.7, 0.000001));
     expect(kSkeddoDarkBottomBarOpacity, 0.628);
     expect(
-      tabBar.indicatorColor!.value,
-      kFloatingTabBarDarkIndicatorColor.value,
+      tabBar.indicatorColor!.toARGB32(),
+      kFloatingTabBarDarkIndicatorColor.toARGB32(),
     );
     expect(tabBar.settings!.glassColor.a, closeTo(0.628, 0.001));
     expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x003E3E40);

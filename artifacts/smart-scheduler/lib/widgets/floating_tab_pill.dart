@@ -3,14 +3,15 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassContainer, GlassQuality, LiquidRoundedRectangle;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
     show
-        GlassContainer,
+        DefaultButtonSettings,
         GlassExtraButtonPlacement,
-        GlassQuality,
         GlassTab,
         GlassTabBar,
-        GlassTabBarExtraButton,
-        LiquidRoundedRectangle;
+        GlassTabBarExtraButton;
 import 'package:flutter_sficon/flutter_sficon.dart';
 
 import '../app_theme.dart';
@@ -96,9 +97,10 @@ class _UpperBoundedTextScaler extends TextScaler {
 
 /// The AppShell's platform-neutral floating tab control.
 ///
-/// This widget owns the package bar, its four navigation tabs, and its
-/// separate trailing action. AppShell remains responsible for navigation,
-/// opening the event sheet, safe-area positioning, and overlay ordering.
+/// This widget owns the navigation-package bar, its four navigation tabs,
+/// and its separate trailing action. AppShell remains responsible for
+/// navigation, opening the event sheet, safe-area positioning, and overlay
+/// ordering.
 class FloatingTabPill extends StatefulWidget {
   const FloatingTabPill({
     super.key,
@@ -149,22 +151,25 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     );
     final tabIconSize = tabTextScaler.scale(20);
     final bottomOffset = floatingTabBarBottomOffset(context);
-    final tabBar = GlassTabBar.bottom(
+    final barGlassSettings = skeddoNavigationTabBarGlassSettingsFor(
+      isDark ? Brightness.dark : Brightness.light,
+    );
+    final tabBar = navigation_glass.GlassTabBar.bottom(
       tabs: [
-        GlassTab(
+        navigation_glass.GlassTab(
           icon: FixedSFIcon(SFIcons.sf_house, fontSize: tabIconSize),
           activeIcon: FixedSFIcon(SFIcons.sf_house_fill, fontSize: tabIconSize),
           label: 'Home',
         ),
-        GlassTab(
+        navigation_glass.GlassTab(
           icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: tabIconSize),
           label: 'Calendar',
         ),
-        GlassTab(
+        navigation_glass.GlassTab(
           icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: tabIconSize),
           label: 'Events',
         ),
-        GlassTab(
+        navigation_glass.GlassTab(
           icon: FixedSFIcon(
             SFIcons.sf_person_crop_circle,
             fontSize: tabIconSize,
@@ -178,12 +183,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       ],
       selectedIndex: selectedIndex,
       onTabSelected: widget.onTabSelected,
-      extraButton: GlassTabBarExtraButton(
+      extraButton: navigation_glass.GlassTabBarExtraButton(
         icon: const FixedSFIcon(SFIcons.sf_plus),
         onTap: widget.onCreateEvent,
         label: 'New Event',
         iconColor: selectedColor,
-        placement: GlassExtraButtonPlacement.right,
+        placement: navigation_glass.GlassExtraButtonPlacement.right,
         size: kFloatingTabBarHeight,
       ),
       barHeight: kFloatingTabBarHeight,
@@ -192,10 +197,10 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       labelFontSize: 9,
       iconLabelSpacing: 1.5,
       magnification: 1,
-      settings: skeddoTabBarGlassSettingsFor(
-        isDark ? Brightness.dark : Brightness.light,
-      ),
-      indicatorSettings: isDark ? null : kSkeddoLightLiftedTabIndicatorSettings,
+      settings: barGlassSettings,
+      indicatorSettings: isDark
+          ? null
+          : skeddoNavigationTabIndicatorGlassSettings(),
       innerBlur: skeddoActiveTabIndicatorBlurForPosition(
         liquidGlassSliderPositionForOpacity(
           appLiquidGlassOpacityNotifier.value,
@@ -254,7 +259,10 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
                     builder: (scaledContext) => MediaQuery.removePadding(
                       context: scaledContext,
                       removeBottom: true,
-                      child: tabBar,
+                      child: navigation_glass.DefaultButtonSettings(
+                        settings: barGlassSettings,
+                        child: tabBar,
+                      ),
                     ),
                   ),
                 ),
@@ -269,7 +277,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
 
 /// A package-rendered glass sample for the Settings opacity control.
 ///
-/// The live Flutter navigation bar uses `GlassTabBar.bottom`; this sample is
+/// The live navigation bar uses `liquid_glass_widgets`; this sample remains
 /// intentionally separate from that control but reuses its shared glass settings.
 class FloatingTabBarGlassPreview extends StatefulWidget {
   final double sliderPosition;

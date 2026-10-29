@@ -223,6 +223,18 @@ navigation_glass.LiquidGlassSettings skeddoPinnedNavigationGlassSettingsFor(
     brightness,
     sliderPosition: sliderPosition,
   );
+  return skeddoNavigationGlassSettingsFromShared(
+    shared,
+    visibility: visibility,
+  );
+}
+
+/// Adapts an app-wide glass settings value to the separate navigation
+/// package's renderer without changing its slider-driven optical values.
+navigation_glass.LiquidGlassSettings skeddoNavigationGlassSettingsFromShared(
+  LiquidGlassSettings shared, {
+  double visibility = 1,
+}) {
   final specularSharpness = switch (shared.specularSharpness.name) {
     'soft' => navigation_glass.GlassSpecularSharpness.soft,
     'sharp' => navigation_glass.GlassSpecularSharpness.sharp,
@@ -254,9 +266,24 @@ navigation_glass.LiquidGlassSettings skeddoPinnedNavigationGlassSettingsFor(
   );
 }
 
+/// Shared glass settings for the navigation package's floating tab bar.
+navigation_glass.LiquidGlassSettings skeddoNavigationTabBarGlassSettingsFor(
+  Brightness brightness,
+) => skeddoNavigationGlassSettingsFromShared(
+  skeddoTabBarGlassSettingsFor(brightness),
+);
+
+/// The light-mode active-tab lens uses the app's existing tint and elevation,
+/// translated to the navigation package's settings type.
+navigation_glass.LiquidGlassSettings
+skeddoNavigationTabIndicatorGlassSettings() =>
+    skeddoNavigationGlassSettingsFromShared(
+      kSkeddoLightLiftedTabIndicatorSettings,
+    );
+
 /// The floating tab-bar shell defines the blur value shared by SKEDDO's
-/// package-rendered glass surfaces. The settled active-tab lens remains
-/// independent through its own [GlassTabBar.innerBlur] slider curve.
+/// flutter_liquid_glass_widgets surfaces. The settled active-tab lens remains
+/// independent through the tab bar's inner-blur slider curve.
 LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
     skeddoBottomBarGlassSettingsFor(brightness);
 

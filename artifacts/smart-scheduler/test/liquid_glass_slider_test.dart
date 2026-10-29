@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassContainer, GlassTabBar, LiquidGlassSettings;
+    show GlassContainer, LiquidGlassSettings;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
+    show GlassTabBar;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassSlider;
@@ -317,7 +320,9 @@ void main() {
       ),
     );
 
-    var tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+    var tabBar = tester.widget<navigation_glass.GlassTabBar>(
+      find.byType(navigation_glass.GlassTabBar),
+    );
     expect(tabBar.settings!.blur, closeTo(4.41, 0.000001));
     expect(tabBar.settings!.glassColor.a, closeTo(0.614, 0.001));
     expect(
@@ -335,7 +340,9 @@ void main() {
     );
     await tester.pump();
 
-    tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+    tabBar = tester.widget<navigation_glass.GlassTabBar>(
+      find.byType(navigation_glass.GlassTabBar),
+    );
     expect(tabBar.settings!.blur, closeTo(1.7, 0.000001));
     expect(tabBar.settings!.glassColor.a, closeTo(0.528, 0.001));
     expect(
