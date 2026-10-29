@@ -914,7 +914,10 @@ class CalendarTabState extends State<CalendarTab>
       case CalendarView.month:
         return _monthHeaderName(_dispMonth);
       case CalendarView.day:
-        return formatAppDate(_selected);
+        // The shell Day View title uses the selected Medium date style, but
+        // omits the year. Its space keeps the Day mode control distinguishable
+        // from the Month title in the shared header.
+        return formatAppDateMedium(_selected, includeYear: false);
     }
   }
 
@@ -945,9 +948,7 @@ class CalendarTabState extends State<CalendarTab>
     return AppHeaderScrollBehavior.contentOffset(position);
   }
 
-  String _monthHeaderName(int month) => appFullMonthNameNotifier.value
-      ? _kMonthNames[month - 1]
-      : _kShortMonthNames[month - 1];
+  String _monthHeaderName(int month) => _yearViewMonthName(month);
 
   // Prev / current / next titles for the three-panel header slide.
   (String, String, String) _adjacentTitles() {
@@ -990,9 +991,9 @@ class CalendarTabState extends State<CalendarTab>
         final prevD = _selected.subtract(const Duration(days: 1));
         final nextD = _selected.add(const Duration(days: 1));
         return (
-          '${_kShortMonthNames[prevD.month - 1]} ${prevD.day}',
+          formatAppDateMedium(prevD, includeYear: false),
           curr,
-          '${_kShortMonthNames[nextD.month - 1]} ${nextD.day}',
+          formatAppDateMedium(nextD, includeYear: false),
         );
     }
   }
@@ -2924,6 +2925,7 @@ class CalendarTabState extends State<CalendarTab>
           // update the time indicator, so no functionality is lost.
           // _today rebuilds (midnight) are handled by setState() in _scheduleClock.
           animation: Listenable.merge([
+            appFullMonthNameNotifier,
             _zoomAnim,
             _collapseAnim,
             _snapCtrl,
@@ -4036,6 +4038,11 @@ class _YearView extends StatelessWidget {
 }
 
 // ── Compact month grid used inside _YearView ──────────────────────────────────
+String _yearViewMonthName(int month, {bool? fullMonthName}) =>
+    (fullMonthName ?? appFullMonthNameNotifier.value)
+    ? _kMonthNames[month - 1]
+    : _kShortMonthNames[month - 1];
+
 class _MiniMonthGrid extends StatelessWidget {
   const _MiniMonthGrid({
     required this.year,
@@ -4071,6 +4078,25 @@ class _MiniMonthGrid extends StatelessWidget {
     final Color accentC = resolveAccentColor(context);
     final Color accentFadedC = resolveAccentColor(context).withOpacity(0.40);
     final yearViewDayScaler = _yearViewTextScaler(context);
+    final fullMonthName = appFullMonthNameNotifier.value;
+    final monthName = _yearViewMonthName(month, fullMonthName: fullMonthName);
+    final monthNameFontSize = cellSize * 1.35;
+    final monthNameText = Text(
+      monthName,
+      maxLines: 1,
+      overflow: TextOverflow.clip,
+      // This month label is sized from the fixed mini-grid geometry, so
+      // applying an extreme OS text scale would push calendar numbers out.
+      textScaler: TextScaler.noScaling,
+      style: TextStyle(
+        fontFamily: kSFProText,
+        fontSize: monthNameFontSize,
+        height: 1.0,
+        fontWeight: FontWeight.w700,
+        color: nameC,
+        letterSpacing: -0.3,
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4081,24 +4107,15 @@ class _MiniMonthGrid extends StatelessWidget {
         // static year-view size (cellSize*1.35).  height:1.0 keeps
         // line-height = font-size, matching the rowLettersTop geometry.
         SizedBox(
-          width: 3 * cellSize,
-          child: Text(
-            _kShortMonthNames[month - 1],
-            maxLines: 1,
-            overflow: TextOverflow.clip,
-            // This month label is sized from the fixed mini-grid geometry,
-            // so applying an extreme OS text scale would clip it and push
-            // the calendar numbers out of their cells.
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontFamily: kSFProText,
-              fontSize: cellSize * 1.35,
-              height: 1.0,
-              fontWeight: FontWeight.w700,
-              color: nameC,
-              letterSpacing: -0.3,
-            ),
-          ),
+          width: fullMonthName ? width : 3 * cellSize,
+          height: monthNameFontSize,
+          child: fullMonthName
+              ? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: monthNameText,
+                )
+              : monthNameText,
         ),
         SizedBox(height: 5),
         // Single-letter day-of-week header
@@ -4497,6 +4514,7 @@ class _MorphOverlay extends StatelessWidget {
                   contentClipTop: contentClipTop,
                   viewModeRowHeight: viewModeRowHeight,
                   monthTitleFontSize: monthTitleFontSize,
+                  fullMonthName: appFullMonthNameNotifier.value,
                   bgColor: bgC,
                   primaryColor: priC,
                   accentColor: accC,
@@ -4946,6 +4964,7 @@ class _MorphPainter extends CustomPainter {
     required this.monthWeekNumberFontSize,
     required this.monthDayCircleDiameter,
     required this.monthTitleFontSize,
+    required this.fullMonthName,
     this.measuredRowTops,
     this.yearGeometry,
     this.monthGeometry,
@@ -4979,6 +4998,7 @@ class _MorphPainter extends CustomPainter {
   final double monthWeekNumberFontSize;
   final double monthDayCircleDiameter;
   final double monthTitleFontSize;
+  final bool fullMonthName;
   final List<double>? measuredRowTops;
   final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
@@ -5014,6 +5034,7 @@ class _MorphPainter extends CustomPainter {
       o.monthWeekNumberFontSize != monthWeekNumberFontSize ||
       o.monthDayCircleDiameter != monthDayCircleDiameter ||
       o.monthTitleFontSize != monthTitleFontSize ||
+      o.fullMonthName != fullMonthName ||
       o.yearGeometry != yearGeometry ||
       o.monthGeometry != monthGeometry ||
       o.titleTargetRect != titleTargetRect ||
@@ -5145,6 +5166,7 @@ class _MorphPainter extends CustomPainter {
     Offset topLeft, {
     double ls = 0.0,
     double? height = 1.0,
+    double? maxWidth,
   }) {
     if (a <= 0 || sz < 1) return;
     final fadedColor = _fade(color, a);
@@ -5163,7 +5185,19 @@ class _MorphPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, topLeft);
+    final widthLimit = maxWidth;
+    final scale = widthLimit == null || widthLimit <= 0.0
+        ? 1.0
+        : math.min(1.0, widthLimit / tp.width);
+    if (scale < 1.0) {
+      canvas.save();
+      canvas.translate(topLeft.dx, topLeft.dy);
+      canvas.scale(scale);
+      tp.paint(canvas, Offset.zero);
+      canvas.restore();
+    } else {
+      tp.paint(canvas, topLeft);
+    }
   }
 
   @override
@@ -5303,7 +5337,7 @@ class _MorphPainter extends CustomPainter {
       final isCurrMonth = year == today.year && today.month == mMon;
       _textL(
         canvas,
-        _kShortMonthNames[mMon - 1],
+        _yearViewMonthName(mMon, fullMonthName: fullMonthName),
         titleFontSize,
         FontWeight.w700,
         isCurrMonth ? accentColor : primaryColor,
@@ -5311,6 +5345,7 @@ class _MorphPainter extends CustomPainter {
         Offset(xZ(mnX), yZ(mnY)),
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
+        maxWidth: miniW,
       );
 
       if (hdrAlpha > 0) {
@@ -5768,7 +5803,7 @@ class _MorphPainter extends CustomPainter {
       );
       _textL(
         canvas,
-        _kShortMonthNames[zMonth - 1],
+        _yearViewMonthName(zMonth, fullMonthName: fullMonthName),
         titleFontSize,
         FontWeight.w700,
         nameColor,
@@ -5776,6 +5811,11 @@ class _MorphPainter extends CustomPainter {
         titleTopLeft,
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
+        maxWidth: lerpDouble(
+          miniW,
+          titleTargetRect?.width ?? screenW,
+          t,
+        )!,
       );
       canvas.restore();
     }
@@ -8230,7 +8270,8 @@ class _DayBannerState extends State<_DayBanner>
   }
 
   String _shortLabel(DateTime d) =>
-      '${_kWeekdaysShort[d.weekday - 1]}, ${formatAppDate(d)}';
+      '${_kWeekdaysShort[d.weekday - 1]}, '
+      '${formatAppDateMedium(d, includeYear: false)}';
 
   static double _lineHeight(BuildContext context) {
     final style = resolveThemeTextStyle(_kLabelStyleBase, context);
@@ -8268,7 +8309,10 @@ class _DayBannerState extends State<_DayBanner>
     final style = resolveThemeTextStyle(_kLabelStyleBase, context);
     final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     final contentWidth = math.max(0.0, width - horizontalInset * 2);
-    final datePart = formatAppDate(date);
+    final datePart = formatAppDateMedium(
+      date,
+      includeYear: daySubMode != DayViewSubMode.multiDay,
+    );
     final labelWidth = daySubMode == DayViewSubMode.multiDay
         ? math.max(
             0.0,
@@ -8288,7 +8332,7 @@ class _DayBannerState extends State<_DayBanner>
 
     if (daySubMode == DayViewSubMode.multiDay) {
       final nextDate = date.add(const Duration(days: 1));
-      final nextDatePart = formatAppDate(nextDate);
+      final nextDatePart = formatAppDateMedium(nextDate, includeYear: false);
       needsWrap |= !_fitsSingleLine(
         context,
         text: '${_kWeekdaysShort[nextDate.weekday - 1]}, $nextDatePart',
@@ -8314,7 +8358,10 @@ class _DayBannerState extends State<_DayBanner>
     final weekday = short
         ? _kWeekdaysShort[date.weekday - 1]
         : _kWeekdays[date.weekday - 1];
-    final formattedDate = formatAppDate(date);
+    final formattedDate = formatAppDateMedium(
+      date,
+      includeYear: !short,
+    );
     final secondLine = formattedDate;
     final singleLine = short
         ? '$weekday, $formattedDate'
@@ -8458,7 +8505,13 @@ class _DayBannerState extends State<_DayBanner>
               final tailDay = _kWeekdays[widget.date.weekday - 1].substring(
                 shortDay.length,
               ); // e.g. "day", "sday"
-              final monthDay = formatAppDate(widget.date);
+              final monthDay = formatAppDateMedium(
+                widget.date,
+                includeYear: false,
+              );
+              final yearSuffix = formatAppDateMedium(widget.date).substring(
+                monthDay.length,
+              );
 
               // ── Multi Day sliding layout ─────────────────────────────────
               // When fully morphed into Multi Day mode AND the user is actively
@@ -8736,6 +8789,18 @@ class _DayBannerState extends State<_DayBanner>
                               ),
                             ),
                             Text(monthDay, style: _styleFor(widget.date, ctx)),
+                            ClipRect(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: (1.0 - t).clamp(0.0, 1.0),
+                                child: Text(
+                                  yearSuffix,
+                                  style: _styleFor(widget.date, ctx),
+                                  softWrap: false,
+                                  overflow: TextOverflow.clip,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -10987,7 +11052,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Formatting ────────────────────────────────────────────────────────────
 
-  String _fmtDate(DateTime d) => formatAppDate(d);
+  String _fmtDate(DateTime d) => formatAppDateMedium(d);
 
   String _fmtTime(DateTime d) {
     final h = d.hour == 0 ? 12 : (d.hour > 12 ? d.hour - 12 : d.hour);
@@ -13414,7 +13479,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   ];
   List<String> get _kRepeatDayLabels => calendarWeekdayHeaderLetters();
 
-  String _formatEndDate(DateTime d) => formatAppDate(d);
+  String _formatEndDate(DateTime d) => formatAppDateMedium(d);
 
   Widget _buildEndDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -13425,7 +13490,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       pills: [
         AdaptivePillSpec(
           text: _formatEndDate(_endDate),
-          compactText: formatAppDate(_endDate),
+          compactText: formatAppDateMedium(_endDate),
           backgroundColor: resolveThemeColor(kPillColor, context),
           style: TextStyle(
             inherit: false,

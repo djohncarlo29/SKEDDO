@@ -16010,7 +16010,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     'November',
     'December',
   ];
-  String _formatEndDate(DateTime d) => formatAppDate(d);
+  String _formatEndDate(DateTime d) => formatAppDateMedium(d);
 
   Widget _buildEndDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -16021,7 +16021,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       pills: [
         AdaptivePillSpec(
           text: _formatEndDate(_endDate),
-          compactText: formatAppDate(_endDate),
+          compactText: formatAppDateMedium(_endDate),
           backgroundColor: resolveThemeColor(kPillColor, context),
           style: TextStyle(
             inherit: false,
@@ -20747,14 +20747,14 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   static String? _eventDateLabel(ScheduledEvent e) {
     final abs = e.parsedDate?.absoluteDate;
     if (abs == null) return null;
-    return '${_kWeekdays[abs.weekday - 1]} - ${formatAppDate(abs)}';
+    return '${_kWeekdays[abs.weekday - 1]} - ${formatAppDateMedium(abs)}';
   }
 
   /// "August 12, 2026" — date-only header used by Deadline and Creation Date
   /// sort modes.  Returns null when [date] is null.
   static String? _dateOnlyLabel(DateTime? date) {
     if (date == null) return null;
-    return formatAppDate(date);
+    return formatAppDateMedium(date);
   }
 
   /// "3:00 PM" → minutes since midnight, used for chronological sort.

@@ -601,19 +601,38 @@ enum AppDateFormat {
     };
   }
 
-  String get contextFooter {
-    final dayFirst = parserLocalePreference == DateLocalePreference.dayFirst;
-    final medium = dayFirst ? '19 Aug 2026' : 'Aug 19, 2026';
-    final long = dayFirst ? '19 August 2026' : 'August 19, 2026';
-    final full = dayFirst
-        ? 'Wednesday, 19 August 2026'
-        : 'Wednesday, August 19, 2026';
+  bool get _isDayFirst =>
+      parserLocalePreference == DateLocalePreference.dayFirst;
 
-    return 'Format Example:\n\n'
-        '- Short: $sample\n'
-        '- Medium: $medium\n'
-        '- Long: $long\n'
-        '- Full: $full';
+  String formatMedium(DateTime date, {bool includeYear = true}) {
+    final month = _kDateFormatMonthAbbreviations[date.month - 1];
+    final day = date.day.toString();
+    final year = date.year.toString();
+    if (_isDayFirst) {
+      return includeYear ? '$day $month $year' : '$day $month';
+    }
+    return includeYear ? '$month $day, $year' : '$month $day';
+  }
+
+  String formatLong(DateTime date) {
+    final month = _kDateFormatMonthNames[date.month - 1];
+    final day = date.day.toString();
+    final year = date.year.toString();
+    return _isDayFirst ? '$day $month $year' : '$month $day, $year';
+  }
+
+  String formatFull(DateTime date) {
+    final weekday = _kDateFormatWeekdayNames[date.weekday - 1];
+    return '$weekday, ${formatLong(date)}';
+  }
+
+  String get contextFooter {
+    final exampleDate = DateTime(2026, 8, 19);
+    return 'Format Example:\n'
+        '• Short: $sample\n'
+        '• Medium: ${formatMedium(exampleDate)}\n'
+        '• Long: ${formatLong(exampleDate)}\n'
+        '• Full: ${formatFull(exampleDate)}';
   }
 
   /// Keep the AI parser's existing ambiguity behavior aligned with formats
@@ -642,12 +661,61 @@ enum AppDateFormat {
   }
 }
 
+const _kDateFormatMonthAbbreviations = <String>[
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+const _kDateFormatMonthNames = <String>[
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const _kDateFormatWeekdayNames = <String>[
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
 /// New installs and legacy Date Format settings use MM/DD/YYYY for this test.
 final ValueNotifier<AppDateFormat> appDateFormatNotifier =
     ValueNotifier<AppDateFormat>(AppDateFormat.monthDayYearSlash);
 
 String formatAppDate(DateTime date, {AppDateFormat? format}) =>
     (format ?? appDateFormatNotifier.value).format(date);
+
+String formatAppDateMedium(
+  DateTime date, {
+  bool includeYear = true,
+  AppDateFormat? format,
+}) => (format ?? appDateFormatNotifier.value).formatMedium(
+  date,
+  includeYear: includeYear,
+);
 
 /// Formats a persisted/event-source date for display without changing its
 /// stored representation. Supports the app's legacy month-name strings, ISO

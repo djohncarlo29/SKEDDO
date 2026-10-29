@@ -28,58 +28,70 @@ void main() {
   });
 
   test('each date format has its requested context footer examples', () {
-    final expected = <String>[
-      'Format Example:\n\n'
-          '- Short: 19/08/2026\n'
-          '- Medium: 19 Aug 2026\n'
-          '- Long: 19 August 2026\n'
-          '- Full: Wednesday, 19 August 2026',
-      'Format Example:\n\n'
-          '- Short: 08/19/26\n'
-          '- Medium: Aug 19, 2026\n'
-          '- Long: August 19, 2026\n'
-          '- Full: Wednesday, August 19, 2026',
-      'Format Example:\n\n'
-          '- Short: 19/08/26\n'
-          '- Medium: 19 Aug 2026\n'
-          '- Long: 19 August 2026\n'
-          '- Full: Wednesday, 19 August 2026',
-      'Format Example:\n\n'
-          '- Short: 08/19/2026\n'
-          '- Medium: Aug 19, 2026\n'
-          '- Long: August 19, 2026\n'
-          '- Full: Wednesday, August 19, 2026',
-      'Format Example:\n\n'
-          '- Short: 19.08.2026\n'
-          '- Medium: 19 Aug 2026\n'
-          '- Long: 19 August 2026\n'
-          '- Full: Wednesday, 19 August 2026',
-      'Format Example:\n\n'
-          '- Short: 19-08-2026\n'
-          '- Medium: 19 Aug 2026\n'
-          '- Long: 19 August 2026\n'
-          '- Full: Wednesday, 19 August 2026',
-      'Format Example:\n\n'
-          '- Short: 2026/08/19\n'
-          '- Medium: Aug 19, 2026\n'
-          '- Long: August 19, 2026\n'
-          '- Full: Wednesday, August 19, 2026',
-      'Format Example:\n\n'
-          '- Short: 2026.08.19\n'
-          '- Medium: Aug 19, 2026\n'
-          '- Long: August 19, 2026\n'
-          '- Full: Wednesday, August 19, 2026',
-      'Format Example:\n\n'
-          '- Short: 2026-08-19\n'
-          '- Medium: Aug 19, 2026\n'
-          '- Long: August 19, 2026\n'
-          '- Full: Wednesday, August 19, 2026',
+    final short = AppDateFormat.values.map((format) => format.sample).toList();
+    final medium = [
+      '19 Aug 2026',
+      'Aug 19, 2026',
+      '19 Aug 2026',
+      'Aug 19, 2026',
+      '19 Aug 2026',
+      '19 Aug 2026',
+      'Aug 19, 2026',
+      'Aug 19, 2026',
+      'Aug 19, 2026',
+    ];
+    final long = [
+      '19 August 2026',
+      'August 19, 2026',
+      '19 August 2026',
+      'August 19, 2026',
+      '19 August 2026',
+      '19 August 2026',
+      'August 19, 2026',
+      'August 19, 2026',
+      'August 19, 2026',
+    ];
+    final full = [
+      'Wednesday, 19 August 2026',
+      'Wednesday, August 19, 2026',
+      'Wednesday, 19 August 2026',
+      'Wednesday, August 19, 2026',
+      'Wednesday, 19 August 2026',
+      'Wednesday, 19 August 2026',
+      'Wednesday, August 19, 2026',
+      'Wednesday, August 19, 2026',
+      'Wednesday, August 19, 2026',
     ];
 
-    expect(
-      AppDateFormat.values.map((format) => format.contextFooter).toList(),
-      expected,
-    );
+    for (var i = 0; i < AppDateFormat.values.length; i++) {
+      expect(
+        AppDateFormat.values[i].contextFooter,
+        'Format Example:\n'
+        '• Short: ${short[i]}\n'
+        '• Medium: ${medium[i]}\n'
+        '• Long: ${long[i]}\n'
+        '• Full: ${full[i]}',
+      );
+    }
+  });
+
+  test('Medium format supports full and yearless dates', () {
+    final date = DateTime(2026, 10, 29);
+    final dayFirst = [
+      AppDateFormat.dayMonthYearSlash,
+      AppDateFormat.dayMonthYearShortSlash,
+      AppDateFormat.dayMonthYearDot,
+      AppDateFormat.dayMonthYearDash,
+    ];
+
+    for (final format in AppDateFormat.values) {
+      final expected = dayFirst.contains(format) ? '29 Oct' : 'Oct 29';
+      expect(format.formatMedium(date, includeYear: false), expected);
+      expect(
+        format.formatMedium(date),
+        dayFirst.contains(format) ? '29 Oct 2026' : 'Oct 29, 2026',
+      );
+    }
   });
 
   test('the test default is 08/19/2026', () {

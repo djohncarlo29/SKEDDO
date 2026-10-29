@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/main.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 
@@ -9,6 +10,8 @@ void main() {
     'Year↔Month morph preserves shell geometry at non-default text size',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
+      appFullMonthNameNotifier.value = false;
+      addTearDown(() => appFullMonthNameNotifier.value = false);
       const screenSize = Size(393, 680);
       tester.view.physicalSize = screenSize;
       tester.view.devicePixelRatio = 1.0;
@@ -67,6 +70,17 @@ void main() {
       expect(identical(settledYearPosition, yearPosition), isTrue);
       expect(settledYearPosition.pixels, yearPixels);
       expect(_viewportTop(tester, 'year'), closeTo(yearViewportTop, 0.01));
+
+      await tester.pumpAndSettle();
+      expect(find.text('Jan'), findsWidgets);
+      expect(find.text('January'), findsNothing);
+      appFullMonthNameNotifier.value = true;
+      await tester.pump();
+      expect(find.text('January'), findsWidgets);
+      expect(find.text('September'), findsWidgets);
+      expect(find.text('Jan'), findsNothing);
+      appFullMonthNameNotifier.value = false;
+      await tester.pump();
 
       // Give Year View a non-zero live offset before the reverse transition.
       // That makes the second Month → Year pass prove that the target's saved
