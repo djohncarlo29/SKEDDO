@@ -19,6 +19,11 @@ APP_DIR="$ROOT_DIR/artifacts/smart-scheduler"
 OUTPUT_APK="$ROOT_DIR/SKEDDO.apk"
 FLUTTER_BIN="${FLUTTER_BIN:-$ROOT_DIR/.cache/flutter-3.44.2/bin/flutter}"
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$ROOT_DIR/.cache/gradle}"
+# Shorebird may stage large bundle downloads; keep them off the limited /tmp
+# tmpfs and remove only stale files from this disposable workspace temp area.
+export TMPDIR="$ROOT_DIR/.cache/shorebird-tmp"
+mkdir -p "$TMPDIR"
+find "$TMPDIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 KEYSTORE_FILE="$APP_DIR/android/app/smart-scheduler-release.jks"
 KEY_PROPERTIES_FILE="$APP_DIR/android/key.properties"
 

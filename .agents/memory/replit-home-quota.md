@@ -6,7 +6,7 @@ description: Keep Flutter and Android caches and temporary build files on the wo
 ## The Rule
 Never let Shorebird, Gradle, pub-cache, or Flutter temporary build files grow on `/home/runner` or `/tmp`. Keep them under `/home/runner/workspace/.cache/`; `~/.pub-cache` should resolve to the workspace cache and Flutter commands should set `TMPDIR` there.
 
-**Why:** `/home/runner` has a per-user quota, and `/tmp` is a 4GB tmpfs that can fill during Flutter builds even while the workspace partition has ample free space.
+**Why:** `/home/runner` has a per-user quota, and `/tmp` is a 4GB tmpfs that can fill during Flutter builds. The workspace can also hit its own quota even when `df` reports ample physical space; Gradle and Shorebird then fail while writing outputs or logs.
 
 ## How to Apply
 If you see `Disk quota exceeded` during an APK build:
@@ -22,4 +22,4 @@ Before relying on Flutter analysis or builds, verify that `~/.pub-cache` is stil
 
 **Why:** Flutter's package configuration stores absolute cache paths. A stale path can make installed packages appear missing, while an unlinked home cache can grow against the smaller user quota.
 
-**How to apply:** Check `readlink -f ~/.pub-cache` and verify package roots before diagnosing dependency or source errors. Set `TMPDIR=/home/runner/workspace/.cache/flutter-tmp` for Flutter tests/builds and preserve existing cache contents when reconnecting symlinks.
+**How to apply:** Check `readlink -f ~/.pub-cache` and verify package roots before diagnosing dependency or source errors. Set `TMPDIR=/home/runner/workspace/.cache/flutter-tmp` for Flutter tests/builds, preserve existing cache contents when reconnecting symlinks, and treat explicit `Disk quota exceeded` from Gradle/Shorebird as authoritative despite `df` free-space readings.

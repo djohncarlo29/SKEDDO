@@ -55,7 +55,13 @@ else
   echo "❌  shorebird not found. Run the build-apk.sh first (it installs shorebird)." >&2
   exit 1
 fi
-export PATH="$(dirname "$SHOREBIRD_BIN"):$PATH"
+PROJECT_FLUTTER_BIN="${FLUTTER_BIN:-$ROOT_DIR/.cache/flutter-3.44.2/bin/flutter}"
+if [[ ! -x "$PROJECT_FLUTTER_BIN" ]]; then
+  echo "❌  Project Flutter SDK not found at $PROJECT_FLUTTER_BIN." >&2
+  echo "    The project requires Flutter 3.44.2 or newer for its Dart SDK constraint." >&2
+  exit 1
+fi
+export PATH="$(dirname "$SHOREBIRD_BIN"):$(dirname "$PROJECT_FLUTTER_BIN"):$PATH"
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 if [[ -z "${SHOREBIRD_TOKEN:-}" ]]; then
@@ -69,6 +75,7 @@ export SHOREBIRD_TOKEN
 # ── Environment ───────────────────────────────────────────────────────────────
 source "$ROOT_DIR/scripts/resolve-java-home.sh"
 resolve_java_home
+export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$ROOT_DIR/.cache/gradle}"
 if [[ -z "${ANDROID_HOME:-}" ]]; then
   _SDK="$ROOT_DIR/.cache/android-sdk"
   [[ -d "$_SDK" ]] && export ANDROID_HOME="$_SDK" && export ANDROID_SDK_ROOT="$_SDK"
@@ -114,8 +121,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 (
   cd "$APP_DIR"
 
-  # Pull the version from pubspec so shorebird knows which release to patch
-  VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+  # Default to the source version, but allow patching the installed release
+  # when it differs from the version currently in pubspec.yaml.
+  VERSION="${SHOREBIRD_RELEASE_VERSION:-$(grep '^version:' pubspec.yaml | awk '{print $2}')}"
   echo "→ App version: $VERSION"
 
   # Pass --release-version explicitly so shorebird targets this release.
