@@ -40,7 +40,7 @@
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
 - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
 - [Modal toolbar package glass](light-mode-checkmark-glass.md) — use GlassIconButton with shared tab-bar optics, action-tinted checks, and disabled confirmation state.
-- [Shared Liquid Glass controls](static-liquid-glass-action-buttons.md) — the liquid_glass_easy slider drives the shared flutter_liquid_glass_widgets settings and search glass layer.
+- [Shared Liquid Glass controls](static-liquid-glass-action-buttons.md) — shared glass settings follow the slider; search fill stays opaque while a hidden shape proxy preserves cancel-button blending.
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.
 - [Separate glass control blending](shared-glass-control-blending.md) — neighboring controls need one AdaptiveLiquidGlassLayer to blend only when their shapes overlap.

@@ -14,14 +14,17 @@ Fixed-color action circles retain the historical app-owned LiquidGlassView + Liq
 Modal sheet and Notes attachment-preview buttons use the shared
 `ModalToolbarGlassButton` wrapper with `liquid_glass_widgets` `GlassButton`;
 active confirmations retain their action accent/category fill and inactive
-confirmations remain visually glassy but disabled. Search field and cancel
-surfaces instead use `liquid_glass_easy`'s `LiquidGlassLens` pipeline from
-`LiquidGlassSlider`, grouped through `LiquidGlassBlender` so their shapes merge
-when they overlap. The cancel button keeps its existing package interaction
-shell for press scaling and stretch, but that shell is transparent. The CPU-only
-web preview retains its working `liquid_glass_widgets` glass fallback.
+confirmations remain visually glassy but disabled. Search bars use the opaque
+`kSbSurface` fill at 100% opacity, independently of shared glass tint, blur, or
+refraction. In grouped mode, a hidden `GlassContainer` shape proxy behind the
+solid bar keeps it in the same `AdaptiveLiquidGlassLayer` as the cancel
+`GlassButton`, allowing their geometry to blend during stretch.
 App-shell navigation uses the pinned `GlassAppBar` route.
 
-**Why:** The user explicitly wants the package's toolbar-glass rendering for modal actions while retaining SKEDDO's checkmark styling and live shared optical settings rather than using package defaults or the `liquid_glass_easy` button implementation. Shared optics originate in `flutter_liquid_glass_widgets`, are bridged into `liquid_glass_widgets` for surfaces, and are not rendered by the slider thumb's separate `liquid_glass_easy` lens.
+**Why:** The user explicitly wants the package's toolbar-glass rendering for modal actions while retaining SKEDDO's checkmark styling and live shared optical settings rather than using package defaults or the `liquid_glass_easy` button implementation. Shared optics originate in `flutter_liquid_glass_widgets` and are bridged into `liquid_glass_widgets`; the search field itself must remain solid while its shape can still join the cancel button's morph.
 
-**How to apply:** Reuse `ModalToolbarGlassButton` for modal icon controls and keep authored glyphs, tap routing, active/inactive checkmark fill treatment, and shared settings conversion. Do not replace modal sheet presentation or header layout as part of a button-renderer change. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested. Keep the search field and cancel button grouped under one `AdaptiveLiquidGlassLayer` so their edges blend when their animated geometry overlaps; pass shared settings from the app slider.
+**How to apply:** Reuse `ModalToolbarGlassButton` for modal icon controls and keep authored glyphs, tap routing, active/inactive checkmark fill treatment, and shared settings conversion. Do not replace modal sheet presentation or header layout as part of a button-renderer change. Other fixed-color app actions and the full dynamic glass pipeline remain on their established renderers unless specifically requested. Keep the search field and cancel button grouped under one `AdaptiveLiquidGlassLayer`; in grouped mode, put a shape-only `GlassContainer` behind the opaque search fill so the geometry can merge.
+
+Keep the search text/input subtree outside that shape proxy so short-text
+rubberband gestures and the native text field are independent of glass
+rendering. Ungrouped search bars need only the solid fill.

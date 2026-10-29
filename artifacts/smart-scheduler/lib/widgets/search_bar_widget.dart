@@ -421,6 +421,7 @@ class AppSearchBarState extends State<AppSearchBar>
   @override
   Widget build(BuildContext context) {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
+    final solidSurfaceColor = surfaceColor.withValues(alpha: 1.0);
     final tertiaryLabel = resolveThemeColor(kTertiaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -473,7 +474,7 @@ class AppSearchBarState extends State<AppSearchBar>
                       child: DefaultSelectionStyle(
                         selectionColor: selectionTint.withOpacity(0.20),
                         child: HorizontalEdgeFade(
-                          fadeColor: surfaceColor,
+                          fadeColor: solidSurfaceColor,
                           // Short search text still participates in the native
                           // rubberband gesture. Show an edge fade only while it
                           // is pulled past that edge; resting fitting text has
@@ -653,33 +654,43 @@ class AppSearchBarState extends State<AppSearchBar>
           ),
         ),
     );
-    Widget buildGlassSurface({required bool grouped}) => DecoratedBox(
+    final solidSearchSurface = DecoratedBox(
+      key: const ValueKey('search-bar-solid-surface'),
       decoration: ShapeDecoration(
-        color: const Color(0x00000000),
+        color: solidSurfaceColor,
         shape: searchBarShape,
         shadows: resolveThemeShadows(kCardShadow, context),
       ),
-      child: liquid_glass.GlassContainer(
-        shape: const liquid_glass.LiquidRoundedSuperellipse(
-          borderRadius: kSearchBarCornerRadius,
-        ),
-        settings: grouped
-            ? null
-            : skeddoPinnedNavigationGlassSettingsFor(
-                CupertinoTheme.brightnessOf(context),
-              ),
-        useOwnLayer: !grouped,
-        child: searchBarContents,
-      ),
+      child: searchBarContents,
     );
+
+    Widget buildGlassSurface({required bool grouped}) {
+      if (!grouped) return solidSearchSurface;
+
+      // Keep a shape-only glass participant behind the opaque field. It lets
+      // the cancel button morph with the bar inside the shared layer, without
+      // letting the renderer tint, blur, or refract the search field itself.
+      return Stack(
+        fit: StackFit.passthrough,
+        children: [
+          Positioned.fill(
+            child: liquid_glass.GlassContainer(
+              shape: const liquid_glass.LiquidRoundedSuperellipse(
+                borderRadius: kSearchBarCornerRadius,
+              ),
+              useOwnLayer: false,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          solidSearchSurface,
+        ],
+      );
+    }
 
     if (widget.groupedGlass) {
       return buildGlassSurface(grouped: true);
     }
-    return ValueListenableBuilder<double>(
-      valueListenable: appLiquidGlassOpacityNotifier,
-      builder: (context, _, __) => buildGlassSurface(grouped: false),
-    );
+    return buildGlassSurface(grouped: false);
   }
 }
 

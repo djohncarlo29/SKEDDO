@@ -9,7 +9,7 @@ import 'package:smart_scheduler/widgets/native_text_input.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
-  testWidgets('AppSearchBar uses the package glass surface only', (
+  testWidgets('AppSearchBar keeps its surface solid and opaque', (
     tester,
   ) async {
     final controller = TextEditingController();
@@ -20,11 +20,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final glass = tester.widget<liquid_glass.GlassContainer>(
-      find.byType(liquid_glass.GlassContainer),
+    expect(find.byType(liquid_glass.GlassContainer), findsNothing);
+    final surface = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('search-bar-solid-surface')),
     );
-    expect(glass.useOwnLayer, isTrue);
-    expect(glass.settings, isNotNull);
+    final decoration = surface.decoration as ShapeDecoration;
+    expect(decoration.color!.a, 1.0);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('search-bar-solid-surface')),
+        matching: find.byType(NativeTextInput),
+      ),
+      findsOneWidget,
+    );
     expect(find.byType(SearchWeightedIcon), findsOneWidget);
     expect(find.byKey(const ValueKey('search-mic')), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
@@ -68,6 +76,14 @@ void main() {
     );
     expect(searchSurface.useOwnLayer, isFalse);
     expect(searchSurface.settings, isNull);
+    expect(
+      find.descendant(
+        of: find.byType(liquid_glass.GlassContainer),
+        matching: find.byType(NativeTextInput),
+      ),
+      findsNothing,
+      reason: 'The live text field should not sit inside the glass renderer.',
+    );
     final cancelSurface = tester.widget<liquid_glass.GlassButton>(
       find.byType(liquid_glass.GlassButton),
     );
@@ -135,7 +151,26 @@ void main() {
     final controller = TextEditingController(text: 'short');
     await tester.pumpWidget(
       CupertinoApp(
-        home: SizedBox(width: 360, child: AppSearchBar(controller: controller)),
+        home: SizedBox(
+          width: 360,
+          child: SearchBarGlassGroup(
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSearchBar(
+                    controller: controller,
+                    groupedGlass: true,
+                  ),
+                ),
+                SearchCancelButton(
+                  searchFocused: true,
+                  groupedGlass: true,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
