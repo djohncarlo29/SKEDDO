@@ -160,6 +160,7 @@ sealed class GlassBarItem {
   const factory GlassBarItem.menu({
     required Widget icon,
     required List<Widget> menuItems,
+    bool showSelectionPill,
     GlassMenuAlignment? menuAlignment,
     double menuWidth,
     double? menuHeight,
@@ -365,6 +366,7 @@ final class GlassBarMenuItem extends GlassBarActionItem {
   const GlassBarMenuItem({
     required this.icon,
     required this.menuItems,
+    this.showSelectionPill = true,
     this.menuAlignment,
     this.menuWidth = 200,
     this.menuHeight,
@@ -382,6 +384,11 @@ final class GlassBarMenuItem extends GlassBarActionItem {
 
   /// The menu's contents: [GlassMenuItem] and [GlassMenuDivider] widgets.
   final List<Widget> menuItems;
+
+  /// Whether to show the sliding selection pill behind an active menu row.
+  ///
+  /// Press and slide feedback still works when the pill is hidden.
+  final bool showSelectionPill;
 
   /// Where the menu expands relative to the capsule.
   ///

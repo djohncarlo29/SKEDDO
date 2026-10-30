@@ -1737,9 +1737,52 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     FontWeight weight = FontWeight.w500,
   }) => FixedSFIcon(icon, fontSize: size, fontWeight: weight, color: color);
 
+  Color _toolbarMenuDefaultLabelColor() {
+    final foreground =
+        CupertinoTheme.of(context).textTheme.textStyle.color ??
+        CupertinoColors.label;
+    return foreground.withValues(alpha: 0.9);
+  }
+
+  GlassMenuItem _toolbarMenuItem({
+    required String title,
+    required VoidCallback onTap,
+    Widget? icon,
+    Widget? trailing,
+    String? subtitle,
+    List<Widget>? submenu,
+    bool isDestructive = false,
+    Color? labelColor,
+  }) {
+    final resolvedLabelColor = isDestructive
+        ? CupertinoColors.destructiveRed
+        : (labelColor ?? _toolbarMenuDefaultLabelColor());
+    return GlassMenuItem(
+      title: title,
+      titleStyle: TextStyle(
+        color: resolvedLabelColor,
+        fontSize: 17,
+        fontWeight: FontWeight.w400,
+      ),
+      iconColor: resolvedLabelColor,
+      icon: SizedBox(
+        width: 24,
+        height: 24,
+        child: icon == null ? const SizedBox.shrink() : Center(child: icon),
+      ),
+      iconSize: 24,
+      trailing: trailing,
+      subtitle: subtitle,
+      submenu: submenu,
+      isDestructive: isDestructive,
+      onTap: onTap,
+    );
+  }
+
   List<Widget> _calendarViewModeMenuItems(Color accent) {
     final current =
         _calendarTabKey.currentState?.viewMode ?? CalendarViewMode.list;
+    final labelColor = _toolbarMenuDefaultLabelColor();
     void select(CalendarViewMode mode) {
       _calendarTabKey.currentState?.setViewMode(mode);
       setState(() => _activeViewMode = mode);
@@ -1750,32 +1793,44 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget check(bool selected) =>
         _toolbarMenuCheckmark(accent, selected: selected);
     return [
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Compact',
-        icon: CompactViewIcon(color: accent, size: 24),
-        iconSize: 24,
+        icon: CompactViewIcon(
+          color: current == CalendarViewMode.compact ? accent : labelColor,
+          size: 24,
+        ),
+        labelColor: current == CalendarViewMode.compact ? accent : labelColor,
         trailing: check(current == CalendarViewMode.compact),
         onTap: () => select(CalendarViewMode.compact),
       ),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Stacked',
-        icon: StackedViewIcon(color: accent, size: 24),
-        iconSize: 24,
+        icon: StackedViewIcon(
+          color: current == CalendarViewMode.stacked ? accent : labelColor,
+          size: 24,
+        ),
+        labelColor: current == CalendarViewMode.stacked ? accent : labelColor,
         trailing: check(current == CalendarViewMode.stacked),
         onTap: () => select(CalendarViewMode.stacked),
       ),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Details',
-        icon: DetailsViewIcon(color: accent, size: 24),
-        iconSize: 24,
+        icon: DetailsViewIcon(
+          color: current == CalendarViewMode.details ? accent : labelColor,
+          size: 24,
+        ),
+        labelColor: current == CalendarViewMode.details ? accent : labelColor,
         trailing: check(current == CalendarViewMode.details),
         onTap: () => select(CalendarViewMode.details),
       ),
       const GlassMenuDivider(height: 8),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'List',
-        icon: ListViewIcon(color: accent, size: 24),
-        iconSize: 24,
+        icon: ListViewIcon(
+          color: current == CalendarViewMode.list ? accent : labelColor,
+          size: 24,
+        ),
+        labelColor: current == CalendarViewMode.list ? accent : labelColor,
         trailing: check(current == CalendarViewMode.list),
         onTap: () => select(CalendarViewMode.list),
       ),
@@ -1784,6 +1839,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   List<Widget> _calendarDayModeMenuItems(Color accent) {
     final current = _activeDaySubMode;
+    final labelColor = _toolbarMenuDefaultLabelColor();
     void select(DayViewSubMode mode) {
       setState(() => _activeDaySubMode = mode);
       _toolbarMenuRevision.value++;
@@ -1796,33 +1852,42 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       );
     }
 
-    Widget modeIcon(String asset) => SvgPicture.asset(
+    Widget modeIcon(String asset, Color color) => SvgPicture.asset(
       asset,
       width: 24,
       height: 24,
-      colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
     Widget check(bool selected) =>
         _toolbarMenuCheckmark(accent, selected: selected);
     return [
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Single Day',
-        icon: modeIcon('assets/icons/day_view_single_day.svg'),
-        iconSize: 24,
+        icon: modeIcon(
+          'assets/icons/day_view_single_day.svg',
+          current == DayViewSubMode.singleDay ? accent : labelColor,
+        ),
+        labelColor: current == DayViewSubMode.singleDay ? accent : labelColor,
         trailing: check(current == DayViewSubMode.singleDay),
         onTap: () => select(DayViewSubMode.singleDay),
       ),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Multi Day',
-        icon: modeIcon('assets/icons/day_view_multi_day.svg'),
-        iconSize: 24,
+        icon: modeIcon(
+          'assets/icons/day_view_multi_day.svg',
+          current == DayViewSubMode.multiDay ? accent : labelColor,
+        ),
+        labelColor: current == DayViewSubMode.multiDay ? accent : labelColor,
         trailing: check(current == DayViewSubMode.multiDay),
         onTap: () => select(DayViewSubMode.multiDay),
       ),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'List',
-        icon: modeIcon('assets/icons/day_view_list.svg'),
-        iconSize: 24,
+        icon: modeIcon(
+          'assets/icons/day_view_list.svg',
+          current == DayViewSubMode.list ? accent : labelColor,
+        ),
+        labelColor: current == DayViewSubMode.list ? accent : labelColor,
         trailing: check(current == DayViewSubMode.list),
         onTap: () => select(DayViewSubMode.list),
       ),
@@ -1833,6 +1898,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final category = _dcvCategory;
     if (category == null) return const [];
 
+    final labelColor = _toolbarMenuDefaultLabelColor();
     final isSmartCategory = _kSmartCategoryLabels.contains(category);
     final isUtilityCategory = _kUtilityDcvLabels.contains(category);
     final userSmartCategory =
@@ -1874,19 +1940,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     Widget check(bool selected) =>
-        _toolbarMenuCheckmark(accent, selected: selected);
-    Widget sf(IconData icon, {double size = 20}) =>
-        _toolbarMenuSfIcon(icon, accent, size: size);
+        _toolbarMenuCheckmark(labelColor, selected: selected);
+    Widget sf(IconData icon, {double size = 20, Color? color}) =>
+        _toolbarMenuSfIcon(icon, color ?? labelColor, size: size);
     Widget modeSubmenuIcon(bool selected) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (selected) Icon(CupertinoIcons.checkmark, size: 17, color: accent),
+        if (selected)
+          Icon(CupertinoIcons.checkmark, size: 17, color: labelColor),
         if (selected) const SizedBox(width: 6),
-        Icon(
-          CupertinoIcons.chevron_right,
-          size: 15,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
-        ),
+        Icon(CupertinoIcons.chevron_right, size: 15, color: labelColor),
       ],
     );
 
@@ -1894,7 +1957,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (isUtilityCategory) {
       for (final direction in const ['Oldest First', 'Newest First']) {
         sortItems.add(
-          GlassMenuItem(
+          _toolbarMenuItem(
             title: direction,
             trailing: check(sortDir == direction),
             onTap: () => saveSort('Creation Date', direction: direction),
@@ -1913,7 +1976,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         final optionDirections = directions[option];
         if (optionDirections == null) {
           sortItems.add(
-            GlassMenuItem(
+            _toolbarMenuItem(
               title: option,
               trailing: check(sortBy == option),
               onTap: () => saveSort(option),
@@ -1922,13 +1985,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         } else {
           final selected = sortBy == option;
           sortItems.add(
-            GlassMenuItem(
+            _toolbarMenuItem(
               title: option,
               subtitle: selected ? sortDir : null,
               trailing: modeSubmenuIcon(selected),
               submenu: [
                 for (final direction in optionDirections)
-                  GlassMenuItem(
+                  _toolbarMenuItem(
                     title: direction,
                     trailing: check(selected && sortDir == direction),
                     onTap: () => saveSort(option, direction: direction),
@@ -1942,45 +2005,42 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     return [
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: _dcvViewAsList ? 'View as List' : 'View as Columns',
         icon: _dcvViewAsList
             ? sf(SFIcons.sf_list_bullet)
-            : ColumnsViewIcon(color: accent, size: 24),
-        iconSize: 22,
-        trailing: check(_dcvViewAsList),
+            : ColumnsViewIcon(color: labelColor, size: 24),
+        labelColor: labelColor,
         onTap: () {
           setState(() => _dcvViewAsList = !_dcvViewAsList);
           _toolbarMenuRevision.value++;
         },
       ),
       const GlassMenuDivider(height: 8),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Edit Category Info',
         icon: sf(SFIcons.sf_pencil),
-        iconSize: 22,
         onTap: () => _eventsTabKey.currentState?.editCategory(category),
       ),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Select Events',
         icon: sf(SFIcons.sf_checkmark_circle),
         onTap: () {},
       ),
       if (sectionsEnabled && sortBy == 'Manual')
         if (hasSections)
-          GlassMenuItem(
+          _toolbarMenuItem(
             title: 'Manage Sections',
-            icon: NewSectionIcon(size: 16, color: accent),
-            iconSize: 20,
+            icon: NewSectionIcon(size: 16, color: labelColor),
+            trailing: modeSubmenuIcon(false),
             submenu: [
-              GlassMenuItem(
+              _toolbarMenuItem(
                 title: 'New Section',
                 onTap: () =>
                     _eventsTabKey.currentState?.addDcvSection(category),
               ),
-              GlassMenuItem(
+              _toolbarMenuItem(
                 title: 'Edit Sections',
-                icon: sf(SFIcons.sf_pencil),
                 onTap: () => _eventsTabKey.currentState?.editDcvSections(
                   category,
                   _dcvColor ?? accent,
@@ -1990,31 +2050,35 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             onTap: () {},
           )
         else
-          GlassMenuItem(
+          _toolbarMenuItem(
             title: 'New Section',
-            icon: NewSectionIcon(size: 16, color: accent, showPlusBadge: true),
-            iconSize: 20,
+            icon: NewSectionIcon(
+              size: 16,
+              color: labelColor,
+              showPlusBadge: true,
+            ),
             onTap: () => _eventsTabKey.currentState?.addDcvSection(category),
           ),
-      const GlassMenuDivider(height: 8),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: 'Sort By',
         subtitle: isUtilityCategory ? sortDir : sortBy,
         icon: sf(SFIcons.sf_arrow_up_arrow_down),
+        labelColor: labelColor,
+        trailing: modeSubmenuIcon(false),
         submenu: sortItems,
         onTap: () {},
       ),
-      GlassMenuItem(
+      _toolbarMenuItem(
         title: _dcvShowCompleted ? 'Show Completed' : 'Hide Completed',
         icon: sf(_dcvShowCompleted ? SFIcons.sf_eye : SFIcons.sf_eye_slash),
-        trailing: check(_dcvShowCompleted),
+        labelColor: labelColor,
         onTap: () {
           setState(() => _dcvShowCompleted = !_dcvShowCompleted);
           _toolbarMenuRevision.value++;
         },
       ),
       if (!isUtilityCategory)
-        GlassMenuItem(
+        _toolbarMenuItem(
           title: 'Archive Category',
           icon: sf(SFIcons.sf_archivebox),
           onTap: () {
@@ -2023,9 +2087,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           },
         ),
       if (!isUtilityCategory && !isSmartCategory)
-        GlassMenuItem(
+        _toolbarMenuItem(
           title: 'Delete Category',
-          icon: sf(SFIcons.sf_trash),
+          icon: sf(SFIcons.sf_trash, color: CupertinoColors.destructiveRed),
           isDestructive: true,
           onTap: () {
             _exitDCV();
@@ -3314,6 +3378,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             id: leadingActionId,
             label: leadingActionLabel,
             background: navigation_glass.GlassBarItemBackground.shared,
+            showSelectionPill: false,
             icon: leadingActionIcon,
             menuItems: leadingActionMenuItems,
             menuWidth: leadingActionMenuWidth,

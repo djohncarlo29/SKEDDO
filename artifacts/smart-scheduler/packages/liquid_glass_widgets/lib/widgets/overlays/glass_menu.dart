@@ -201,6 +201,12 @@ class GlassMenu extends StatefulWidget {
   /// Custom color for the menu selection background.
   final Color selectionColor;
 
+  /// Whether to draw the sliding selection pill behind the active row.
+  ///
+  /// The row interaction state remains active when this is false, so callers
+  /// can retain press/slide feedback without painting a selection surface.
+  final bool showSelectionPill;
+
   /// Optional fixed height for the menu.
   ///
   /// If null, the menu will size itself to fit its items.
@@ -349,6 +355,7 @@ class GlassMenu extends StatefulWidget {
     this.maxStackHeight,
     this.menuPadding = EdgeInsets.zero,
     this.selectionColor = const Color(0x3DFFFFFF),
+    this.showSelectionPill = true,
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = false,
     this.glowColor,

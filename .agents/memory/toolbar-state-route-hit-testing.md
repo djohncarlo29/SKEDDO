@@ -30,3 +30,11 @@ When a pinned menu's selected or conditional rows depend on state that can chang
 **Why:** The pinned toolbar lives in its own route registration; a parent `setState` does not guarantee that the active route rebuilds its menu item list.
 
 **How to apply:** Increment the menu-content revision after changing menu state or changing the active DCV category, and listen to it from the toolbar route builder.
+
+## Menu selection surface
+
+The sliding row surface is presentation only. A menu can hide that pill while keeping the hovered/pressed row state that drives its press-scale feedback.
+
+**Why:** Some toolbar menus should open visually neutral and show only the item's direct interaction response; turning off selection tracking would also remove useful press/slide behavior.
+
+**How to apply:** Disable only the selection-pill rendering for those menus. Keep pointer and drag state active; leave the package default enabled for other `GlassMenu` callers.

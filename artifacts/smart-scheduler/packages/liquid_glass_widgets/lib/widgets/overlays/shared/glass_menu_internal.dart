@@ -809,6 +809,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         _GlassMenuHeaderItem(
           key: ValueKey<String>('glass-menu-header-$depth'),
           title: parent.title,
+          subtitle: parent.subtitle,
+          subtitleStyle: parent.subtitleStyle,
           icon: parent.icon,
           titleStyle: (parent.titleStyle ??
                   TextStyle(
@@ -1974,39 +1976,40 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           clipBehavior: Clip.none,
           children: [
             // Sliding selection pill (background)
-            ValueListenableBuilder<int?>(
-              valueListenable: _hoveredIndexNotifier,
-              builder: (context, hoveredIndex, _) {
-                if (hoveredIndex == null) {
-                  return const SizedBox.shrink();
-                }
-                return AnimatedPositioned(
-                  duration: const Duration(milliseconds: 150),
-                  curve: Curves.easeOutCubic,
-                  left: 12,
-                  right: 12,
-                  top: _listRowTop(hoveredIndex, items) -
-                      (_scrollController.hasClients
-                          ? _scrollController.offset
-                          : 0.0),
-                  height: _getScaledItemHeight(items[hoveredIndex], context),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: widget.selectionColor,
-                      borderRadius:
-                          BorderRadius.circular(widget.itemBorderRadius),
-                      border: Border.all(
-                        color:
-                            GlassTheme.brightnessOf(context) == Brightness.dark
-                                ? const Color(0x0DFFFFFF)
-                                : const Color(0x0D000000),
-                        width: 0.5,
+            if (widget.showSelectionPill)
+              ValueListenableBuilder<int?>(
+                valueListenable: _hoveredIndexNotifier,
+                builder: (context, hoveredIndex, _) {
+                  if (hoveredIndex == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOutCubic,
+                    left: 12,
+                    right: 12,
+                    top: _listRowTop(hoveredIndex, items) -
+                        (_scrollController.hasClients
+                            ? _scrollController.offset
+                            : 0.0),
+                    height: _getScaledItemHeight(items[hoveredIndex], context),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: widget.selectionColor,
+                        borderRadius:
+                            BorderRadius.circular(widget.itemBorderRadius),
+                        border: Border.all(
+                          color: GlassTheme.brightnessOf(context) ==
+                                  Brightness.dark
+                              ? const Color(0x0DFFFFFF)
+                              : const Color(0x0D000000),
+                          width: 0.5,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
             MouseRegion(
               // A mouse resting on a row moves the selection pill there, the
               // same highlight a press-and-slide shows. The rows' own hover
@@ -2344,6 +2347,8 @@ class _GlassMenuHeaderItem extends GlassMenuItem {
   const _GlassMenuHeaderItem({
     super.key,
     required super.title,
+    super.subtitle,
+    super.subtitleStyle,
     super.icon,
     super.height,
     super.titleStyle,
