@@ -985,7 +985,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           iconColor: parent.isDestructive ? null : parent.iconColor,
           iconSize: parent.iconSize,
           trailingWidth: parent.trailingWidth,
-          enablePressScale: parent.enablePressScale,
+          enablePressScale: false,
           trailing: parent.trailingBuilder?.call(context, isSubmenuOpen) ??
               _submenuHeaderChevron(
                 parent,

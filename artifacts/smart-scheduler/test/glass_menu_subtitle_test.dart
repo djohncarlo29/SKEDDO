@@ -464,7 +464,7 @@ void main() {
     expect(pill, findsNothing);
   });
 
-  testWidgets('long-press menu activation has no selector visuals', (
+  testWidgets('press and long-press activation has no selector or row scale', (
     tester,
   ) async {
     var tapped = false;
@@ -499,8 +499,18 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.text('Option 0')),
     );
+    final optionRow = find.ancestor(
+      of: find.text('Option 0'),
+      matching: find.byType(GlassMenuItem),
+    ).first;
+    final rowScale = find.descendant(
+      of: optionRow,
+      matching: find.byType(AnimatedScale),
+    );
+    expect(tester.widget<AnimatedScale>(rowScale).scale, 1.0);
     await tester.pump(const Duration(milliseconds: 510));
     expect(pill, findsNothing);
+    expect(tester.widget<AnimatedScale>(rowScale).scale, 1.0);
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tapped, isTrue);
