@@ -10,6 +10,7 @@ import '../../../src/widgets/surfaces/status_bar_row.dart';
 import '../../../src/widgets/surfaces/vertical_bar_title_row.dart';
 import '../../../theme/glass_theme_helpers.dart';
 import '../../../types/glass_quality.dart';
+import '../../../utils/glass_morph_controller.dart';
 import '../../../utils/glass_spring.dart';
 import '../../effects/glass_materialize.dart';
 import '../../effects/shared/glass_materialize_effect.dart';
@@ -2687,15 +2688,13 @@ class _PinnedGroupState extends State<_PinnedGroup> {
             return GlassMenu(
               controller: _menu,
               items: menuItem?.menuItems ?? const <Widget>[],
-              showSelectionPill: menuItem?.showSelectionPill ?? true,
-              selectionPillBehavior: menuItem?.selectionPillBehavior ??
-                  GlassMenuSelectionPillBehavior.standard,
               menuAlignment: menuItem?.menuAlignment,
               // The fallback is never read: with no menu item there is no
               // trigger to open one. It matches GlassMenu's own default.
               menuWidth: menuItem?.menuWidth ?? 200,
               menuHeight: menuItem?.menuHeight,
               settings: menuItem?.menuSettings,
+              morphSpeed: MorphSpeed.normal,
               autoAdjustToScreen: true,
               platformViewBackdrop: platformViewBackdrop,
               triggerBuilder: (context, _) => toGroup.glass

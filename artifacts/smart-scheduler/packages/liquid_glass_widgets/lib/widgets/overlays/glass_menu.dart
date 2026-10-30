@@ -63,15 +63,6 @@ enum GlassMenuAlignment {
   bottomRight,
 }
 
-/// Controls when a [GlassMenu]'s row-selection pill becomes visible.
-enum GlassMenuSelectionPillBehavior {
-  /// Show the pill for the current hovered or press/slide-selected row.
-  standard,
-
-  /// Show it only while the menu is scrolling or after a stationary long press.
-  scrollOrLongPress,
-}
-
 /// A liquid glass context menu that morphs from its trigger button.
 ///
 /// [GlassMenu] implements the iOS 26 "liquid glass" morphing pattern where
@@ -209,19 +200,6 @@ class GlassMenu extends StatefulWidget {
   ///
   /// Defaults to 0.0.
   final double glowIntensity;
-
-  /// Custom color for the menu selection background.
-  final Color selectionColor;
-
-  /// Whether to draw the sliding selection pill behind the active row.
-  ///
-  /// The row interaction state remains active when this is false, so callers
-  /// can retain press/slide feedback without painting a selection surface.
-  final bool showSelectionPill;
-
-  /// Determines whether the selection pill appears immediately or only during
-  /// scrolling / a stationary long press.
-  final GlassMenuSelectionPillBehavior selectionPillBehavior;
 
   /// Optional fixed height for the menu.
   ///
@@ -370,9 +348,6 @@ class GlassMenu extends StatefulWidget {
     this.menuHeight,
     this.maxStackHeight,
     this.menuPadding = EdgeInsets.zero,
-    this.selectionColor = const Color(0x3DFFFFFF),
-    this.showSelectionPill = true,
-    this.selectionPillBehavior = GlassMenuSelectionPillBehavior.standard,
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = false,
     this.glowColor,

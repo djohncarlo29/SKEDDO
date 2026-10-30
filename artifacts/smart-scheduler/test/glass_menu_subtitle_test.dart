@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassMenu, GlassMenuItem, GlassMenuSelectionPillBehavior;
+    show GlassMenu, GlassMenuItem;
 
 void main() {
   test('GlassMenu retains its original default corner radius', () {
@@ -421,8 +421,6 @@ void main() {
             child: GlassMenu(
               menuWidth: 260,
               menuHeight: 130,
-              selectionPillBehavior:
-                  GlassMenuSelectionPillBehavior.scrollOrLongPress,
               items: [
                 for (var index = 0; index < 8; index++)
                   GlassMenuItem(title: 'Option $index', onTap: () {}),
@@ -466,7 +464,7 @@ void main() {
     expect(pill, findsNothing);
   });
 
-  testWidgets('long-press selection remains available in an overflow menu', (
+  testWidgets('long-press menu activation has no selector visuals', (
     tester,
   ) async {
     var tapped = false;
@@ -477,8 +475,6 @@ void main() {
             child: GlassMenu(
               menuWidth: 260,
               menuHeight: 130,
-              selectionPillBehavior:
-                  GlassMenuSelectionPillBehavior.scrollOrLongPress,
               items: [
                 for (var index = 0; index < 8; index++)
                   GlassMenuItem(
@@ -504,7 +500,7 @@ void main() {
       tester.getCenter(find.text('Option 0')),
     );
     await tester.pump(const Duration(milliseconds: 510));
-    expect(pill, findsOneWidget);
+    expect(pill, findsNothing);
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tapped, isTrue);
@@ -839,6 +835,13 @@ void main() {
       final indicatorFinder = find.byKey(
         const ValueKey('glass-menu-scroll-indicator'),
       );
+      final indicatorTrack = tester.widget<Padding>(
+        find.byKey(const ValueKey('glass-menu-scroll-indicator-track-0')),
+      );
+      expect(
+        indicatorTrack.padding,
+        const EdgeInsets.symmetric(vertical: 32),
+      );
       final scale = find.descendant(
         of: indicatorFinder,
         matching: find.byType(AnimatedScale),
@@ -955,20 +958,22 @@ void main() {
   );
 
   testWidgets(
-    'selection pill appears while swiping across choices in a fitting menu',
+    'swipe-to-select works without a pill or row scale in a fitting menu',
     (tester) async {
       VoidCallback? toggleMenu;
+      int? selectedOption;
       await tester.pumpWidget(
         CupertinoApp(
           home: Center(
             child: GlassMenu(
               menuWidth: 260,
               menuHeight: 240,
-              selectionPillBehavior:
-                  GlassMenuSelectionPillBehavior.scrollOrLongPress,
               items: [
                 for (var index = 0; index < 4; index++)
-                  GlassMenuItem(title: 'Swipe option $index', onTap: () {}),
+                  GlassMenuItem(
+                    title: 'Swipe option $index',
+                    onTap: () => selectedOption = index,
+                  ),
               ],
               triggerBuilder: (context, toggle) {
                 toggleMenu = toggle;
@@ -985,6 +990,18 @@ void main() {
       toggleMenu!();
       await tester.pumpAndSettle();
 
+      final fittingScrollView = find.byType(SingleChildScrollView).last;
+      final fittingScrollable = tester.state<ScrollableState>(
+        find.descendant(
+          of: fittingScrollView,
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(
+        fittingScrollable.position.physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+
       final pill = find.byKey(const ValueKey('glass-menu-selection-pill'));
       expect(pill, findsNothing);
       final gesture = await tester.startGesture(
@@ -993,11 +1010,87 @@ void main() {
       await tester.pump();
       await gesture.moveTo(tester.getCenter(find.text('Swipe option 1')));
       await tester.pump();
-      expect(pill, findsOneWidget);
+      expect(pill, findsNothing);
+      final selectedRow = find.ancestor(
+        of: find.text('Swipe option 1'),
+        matching: find.byType(GlassMenuItem),
+      );
+      expect(
+        tester.widget<GlassMenuItem>(selectedRow.first).enablePressScale,
+        isFalse,
+      );
 
       await gesture.up();
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(pill, findsNothing);
+      expect(selectedOption, 1);
     },
   );
+
+  testWidgets('a fitting nested menu has no rubberband but slide-selects', (
+    tester,
+  ) async {
+    int? selectedNestedOption;
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: GlassMenu(
+            menuWidth: 260,
+            items: [
+              GlassMenuItem(
+                title: 'Open nested',
+                submenu: [
+                  GlassMenuItem(
+                    title: 'Nested option 1',
+                    onTap: () => selectedNestedOption = 1,
+                  ),
+                  GlassMenuItem(
+                    title: 'Nested option 2',
+                    onTap: () => selectedNestedOption = 2,
+                  ),
+                ],
+                onTap: () {},
+              ),
+            ],
+            triggerBuilder: (context, toggle) => CupertinoButton(
+              onPressed: toggle,
+              child: const Text('Actions'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open nested'));
+    await tester.pumpAndSettle();
+
+    final nestedScrollView = find.byType(SingleChildScrollView).last;
+    final nestedScrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: nestedScrollView,
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(nestedScrollable.position.maxScrollExtent, 0);
+    expect(
+      nestedScrollable.position.physics,
+      isA<NeverScrollableScrollPhysics>(),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Nested option 1')),
+    );
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.text('Nested option 2')));
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('glass-menu-selection-pill')),
+      findsNothing,
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(selectedNestedOption, 2);
+  });
 }

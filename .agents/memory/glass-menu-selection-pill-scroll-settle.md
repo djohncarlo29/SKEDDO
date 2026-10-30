@@ -1,10 +1,10 @@
 ---
-name: Glass menu selection-pill scroll settle
-description: Scroll-mode menu selector visibility after discrete wheel input
+name: Glass menu selection behavior
+description: Menu selection, scale, and rubberband interaction rules
 ---
 
-For `scrollOrLongPress`, keep the selection pill active for 150 ms after `ScrollEnd`, and cancel that timer on the next update or interaction reset. Wheel and trackpad input can emit the scroll update and end in one frame; hiding immediately means the pill is never painted. Stationary long-press remains a separate activation path and clears on release.
+Menu rows can be selected by sliding across them, but do not show a selector pill or shrink/scale the selected row. Rubberbanding is based only on actual content overflow: overflowing root or nested menus bounce, while fitting menus of either level do not. Fitting nested menus must still allow slide-to-select.
 
-**Why:** The menu's scroll-mode pill must be visible during real scrolling without being preselected on open or normal taps. Discrete scrolling needs a brief settling interval for the visual response to appear.
+**Why:** The requested interaction separates row selection from scrolling; nesting alone must not enable rubberbanding.
 
-**How to apply:** Keep the delay limited to the scroll behavior option, cancel it as soon as scrolling resumes, and avoid showing the pill during menu opening or submenu morphing.
+**How to apply:** Keep the pointer selection path independent from scroll physics. Enable bounce only when the rendered list height exceeds its viewport; ordinary taps must still activate through the row recognizer.

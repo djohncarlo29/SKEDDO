@@ -15,7 +15,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassBarItem,
         GlassBarItemBackground,
         GlassEffectTransition,
-        GlassMenuSelectionPillBehavior,
         GlassNavigationShell,
         LiquidGlassWidgets;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
@@ -3506,10 +3505,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             id: leadingActionId,
             label: leadingActionLabel,
             background: navigation_glass.GlassBarItemBackground.shared,
-            showSelectionPill: true,
-            selectionPillBehavior: navigation_glass
-                .GlassMenuSelectionPillBehavior
-                .scrollOrLongPress,
             menuSettings: menuGlassSettings,
             icon: leadingActionIcon,
             menuItems: leadingActionMenuItems,

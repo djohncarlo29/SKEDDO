@@ -67,6 +67,7 @@
 - [Deleted category recovery](deleted-category-recovery.md) — recovering a category restores its structure only; events remain in Uncategorized by product decision.
 - [Category archive choices](category-archive-choices.md) — contentful categories ask whether to archive intact or move events out and archive only the category.
 - [GlassMenu optical curve](glass-menu-slider-curve.md) — pinned menus follow the Liquid Glass slider's popover curve; “curve” does not mean corner radius.
+- [GlassMenu morph and scroll bounds](glass-menu-morph-and-scroll-bounds.md) — match toolbar-menu morphs to GlassPopover; keep indicator travel clear of rounded corners.
 - [Default category setting](default-category-setting.md) — persist the selected category by ID and reset it before deleting that category.
 - [Group deletion confirmation](group-deletion-confirmation.md) — removing a group is immediate; deleting its categories requires a second confirmation.
 - [EventStore date-parse concatenation bug](event-store-date-parse-bug.md) — parse date-only in create(); appending normTime breaks _tryMonthDay regex → absoluteDate null → Unscheduled.
@@ -115,7 +116,7 @@
 - [Expandable modal card surfaces](expandable-modal-card-surfaces.md) — expandable row stacks must use one shared bounded squircle surface, never adjacent partial-radius cards.
 - [Action-panel scroll fallback](action-panel-scroll-fallback.md) — expandable menus must cap main/sub-panels and anchor drill-downs to the live main-panel scroll offset.
 - [GlassMenu scroll preservation](glass-menu-scroll-preservation.md) — keep one scroll controller per menu level; morph frames may expose multiple positions temporarily.
-- [Menu selection-pill scroll settle](glass-menu-selection-pill-scroll-settle.md) — retain the scroll-mode pill briefly after ScrollEnd so discrete wheel input can render it.
+- [Glass menu selection behavior](glass-menu-selection-pill-scroll-settle.md) — swipe selection has no selector pill or row scale; only overflowing root or nested menus bounce.
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.

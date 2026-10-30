@@ -5,7 +5,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassMenu,
         GlassMenuItem,
-        GlassMenuSelectionPillBehavior,
         GlassNavigationShell,
         GlassNavigationShellState;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -389,10 +388,9 @@ void main() {
       final activeMenu = tester.widget<navigation_glass.GlassMenu>(
         find.byType(navigation_glass.GlassMenu).last,
       );
-      expect(activeMenu.showSelectionPill, isTrue);
       expect(
-        activeMenu.selectionPillBehavior,
-        navigation_glass.GlassMenuSelectionPillBehavior.scrollOrLongPress,
+        find.byKey(const ValueKey('glass-menu-selection-pill')),
+        findsNothing,
       );
       expect(find.text('Compact'), findsOneWidget);
       final firstLabelLeft = tester.getTopLeft(find.text('Compact')).dx;
@@ -418,7 +416,8 @@ void main() {
       final compactMenuItem = tester.widget<navigation_glass.GlassMenuItem>(
         compactRow.first,
       );
-      expect(compactMenuItem.isPressed, isTrue);
+      expect(compactMenuItem.enablePressScale, isFalse);
+      expect(compactMenuItem.isPressed, isFalse);
       await compactPress.cancel();
       await tester.pumpAndSettle();
       final compactLongPress = await tester.startGesture(
@@ -427,7 +426,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       expect(
         find.byKey(const ValueKey('glass-menu-selection-pill')),
-        findsOneWidget,
+        findsNothing,
       );
       await compactLongPress.cancel();
       await tester.pumpAndSettle();
