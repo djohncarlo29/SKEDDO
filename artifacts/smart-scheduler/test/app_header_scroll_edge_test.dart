@@ -8,6 +8,22 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  test('expanded title downshift preserves the compact endpoint', () {
+    expect(
+      appHeaderExpandedTitleDownshiftForProgress(0),
+      closeTo(kAppHeaderExpandedTitleDownshift, 1e-9),
+    );
+    expect(
+      appHeaderExpandedTitleDownshiftForProgress(0.5),
+      closeTo(kAppHeaderExpandedTitleDownshift / 2, 1e-9),
+    );
+    expect(appHeaderExpandedTitleDownshiftForProgress(1), 0);
+    expect(
+      kAppHeaderTitleCollapseDistance,
+      kAppHeaderTitleHeight,
+    );
+  });
+
   test('shell large title follows the scroll position once', () {
     expect(AppHeaderScrollBehavior.shellLargeTitleTravelOffset(0), 0);
     expect(

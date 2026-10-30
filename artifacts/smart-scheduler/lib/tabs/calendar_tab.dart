@@ -226,6 +226,14 @@ double _calendarExpandedTitleHeight(BuildContext context) {
   return kAppHeaderTitleHeight * (1.0 - collapseProgress);
 }
 
+double _calendarExpandedTitleDownshift(BuildContext context) {
+  if (MediaQuery.orientationOf(context) != Orientation.portrait) return 0.0;
+  final collapseProgress =
+      AppHeaderScrollInsetScope.titleTransitionOf(context)?.collapseProgress ??
+      0.0;
+  return appHeaderExpandedTitleDownshiftForProgress(collapseProgress);
+}
+
 // The Day View circle slot is the same bounded slot that prevents the
 // row-level swipe copy from resolving to a larger Dynamic-Type diameter than
 // the in-cell marker. Extra row height is reserved below this slot, never
@@ -3089,7 +3097,8 @@ class CalendarTabState extends State<CalendarTab>
                     .toDouble();
             final expandedTitleHeight =
                 MediaQuery.orientationOf(context) == Orientation.portrait
-                ? kAppHeaderTitleHeight * (1.0 - sharedTitleCollapseProgress)
+                ? (kAppHeaderTitleHeight + kAppHeaderExpandedTitleDownshift) *
+                      (1.0 - sharedTitleCollapseProgress)
                 : 0.0;
             final contentTopSpacing = AppHeaderScrollView.contentTopSpacingOf(
               context,
@@ -6139,6 +6148,7 @@ class _MonthView extends StatelessWidget {
         final expandedViewportHeight =
             constraints.maxHeight +
             kContentAreaTopRaise -
+            _calendarExpandedTitleDownshift(context) -
             AppHeaderScrollView.contentTopSpacingOf(
               context,
               topExtension: kContentAreaTopRaise,

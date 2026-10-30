@@ -1808,16 +1808,24 @@ class _SettingsHeader extends StatelessWidget {
                           alignment: Alignment.bottomLeft,
                           child: SizedBox(
                             width: double.infinity,
-                            child: HeaderTitleScroller(
-                              title: title,
-                              fadeColor: backgroundColor,
-                              style: TextStyle(
-                                fontFamily: kSFProText,
-                                fontSize: 34,
-                                fontWeight: FontWeight.bold,
-                                fontStyle: FontStyle.normal,
-                                color: primaryLabel,
-                                letterSpacing: -1.2,
+                            child: Transform.translate(
+                              offset: Offset(
+                                0,
+                                appHeaderExpandedTitleDownshiftForProgress(
+                                  titleCollapseProgress,
+                                ),
+                              ),
+                              child: HeaderTitleScroller(
+                                title: title,
+                                fadeColor: backgroundColor,
+                                style: TextStyle(
+                                  fontFamily: kSFProText,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.normal,
+                                  color: primaryLabel,
+                                  letterSpacing: -1.2,
+                                ),
                               ),
                             ),
                           ),

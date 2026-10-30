@@ -4475,8 +4475,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                   child: AppHeaderLargeTitleHandoff(
                                                                     progress:
                                                                         largeTitleFadeProgress,
-                                                                    child:
-                                                                        largeHeaderTitleLayout,
+                                                                    child: Transform.translate(
+                                                                      offset: Offset(
+                                                                        0,
+                                                                        appHeaderExpandedTitleDownshiftForProgress(
+                                                                          titleCollapseProgress,
+                                                                        ),
+                                                                      ),
+                                                                      child:
+                                                                          largeHeaderTitleLayout,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                               ),

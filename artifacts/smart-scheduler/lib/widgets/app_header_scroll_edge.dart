@@ -9,9 +9,18 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderTitleCollapseDistance = kAppHeaderTitleHeight;
+// The pinned toolbar button extends below the 44pt layout row. This expanded-
+// only adjustment brings the large-title capline to a 16pt gap below the
+// 40pt toolbar circle at the default title size, without changing collapse
+// distance or compact-state geometry.
+const double kAppHeaderExpandedTitleDownshift = 7.2;
 const double kAppHeaderContentTopSpacing = 16;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
+
+double appHeaderExpandedTitleDownshiftForProgress(double collapseProgress) =>
+    kAppHeaderExpandedTitleDownshift *
+    (1.0 - collapseProgress.clamp(0.0, 1.0).toDouble());
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
 
 /// Shared scroll rules for second-level app headers.
@@ -1116,9 +1125,15 @@ class AppHeaderScrollView extends StatelessWidget {
                       final progress = titleInset.searchBarExtent > 0
                           ? phaseController.searchBarCollapseProgress
                           : phaseController.collapseProgress;
+                      final expandedTitleDownshift = titleCollapseExtent > 0
+                          ? appHeaderExpandedTitleDownshiftForProgress(
+                              phaseController.collapseProgress,
+                            )
+                          : 0.0;
                       return SizedBox(
                         height: minimumContentTopSpacing +
-                            maxContentTopSpacing * progress,
+                            maxContentTopSpacing * progress +
+                            expandedTitleDownshift,
                       );
                     },
                   ),
@@ -1534,12 +1549,18 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                 searchBarCollapseProgress > 0.0001
             ? ClipRect(child: searchBarSlot)
             : searchBarSlot;
+        final expandedTitleDownshift = titleExtent > 0
+            ? appHeaderExpandedTitleDownshiftForProgress(
+                controller.collapseProgress,
+              )
+            : 0.0;
         return Stack(
           clipBehavior: Clip.none,
           children: [
             if (largeTitle != null) Positioned(
               top: collapsedExtent -
-                  shrinkOffset.clamp(0.0, titleExtent),
+                  shrinkOffset.clamp(0.0, titleExtent) +
+                  expandedTitleDownshift,
               left: 0,
               right: 0,
               height: titleExtent,
