@@ -909,8 +909,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         position.dx + (1 + _morphAlignment.x) * _triggerSize!.width / 2;
     final double targetY =
         position.dy + (1 + _morphAlignment.y) * _triggerSize!.height / 2;
-    final double menuLeft =
-        targetX - (1 + _morphAlignment.x) * widget.menuWidth / 2;
+    final double menuLeft = targetX -
+        (1 + _morphAlignment.x) * widget.menuWidth / 2 +
+        _kSettledMenuLandingDx;
     final double menuTop = targetY - (1 + _morphAlignment.y) * menuHeight / 2;
 
     double hOffset = 0.0;
@@ -1908,7 +1909,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     // "covering" the faded out menu button.
     final dxMag = (menuWidth - tw) / 2.0;
     final dyMag = (menuHeight - th) / 2.0;
-    final finalDx = -_morphAlignment.x * dxMag;
+    final finalDx = -_morphAlignment.x * dxMag + _kSettledMenuLandingDx;
     final finalDy = -_morphAlignment.y * dyMag;
 
     // ─── Delegate physics to GlassMorphController ────────────────────────────
@@ -2921,6 +2922,7 @@ const Duration _kSubmenuMorphDuration = Duration(milliseconds: 320);
 const Curve _kSubmenuMorphCurve = Curves.easeOutCubic;
 const double _kBodyVerticalPadding = 12.0;
 const double _kRowGap = 2.0;
+const double _kSettledMenuLandingDx = 4.0;
 
 /// Geometry is captured before switching the active scroll viewport. Titles
 /// are not identifiers: two rows may have the same label.
