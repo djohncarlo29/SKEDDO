@@ -8404,6 +8404,7 @@ class EventsTabState extends State<EventsTab>
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+            expandedTitleContentGapFromBaseline: true,
             // Inline search stays in the shared header but restores its fixed
             // background and separator while the results body scrolls.
             searchBar: isLandscape
@@ -21457,11 +21458,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             ),
           ),
+          const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 16,
-                16,
+                0,
                 16,
                 widget.landscapeMasterDetail ? 0 : 16,
               ),
@@ -21547,13 +21549,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                 expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
               ),
             ),
+            const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
             SliverPadding(
-              // 16 px top follows the 8pt grid, and 16 px sides give each card
-              // its edge margin. The last section already contributes 16 px
-              // below its card; only add the outer 16 px in full-screen mode.
+              // The shared header boundary owns the first 16pt of expanded
+              // content clearance; retain the side and final-content insets.
               padding: EdgeInsets.fromLTRB(
                 16,
-                16,
+                0,
                 16,
                 widget.landscapeMasterDetail ? 0 : 16,
               ),

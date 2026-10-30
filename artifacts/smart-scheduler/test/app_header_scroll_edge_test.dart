@@ -8,6 +8,181 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  testWidgets(
+    'search bar keeps a 16pt gap below the title baseline',
+    (tester) async {
+      const headerHeight = 68.0;
+      const titleHeight = kAppHeaderTitleHeight;
+      const downshift = kAppHeaderExpandedTitleDownshift;
+      final searchKey = GlobalKey();
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox.expand(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  top: headerHeight,
+                  child: AppHeaderScrollInsetScope(
+                    leadingInset: headerHeight,
+                    titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+                    child: AppHeaderScrollView(
+                      topExtension:
+                          kAppHeaderScrollEdgeHeaderBottomExtension,
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: AppHeaderScrollInset(
+                            searchBar: SizedBox(
+                              key: searchKey,
+                              height: 40,
+                            ),
+                            searchBarExtent: 40,
+                            expandedTitleContentGap:
+                                kAppHeaderExpandedTitleContentGap,
+                            expandedTitleContentGapFromBaseline: true,
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 200)),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 24,
+                  left: 16,
+                  right: 16,
+                  height: 44 + titleHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Transform.translate(
+                        offset: const Offset(0, downshift),
+                        child: const Text(
+                          'All Notes',
+                          key: ValueKey('expanded-title-text'),
+                          style: TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final titleParagraph = tester.renderObject<RenderParagraph>(
+        find.byKey(const ValueKey('expanded-title-text')),
+      );
+      final titleOrigin = titleParagraph.localToGlobal(Offset.zero);
+      final titleMetrics = TextPainter(
+        text: const TextSpan(
+          text: 'All Notes',
+          style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: TextScaler.noScaling,
+      )..layout();
+      final titleBaseline =
+          titleOrigin.dy + titleMetrics.computeLineMetrics().first.baseline;
+      titleMetrics.dispose();
+      final searchTop = tester.getTopLeft(find.byKey(searchKey)).dy;
+      expect(
+        searchTop - titleBaseline,
+        closeTo(kAppHeaderExpandedTitleContentGap, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'first settings content keeps a 16pt gap below the title text',
+    (tester) async {
+      const headerHeight = 68.0;
+      const titleHeight = kAppHeaderTitleHeight;
+      const downshift = kAppHeaderExpandedTitleDownshift;
+      final firstContentKey = GlobalKey();
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox.expand(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  top: headerHeight,
+                  child: AppHeaderScrollInsetScope(
+                    leadingInset: headerHeight,
+                    titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+                    child: AppHeaderScrollView(
+                      topExtension:
+                          kAppHeaderScrollEdgeHeaderBottomExtension,
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: AppHeaderScrollInset(
+                            expandedTitleContentGap:
+                                kAppHeaderExpandedTitleContentGap,
+                          ),
+                        ),
+                        const SliverToBoxAdapter(
+                          child: AppHeaderContentSpacing(),
+                        ),
+                        SliverToBoxAdapter(
+                          child: SizedBox(key: firstContentKey, height: 48),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 24,
+                  left: 16,
+                  right: 16,
+                  height: 44 + titleHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Transform.translate(
+                        offset: const Offset(0, downshift),
+                        child: const Text(
+                          'Settings',
+                          key: ValueKey('expanded-title-text'),
+                          style: TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final titleParagraph = tester.renderObject<RenderParagraph>(
+        find.byKey(const ValueKey('expanded-title-text')),
+      );
+      final titleTextBottom =
+          titleParagraph.localToGlobal(Offset.zero).dy +
+          titleParagraph.size.height;
+      final firstContentTop = tester.getTopLeft(
+        find.byKey(firstContentKey),
+      ).dy;
+      expect(
+        firstContentTop - titleTextBottom,
+        closeTo(kAppHeaderExpandedTitleContentGap, 0.5),
+      );
+    },
+  );
+
   test('expanded title content spacing measures from the text bottom', () {
     for (final existingSpacing in [0.0, kAppHeaderContentTopSpacing]) {
       final adjustment =
@@ -15,9 +190,11 @@ void main() {
             desiredGap: kAppHeaderExpandedTitleContentGap,
             existingSpacing: existingSpacing,
             collapseProgress: 0,
+            topExtension: 16,
           );
       expect(
-        existingSpacing +
+        -16 +
+            existingSpacing +
             adjustment +
             kAppHeaderTitleTextBottomInset,
         kAppHeaderExpandedTitleContentGap,
@@ -27,11 +204,31 @@ void main() {
           desiredGap: kAppHeaderExpandedTitleContentGap,
           existingSpacing: existingSpacing,
           collapseProgress: 1,
+          topExtension: 16,
         ),
         0,
         reason: 'The compact-state spacing must remain unchanged.',
       );
     }
+
+    final baselineDescent = AppHeaderScrollView.titleBaselineDescent;
+    expect(baselineDescent, greaterThan(0));
+    final baselineAdjustment =
+        AppHeaderScrollView.expandedTitleContentGapAdjustment(
+          desiredGap: kAppHeaderExpandedTitleContentGap,
+          existingSpacing: 0,
+          collapseProgress: 0,
+          topExtension: 16,
+          baselineDescent: baselineDescent,
+        );
+    expect(
+      -16 +
+          baselineAdjustment +
+          kAppHeaderTitleTextBottomInset +
+          baselineDescent,
+      kAppHeaderExpandedTitleContentGap,
+      reason: 'Search bars measure their gap from the title baseline.',
+    );
 
     expect(
       AppHeaderScrollView.expandedTitleContentGapAdjustment(

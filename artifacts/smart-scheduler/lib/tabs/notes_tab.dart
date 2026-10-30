@@ -744,6 +744,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 collapseAnimation: widget.searchModeAnimation,
                 enabled: !isLandscape,
                 expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+                expandedTitleContentGapFromBaseline: true,
                 // Inline search keeps the same keyed field in the shared
                 // header, but adds the fixed search surface and separator.
                 searchBar: isLandscape

@@ -866,24 +866,52 @@ class AppHeaderScrollView extends StatelessWidget {
   /// Additional body spacing needed to keep [desiredGap] below the expanded
   /// title text, while preserving any existing compact-state spacing.
   ///
-  /// [existingSpacing] is measured from the title slot's bottom. The visible
-  /// title text ends [kAppHeaderTitleTextBottomInset] above that slot edge.
+  /// The scroll viewport is raised behind the shell by [topExtension], so the
+  /// expanded-only spacer compensates for that translation. [existingSpacing]
+  /// is the first body's authored top gap; [baselineDescent] is non-zero only
+  /// when the requested anchor is the title baseline.
   static double expandedTitleContentGapAdjustment({
     required double desiredGap,
     required double existingSpacing,
     required double collapseProgress,
+    double topExtension = 0.0,
+    double baselineDescent = 0.0,
   }) {
     if (!desiredGap.isFinite ||
         desiredGap <= 0 ||
-        !existingSpacing.isFinite) {
+        !existingSpacing.isFinite ||
+        !topExtension.isFinite ||
+        !baselineDescent.isFinite) {
       return 0.0;
     }
     final progress = collapseProgress.isFinite
         ? collapseProgress.clamp(0.0, 1.0).toDouble()
         : 0.0;
     final targetFromSlotBottom =
-        desiredGap - kAppHeaderTitleTextBottomInset;
+        desiredGap +
+        topExtension -
+        kAppHeaderTitleTextBottomInset -
+        baselineDescent;
     return (targetFromSlotBottom - existingSpacing) * (1.0 - progress);
+  }
+
+  /// Baseline descent for the default 34pt bold Large Header style. Search
+  /// screens use a baseline gap; ordinary content uses the text-bottom inset.
+  static final double titleBaselineDescent = _measureTitleBaselineDescent();
+
+  static double _measureTitleBaselineDescent() {
+    final painter = TextPainter(
+      text: const TextSpan(
+        text: 'Ag',
+        style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: TextScaler.noScaling,
+    )..layout();
+    final metrics = painter.computeLineMetrics();
+    final descent = metrics.isEmpty ? 0.0 : metrics.first.descent;
+    painter.dispose();
+    return descent.isFinite && descent > 0.0 ? descent : 0.0;
   }
 
   /// Remaining clearance for fixed Calendar layouts without a search region.
@@ -1164,6 +1192,13 @@ class AppHeaderScrollView extends StatelessWidget {
                                   existingSpacing: minimumContentTopSpacing,
                                   collapseProgress:
                                       phaseController.collapseProgress,
+                                  topExtension: topExtension,
+                                  baselineDescent:
+                                      titleInset
+                                              .expandedTitleContentGapFromBaseline
+                                          ? AppHeaderScrollView
+                                                .titleBaselineDescent
+                                          : 0.0,
                                 )
                           : 0.0;
                       return SizedBox(
@@ -1191,6 +1226,7 @@ class AppHeaderScrollView extends StatelessWidget {
               topExtension > 0 && !titleInset.pinSearchBar
               ? titleInset.expandedTitleContentGap
               : 0.0,
+          topExtension: topExtension,
           sharedTitleTransition: sharedTitleTransition,
           mirrorSharedHeaderCollapse: mirrorSharedHeaderCollapse,
           initialHeaderOffset:
@@ -1241,6 +1277,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
     required this.titleCollapseExtent,
     required this.titleInset,
     required this.expandedTitleContentGap,
+    required this.topExtension,
     required this.sharedTitleTransition,
     required this.mirrorSharedHeaderCollapse,
     required this.initialHeaderOffset,
@@ -1255,6 +1292,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
   final double titleCollapseExtent;
   final AppHeaderScrollInset titleInset;
   final double expandedTitleContentGap;
+  final double topExtension;
   final AppHeaderTitleTransition? sharedTitleTransition;
   final bool mirrorSharedHeaderCollapse;
   final double initialHeaderOffset;
@@ -1509,6 +1547,9 @@ class _AppHeaderNestedScrollViewState
               searchBarExtent: widget.titleInset.searchBarExtent,
               pinSearchBar: widget.titleInset.pinSearchBar,
               expandedTitleContentGap: widget.expandedTitleContentGap,
+              expandedTitleContentGapFromBaseline:
+                  widget.titleInset.expandedTitleContentGapFromBaseline,
+              topExtension: widget.topExtension,
               bodyLeadingOverscroll: _bodyLeadingOverscroll,
               controller: _searchPhaseController,
             ),
@@ -1538,6 +1579,8 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     this.searchBarExtent = 0,
     this.pinSearchBar = false,
     this.expandedTitleContentGap = 0,
+    this.expandedTitleContentGapFromBaseline = false,
+    this.topExtension = 0,
   });
 
   final double extent;
@@ -1550,6 +1593,8 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
   final double searchBarExtent;
   final bool pinSearchBar;
   final double expandedTitleContentGap;
+  final bool expandedTitleContentGapFromBaseline;
+  final double topExtension;
 
   @override
   double get minExtent =>
@@ -1606,6 +1651,10 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                 desiredGap: expandedTitleContentGap,
                 existingSpacing: 0.0,
                 collapseProgress: controller.collapseProgress,
+                topExtension: topExtension,
+                baselineDescent: expandedTitleContentGapFromBaseline
+                    ? AppHeaderScrollView.titleBaselineDescent
+                    : 0.0,
               );
         return Stack(
           clipBehavior: Clip.none,
@@ -1650,6 +1699,9 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
       searchBarExtent != oldDelegate.searchBarExtent ||
       pinSearchBar != oldDelegate.pinSearchBar ||
       expandedTitleContentGap != oldDelegate.expandedTitleContentGap ||
+      expandedTitleContentGapFromBaseline !=
+          oldDelegate.expandedTitleContentGapFromBaseline ||
+      topExtension != oldDelegate.topExtension ||
       controller != oldDelegate.controller;
 }
 
@@ -1693,6 +1745,7 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.searchBarExtent = 0,
     this.pinSearchBar = false,
     this.expandedTitleContentGap = 0,
+    this.expandedTitleContentGapFromBaseline = false,
   }) : assert(searchBarExtent >= 0),
        assert(expandedTitleContentGap >= 0),
        assert(searchBar != null || searchBarExtent == 0);
@@ -1708,6 +1761,8 @@ class AppHeaderScrollInset extends StatelessWidget {
   /// Desired expanded-state distance between the large title text bottom and
   /// the first content item (or its search bar). Zero preserves legacy layout.
   final double expandedTitleContentGap;
+  /// Measure the desired gap from the title baseline instead of its text box.
+  final bool expandedTitleContentGapFromBaseline;
 
   @override
   Widget build(BuildContext context) {
