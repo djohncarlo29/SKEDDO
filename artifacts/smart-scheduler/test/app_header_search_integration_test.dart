@@ -386,9 +386,9 @@ void main() {
       expect(calendarToolbar.to.actions, hasLength(2));
       final calendarOptions = find
           .bySemanticsLabel('Calendar view options')
-          .first;
+          .last;
       await tester.tap(calendarOptions);
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Compact'), findsOneWidget);
       await tester.tapAt(const Offset(201, 600));
       await tester.pump(const Duration(milliseconds: 400));
