@@ -388,6 +388,7 @@ void main() {
       final activeMenu = tester.widget<navigation_glass.GlassMenu>(
         find.byType(navigation_glass.GlassMenu).last,
       );
+      expect(activeMenu.showItemInteractionHighlight, isFalse);
       expect(
         find.byKey(const ValueKey('glass-menu-selection-pill')),
         findsNothing,
@@ -417,7 +418,16 @@ void main() {
         compactRow.first,
       );
       expect(compactMenuItem.enablePressScale, isFalse);
+      expect(compactMenuItem.showInteractionHighlight, isFalse);
       expect(compactMenuItem.isPressed, isFalse);
+      final compactRowSurface = find.descendant(
+        of: compactRow.first,
+        matching: find.byType(AnimatedContainer),
+      );
+      final rowDecoration =
+          tester.widget<AnimatedContainer>(compactRowSurface.first).decoration
+              as BoxDecoration;
+      expect(rowDecoration.color, const Color(0x00000000));
       await compactPress.cancel();
       await tester.pumpAndSettle();
       final compactLongPress = await tester.startGesture(

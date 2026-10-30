@@ -3,8 +3,8 @@ name: Glass menu selection behavior
 description: Menu selection, scale, and rubberband interaction rules
 ---
 
-Menu rows can be selected by sliding across them, but do not show a selector pill or shrink/scale the selected row. Rubberbanding is based only on actual content overflow: overflowing root or nested menus bounce, while fitting menus of either level do not. Fitting nested menus must still allow slide-to-select.
+`GlassBarItem.menu` rows stay visually neutral for every gesture: no selector pill, press/hover/focus fill, or selected-row scale. Normal taps and slide-to-select remain functional. Rubberbanding depends only on actual overflow; fitting root and nested menus do not bounce, while overflowing ones do.
 
-**Why:** The requested interaction separates row selection from scrolling; nesting alone must not enable rubberbanding.
+**Why:** The row's press/hover fill can look like the selector pill even after the pill itself is disabled. Selection, visual feedback, and scrolling must remain independent.
 
-**How to apply:** Keep the pointer selection path independent from scroll physics. Enable bounce only when the rendered list height exceeds its viewport; ordinary taps must still activate through the row recognizer.
+**How to apply:** Disable row interaction highlights for every `GlassBarItem.menu` appearance, including light/dark and submenu levels, without disabling pointer selection or tap handlers. Enable bounce only when rendered content exceeds its viewport.

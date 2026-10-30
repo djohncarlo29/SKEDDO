@@ -2637,6 +2637,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           allowTextWrapping: item.allowTextWrapping,
           closeDelay: item.closeDelay,
           enablePressScale: false,
+          showInteractionHighlight: widget.showItemInteractionHighlight,
           submenu: item.submenu,
           isSelected: false,
           isPressed: false,
@@ -2667,7 +2668,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   }
 
   Widget _buildPassiveMenuItem(Widget item) {
-    if (item is! GlassMenuItem || !_isSubmenuOpen(item)) return item;
+    if (item is! GlassMenuItem) return item;
+    final submenuOpen = _isSubmenuOpen(item);
+    if (!submenuOpen && widget.showItemInteractionHighlight) return item;
     return GlassMenuItem(
       key: item.key,
       title: item.title,
@@ -2678,7 +2681,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       trailing: item.trailing,
       trailingWidth: item.trailingWidth,
       trailingBuilder: item.trailingBuilder,
-      submenuOpen: true,
+      submenuOpen: submenuOpen,
       height: item.height,
       titleStyle: item.titleStyle,
       subtitleStyle: item.subtitleStyle,
@@ -2688,6 +2691,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       allowTextWrapping: item.allowTextWrapping,
       closeDelay: item.closeDelay,
       enablePressScale: item.enablePressScale,
+      showInteractionHighlight:
+          item.showInteractionHighlight &&
+          widget.showItemInteractionHighlight,
       submenu: item.submenu,
       isSelected: item.isSelected,
       isPressed: item.isPressed,

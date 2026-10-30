@@ -119,6 +119,13 @@ class GlassMenu extends StatefulWidget {
   /// Typically contains [GlassMenuItem] and [GlassMenuDivider].
   final List<Widget> items;
 
+  /// Whether menu rows paint a highlight while touched, hovered, focused, or
+  /// selected by a glide gesture.
+  ///
+  /// Defaults to `true`. Toolbar menus can disable this without disabling
+  /// normal tap or slide-to-select behavior.
+  final bool showItemInteractionHighlight;
+
   /// The alignment of the menu relative to the trigger.
   final GlassMenuAlignment? menuAlignment;
 
@@ -330,6 +337,7 @@ class GlassMenu extends StatefulWidget {
     this.trigger,
     this.triggerBuilder,
     required this.items,
+    this.showItemInteractionHighlight = true,
     this.menuAlignment,
     this.autoAdjustToScreen = false,
     this.menuWidth = 200,

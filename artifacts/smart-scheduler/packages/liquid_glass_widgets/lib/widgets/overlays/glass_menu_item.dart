@@ -31,6 +31,7 @@ class GlassMenuItem extends StatefulWidget {
     this.maxLines = 1,
     this.allowTextWrapping = false,
     this.enablePressScale = true,
+    this.showInteractionHighlight = true,
     this.closeDelay,
     this.submenu,
   });
@@ -118,6 +119,12 @@ class GlassMenuItem extends StatefulWidget {
   ///
   /// Defaults to `true`.
   final bool enablePressScale;
+
+  /// Whether touch, hover, focus, or glide selection paints a row highlight.
+  ///
+  /// Set to `false` when the menu should keep its rows visually neutral while
+  /// preserving their normal tap and slide-to-select interactions.
+  final bool showInteractionHighlight;
 
   /// How long to wait after [onTap] fires before the menu begins closing.
   ///
@@ -309,8 +316,9 @@ class _GlassMenuItemState extends State<GlassMenuItem>
             (widget.isPressed == true) || localPressed;
         final bool effectiveSelected = widget.isSelected;
 
-        final Color backgroundColor = effectiveSelected
-            ? const Color(0x00000000) // Parent renders the sliding pill
+        final Color backgroundColor = !widget.showInteractionHighlight ||
+                effectiveSelected
+            ? const Color(0x00000000)
             : effectivePressed
                 ? const Color(0x26FFFFFF) // Standalone press
                 : (isHov || isFoc)
