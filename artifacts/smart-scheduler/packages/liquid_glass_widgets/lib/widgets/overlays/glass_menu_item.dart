@@ -26,6 +26,7 @@ class GlassMenuItem extends StatefulWidget {
     this.iconColor,
     this.iconSize = 20.0,
     this.maxLines = 1,
+    this.allowTextWrapping = false,
     this.enablePressScale = true,
     this.closeDelay,
     this.submenu,
@@ -81,6 +82,13 @@ class GlassMenuItem extends StatefulWidget {
   ///
   /// Defaults to 1. Set to 2 for longer labels like "Set Up Name & Photo".
   final int maxLines;
+
+  /// Whether the title and subtitle may wrap instead of being truncated.
+  ///
+  /// Wrapping lets a menu row grow with the active text scaler so larger
+  /// accessibility text remains readable. The row's vertical padding remains
+  /// fixed while its content area grows or shrinks.
+  final bool allowTextWrapping;
 
   /// Whether to apply the subtle scale-down animation on press.
   ///
@@ -261,6 +269,14 @@ class _GlassMenuItemState extends State<GlassMenuItem>
         (widget.isDestructive
             ? CupertinoColors.destructiveRed
             : baseColor.withValues(alpha: 0.9));
+    const verticalPadding = 8.0;
+    final fixedVerticalPadding = verticalPadding * 2;
+    final baseContentHeight = widget.height > fixedVerticalPadding
+        ? widget.height - fixedVerticalPadding
+        : 0.0;
+    final minimumHeight =
+        MediaQuery.textScalerOf(context).scale(baseContentHeight) +
+            fixedVerticalPadding;
 
     // Dynamic background for hover/press states
     // We use a subtle white overlay to "brighten" the glass
@@ -287,7 +303,7 @@ class _GlassMenuItemState extends State<GlassMenuItem>
             (widget.enablePressScale && effectivePressed) ? 0.98 : 1.0;
 
         return ConstrainedBox(
-          constraints: BoxConstraints(minHeight: widget.height),
+          constraints: BoxConstraints(minHeight: minimumHeight),
           child: AnimatedScale(
             scale: scale,
             duration: const Duration(milliseconds: 150),
@@ -298,8 +314,11 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                   : const Duration(
                       milliseconds: 150), // Smooth fade out on release
               curve: Curves.easeOutCubic,
-              constraints: BoxConstraints(minHeight: widget.height),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              constraints: BoxConstraints(minHeight: minimumHeight),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: verticalPadding,
+              ),
               decoration: BoxDecoration(
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(24),
@@ -340,8 +359,12 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                             children: [
                               Text(
                                 widget.title,
-                                maxLines: widget.maxLines,
-                                overflow: TextOverflow.ellipsis,
+                                maxLines: widget.allowTextWrapping
+                                    ? null
+                                    : widget.maxLines,
+                                overflow: widget.allowTextWrapping
+                                    ? TextOverflow.visible
+                                    : TextOverflow.ellipsis,
                                 style: widget.titleStyle ??
                                     TextStyle(
                                       color: textColor,
@@ -352,8 +375,12 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                               if (widget.subtitle != null)
                                 Text(
                                   widget.subtitle!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: widget.allowTextWrapping
+                                      ? null
+                                      : widget.maxLines,
+                                  overflow: widget.allowTextWrapping
+                                      ? TextOverflow.visible
+                                      : TextOverflow.ellipsis,
                                   style: widget.subtitleStyle ??
                                       TextStyle(
                                         color: textColor.withValues(alpha: 0.6),

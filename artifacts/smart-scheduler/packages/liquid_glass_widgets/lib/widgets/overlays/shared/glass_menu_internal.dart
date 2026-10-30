@@ -11,6 +11,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   Offset _triggerGlobalPosition = Offset.zero; // captured in _openMenu
   Offset _triggerOverlayPosition =
       Offset.zero; // captured in _openMenu (overlay-relative)
+  MediaQueryData? _lastViewportMetrics;
+  bool _viewportGeometryRefreshScheduled = false;
   int? _hoveredIndex;
   bool _isDragging = false;
   bool _hasStretched =
@@ -40,7 +42,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   // without rebuilding the entire menu tree.
   late final ValueNotifier<int?> _hoveredIndexNotifier;
   late final ValueNotifier<bool> _isDraggingNotifier;
+  late final ValueNotifier<bool> _selectionPillActiveNotifier;
   List<Widget>? _cachedWrappedItems;
+  Timer? _selectionPillLongPressTimer;
+  Timer? _selectionPillScrollEndTimer;
+  Offset? _menuPointerLocalPosition;
+  int? _longPressCandidateIndex;
+  bool _selectionPillActiveFromScroll = false;
 
   // --- Layered submenus (GlassMenuItem.submenu) ---
   // Every pushed level opens a second glass card OVER the menu body (the way
@@ -162,6 +170,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _scrollController = ScrollController();
     _hoveredIndexNotifier = ValueNotifier(null);
     _isDraggingNotifier = ValueNotifier(false);
+    _selectionPillActiveNotifier = ValueNotifier(false);
     _contentMorph = AnimationController(
       vsync: this,
       duration: _kSubmenuMorphDuration,
@@ -182,12 +191,28 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _scrollController.dispose();
     _hoveredIndexNotifier.dispose();
     _isDraggingNotifier.dispose();
+    _selectionPillLongPressTimer?.cancel();
+    _selectionPillScrollEndTimer?.cancel();
+    _selectionPillActiveNotifier.dispose();
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final viewportMetrics = MediaQuery.of(context);
+    final previousViewportMetrics = _lastViewportMetrics;
+    final viewportGeometryChanged = previousViewportMetrics != null &&
+        (previousViewportMetrics.size != viewportMetrics.size ||
+            previousViewportMetrics.orientation !=
+                viewportMetrics.orientation ||
+            previousViewportMetrics.padding != viewportMetrics.padding ||
+            previousViewportMetrics.viewInsets != viewportMetrics.viewInsets);
+    _lastViewportMetrics = viewportMetrics;
+    if (viewportGeometryChanged && _overlayController.isShowing) {
+      _scheduleOpenMenuGeometryRefresh();
+    }
+
     // Sync the reduced-motion accessibility flag to the morph controller.
     // This fires on first build and again whenever MediaQuery changes
     // (e.g. user toggles Reduce Motion in Settings while the app is running).
@@ -195,6 +220,17 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       GlassAccessibilityData.of(context).reduceMotion,
     );
     _updateRouteListener();
+  }
+
+  void _scheduleOpenMenuGeometryRefresh() {
+    if (_viewportGeometryRefreshScheduled) return;
+    _viewportGeometryRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _viewportGeometryRefreshScheduled = false;
+      if (!mounted || !_overlayController.isShowing) return;
+      if (!_captureTriggerGeometry()) return;
+      setState(_updateMenuPlacement);
+    });
   }
 
   List<ModalRoute<dynamic>> _findAncestorRoutes() {
@@ -283,8 +319,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _morphController.reset();
     _horizontalOffset = 0.0;
     _verticalOffset = 0.0;
-    _hoveredIndex = null;
-    _hoveredIndexNotifier.value = null;
     _isDragging = false;
     _isDraggingNotifier.value = false;
     _hasStretched = false;
@@ -293,6 +327,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _swipeArmed = false;
     _openedOnPointerDown = false;
     _resetSubmenus();
+    _resetSelectionPillInteraction();
     if (!wasClosing) {
       widget.onClose?.call();
     }
@@ -601,17 +636,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     setState(() => _followOffset = offset);
   }
 
-  void _openMenu() {
-    _updateRouteListener();
-    // Capture geometry and screen position for morphing
+  bool _captureTriggerGeometry() {
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null || !renderBox.hasSize) {
-      // Safety: Cannot open menu if render box is not ready.
-      // Also clear the pointer ID so stray move/up events from the same
-      // finger don't try to hit-test against a menu that never opened.
-      _openedOnPointerDown = false;
-      _swipePointerId = null;
-      return;
+      return false;
     }
 
     _triggerSize = renderBox.size;
@@ -623,19 +651,18 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _triggerOverlayPosition = overlayBox != null
         ? renderBox.localToGlobal(Offset.zero, ancestor: overlayBox)
         : _triggerGlobalPosition;
-    // A fresh open must never inherit a previous open's live anchor nudge.
-    _followOffset = Offset.zero;
-    // ...nor a previous open's submenu level.
-    _resetSubmenus();
+    return true;
+  }
+
+  void _updateMenuPlacement() {
+    if (_triggerSize == null) return;
     final position = _triggerGlobalPosition;
     final mediaQuery = MediaQuery.maybeOf(context);
     final screenWidth = mediaQuery?.size.width ?? double.infinity;
     final screenHeight = mediaQuery?.size.height ?? double.infinity;
-
-    // Calculate menu height for vertical boundary check
     final menuHeight = _calculateMenuHeight();
 
-    // 1. Determine base alignment (Auto vs Manual)
+    // Determine base alignment (automatic unless the caller pins one).
     final stripAlignment = verticalBarPresentationAlignment(
       context,
       position & _triggerSize!,
@@ -651,16 +678,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       _morphAlignment = Alignment(stripAlignment.x, upperHalf ? -1.0 : 1.0);
     } else if (widget.menuAlignment == null ||
         widget.menuAlignment == GlassMenuAlignment.none) {
-      // Horizontal alignment: left vs right half
+      // Horizontal alignment: left vs right half.
       final isRightHalf = screenWidth.isFinite && position.dx > screenWidth / 2;
-
-      // Vertical alignment: check if menu would overflow bottom
       final spaceBelow = screenHeight.isFinite
           ? screenHeight - (position.dy + _triggerSize!.height)
           : double.infinity;
       final spaceAbove = screenHeight.isFinite ? position.dy : double.infinity;
-
-      // Prefer downward opening unless insufficient space
       final shouldFlipVertical =
           spaceBelow < menuHeight && spaceAbove > menuHeight;
 
@@ -671,19 +694,33 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         _morphAlignment = isRightHalf ? Alignment.topRight : Alignment.topLeft;
       }
     } else {
-      // MANUAL: Use the provided alignment directly.
-      // Note: autoAdjustToScreen clamping will still compensate for overflow.
+      // MANUAL: Use the provided alignment directly. Clamping still applies.
       _morphAlignment =
           _getAlignment(widget.menuAlignment!) ?? Alignment.center;
     }
 
-    // 2. Clamping: calculate offsets to keep menu within screen bounds
     final clamp = _computeClampOffsets(menuHeight);
+    _horizontalOffset = clamp.dx;
+    _verticalOffset = clamp.dy;
+  }
 
-    setState(() {
-      _horizontalOffset = clamp.dx;
-      _verticalOffset = clamp.dy;
-    });
+  void _openMenu() {
+    _updateRouteListener();
+    if (!_captureTriggerGeometry()) {
+      // Safety: Cannot open menu if render box is not ready.
+      // Also clear the pointer ID so stray move/up events from the same
+      // finger don't try to hit-test against a menu that never opened.
+      _openedOnPointerDown = false;
+      _swipePointerId = null;
+      return;
+    }
+
+    // A fresh open must never inherit a previous open's live anchor nudge.
+    _followOffset = Offset.zero;
+    // ...nor a previous open's submenu level.
+    _resetSubmenus();
+    _resetSelectionPillInteraction();
+    setState(_updateMenuPlacement);
 
     _overlayController.show();
     // GlassMorphController.open() uses 0.0 velocity — spring starts from rest
@@ -780,8 +817,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final sourceOffset = _listRowTop(sourceIndex, sourceList) -
         (_scrollController.hasClients ? _scrollController.offset : 0.0);
     final list = _levelList(parent, _submenuStack.length + 1);
+    _resetSelectionPillInteraction();
     setState(() {
       _submenuStack.add(_SubmenuLevel(
+        parent: parent,
         list: list,
         sourceIndex: sourceIndex,
         sourceRowTop: sourceOffset,
@@ -805,7 +844,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
   /// The card for [parent]'s submenu at [depth]: its header (the source row
   /// repeated) and its rows.
-  List<Widget> _levelList(GlassMenuItem parent, int depth) => <Widget>[
+  List<Widget> _levelList(
+    GlassMenuItem parent,
+    int depth, {
+    bool isSubmenuOpen = true,
+  }) =>
+      <Widget>[
         _GlassMenuHeaderItem(
           key: ValueKey<String>('glass-menu-header-$depth'),
           title: parent.title,
@@ -827,10 +871,49 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           iconColor: parent.isDestructive ? null : parent.iconColor,
           iconSize: parent.iconSize,
           enablePressScale: parent.enablePressScale,
+          trailing: _submenuHeaderChevron(
+            parent,
+            depth,
+            isSubmenuOpen: isSubmenuOpen,
+          ),
+          maxLines: parent.maxLines,
+          allowTextWrapping: parent.allowTextWrapping,
         ),
         const GlassMenuDivider(),
         ...parent.submenu!,
       ];
+
+  Widget _submenuHeaderChevron(
+    GlassMenuItem parent,
+    int depth, {
+    required bool isSubmenuOpen,
+  }) {
+    final defaultLabelColor =
+        CupertinoTheme.of(context).textTheme.textStyle.color ??
+            CupertinoColors.label;
+    final color = parent.isDestructive
+        ? CupertinoColors.destructiveRed
+        : (parent.titleStyle?.color ?? parent.iconColor ?? defaultLabelColor);
+    final reduceMotion = GlassAccessibilityData.of(context).reduceMotion;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey<String>('glass-menu-submenu-chevron-$depth'),
+      tween: Tween<double>(
+        begin: isSubmenuOpen ? 0 : 0.25,
+        end: isSubmenuOpen ? 0.25 : 0,
+      ),
+      duration: reduceMotion ? Duration.zero : _kSubmenuMorphDuration,
+      curve: _kSubmenuMorphCurve,
+      builder: (context, turns, child) => Transform.rotate(
+        angle: turns * math.pi * 2,
+        child: child,
+      ),
+      child: Icon(
+        CupertinoIcons.chevron_right,
+        size: 16,
+        color: color,
+      ),
+    );
+  }
 
   /// Rebuilds each open card from the parent row now at its source index, so a
   /// card follows its parent when the menu's items change while it is open (a
@@ -842,8 +925,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       final level = _submenuStack[depth];
       final parent = list.elementAtOrNull(level.sourceIndex);
       if (parent is! GlassMenuItem || parent.submenu == null) return;
-      list = _levelList(parent, depth + 1);
-      _submenuStack[depth] = level.withList(list);
+      list = _levelList(
+        parent,
+        depth + 1,
+        isSubmenuOpen:
+            !(depth == _submenuStack.length - 1 && _levelMorphPopping),
+      );
+      _submenuStack[depth] = level.withList(list, parent: parent);
     }
   }
 
@@ -853,6 +941,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     if (_submenuStack.isEmpty || _contentMorph.isAnimating) return;
     _clearGlide();
     setState(() {
+      final level = _submenuStack.last;
+      _submenuStack[_submenuStack.length - 1] = level.withList(
+        _levelList(
+          level.parent,
+          _submenuStack.length,
+          isSubmenuOpen: false,
+        ),
+      );
       _cachedWrappedItems = null;
       _levelMorphPopping = true;
     });
@@ -1238,6 +1334,106 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _contentMorph.value = 1.0;
   }
 
+  void _cancelSelectionPillLongPress() {
+    _selectionPillLongPressTimer?.cancel();
+    _selectionPillLongPressTimer = null;
+    _longPressCandidateIndex = null;
+  }
+
+  void _resetSelectionPillInteraction() {
+    _cancelSelectionPillLongPress();
+    _selectionPillScrollEndTimer?.cancel();
+    _selectionPillScrollEndTimer = null;
+    _menuPointerLocalPosition = null;
+    _selectionPillActiveFromScroll = false;
+    _selectionPillActiveNotifier.value = false;
+    _hoveredIndex = null;
+    _hoveredIndexNotifier.value = null;
+  }
+
+  void _startSelectionPillLongPress(
+    Offset localPosition,
+    BuildContext buildContext,
+  ) {
+    if (!widget.showSelectionPill ||
+        widget.selectionPillBehavior !=
+            GlassMenuSelectionPillBehavior.scrollOrLongPress) {
+      return;
+    }
+
+    final candidateIndex =
+        _calculateIndexFromPosition(localPosition, buildContext);
+    if (candidateIndex == null) return;
+    _longPressCandidateIndex = candidateIndex;
+    _selectionPillLongPressTimer = Timer(
+      const Duration(milliseconds: 500),
+      () {
+        if (!mounted ||
+            !_isDragging ||
+            _selectionPillActiveFromScroll ||
+            _longPressCandidateIndex != candidateIndex) {
+          return;
+        }
+        final currentPosition = _menuPointerLocalPosition;
+        if (currentPosition == null ||
+            _calculateIndexFromPosition(currentPosition, buildContext) !=
+                candidateIndex) {
+          return;
+        }
+        _hoveredIndex = candidateIndex;
+        _hoveredIndexNotifier.value = candidateIndex;
+        _selectionPillActiveNotifier.value = true;
+      },
+    );
+  }
+
+  bool _handleMenuScrollNotification(
+    ScrollNotification notification,
+    BuildContext buildContext,
+  ) {
+    if (!widget.showSelectionPill ||
+        widget.selectionPillBehavior !=
+            GlassMenuSelectionPillBehavior.scrollOrLongPress ||
+        _contentMorph.isAnimating) {
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification) {
+      _selectionPillLongPressTimer?.cancel();
+      _selectionPillLongPressTimer = null;
+      _longPressCandidateIndex = null;
+      _selectionPillScrollEndTimer?.cancel();
+      _selectionPillScrollEndTimer = null;
+      _selectionPillActiveFromScroll = true;
+      _selectionPillActiveNotifier.value = true;
+      _updateSelectionPillIndexFromScroll(buildContext);
+    } else if (notification is ScrollEndNotification) {
+      _selectionPillActiveFromScroll = false;
+      _selectionPillScrollEndTimer?.cancel();
+      _selectionPillScrollEndTimer = Timer(
+        const Duration(milliseconds: 150),
+        () {
+          if (!mounted || _selectionPillActiveFromScroll || _isDragging) {
+            return;
+          }
+          _selectionPillActiveNotifier.value = false;
+          _hoveredIndex = null;
+          _hoveredIndexNotifier.value = null;
+          _selectionPillScrollEndTimer = null;
+        },
+      );
+    }
+    return false;
+  }
+
+  void _updateSelectionPillIndexFromScroll(BuildContext buildContext) {
+    final position = _menuPointerLocalPosition ??
+        Offset(widget.menuWidth / 2, _activeHeight / 2);
+    final index = _calculateIndexFromPosition(position, buildContext);
+    _hoveredIndex = index;
+    _hoveredIndexNotifier.value = index;
+  }
+
   // ─── External glide (GlassMenuController.glideTo / endGlide) ────────────────
 
   bool _glideTo(Offset globalPosition) {
@@ -1295,6 +1491,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
   void _clearGlide() {
     _glideOverParent = false;
+    _resetSelectionPillInteraction();
     if (widget.enableInteractionGlow) {
       final glowLayerState = _menuContentKey.currentContext
           ?.findAncestorStateOfType<GlassGlowLayerState>();
@@ -1324,6 +1521,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
   void _closeMenu() {
     if (!_overlayController.isShowing) return;
+    _resetSelectionPillInteraction();
     setState(() {
       _hoveredIndex = null;
       _isDragging = false;
@@ -1977,36 +2175,50 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           children: [
             // Sliding selection pill (background)
             if (widget.showSelectionPill)
-              ValueListenableBuilder<int?>(
-                valueListenable: _hoveredIndexNotifier,
-                builder: (context, hoveredIndex, _) {
-                  if (hoveredIndex == null) {
+              ValueListenableBuilder<bool>(
+                valueListenable: _selectionPillActiveNotifier,
+                builder: (context, interactionActive, _) {
+                  if (widget.selectionPillBehavior ==
+                          GlassMenuSelectionPillBehavior.scrollOrLongPress &&
+                      !interactionActive) {
                     return const SizedBox.shrink();
                   }
-                  return AnimatedPositioned(
-                    duration: const Duration(milliseconds: 150),
-                    curve: Curves.easeOutCubic,
-                    left: 12,
-                    right: 12,
-                    top: _listRowTop(hoveredIndex, items) -
-                        (_scrollController.hasClients
-                            ? _scrollController.offset
-                            : 0.0),
-                    height: _getScaledItemHeight(items[hoveredIndex], context),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: widget.selectionColor,
-                        borderRadius:
-                            BorderRadius.circular(widget.itemBorderRadius),
-                        border: Border.all(
-                          color: GlassTheme.brightnessOf(context) ==
-                                  Brightness.dark
-                              ? const Color(0x0DFFFFFF)
-                              : const Color(0x0D000000),
-                          width: 0.5,
+                  return ValueListenableBuilder<int?>(
+                    valueListenable: _hoveredIndexNotifier,
+                    builder: (context, hoveredIndex, _) {
+                      if (hoveredIndex == null ||
+                          hoveredIndex < 0 ||
+                          hoveredIndex >= items.length) {
+                        return const SizedBox.shrink();
+                      }
+                      return AnimatedPositioned(
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOutCubic,
+                        left: 12,
+                        right: 12,
+                        top: _listRowTop(hoveredIndex, items) -
+                            (_scrollController.hasClients
+                                ? _scrollController.offset
+                                : 0.0),
+                        height:
+                            _getScaledItemHeight(items[hoveredIndex], context),
+                        child: Container(
+                          key: const ValueKey('glass-menu-selection-pill'),
+                          decoration: BoxDecoration(
+                            color: widget.selectionColor,
+                            borderRadius:
+                                BorderRadius.circular(widget.itemBorderRadius),
+                            border: Border.all(
+                              color: GlassTheme.brightnessOf(context) ==
+                                      Brightness.dark
+                                  ? const Color(0x0DFFFFFF)
+                                  : const Color(0x0D000000),
+                              width: 0.5,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               ),
@@ -2030,18 +2242,36 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                 },
                 onPointerDown: (event) {
                   if (!mounted) return;
+                  _resetSelectionPillInteraction();
                   _isDragging = true;
                   _isDraggingNotifier.value = true;
                   _hasStretched = false;
+                  _menuPointerLocalPosition = event.localPosition;
                   _initialScrollOffset = _scrollController.hasClients
                       ? _scrollController.offset
                       : 0.0;
                   _updateHoveredIndex(event.localPosition);
+                  _startSelectionPillLongPress(event.localPosition, context);
                 },
                 onPointerMove: (event) {
                   if (!mounted) return;
                   if (_isDragging) {
-                    _updateHoveredIndex(event.localPosition);
+                    _menuPointerLocalPosition = event.localPosition;
+                    final candidate = _longPressCandidateIndex;
+                    if (candidate != null &&
+                        _calculateIndexFromPosition(
+                                event.localPosition, context) !=
+                            candidate) {
+                      _cancelSelectionPillLongPress();
+                      if (!_selectionPillActiveFromScroll) {
+                        _selectionPillActiveNotifier.value = false;
+                      }
+                    }
+                    if (!_isScrollable ||
+                        !_selectionPillActiveNotifier.value ||
+                        _selectionPillActiveFromScroll) {
+                      _updateHoveredIndex(event.localPosition);
+                    }
                   }
                 },
                 onPointerUp: (event) {
@@ -2073,23 +2303,32 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                     }
                     _isDragging = false;
                     _isDraggingNotifier.value = false;
-                    _hoveredIndex = null;
-                    _hoveredIndexNotifier.value = null;
+                    _cancelSelectionPillLongPress();
+                    _menuPointerLocalPosition = null;
+                    _longPressCandidateIndex = null;
+                    if (!_selectionPillActiveFromScroll) {
+                      _selectionPillActiveNotifier.value = false;
+                      _hoveredIndex = null;
+                      _hoveredIndexNotifier.value = null;
+                    }
                     _hasStretched = false;
                   }
                 },
                 onPointerCancel: (_) {
                   if (!mounted) return;
+                  _resetSelectionPillInteraction();
                   _isDragging = false;
                   _isDraggingNotifier.value = false;
-                  _hoveredIndex = null;
-                  _hoveredIndexNotifier.value = null;
                 },
                 child: SizedBox(
                   key: interactive ? _menuContentKey : null,
                   width: widget.menuWidth,
                   height: viewportHeight,
-                  child: listBody.child!,
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) =>
+                        _handleMenuScrollNotification(notification, context),
+                    child: listBody.child!,
+                  ),
                 ),
               ),
             ),
@@ -2176,36 +2415,64 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   double _visibleListHeight(List<Widget> items) =>
       math.min(_listHeight(items), _maximumStackHeight);
 
-  /// Accounts for system text scaling.
-  ///
-  /// When the user increases the system text size, GlassMenuItem renders
-  /// with scaled text inside a ConstrainedBox (minHeight). The text content
-  /// may push the actual height beyond the nominal [GlassMenuItem.height].
-  /// This method estimates the rendered height to prevent the menu from
-  /// becoming scrollable when it shouldn't be.
+  /// Measures rows at the active text scale, including wrapping and fixed
+  /// padding. Root and submenu cards share this measurement so their viewport,
+  /// scroll range, and hit regions stay aligned with the rendered rows.
   double _getScaledItemHeight(Widget item, BuildContext context) {
     final mediaQuery = MediaQuery.maybeOf(context);
     final textScaler = mediaQuery?.textScaler ?? TextScaler.noScaling;
 
     if (item is GlassMenuItem) {
-      // The item has 8px vertical padding top + bottom = 16px fixed chrome.
-      // The remaining space is text content that scales with system text size.
       const fixedPadding = 16.0;
-      final baseFontSize = item.titleStyle?.fontSize ?? 17.0;
-      final scaledFontSize = textScaler.scale(baseFontSize);
-      final lineHeight = scaledFontSize * 1.2; // Approximate line height
-      final textHeight = lineHeight * item.maxLines;
+      final baseContentHeight =
+          math.max(0.0, item.height - fixedPadding).toDouble();
+      final scaledMinimumHeight =
+          textScaler.scale(baseContentHeight) + fixedPadding;
+      final rowWidth = math.max(1.0, widget.menuWidth - 24.0 - 32.0);
+      final leadingWidth = item.icon == null ? 0.0 : item.iconSize + 12.0;
+      final trailingWidth = item.trailing != null
+          ? 44.0
+          : item.submenu != null
+              ? 24.0
+              : 0.0;
+      final textWidth =
+          math.max(1.0, rowWidth - leadingWidth - trailingWidth).toDouble();
+      final maxLines = item.allowTextWrapping ? null : item.maxLines;
+      final ellipsis = item.allowTextWrapping ? null : '\u2026';
+      final titleStyle = DefaultTextStyle.of(context).style.merge(
+            item.titleStyle ??
+                const TextStyle(fontSize: 17, fontWeight: FontWeight.w400),
+          );
+      final titlePainter = TextPainter(
+        text: TextSpan(text: item.title, style: titleStyle),
+        textDirection: Directionality.of(context),
+        textScaler: textScaler,
+        maxLines: maxLines,
+        ellipsis: ellipsis,
+      )..layout(maxWidth: textWidth);
 
-      // Subtitle adds another scaled line
-      double subtitleHeight = 0;
+      var contentHeight = titlePainter.height;
       if (item.subtitle != null) {
-        final subFontSize = item.subtitleStyle?.fontSize ?? 13.0;
-        subtitleHeight = textScaler.scale(subFontSize) * 1.2;
+        final subtitleStyle = DefaultTextStyle.of(context).style.merge(
+              item.subtitleStyle ??
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+            );
+        final subtitlePainter = TextPainter(
+          text: TextSpan(text: item.subtitle, style: subtitleStyle),
+          textDirection: Directionality.of(context),
+          textScaler: textScaler,
+          maxLines: maxLines,
+          ellipsis: ellipsis,
+        )..layout(maxWidth: textWidth);
+        contentHeight += subtitlePainter.height;
       }
+      contentHeight += fixedPadding;
 
-      final contentHeight = textHeight + subtitleHeight + fixedPadding;
-      // Use the larger of nominal height or scaled content height
-      return math.max(item.height, contentHeight);
+      final iconHeight = item.icon == null ? 0.0 : item.iconSize + fixedPadding;
+      return math.max(
+        scaledMinimumHeight,
+        math.max(contentHeight, iconHeight),
+      );
     }
     // Dividers and labels don't contain user-facing scaled text
     if (item is GlassMenuDivider) return item.height;
@@ -2317,6 +2584,7 @@ const double _kRowGap = 2.0;
 /// are not identifiers: two rows may have the same label.
 class _SubmenuLevel {
   const _SubmenuLevel({
+    required this.parent,
     required this.list,
     required this.sourceIndex,
     required this.sourceRowTop,
@@ -2324,6 +2592,7 @@ class _SubmenuLevel {
     required this.sourceScrollOffset,
   });
 
+  final GlassMenuItem parent;
   final List<Widget> list;
 
   /// The parent row's index in the list below this card.
@@ -2333,7 +2602,12 @@ class _SubmenuLevel {
   final double sourceScrollOffset;
 
   /// The same level over a rebuilt [list].
-  _SubmenuLevel withList(List<Widget> list) => _SubmenuLevel(
+  _SubmenuLevel withList(
+    List<Widget> list, {
+    GlassMenuItem? parent,
+  }) =>
+      _SubmenuLevel(
+        parent: parent ?? this.parent,
         list: list,
         sourceIndex: sourceIndex,
         sourceRowTop: sourceRowTop,
@@ -2351,13 +2625,14 @@ class _GlassMenuHeaderItem extends GlassMenuItem {
     super.subtitleStyle,
     super.icon,
     super.height,
+    super.maxLines,
+    super.allowTextWrapping,
     super.titleStyle,
     super.iconColor,
     super.iconSize,
     super.enablePressScale,
-  }) : super(
-            trailing: const Icon(CupertinoIcons.chevron_down, size: 16),
-            onTap: _noop);
+    required super.trailing,
+  }) : super(onTap: _noop);
 
   static void _noop() {}
 }

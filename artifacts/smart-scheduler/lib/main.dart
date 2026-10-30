@@ -15,6 +15,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassBarItem,
         GlassBarItemBackground,
         GlassEffectTransition,
+        GlassMenuSelectionPillBehavior,
         GlassNavigationShell,
         LiquidGlassWidgets;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
@@ -1726,8 +1727,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   Widget _toolbarMenuCheckmark(Color accent, {bool selected = true}) {
-    if (!selected) return const SizedBox(width: 18);
-    return Icon(CupertinoIcons.checkmark, size: 17, color: accent);
+    final textScaler = MediaQuery.textScalerOf(context);
+    if (!selected) return SizedBox(width: textScaler.scale(18));
+    return Icon(
+      CupertinoIcons.checkmark,
+      size: textScaler.scale(17),
+      color: resolveThemeColor(accent, context),
+    );
   }
 
   Widget _toolbarMenuSfIcon(
@@ -1735,13 +1741,45 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Color color, {
     double size = 20,
     FontWeight weight = FontWeight.w500,
-  }) => FixedSFIcon(icon, fontSize: size, fontWeight: weight, color: color);
+  }) => FixedSFIcon(
+    icon,
+    fontSize: MediaQuery.textScalerOf(context).scale(size),
+    fontWeight: weight,
+    color: resolveThemeColor(color, context),
+  );
+
+  // Corrections center the rendered ink inside the shared 24 px icon slot.
+  // They follow the guide-line screenshot, not each widget's outer box or SVG
+  // viewBox.
+  Offset _toolbarMenuIconInkCorrection(
+    Widget icon, {
+    Offset additionalCorrection = Offset.zero,
+  }) {
+    final measuredCorrection = switch (icon) {
+      // SF glyphs use per-glyph ink corrections; eye_slash reuses eye's.
+      FixedSFIcon sfIcon => _toolbarMenuSfIconInkCorrection(sfIcon),
+      DetailsViewIcon() => const Offset(0, 1.125),
+      ListViewIcon() => const Offset(0, 1),
+      // The plus is an overlay; align the New Section base to Manage Sections.
+      NewSectionIcon() => const Offset(-0.75, -1),
+      _ => Offset.zero,
+    };
+    return measuredCorrection + additionalCorrection;
+  }
+
+  Offset _toolbarMenuSfIconInkCorrection(FixedSFIcon icon) {
+    final horizontal = icon.icon == SFIcons.sf_arrow_up_arrow_down
+        ? -1.75
+        : icon.icon == SFIcons.sf_eye || icon.icon == SFIcons.sf_eye_slash
+        ? -3.25
+        : icon.icon == SFIcons.sf_archivebox
+        ? -0.25
+        : 0.0;
+    return Offset(horizontal, 2.625);
+  }
 
   Color _toolbarMenuDefaultLabelColor() {
-    final foreground =
-        CupertinoTheme.of(context).textTheme.textStyle.color ??
-        CupertinoColors.label;
-    return foreground.withValues(alpha: 0.9);
+    return resolveThemeColor(kPrimaryLabel, context).withValues(alpha: 0.9);
   }
 
   GlassMenuItem _toolbarMenuItem({
@@ -1753,10 +1791,28 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     List<Widget>? submenu,
     bool isDestructive = false,
     Color? labelColor,
+    Offset iconInkCorrection = Offset.zero,
   }) {
-    final resolvedLabelColor = isDestructive
-        ? CupertinoColors.destructiveRed
-        : (labelColor ?? _toolbarMenuDefaultLabelColor());
+    final resolvedLabelColor = resolveThemeColor(
+      isDestructive
+          ? CupertinoColors.destructiveRed
+          : (labelColor ?? _toolbarMenuDefaultLabelColor()),
+      context,
+    );
+    final textScaler = MediaQuery.textScalerOf(context);
+    final iconSlotSize = textScaler.scale(24);
+    final iconVisualScale = iconSlotSize / 24;
+    final iconInkScale = icon is FixedSFIcon
+        ? textScaler.scale(20) / 20
+        : iconVisualScale;
+    final iconContent = icon == null
+        ? const SizedBox.shrink()
+        : icon is FixedSFIcon
+        ? Center(child: icon)
+        : Transform.scale(
+            scale: iconVisualScale,
+            child: Center(child: icon),
+          );
     return GlassMenuItem(
       title: title,
       titleStyle: TextStyle(
@@ -1766,13 +1822,24 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ),
       iconColor: resolvedLabelColor,
       icon: SizedBox(
-        width: 24,
-        height: 24,
-        child: icon == null ? const SizedBox.shrink() : Center(child: icon),
+        width: iconSlotSize,
+        height: iconSlotSize,
+        child: icon == null
+            ? const SizedBox.shrink()
+            : Transform.translate(
+                offset:
+                    _toolbarMenuIconInkCorrection(
+                      icon,
+                      additionalCorrection: iconInkCorrection,
+                    ) *
+                    iconInkScale,
+                child: iconContent,
+              ),
       ),
-      iconSize: 24,
+      iconSize: iconSlotSize,
       trailing: trailing,
       subtitle: subtitle,
+      allowTextWrapping: true,
       submenu: submenu,
       isDestructive: isDestructive,
       onTap: onTap,
@@ -1856,7 +1923,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       asset,
       width: 24,
       height: 24,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      colorFilter: ColorFilter.mode(
+        resolveThemeColor(color, context),
+        BlendMode.srcIn,
+      ),
     );
     Widget check(bool selected) =>
         _toolbarMenuCheckmark(accent, selected: selected);
@@ -1887,6 +1957,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           'assets/icons/day_view_list.svg',
           current == DayViewSubMode.list ? accent : labelColor,
         ),
+        iconInkCorrection: const Offset(0.5, 0),
         labelColor: current == DayViewSubMode.list ? accent : labelColor,
         trailing: check(current == DayViewSubMode.list),
         onTap: () => select(DayViewSubMode.list),
@@ -1943,15 +2014,29 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _toolbarMenuCheckmark(labelColor, selected: selected);
     Widget sf(IconData icon, {double size = 20, Color? color}) =>
         _toolbarMenuSfIcon(icon, color ?? labelColor, size: size);
-    Widget modeSubmenuIcon(bool selected) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (selected)
-          Icon(CupertinoIcons.checkmark, size: 17, color: labelColor),
-        if (selected) const SizedBox(width: 6),
-        Icon(CupertinoIcons.chevron_right, size: 15, color: labelColor),
-      ],
-    );
+    Widget modeSubmenuIcon(bool selected, {bool hasChevron = true}) {
+      final textScaler = MediaQuery.textScalerOf(context);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (selected)
+            Icon(
+              CupertinoIcons.checkmark,
+              size: textScaler.scale(17),
+              color: resolveThemeColor(labelColor, context),
+            ),
+          if (selected) SizedBox(width: textScaler.scale(6)),
+          if (hasChevron)
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: textScaler.scale(15),
+              color: resolveThemeColor(labelColor, context),
+            )
+          else
+            SizedBox(width: textScaler.scale(15)),
+        ],
+      );
+    }
 
     final sortItems = <Widget>[];
     if (isUtilityCategory) {
@@ -1978,7 +2063,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           sortItems.add(
             _toolbarMenuItem(
               title: option,
-              trailing: check(sortBy == option),
+              trailing: modeSubmenuIcon(sortBy == option, hasChevron: false),
               onTap: () => saveSort(option),
             ),
           );
@@ -3378,7 +3463,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             id: leadingActionId,
             label: leadingActionLabel,
             background: navigation_glass.GlassBarItemBackground.shared,
-            showSelectionPill: false,
+            showSelectionPill: true,
+            selectionPillBehavior: navigation_glass
+                .GlassMenuSelectionPillBehavior
+                .scrollOrLongPress,
             icon: leadingActionIcon,
             menuItems: leadingActionMenuItems,
             menuWidth: leadingActionMenuWidth,

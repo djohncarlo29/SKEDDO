@@ -1,4 +1,4 @@
-import 'dart:async' show scheduleMicrotask;
+import 'dart:async' show Timer, scheduleMicrotask;
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
@@ -60,6 +60,15 @@ enum GlassMenuAlignment {
 
   /// Bottom right alignment.
   bottomRight,
+}
+
+/// Controls when a [GlassMenu]'s row-selection pill becomes visible.
+enum GlassMenuSelectionPillBehavior {
+  /// Show the pill for the current hovered or press/slide-selected row.
+  standard,
+
+  /// Show it only while the menu is scrolling or after a stationary long press.
+  scrollOrLongPress,
 }
 
 /// A liquid glass context menu that morphs from its trigger button.
@@ -206,6 +215,10 @@ class GlassMenu extends StatefulWidget {
   /// The row interaction state remains active when this is false, so callers
   /// can retain press/slide feedback without painting a selection surface.
   final bool showSelectionPill;
+
+  /// Determines whether the selection pill appears immediately or only during
+  /// scrolling / a stationary long press.
+  final GlassMenuSelectionPillBehavior selectionPillBehavior;
 
   /// Optional fixed height for the menu.
   ///
@@ -356,6 +369,7 @@ class GlassMenu extends StatefulWidget {
     this.menuPadding = EdgeInsets.zero,
     this.selectionColor = const Color(0x3DFFFFFF),
     this.showSelectionPill = true,
+    this.selectionPillBehavior = GlassMenuSelectionPillBehavior.standard,
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = false,
     this.glowColor,

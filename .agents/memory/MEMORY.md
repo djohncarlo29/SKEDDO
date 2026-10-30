@@ -113,6 +113,7 @@
 - [Large confirmation sheet radius](large-confirmation-sheet-radius.md) — microphone access and Delete Group overlays use the dedicated 40px bounded squircle; regular modal controls remain 24px.
 - [Expandable modal card surfaces](expandable-modal-card-surfaces.md) — expandable row stacks must use one shared bounded squircle surface, never adjacent partial-radius cards.
 - [Action-panel scroll fallback](action-panel-scroll-fallback.md) — expandable menus must cap main/sub-panels and anchor drill-downs to the live main-panel scroll offset.
+- [Menu selection-pill scroll settle](glass-menu-selection-pill-scroll-settle.md) — retain the scroll-mode pill briefly after ScrollEnd so discrete wheel input can render it.
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.

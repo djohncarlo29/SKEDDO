@@ -2688,6 +2688,8 @@ class _PinnedGroupState extends State<_PinnedGroup> {
               controller: _menu,
               items: menuItem?.menuItems ?? const <Widget>[],
               showSelectionPill: menuItem?.showSelectionPill ?? true,
+              selectionPillBehavior: menuItem?.selectionPillBehavior ??
+                  GlassMenuSelectionPillBehavior.standard,
               menuAlignment: menuItem?.menuAlignment,
               // The fallback is never read: with no menu item there is no
               // trigger to open one. It matches GlassMenu's own default.
