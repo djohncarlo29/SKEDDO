@@ -79,7 +79,7 @@ void main() {
 
       // Search may present its own header, but it must not rewrite the
       // collapsed parent state or translate the shell chrome.
-      await tester.tapAt(const Offset(323, 30));
+      await tester.tapAt(const Offset(366, 30));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -309,7 +309,7 @@ void main() {
       )!;
       headerPosition.jumpTo(headerPosition.maxScrollExtent);
       await tester.pumpAndSettle();
-      await tester.tapAt(const Offset(323, 30));
+      await tester.tapAt(const Offset(366, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
       expectShellChromeAtRest();
@@ -330,7 +330,7 @@ void main() {
       )!;
       restoredHeaderPosition.jumpTo(restoredHeaderPosition.maxScrollExtent);
       await tester.pumpAndSettle();
-      await tester.tapAt(const Offset(323, 30));
+      await tester.tapAt(const Offset(366, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
       expectShellChromeAtRest();
@@ -340,7 +340,7 @@ void main() {
       expectShellChromeAtRest();
 
       await tapTabIcon('Calendar');
-      await tester.tapAt(const Offset(323, 30));
+      await tester.tapAt(const Offset(366, 30));
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
       expectShellChromeAtRest();
@@ -386,7 +386,7 @@ void main() {
 
       final parentHeaderPosition = transition.position!;
       final parentHeaderPixels = parentHeaderPosition.pixels;
-      await tester.tapAt(const Offset(323, 30));
+      await tester.tapAt(const Offset(366, 30));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
 
@@ -523,7 +523,7 @@ void main() {
       final originalHeaderOffset = headerPosition.pixels;
 
       for (var cycle = 0; cycle < 3; cycle++) {
-        await tester.tapAt(const Offset(323, 30));
+        await tester.tapAt(const Offset(366, 30));
         await tester.pumpAndSettle();
         drainKnownGridRoundingOverflow();
         expect(
@@ -624,5 +624,48 @@ void main() {
       titleText.style?.color,
       resolveAccentColor(tester.element(titleTextFinder)),
     );
+  });
+
+  testWidgets('You toolbar opens offscreen search without leaving You', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const SKEDDOApp());
+    await tester.pumpAndSettle();
+
+    final tabBar = find.byType(FloatingTabPill);
+    await tester.tapAt(tester.getCenter(find.text('You').last) -
+        const Offset(0, 24));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 3);
+
+    final toolbarShell = tester.state<
+      navigation_glass.GlassNavigationShellState
+    >(find.byType(navigation_glass.GlassNavigationShell));
+    expect(toolbarShell.resolveState()!.to.actions, hasLength(1));
+
+    await tester.tapAt(const Offset(366, 30));
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchModeHeader), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('offscreen-search-safe-area-background')),
+      findsOneWidget,
+    );
+    expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 3);
+
+    final cancel = tester
+        .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
+        .lastWhere((button) => button.searchFocused);
+    cancel.onTap();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SearchModeHeader), findsNothing);
+    expect(tester.widget<FloatingTabPill>(tabBar).selectedIndex, 3);
+    expect(tester.takeException(), isNull);
   });
 }

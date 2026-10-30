@@ -2234,7 +2234,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   /// active, and either animates or snaps the header depending on whether the
   /// search bar is currently visible in the viewport.
   void _activateTabSearch() {
-    if (_selectedIndex == 3 || _searchFocused) return;
+    if (_searchFocused) return;
+
+    // The You destination is currently empty, so its search control uses the
+    // existing off-screen Events search experience without changing tabs.
+    if (_selectedIndex == 3) {
+      _searchEnteredOffScreen = true;
+      setState(() => _searchFocused = true);
+      _syncToolbarDestination();
+      _eventsTabKey.currentState?.activateSearchMode();
+      return;
+    }
 
     // Calendar tab: always use the off-screen path so its own search overlay
     // appears over the untouched parent screen.
@@ -2314,7 +2324,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _notesTabKey.currentState?.resetSearchForTabSwitch();
       }
       if (_selectedIndex == 1) _calendarTabKey.currentState?.cancelSearch();
-      if (_selectedIndex == 2) {
+      if (_selectedIndex == 2 || _selectedIndex == 3) {
         _eventsTabKey.currentState?.resetSearchForTabSwitch();
       }
     }
@@ -2878,32 +2888,33 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
 
     final actions = <navigation_glass.GlassBarItem>[];
-    actions.add(
-      navigation_glass.GlassBarItem.icon(
-        id: 'app-shell-create-event-action',
-        label: 'Create event',
-        enabled: interactionsEnabled && visible > 0.01,
-        background: navigation_glass.GlassBarItemBackground.shared,
-        icon: icon('assets/icons/plus.svg'),
-        onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
-          context,
-          initialCategoryId: useDcvCategory
-              ? _eventsTabKey.currentState?.activeStandardDcvCategoryId
-              : null,
-        ),
-      ),
+    final searchAction = navigation_glass.GlassBarItem.icon(
+      id: 'app-shell-search-action',
+      label: 'Search',
+      enabled: interactionsEnabled && visible > 0.01,
+      background: navigation_glass.GlassBarItemBackground.shared,
+      icon: icon('assets/icons/search.svg'),
+      onTap: _activateTabSearch,
     );
     if (tabIndex != 3) {
       actions.add(
         navigation_glass.GlassBarItem.icon(
-          id: 'app-shell-search-action',
-          label: 'Search',
+          id: 'app-shell-create-event-action',
+          label: 'Create event',
           enabled: interactionsEnabled && visible > 0.01,
           background: navigation_glass.GlassBarItemBackground.shared,
-          icon: icon('assets/icons/search.svg'),
-          onTap: _activateTabSearch,
+          icon: icon('assets/icons/plus.svg'),
+          onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
+            context,
+            initialCategoryId: useDcvCategory
+                ? _eventsTabKey.currentState?.activeStandardDcvCategoryId
+                : null,
+          ),
         ),
       );
+      actions.add(searchAction);
+    } else {
+      actions.add(searchAction);
     }
     return actions;
   }
@@ -4278,6 +4289,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               1 => _calendarTabKey.currentState
                                   ?.buildOffscreenSearchOverlay(),
                               2 => _eventsTabKey.currentState
+                                  ?.buildOffscreenSearchOverlay(),
+                              // You is currently an empty destination, so its
+                              // Search action presents the existing Events
+                              // search experience over the unchanged You page.
+                              3 => _eventsTabKey.currentState
                                   ?.buildOffscreenSearchOverlay(),
                               _ => null,
                             };
