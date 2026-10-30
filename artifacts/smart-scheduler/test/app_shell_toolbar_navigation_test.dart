@@ -162,6 +162,9 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Open settings'));
       expect(settingsTaps, 1);
       expect(find.bySemanticsLabel('Create event'), findsOneWidget);
+      final searchRect = tester.getRect(find.bySemanticsLabel('Search'));
+      final createRect = tester.getRect(find.bySemanticsLabel('Create event'));
+      expect(searchRect.center.dx, lessThan(createRect.center.dx));
 
       toolbarNavigatorKey.currentState!.push<void>(
         appShellToolbarStateRoute(

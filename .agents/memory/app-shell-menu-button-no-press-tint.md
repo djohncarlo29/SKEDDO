@@ -36,3 +36,15 @@ through the exit motion, while ensuring the body remains stationary. The
 hoisted shell owns toolbar taps; the in-route copy is only a placeholder while
 pinning is active. Keep transparent splash/highlight settings scoped to this
 control and preserve its existing placement and shared glass appearance.
+
+## Two-action trailing toolbar order
+
+When a trailing toolbar contains Search and one screen-specific action, place
+Search first and the other action at the rightmost position. Solo Search
+toolbars remain unchanged.
+
+**Why:** The user wants Search to consistently occupy the left side of every
+two-icon trailing toolbar.
+
+**How to apply:** Preserve each item's stable ID and behavior; only reorder the
+shared action list.

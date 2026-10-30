@@ -3440,6 +3440,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       icon: visibleIcon(icon('assets/icons/search.svg')),
       onTap: _activateTabSearch,
     );
+    actions.add(searchAction);
 
     Widget? leadingActionIcon;
     String? leadingActionId;
@@ -3528,8 +3529,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       }
     }
 
-    // Search is always the rightmost action; Home and You have no other action.
-    actions.add(searchAction);
+    // Search is leftmost in two-action groups; the screen-specific action is
+    // rightmost. Home and You keep Search as their only action.
     return actions;
   }
 
