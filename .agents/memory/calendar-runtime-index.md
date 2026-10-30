@@ -4,6 +4,7 @@ description: Focused implementation notes for Calendar interactions, list render
 ---
 
 - [Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags use separate slide variables.
+- [Calendar default destination](calendar-default-view.md) — Default View persists and maps Day to Single Day, Week to Multi Day, and Month/Year to their matching hierarchies.
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — cap the line at today's active column boundary.
 - [Multi-Day separator reverse morph](calendar-multiday-reverse-separator.md) — keep the timeline mounted through the reverse divider handoff.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — recreate a controller after keyed remounts to avoid stale initial offsets.

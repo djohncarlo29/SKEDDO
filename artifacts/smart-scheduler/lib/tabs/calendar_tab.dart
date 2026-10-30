@@ -406,6 +406,19 @@ enum CalendarView { year, month, day }
 // ── View-mode enum (month-grid density) ───────────────────────────────────────
 enum CalendarViewMode { list, compact, stacked, details }
 
+CalendarView calendarViewForDefaultViewSetting(String value) => switch (value) {
+  'Year' => CalendarView.year,
+  'Day' || 'Week' => CalendarView.day,
+  _ => CalendarView.month,
+};
+
+DayViewSubMode? calendarDaySubModeForDefaultViewSetting(String value) =>
+    switch (value) {
+      'Day' => DayViewSubMode.singleDay,
+      'Week' => DayViewSubMode.multiDay,
+      _ => null,
+    };
+
 extension CalendarViewModeExt on CalendarViewMode {
   double get rowHeight {
     switch (this) {
@@ -443,6 +456,7 @@ class CalendarTab extends StatefulWidget {
   const CalendarTab({
     super.key,
     required this.onViewChanged,
+    this.initialView = CalendarView.month,
     this.scrollableTitleBuilder,
     this.onStripSlide,
     this.onSearchCancel,
@@ -464,6 +478,7 @@ class CalendarTab extends StatefulWidget {
     bool titleInScrollContent,
   )
   onViewChanged;
+  final CalendarView initialView;
   final Widget Function(
     BuildContext context,
     String title,
@@ -1238,6 +1253,44 @@ class CalendarTabState extends State<CalendarTab>
   // Chevrons call these — both now drive the same slide animation
   void navigatePrev() => _swipeNavigate(1);
   void navigateNext() => _swipeNavigate(-1);
+
+  /// Switches directly to the selected Default View hierarchy.
+  ///
+  /// Unlike a user-driven hierarchy gesture, changing this preference is a
+  /// destination change rather than a calendar zoom animation. Keep the
+  /// selected date and saved scroll positions, but settle all transition
+  /// controllers at the requested view.
+  void applyDefaultView(CalendarView target) {
+    if (!mounted) return;
+    if (_view == CalendarView.month && _monthViewScrollCtrl.hasClients) {
+      _savedMonthScrollOffset = _monthViewScrollCtrl.offset;
+    } else if (_view == CalendarView.year && _yearScrollCtrl.hasClients) {
+      _savedYearScrollOffset = _yearScrollCtrl.offset;
+    }
+
+    _zoomTargetView = null;
+    _collapseTargetView = null;
+    _snapCtrl.stop();
+    _zoomCtrl.stop();
+    _collapseCtrl.stop();
+    _slideX = 0.0;
+    _weekStripDrag = false;
+    _navLocked = false;
+    _zoomMorphActive = false;
+    _zoomPrevT = target == CalendarView.year ? 0.0 : 1.0;
+    _collapseScrollOffset = 0.0;
+    _collapsePrevT = target == CalendarView.day ? 1.0 : 0.0;
+    _zoomCtrl.value = target == CalendarView.year ? 0.0 : 1.0;
+    _collapseCtrl.value = target == CalendarView.day ? 1.0 : 0.0;
+
+    setState(() {
+      _view = target;
+      if (target == CalendarView.day) {
+        _collapseRow = _weekRowForDate(_selected);
+      }
+    });
+    _notify();
+  }
 
   /// Immediately opens today's Day View.
   ///
@@ -2337,6 +2390,7 @@ class CalendarTabState extends State<CalendarTab>
   @override
   void initState() {
     super.initState();
+    _view = widget.initialView;
     appStartOfWeekNotifier.addListener(_onFirstDayOfWeekChanged);
     appDateFormatNotifier.addListener(_onCalendarDateFormatChanged);
     final now = DateTime.now();
@@ -2351,19 +2405,22 @@ class CalendarTabState extends State<CalendarTab>
     CategoryRegistry.revision.addListener(_onCategoryRegistryChanged);
     _zoomCtrl = AnimationController(
       vsync: this,
-      value: 1.0, // start in month view
+      value: _view == CalendarView.year ? 0.0 : 1.0,
     );
     // Spring drives its own curve — linear passthrough keeps _zoomAnim ≡ _zoomCtrl
     _zoomAnim = CurvedAnimation(parent: _zoomCtrl, curve: Curves.linear);
     _collapseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 370),
+      value: _view == CalendarView.day ? 1.0 : 0.0,
     );
     _collapseAnim = CurvedAnimation(
       parent: _collapseCtrl,
       curve: Curves.easeInOutCubic,
     );
     _collapseCtrl.addListener(_onCollapseTick);
+    _zoomPrevT = _zoomCtrl.value;
+    _collapsePrevT = _collapseCtrl.value;
     _snapCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 185),
@@ -2560,6 +2617,7 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   // ── View-mode public API ──────────────────────────────────────────────────────
+  CalendarView get view => _view;
   CalendarViewMode get viewMode => _viewMode;
 
   void setViewMode(CalendarViewMode mode, {bool persist = true}) {

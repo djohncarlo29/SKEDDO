@@ -22,10 +22,49 @@ import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
   Future<void> tapToolbarSearch(WidgetTester tester) async {
-    final toolbarSearch = find.bySemanticsLabel('Search');
-    expect(toolbarSearch, findsOneWidget);
-    await tester.tap(toolbarSearch);
+    // The inline field can also expose "Search" as text; the toolbar action
+    // is the final semantics node with this label in the shell tree.
+    await tester.tap(find.bySemanticsLabel('Search').last);
   }
+
+  testWidgets('Default View selects the matching Calendar hierarchy', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    appDefaultViewNotifier.value = 'Year';
+    await tester.pumpWidget(const SKEDDOApp());
+    await tester.pumpAndSettle();
+
+    final calendarLabel = find.text('Calendar').last;
+    await tester.tapAt(tester.getCenter(calendarLabel) - const Offset(0, 24));
+    await tester.pumpAndSettle();
+    final calendarFinder = find.byType(CalendarTab);
+    CalendarTabState calendarState() =>
+        tester.state<CalendarTabState>(calendarFinder);
+    expect(calendarState().view, CalendarView.year);
+
+    const choices = <(String, CalendarView, String?)>[
+      ('Month', CalendarView.month, null),
+      ('Day', CalendarView.day, 'singleDay'),
+      ('Week', CalendarView.day, 'multiDay'),
+      ('Year', CalendarView.year, null),
+    ];
+    for (final (setting, expectedView, expectedSubMode) in choices) {
+      appDefaultViewNotifier.value = setting;
+      await tester.pumpAndSettle();
+      expect(calendarState().view, expectedView, reason: setting);
+      if (expectedSubMode != null) {
+        expect(
+          tester.widget<CalendarTab>(calendarFinder).daySubMode.name,
+          expectedSubMode,
+          reason: setting,
+        );
+      }
+    }
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    appDefaultViewNotifier.value = 'Month';
+  });
 
   testWidgets('real tabs inherit the package title and search collapse stages', (
     tester,
@@ -237,14 +276,10 @@ void main() {
           'Date Format should not add an extra top inset beyond the shared '
           'header spacing.',
     );
-    final formatFooter = tester.widget<Text>(
-      find.textContaining('Format Example:'),
-    );
     expect(
-      formatFooter.data,
-      contains(
-        'This setting will apply in Skeddo only. Other apps will use the system setting.\n\nFormat Example:',
-      ),
+      find.textContaining('Format Example:'),
+      findsNothing,
+      reason: 'System Date Format does not show the app-only format example.',
     );
     await tester.timedDragFrom(
       const Offset(200, 450),

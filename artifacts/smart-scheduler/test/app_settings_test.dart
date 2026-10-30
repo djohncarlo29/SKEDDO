@@ -23,6 +23,7 @@ void main() {
     appSystemFirstDayOfWeekNotifier.value = 'Sunday';
     appStartOfWeekUsesSystemNotifier.value = true;
     appStartOfWeekNotifier.value = 'Sunday';
+    appDefaultViewNotifier.value = 'Month';
     appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
     appCustomDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
     appSystemDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
@@ -88,6 +89,18 @@ void main() {
 
     expect(appAccentUsesSystemNotifier.value, isFalse);
     expect(appAccentNotifier.value, 5);
+  });
+
+  test('Default View starts at Month and restores the saved choice', () async {
+    await loadAppSettings();
+    expect(appDefaultViewNotifier.value, 'Month');
+
+    appDefaultViewNotifier.value = 'Year';
+    await saveAppSetting('Default View', 'Year');
+    appDefaultViewNotifier.value = 'Month';
+    await loadAppSettings();
+
+    expect(appDefaultViewNotifier.value, 'Year');
   });
 
   test('mirrored settings use a consistent System trailing value', () {

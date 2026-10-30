@@ -51,11 +51,11 @@ shared action list.
 
 ## Trailing action icon alignment
 
-Pinned trailing toolbar icons other than Search share a 2px left visual
+Pinned trailing toolbar icons other than Search share a 3.5px left visual
 translation. Search retains its existing position. Do not apply the normal
 calendar header's separate optical offsets to the other action icons.
 
-**Why:** The user requested a consistent left adjustment for screen-specific
+**Why:** The user requested a consistent 3.5px left adjustment for screen-specific
 trailing actions, while Search and in-content header alignment remain unchanged.
 
 **How to apply:** Apply the translation in the pinned action icon wrapper so

@@ -965,7 +965,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // Kept in AppShell so the header AnimatedBuilder rebuilds immediately when
   // the CalendarTab transitions views (via the onViewChanged callback).
-  CalendarView _calendarView = CalendarView.month;
+  CalendarView _calendarView = calendarViewForDefaultViewSetting(
+    appDefaultViewNotifier.value,
+  );
   int _calendarDisplayYear = DateTime.now().year;
   String _calendarPrevTitle = '';
   String _calendarTitle = '';
@@ -1450,7 +1452,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final ValueNotifier<bool> _dayViewModeClosing = ValueNotifier(false);
   OverlayEntry? _dayViewModeOverlay;
   bool _dayViewModeMenuOpen = false;
-  DayViewSubMode _activeDaySubMode = DayViewSubMode.singleDay;
+  DayViewSubMode _activeDaySubMode =
+      calendarDaySubModeForDefaultViewSetting(appDefaultViewNotifier.value) ??
+      DayViewSubMode.singleDay;
 
   void _showSplitDcvMenu() {
     _showDcvMenuAt(_splitDcvEllipsisKey);
@@ -2537,6 +2541,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    appDefaultViewNotifier.addListener(_onDefaultViewSettingChanged);
     _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
     unawaited(_configureNativeTabBar());
 
@@ -2609,15 +2614,34 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         (m) => m.name == storedSub,
         orElse: () => DayViewSubMode.singleDay,
       );
+      final defaultDaySubMode = calendarDaySubModeForDefaultViewSetting(
+        appDefaultViewNotifier.value,
+      );
       setState(() {
         _activeViewMode = mode;
-        _activeDaySubMode = subMode;
+        _activeDaySubMode = defaultDaySubMode ?? subMode;
       });
     });
   }
 
+  void _onDefaultViewSettingChanged() {
+    if (!mounted) return;
+    final setting = appDefaultViewNotifier.value;
+    final targetView = calendarViewForDefaultViewSetting(setting);
+    final targetDaySubMode = calendarDaySubModeForDefaultViewSetting(setting);
+    setState(() {
+      _calendarView = targetView;
+      if (targetDaySubMode != null) {
+        _activeDaySubMode = targetDaySubMode;
+      }
+    });
+    _calendarTabKey.currentState?.applyDefaultView(targetView);
+    _syncToolbarDestination();
+  }
+
   @override
   void dispose() {
+    appDefaultViewNotifier.removeListener(_onDefaultViewSettingChanged);
     _nativeTabBarChannel.setMethodCallHandler(null);
     _midnightTimer?.cancel();
     _dcvCategoryTransitionController.removeStatusListener(
@@ -3448,7 +3472,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget shiftedVisibleIcon(Widget child) => Opacity(
       opacity: visible,
       child: Transform.translate(
-        offset: const Offset(-2, 0),
+        offset: const Offset(-3.5, 0),
         child: child,
       ),
     );
@@ -3958,6 +3982,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         RepaintBoundary(
           child: CalendarTab(
             key: _calendarTabKey,
+            initialView: _calendarView,
             daySubMode: _activeDaySubMode,
             onViewChanged:
                 (view, displayYear, prev, curr, next, titleInScrollContent) {
