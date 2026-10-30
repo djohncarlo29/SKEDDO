@@ -132,6 +132,9 @@ class AppShellPinnedToolbar extends StatelessWidget {
       onTap: onTap,
     );
 
+    // GlassAppBar registers its leading item and trailing actions as separate
+    // pinned sides. Keep their identities local to each side: the navigation
+    // shell then materializes only the side whose items actually changed.
     final toolbar = navigation_glass.GlassAppBar.pinned(
       title: const SizedBox.shrink(),
       leading: <navigation_glass.GlassBarItem>[item],

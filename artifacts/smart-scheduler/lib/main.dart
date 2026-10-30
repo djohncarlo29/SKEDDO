@@ -48,6 +48,10 @@ import 'widgets/app_shell_toolbar.dart';
 import 'widgets/app_shell_navigation_scope.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
+import 'widgets/skeddo_glass_settings.dart'
+    show
+        skeddoNavigationGlassSettingsFromShared,
+        skeddoPopoverGlassSettingsFor;
 import 'widgets/view_mode_icons.dart';
 import 'app_settings.dart';
 import 'settings_panel.dart';
@@ -1614,17 +1618,23 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ? null
             : () {
                 final cat = _dcvCategory;
-                _exitDCV();
-                if (cat != null)
-                  _eventsTabKey.currentState?.archiveCategory(cat);
+                if (cat != null) {
+                  _eventsTabKey.currentState?.archiveCategory(
+                    cat,
+                    onConfirmed: _exitDCV,
+                  );
+                }
               },
         onDeleteCategory: isUtilityCategory
             ? null
             : () {
                 final cat = _dcvCategory;
-                _exitDCV();
-                if (cat != null)
-                  _eventsTabKey.currentState?.deleteCategory(cat);
+                if (cat != null) {
+                  _eventsTabKey.currentState?.deleteCategory(
+                    cat,
+                    onConfirmed: _exitDCV,
+                  );
+                }
               },
         onEditCategory: () {
           final cat = _dcvCategory;
@@ -1748,9 +1758,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     color: resolveThemeColor(color, context),
   );
 
-  // Corrections center the rendered ink inside the shared 24 px icon slot.
-  // They follow the guide-line screenshot, not each widget's outer box or SVG
-  // viewBox.
+  // Horizontal corrections center rendered ink inside the shared icon slot.
+  // Vertical placement is shared by leading icons, labels, and trailing
+  // controls through the menu row's center alignment.
   Offset _toolbarMenuIconInkCorrection(
     Widget icon, {
     Offset additionalCorrection = Offset.zero,
@@ -1758,10 +1768,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final measuredCorrection = switch (icon) {
       // SF glyphs use per-glyph ink corrections; eye_slash reuses eye's.
       FixedSFIcon sfIcon => _toolbarMenuSfIconInkCorrection(sfIcon),
-      DetailsViewIcon() => const Offset(0, 1.125),
-      ListViewIcon() => const Offset(0, 1),
       // The plus is an overlay; align the New Section base to Manage Sections.
-      NewSectionIcon() => const Offset(-0.75, -1),
+      NewSectionIcon() => const Offset(-0.75, 0),
       _ => Offset.zero,
     };
     return measuredCorrection + additionalCorrection;
@@ -1775,7 +1783,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         : icon.icon == SFIcons.sf_archivebox
         ? -0.25
         : 0.0;
-    return Offset(horizontal, 2.625);
+    return Offset(horizontal, 0);
   }
 
   Color _toolbarMenuDefaultLabelColor() {
@@ -2043,18 +2051,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               curve: Curves.easeInOut,
               child: Icon(
                 CupertinoIcons.chevron_right,
-                size: textScaler.scale(15),
+                size: textScaler.scale(17),
                 color: resolveThemeColor(labelColor, context),
               ),
             )
           else
-            SizedBox(width: textScaler.scale(15)),
+            SizedBox(width: textScaler.scale(17)),
         ],
       );
     }
 
     double modeSubmenuIconWidth(bool selected) =>
-        MediaQuery.textScalerOf(context).scale(selected ? 38 : 15);
+        MediaQuery.textScalerOf(context).scale(selected ? 40 : 17);
 
     final sortItems = <Widget>[];
     if (isUtilityCategory) {
@@ -2191,20 +2199,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _toolbarMenuItem(
           title: 'Archive Category',
           icon: sf(SFIcons.sf_archivebox),
-          onTap: () {
-            _exitDCV();
-            _eventsTabKey.currentState?.archiveCategory(category);
-          },
+          onTap: () => _eventsTabKey.currentState?.archiveCategory(
+            category,
+            onConfirmed: _exitDCV,
+          ),
         ),
       if (!isUtilityCategory && !isSmartCategory)
         _toolbarMenuItem(
           title: 'Delete Category',
           icon: sf(SFIcons.sf_trash, color: CupertinoColors.destructiveRed),
           isDestructive: true,
-          onTap: () {
-            _exitDCV();
-            _eventsTabKey.currentState?.deleteCategory(category);
-          },
+          onTap: () => _eventsTabKey.currentState?.deleteCategory(
+            category,
+            onConfirmed: _exitDCV,
+          ),
         ),
     ];
   }
@@ -3401,6 +3409,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required String configurationKey,
   }) {
     final visible = opacity.clamp(0.0, 1.0).toDouble();
+    final menuSliderPosition = liquidGlassSliderPositionForOpacity(
+      appLiquidGlassOpacityNotifier.value,
+    );
+    final menuGlassSettings = skeddoNavigationGlassSettingsFromShared(
+      skeddoPopoverGlassSettingsFor(
+        MediaQuery.platformBrightnessOf(context),
+        resolveThemeColor(kCardColor, context),
+        sliderPosition: menuSliderPosition,
+      ),
+    );
     Widget icon(String asset) => SvgPicture.asset(
       asset,
       width: 26,
@@ -3492,6 +3510,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             selectionPillBehavior: navigation_glass
                 .GlassMenuSelectionPillBehavior
                 .scrollOrLongPress,
+            menuSettings: menuGlassSettings,
             icon: leadingActionIcon,
             menuItems: leadingActionMenuItems,
             menuWidth: leadingActionMenuWidth,
@@ -3542,6 +3561,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 appAccentNotifier,
                 appAccentUsesSystemNotifier,
                 appSystemAccentColorNotifier,
+                appLiquidGlassOpacityNotifier,
                 _dcvToolbarAccent,
                 _searchToolbarInteractionsEnabled,
                 _toolbarMenuRevision,

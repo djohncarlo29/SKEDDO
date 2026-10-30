@@ -3136,10 +3136,16 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  void _requestDeleteCategory(_UserCategory category) async {
+  void _requestDeleteCategory(
+    _UserCategory category, {
+    VoidCallback? onConfirmed,
+  }) async {
     if (_isSystemUtilityCategory(category)) return;
     if (_isSmartUserCategory(category)) {
-      await _requestDeleteSmartCategory(category);
+      await _requestDeleteSmartCategory(
+        category,
+        onConfirmed: onConfirmed,
+      );
       return;
     }
     final sectionCount = _categorySavedSectionCount(category);
@@ -3161,6 +3167,7 @@ class EventsTabState extends State<EventsTab>
         );
         if (!mounted) return;
         if (!confirmed) continue;
+        onConfirmed?.call();
         if (_pinnedUserCategories.contains(category)) {
           _deletePinnedCategory(category, deleteEvents: false);
         } else {
@@ -3191,6 +3198,7 @@ class EventsTabState extends State<EventsTab>
       );
       if (!mounted) return;
       if (!confirmed) continue;
+      onConfirmed?.call();
       final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
       if (_pinnedUserCategories.contains(category)) {
         _deletePinnedCategory(category, deleteEvents: deleteEvents);
@@ -3201,13 +3209,17 @@ class EventsTabState extends State<EventsTab>
     }
   }
 
-  Future<void> _requestDeleteSmartCategory(_UserCategory category) async {
+  Future<void> _requestDeleteSmartCategory(
+    _UserCategory category, {
+    VoidCallback? onConfirmed,
+  }) async {
     if (_isSystemUtilityCategory(category) || category.archived) return;
     final confirmed = await _confirmSmartCategoryAction(
       category.name,
       actionVerb: 'Delete',
     );
     if (!mounted || !confirmed) return;
+    onConfirmed?.call();
     _deleteSmartCategory(category);
   }
 
@@ -5900,7 +5912,10 @@ class EventsTabState extends State<EventsTab>
 
   /// Opens archive choices when a category has events. Categories without
   /// events skip the scope choice but still require confirmation.
-  void _archiveCategory(_UserCategory cat) async {
+  void _archiveCategory(
+    _UserCategory cat, {
+    VoidCallback? onConfirmed,
+  }) async {
     if (_isSystemUtilityCategory(cat) ||
         _archivingFromList.contains(cat) ||
         _archivingFromGrid.contains(cat)) {
@@ -5912,6 +5927,7 @@ class EventsTabState extends State<EventsTab>
         actionVerb: 'Archive',
       );
       if (!mounted || !confirmed) return;
+      onConfirmed?.call();
       _archiveCategoryAfterChoice(cat);
       return;
     }
@@ -5934,6 +5950,7 @@ class EventsTabState extends State<EventsTab>
         );
         if (!mounted) return;
         if (!confirmed) continue;
+        onConfirmed?.call();
         _archiveCategoryAfterChoice(cat);
         return;
       }
@@ -5960,6 +5977,7 @@ class EventsTabState extends State<EventsTab>
       );
       if (!mounted) return;
       if (!confirmed) continue;
+      onConfirmed?.call();
       if (choice == _ArchiveCategoryChoice.categoryOnly) {
         _ensureDefaultCategoryAvailable({cat.id});
         EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
@@ -6888,26 +6906,26 @@ class EventsTabState extends State<EventsTab>
   /// Called by AppShell when the user taps "Delete Category" in the DCV
   /// ellipsis action panel.  Looks the category up by name and routes
   /// through the same animated delete used by the list/grid context menus.
-  void deleteCategory(String name) {
+  void deleteCategory(String name, {VoidCallback? onConfirmed}) {
     final cat = [..._userCategories, ..._pinnedUserCategories]
         .cast<_UserCategory?>()
         .firstWhere((c) => c?.name == name, orElse: () => null);
     if (cat == null) return;
-    _requestDeleteCategory(cat);
+    _requestDeleteCategory(cat, onConfirmed: onConfirmed);
   }
 
   /// Called by AppShell when the user taps "Archive Category" in the DCV
   /// ellipsis action panel. Built-in smart DCVs and user categories share the
   /// same archive behavior used by their grid/list context menus.
-  void archiveCategory(String name) {
+  void archiveCategory(String name, {VoidCallback? onConfirmed}) {
     if (_kDCVLabels.contains(name)) {
-      _archiveSmartCategory(name);
+      _archiveSmartCategory(name, onConfirmed: onConfirmed);
       return;
     }
     final cat = [..._userCategories, ..._pinnedUserCategories]
         .cast<_UserCategory?>()
         .firstWhere((c) => c?.name == name, orElse: () => null);
-    if (cat != null) _archiveCategory(cat);
+    if (cat != null) _archiveCategory(cat, onConfirmed: onConfirmed);
   }
 
   /// Exposed so AppShell can check whether the search bar is on-screen.
@@ -7718,12 +7736,16 @@ class EventsTabState extends State<EventsTab>
   /// archiving — no reveal/unarchive UI exists yet. Plays the same soft
   /// fade+scale-down treatment as list/grid archiving before the tile is
   /// actually removed from the grid.
-  Future<void> _archiveSmartCategory(String label) async {
+  Future<void> _archiveSmartCategory(
+    String label, {
+    VoidCallback? onConfirmed,
+  }) async {
     final confirmed = await _confirmSmartCategoryAction(
       label,
       actionVerb: 'Archive',
     );
     if (!mounted || !confirmed) return;
+    onConfirmed?.call();
     setState(() => _archivingSmartLabels.add(label));
     Future.delayed(const Duration(milliseconds: 280), () {
       if (!mounted) return;

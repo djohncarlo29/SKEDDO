@@ -5,6 +5,233 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassMenu, GlassMenuItem, GlassMenuSelectionPillBehavior;
 
 void main() {
+  test('GlassMenu retains its original default corner radius', () {
+    const menu = GlassMenu(items: [], trigger: Text('Actions'));
+    expect(menu.menuBorderRadius, 32.0);
+  });
+
+  testWidgets('menu row centers leading and trailing controls with its label', (
+    tester,
+  ) async {
+    const leadingKey = ValueKey('leading-control');
+    const trailingKey = ValueKey('trailing-control');
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: GlassMenuItem(
+            title: 'Option',
+            icon: SizedBox(
+              key: leadingKey,
+              width: 24,
+              height: 24,
+              child: Icon(CupertinoIcons.list_bullet),
+            ),
+            trailing: SizedBox(
+              key: trailingKey,
+              width: 18,
+              height: 18,
+              child: Icon(CupertinoIcons.chevron_right),
+            ),
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    final labelCenterY = tester.getRect(find.text('Option')).center.dy;
+    expect(
+      tester.getRect(find.byKey(leadingKey)).center.dy,
+      closeTo(labelCenterY, 0.1),
+    );
+    expect(
+      tester.getRect(find.byKey(trailingKey)).center.dy,
+      closeTo(labelCenterY, 0.1),
+    );
+  });
+
+  testWidgets('submenu height updates when its header gains a subtitle', (
+    tester,
+  ) async {
+    String? subtitle;
+    late StateSetter rebuildMenu;
+    VoidCallback? toggleMenu;
+    final reportedExtents = <double>[];
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            rebuildMenu = setState;
+            return CupertinoPageScaffold(
+              child: Center(
+                child: GlassMenu(
+                  menuWidth: 260,
+                  autoAdjustToScreen: true,
+                  items: [
+                    GlassMenuItem(
+                      title: 'Sort By',
+                      subtitle: subtitle,
+                      submenu: [
+                        for (final title in const [
+                          'Manual',
+                          'Deadline',
+                          'Creation Date',
+                          'Priority',
+                          'Title',
+                        ])
+                          GlassMenuItem(title: title, onTap: () {}),
+                      ],
+                      onTap: () {},
+                    ),
+                  ],
+                  onLevelChanged: (depth, extent) {
+                    if (depth == 1) reportedExtents.add(extent);
+                  },
+                  triggerBuilder: (context, toggle) {
+                    toggleMenu = toggle;
+                    return CupertinoButton(
+                      onPressed: toggle,
+                      child: const Text('Actions'),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    toggleMenu!();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sort By'));
+    await tester.pumpAndSettle();
+
+    final submenuCard = find.byKey(const ValueKey('glass-menu-submenu-card-0'));
+    final initialHeight = tester.getSize(submenuCard).height;
+    expect(find.text('Title'), findsOneWidget);
+
+    rebuildMenu(() => subtitle = 'Creation Date');
+    await tester.pumpAndSettle();
+
+    final updatedHeight = tester.getSize(submenuCard).height;
+    expect(updatedHeight, greaterThan(initialHeight));
+    expect(reportedExtents.length, greaterThanOrEqualTo(2));
+    expect(reportedExtents.last, greaterThan(reportedExtents.first));
+    expect(find.text('Title'), findsOneWidget);
+  });
+
+  testWidgets('submenu chevrons scale with the OS text size', (tester) async {
+    VoidCallback? toggleMenu;
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: CupertinoPageScaffold(
+            child: Center(
+              child: GlassMenu(
+                menuWidth: 260,
+                items: [
+                  GlassMenuItem(
+                    title: 'Sort By',
+                    submenu: [GlassMenuItem(title: 'Deadline', onTap: () {})],
+                    onTap: () {},
+                  ),
+                ],
+                triggerBuilder: (context, toggle) {
+                  toggleMenu = toggle;
+                  return CupertinoButton(
+                    onPressed: toggle,
+                    child: const Text('Actions'),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    toggleMenu!();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sort By'));
+    await tester.pumpAndSettle();
+
+    final chevrons = tester.widgetList<Icon>(
+      find.byIcon(CupertinoIcons.chevron_right),
+    );
+    expect(chevrons, isNotEmpty);
+    expect(chevrons.every((icon) => icon.size == 32), isTrue);
+  });
+
+  testWidgets('open submenu is repositioned after landscape-to-portrait', (
+    tester,
+  ) async {
+    final previousPhysicalSize = tester.view.physicalSize;
+    final previousDevicePixelRatio = tester.view.devicePixelRatio;
+    addTearDown(() {
+      tester.view.physicalSize = previousPhysicalSize;
+      tester.view.devicePixelRatio = previousDevicePixelRatio;
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 400);
+
+    VoidCallback? toggleMenu;
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: GlassMenu(
+              menuWidth: 260,
+              autoAdjustToScreen: true,
+              items: [
+                GlassMenuItem(
+                  title: 'Sort By',
+                  submenu: [
+                    for (final title in const [
+                      'Manual',
+                      'Deadline',
+                      'Creation Date',
+                      'Priority',
+                      'Title',
+                    ])
+                      GlassMenuItem(title: title, onTap: () {}),
+                  ],
+                  onTap: () {},
+                ),
+              ],
+              triggerBuilder: (context, toggle) {
+                toggleMenu = toggle;
+                return CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Actions'),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    toggleMenu!();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sort By'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(400, 800);
+    await tester.pumpAndSettle();
+
+    final cardRect = tester.getRect(
+      find.byKey(const ValueKey('glass-menu-submenu-card-0')),
+    );
+    expect(cardRect.left, greaterThanOrEqualTo(0));
+    expect(cardRect.top, greaterThanOrEqualTo(0));
+    expect(cardRect.right, lessThanOrEqualTo(400));
+    expect(cardRect.bottom, lessThanOrEqualTo(800));
+  });
+
   testWidgets('submenu header displays its current subtitle', (tester) async {
     await tester.pumpWidget(
       CupertinoApp(
@@ -564,6 +791,10 @@ void main() {
       final indicatorFinder = find.byKey(
         const ValueKey('glass-menu-scroll-indicator'),
       );
+      final scale = find.descendant(
+        of: indicatorFinder,
+        matching: find.byType(AnimatedScale),
+      );
       expect(tester.widget<AnimatedOpacity>(indicatorFinder).opacity, 0);
 
       await tester.drag(
@@ -572,10 +803,156 @@ void main() {
       );
       await tester.pump();
       expect(tester.widget<AnimatedOpacity>(indicatorFinder).opacity, 0.8);
+      expect(
+        tester.widget<AnimatedScale>(scale).scale,
+        1.0,
+      );
 
       await tester.pump(const Duration(milliseconds: 1600));
       await tester.pump(const Duration(milliseconds: 200));
       expect(tester.widget<AnimatedOpacity>(indicatorFinder).opacity, 0);
+      expect(tester.widget<AnimatedScale>(scale).scale, 0.65);
+    },
+  );
+
+  testWidgets(
+    'parent menu scroll state remains intact while nested panels open and close',
+    (tester) async {
+      VoidCallback? toggleMenu;
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: GlassMenu(
+              menuWidth: 260,
+              menuHeight: 140,
+              maxStackHeight: 160,
+              items: [
+                for (var index = 0; index < 4; index++)
+                  GlassMenuItem(title: 'Root $index', onTap: () {}),
+                GlassMenuItem(
+                  title: 'Open nested',
+                  onTap: () {},
+                  submenu: [
+                    for (var index = 0; index < 8; index++)
+                      GlassMenuItem(title: 'Nested $index', onTap: () {}),
+                  ],
+                ),
+                for (var index = 0; index < 6; index++)
+                  GlassMenuItem(title: 'Tail $index', onTap: () {}),
+              ],
+              triggerBuilder: (context, toggle) {
+                toggleMenu = toggle;
+                return CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Actions'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      toggleMenu!();
+      await tester.pumpAndSettle();
+
+      final rootScrollView = find.byType(SingleChildScrollView).first;
+      final rootController = tester
+          .widget<SingleChildScrollView>(rootScrollView)
+          .controller!;
+      final rootScrollable = tester.state<ScrollableState>(
+        find.descendant(of: rootScrollView, matching: find.byType(Scrollable)),
+      );
+      expect(rootController.positions.length, 1);
+      expect(rootScrollable.position.physics, isA<BouncingScrollPhysics>());
+      await tester.drag(rootScrollView, const Offset(0, -90));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Open nested'));
+      await tester.pumpAndSettle();
+      final offsetBeforeSubmenu = rootScrollable.position.pixels;
+      expect(offsetBeforeSubmenu, greaterThan(0));
+
+      await tester.tap(find.text('Open nested'));
+      await tester.pumpAndSettle();
+      expect(rootController.positions.length, 1);
+      expect(
+        rootScrollable.position.pixels,
+        closeTo(offsetBeforeSubmenu, 0.01),
+      );
+      expect(
+        find.byKey(const ValueKey('glass-menu-scroll-fade')),
+        findsOneWidget,
+      );
+
+      final nestedScrollView = find.byType(SingleChildScrollView).last;
+      final nestedController = tester
+          .widget<SingleChildScrollView>(nestedScrollView)
+          .controller!;
+      final nestedScrollable = tester.state<ScrollableState>(
+        find.descendant(
+          of: nestedScrollView,
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(nestedController.positions.length, 1);
+      expect(nestedScrollable.position.physics, isA<BouncingScrollPhysics>());
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('glass-menu-header-1')),
+          matching: find.text('Open nested'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        rootScrollable.position.pixels,
+        closeTo(offsetBeforeSubmenu, 0.01),
+      );
+    },
+  );
+
+  testWidgets(
+    'selection pill appears while swiping across choices in a fitting menu',
+    (tester) async {
+      VoidCallback? toggleMenu;
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: GlassMenu(
+              menuWidth: 260,
+              menuHeight: 240,
+              selectionPillBehavior:
+                  GlassMenuSelectionPillBehavior.scrollOrLongPress,
+              items: [
+                for (var index = 0; index < 4; index++)
+                  GlassMenuItem(title: 'Swipe option $index', onTap: () {}),
+              ],
+              triggerBuilder: (context, toggle) {
+                toggleMenu = toggle;
+                return CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Actions'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      toggleMenu!();
+      await tester.pumpAndSettle();
+
+      final pill = find.byKey(const ValueKey('glass-menu-selection-pill'));
+      expect(pill, findsNothing);
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Swipe option 0')),
+      );
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.text('Swipe option 1')));
+      await tester.pump();
+      expect(pill, findsOneWidget);
+
+      await gesture.up();
+      await tester.pump();
+      expect(pill, findsNothing);
     },
   );
 }

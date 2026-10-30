@@ -2217,7 +2217,9 @@ class _DateFormatSettingsSection extends StatelessWidget {
                 const SizedBox(height: 20),
                 SkeddoAppOnlySettingsSection(
                   rows: optionRows,
-                  additionalFooter: appOnlyFormat.contextFooter,
+                  additionalFooter: usesSystem
+                      ? null
+                      : appOnlyFormat.contextFooter,
                 ),
               ],
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../overlays/glass_menu.dart';
 import '../overlays/glass_modal_sheet.dart';
+import '../../src/engine/liquid_glass_settings.dart';
 import 'glass_navigation_shell.dart';
 import 'glass_vertical_bar.dart';
 
@@ -165,6 +166,7 @@ sealed class GlassBarItem {
     GlassMenuAlignment? menuAlignment,
     double menuWidth,
     double? menuHeight,
+    LiquidGlassSettings? menuSettings,
     Object? id,
     String? label,
     GlassBarItemBackground background,
@@ -372,6 +374,7 @@ final class GlassBarMenuItem extends GlassBarActionItem {
     this.menuAlignment,
     this.menuWidth = 200,
     this.menuHeight,
+    this.menuSettings,
     super.id,
     super.label,
     super.background,
@@ -406,6 +409,10 @@ final class GlassBarMenuItem extends GlassBarActionItem {
 
   /// Optional fixed height for the menu panel, in logical pixels.
   final double? menuHeight;
+
+  /// Glass optics used by the expanded menu surface, independent of the
+  /// toolbar capsule that triggers it.
+  final LiquidGlassSettings? menuSettings;
 
   @override
   Widget get content => icon;

@@ -360,12 +360,14 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                                 curve: Curves.easeInOut,
                                 child: Icon(
                                   CupertinoIcons.chevron_right,
-                                  size: 16,
+                                  size: MediaQuery.textScalerOf(context)
+                                      .scale(16),
                                   color: iconColor.withValues(alpha: 0.6),
                                 ),
                               )
                             : null);
                     final row = Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Icon
                         if (widget.icon != null) ...[
@@ -423,7 +425,10 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                         // Trailing
                         if (trailing != null) ...[
                           const SizedBox(width: 8),
-                          trailing,
+                          Align(
+                            alignment: Alignment.center,
+                            child: trailing,
+                          ),
                         ],
                       ],
                     );

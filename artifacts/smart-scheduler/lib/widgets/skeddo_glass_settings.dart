@@ -173,8 +173,8 @@ double skeddoActiveTabIndicatorBlurForPosition(double position) =>
       _kActiveTabIndicatorBlurAnchors,
     );
 
-/// Slider-driven tint opacity for shared renderer surfaces. The GlassPopover
-/// intentionally uses its own fixed opacity.
+/// Slider-driven tint opacity for shared renderer surfaces. GlassPopover and
+/// GlassMenu surfaces use their separate slider curve.
 double skeddoSharedGlassOpacityForPosition(
   double position,
   Brightness brightness,
@@ -185,14 +185,14 @@ double skeddoSharedGlassOpacityForPosition(
       : _kSharedGlassLightOpacityAnchors,
 );
 
-/// Independent opacity curve used by both GlassPopover surfaces.
+/// Independent opacity curve used by GlassPopover and pinned GlassMenu surfaces.
 double skeddoPopoverOpacityForPosition(double position) =>
     _interpolateSliderAnchors(
       skeddoLiquidGlassEffectPositionForSliderPosition(position),
       _kPopoverOpacityAnchors,
     );
 
-/// Independent blur curve used by the GlassPopover card.
+/// Independent blur curve used by GlassPopover and pinned GlassMenu surfaces.
 double skeddoPopoverBlurForPosition(double position) =>
     _interpolateSliderAnchors(
       skeddoLiquidGlassEffectPositionForSliderPosition(position),
@@ -328,8 +328,8 @@ skeddoNavigationTabIndicatorGlassSettings() =>
 LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
     skeddoBottomBarGlassSettingsFor(brightness);
 
-/// Discard popovers use an opaque card tint while retaining the package's
-/// existing optical settings and edge lighting.
+/// GlassPopover surfaces use a card tint and their own slider-driven opacity
+/// and blur while retaining the package's optical settings and edge lighting.
 LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
   Color cardTint, {
