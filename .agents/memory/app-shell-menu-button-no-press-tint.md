@@ -51,15 +51,14 @@ shared action list.
 
 ## Trailing action icon alignment
 
-Pinned trailing action icons use their unshifted centered geometry. Optical
-offsets used by the normal calendar header must not be applied to these action
-icons.
+Pinned trailing toolbar icons share a 2px left visual translation. Do not apply
+the normal calendar header's separate optical offsets to those action icons.
 
-**Why:** The user requested removing offsets from every icon in the trailing
-toolbar without changing the separate in-content header icons.
+**Why:** The user requested one consistent left adjustment across all trailing
+toolbar icons while preserving separate in-content header alignment.
 
-**How to apply:** Build calendar action icons with `applyOpticalOffset: false`;
-keep the default offset behavior for icons still used in the normal header.
+**How to apply:** Apply the translation in the pinned action icon wrapper so
+Search and screen-specific icons move together without changing their slots.
 
 ## Trailing action icon alignment
 

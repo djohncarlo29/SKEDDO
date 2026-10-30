@@ -3443,7 +3443,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
     Widget anchoredIcon(Widget child) =>
         SizedBox(width: 36, height: 36, child: Center(child: child));
-    Widget visibleIcon(Widget child) => Opacity(opacity: visible, child: child);
+    Widget visibleIcon(Widget child) => Opacity(
+      opacity: visible,
+      child: Transform.translate(
+        offset: const Offset(-2, 0),
+        child: child,
+      ),
+    );
 
     final actions = <navigation_glass.GlassBarItem>[];
     final searchAction = navigation_glass.GlassBarItem.icon(
