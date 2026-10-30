@@ -319,4 +319,49 @@ void main() {
     expect(largeTextExtents.$1, greaterThan(smallTextExtents.$1));
     expect(largeTextExtents.$2, greaterThan(smallTextExtents.$2));
   });
+
+  testWidgets(
+    'selection-wrapped menu items retain multiline text at larger scales',
+    (tester) async {
+      const title = 'A long menu action label that must wrap across lines';
+      VoidCallback? toggleMenu;
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: CupertinoPageScaffold(
+              child: Center(
+                child: GlassMenu(
+                  menuWidth: 220,
+                  items: [
+                    GlassMenuItem(
+                      title: title,
+                      allowTextWrapping: true,
+                      onTap: () {},
+                    ),
+                  ],
+                  triggerBuilder: (context, toggle) {
+                    toggleMenu = toggle;
+                    return CupertinoButton(
+                      onPressed: toggle,
+                      child: const Text('Actions'),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      toggleMenu!();
+      await tester.pumpAndSettle();
+
+      final titleFinder = find.text(title);
+      final titleWidget = tester.widget<Text>(titleFinder);
+      expect(titleWidget.maxLines, isNull);
+      expect(titleWidget.overflow, TextOverflow.visible);
+      expect(tester.getSize(titleFinder).height, greaterThan(50));
+    },
+  );
 }
