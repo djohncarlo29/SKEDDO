@@ -36,12 +36,18 @@ String appShellToolbarConfigurationKey({
   required bool searchFocused,
   required int selectedTabIndex,
   required bool dcvToolbarVisible,
+  String calendarToolbarVariant = 'month-compact',
 }) {
   if (searchFocused) return 'search';
   if (selectedTabIndex == 2 && dcvToolbarVisible) {
     return 'events-dcv';
   }
-  return selectedTabIndex == 3 ? 'tab-3' : 'home';
+  if (selectedTabIndex == 1) {
+    return 'calendar-$calendarToolbarVariant';
+  }
+  if (selectedTabIndex == 2) return 'events';
+  // Home and You both show the same solo Search action.
+  return 'home';
 }
 
 /// A route-registered toolbar item using the app's slider-driven glass values.

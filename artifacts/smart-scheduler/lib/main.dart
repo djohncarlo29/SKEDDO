@@ -984,6 +984,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool get _calendarShowsYearTitle =>
       _calendarTitle.isNotEmpty && int.tryParse(_calendarTitle) != null;
 
+  String get _calendarToolbarVariant {
+    if (_calendarShowsYearTitle) return 'year';
+    if (_calendarShowsDayTitle) {
+      return 'day-${_activeDaySubMode.name}';
+    }
+    if (_calendarShowsMonthTitle) {
+      return 'month-${_activeViewMode.name}';
+    }
+    return switch (_calendarView) {
+      CalendarView.year => 'year',
+      CalendarView.month => 'month-${_activeViewMode.name}',
+      CalendarView.day => 'day-${_activeDaySubMode.name}',
+    };
+  }
+
   // Driven by CalendarTab.onStripSlide — slides the calendar header row in
   // lock-step with the week strip in Day View.  Starts and ends at 0.0.
   final _calendarStripSlide = ValueNotifier<double>(0.0);
@@ -1398,6 +1413,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // ── DCV ellipsis context menu ────────────────────────────────────────────
   final GlobalKey _ellipsisKey = GlobalKey();
   final GlobalKey _splitDcvEllipsisKey = GlobalKey();
+  final Map<String, GlobalKey> _toolbarRouteFrameKeys = {};
   final ValueNotifier<bool> _dcvMenuClosing = ValueNotifier(false);
   OverlayEntry? _dcvMenuOverlay;
   bool _dcvMenuOpen = false;
@@ -1423,7 +1439,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   DayViewSubMode _activeDaySubMode = DayViewSubMode.singleDay;
 
   void _showDcvMenu() {
-    _showDcvMenuAt(_ellipsisKey);
+    final anchor = _pinnedToolbarActionRect('events-dcv');
+    if (anchor != null) _showDcvMenuAtRect(anchor);
   }
 
   void _showSplitDcvMenu() {
@@ -1431,11 +1448,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _showDcvMenuAt(GlobalKey anchorKey) {
-    if (_dcvMenuOpen) return;
     final box = anchorKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
+    _showDcvMenuAtRect(Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height));
+  }
+
+  void _showDcvMenuAtRect(Rect btnRect) {
+    if (_dcvMenuOpen) return;
     _dcvMenuClosing.value = false;
     _dcvMenuOpen = true;
     setState(() {});
@@ -1525,7 +1546,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       panelWidth: panelW,
       chevronColumn: true,
     );
-    final btnRect = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
     final spaceAbove = btnRect.top - safeTop;
     final spaceBelow = screenH - safeBtm - btnRect.bottom;
     const panelGap = 8.0;
@@ -1649,13 +1669,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     });
   }
 
-  Widget _buildViewModeHeaderIcon() {
+  Widget _buildViewModeHeaderIcon({CalendarViewMode? mode}) {
     final c = resolveAccentColor(context);
     final landscapeDy =
         MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
         ? 1.0
         : 0.0;
-    switch (_activeViewMode) {
+    switch (mode ?? _activeViewMode) {
       case CalendarViewMode.compact:
         return Transform.translate(
           offset: Offset(1.9, -1 + landscapeDy),
@@ -1702,9 +1722,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  void _showViewModeMenu() {
+  void _showViewModeMenu({GlobalKey? anchorKey}) {
     if (_viewModeMenuOpen) return;
-    final box = _viewModeKey.currentContext?.findRenderObject() as RenderBox?;
+    final box =
+        (anchorKey ?? _viewModeKey).currentContext?.findRenderObject()
+            as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
@@ -1718,6 +1740,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _hideViewModeMenu();
       _calendarTabKey.currentState?.setViewMode(mode);
       setState(() => _activeViewMode = mode);
+      if (_selectedIndex == 1) _syncToolbarDestination();
     }
 
     final items = [
@@ -1786,7 +1809,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // ── Day View sub-mode ──────────────────────────────────────────────────────
 
-  Widget _buildDayViewModeHeaderIcon() {
+  Widget _buildDayViewModeHeaderIcon({DayViewSubMode? mode}) {
     final c = resolveAccentColor(context);
     const sz = 26.0;
     final cf = ColorFilter.mode(c, BlendMode.srcIn);
@@ -1795,7 +1818,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ? 0.5
         : 0.0;
     // All icons shifted for optical alignment with the header title.
-    switch (_activeDaySubMode) {
+    switch (mode ?? _activeDaySubMode) {
       case DayViewSubMode.singleDay:
         return Transform.translate(
           offset: Offset(2, -0.5 + landscapeDy),
@@ -1831,10 +1854,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
-  void _showDayViewModeMenu() {
+  void _showDayViewModeMenu({GlobalKey? anchorKey}) {
     if (_dayViewModeMenuOpen) return;
     final box =
-        _dayViewModeKey.currentContext?.findRenderObject() as RenderBox?;
+        (anchorKey ?? _dayViewModeKey).currentContext?.findRenderObject()
+            as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
@@ -1846,6 +1870,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     void doSelect(DayViewSubMode mode) {
       _hideDayViewModeMenu();
       setState(() => _activeDaySubMode = mode);
+      if (_selectedIndex == 1) _syncToolbarDestination();
       if (_selectedIndex == 1) _restoreHeaderScrollOffset();
       SharedPreferences.getInstance().then(
         (p) => p.setString('day_view_sub_mode', mode.name),
@@ -2868,23 +2893,31 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  List<navigation_glass.GlassBarItem> _buildPinnedHeaderActions(
-    BuildContext context, {
+  GlobalKey _toolbarActionAnchorKey(String configurationKey) =>
+      _toolbarActionAnchorKeys.putIfAbsent(configurationKey, () => GlobalKey());
+
+  List<navigation_glass.GlassBarItem> _buildPinnedHeaderActions({
     required Color accent,
     required double opacity,
     required bool interactionsEnabled,
-    required int tabIndex,
-    required bool useDcvCategory,
+    required String configurationKey,
   }) {
     final visible = opacity.clamp(0.0, 1.0).toDouble();
-    Widget icon(String asset) => Opacity(
+    Widget icon(String asset) => SvgPicture.asset(
+      asset,
+      width: 26,
+      height: 26,
+      colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+    );
+    Widget anchoredIcon(String key, Widget child) => SizedBox(
+      key: _toolbarActionAnchorKey(key),
+      width: 36,
+      height: 36,
+      child: Center(child: child),
+    );
+    Widget visibleIcon(Widget child) => Opacity(
       opacity: visible,
-      child: SvgPicture.asset(
-        asset,
-        width: 26,
-        height: 26,
-        colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
-      ),
+      child: child,
     );
 
     final actions = <navigation_glass.GlassBarItem>[];
@@ -2893,29 +2926,97 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       label: 'Search',
       enabled: interactionsEnabled && visible > 0.01,
       background: navigation_glass.GlassBarItemBackground.shared,
-      icon: icon('assets/icons/search.svg'),
+      icon: visibleIcon(icon('assets/icons/search.svg')),
       onTap: _activateTabSearch,
     );
-    if (tabIndex != 3) {
-      actions.add(
-        navigation_glass.GlassBarItem.icon(
-          id: 'app-shell-create-event-action',
-          label: 'Create event',
-          enabled: interactionsEnabled && visible > 0.01,
-          background: navigation_glass.GlassBarItemBackground.shared,
-          icon: icon('assets/icons/plus.svg'),
-          onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
-            context,
-            initialCategoryId: useDcvCategory
-                ? _eventsTabKey.currentState?.activeStandardDcvCategoryId
-                : null,
+
+    Widget? leadingActionIcon;
+    String? leadingActionId;
+    String? leadingActionLabel;
+    VoidCallback? leadingActionOnTap;
+
+    if (configurationKey == 'events') {
+      leadingActionId = 'app-shell-add-category-action';
+      leadingActionLabel = 'Add category';
+      leadingActionIcon = visibleIcon(
+        AddCategoryHeaderIcon(
+          size: 36.8,
+          color: accent,
+          opacity: visible,
+        ),
+      );
+      leadingActionOnTap = () => _eventsTabKey.currentState?.addCategory();
+    } else if (configurationKey == 'events-dcv') {
+      leadingActionId = 'app-shell-dcv-ellipsis-action';
+      leadingActionLabel = 'Category actions';
+      final anchorKey = _toolbarActionAnchorKey(configurationKey);
+      leadingActionIcon = visibleIcon(
+        anchoredIcon(
+          configurationKey,
+          SearchWeightedIcon(
+            CupertinoIcons.ellipsis_circle,
+            size: 21,
+            color: accent,
+            weight: 0,
           ),
         ),
       );
-      actions.add(searchAction);
-    } else {
-      actions.add(searchAction);
+      leadingActionOnTap = () => _showDcvMenuAt(anchorKey);
+    } else if (configurationKey == 'calendar-year') {
+      leadingActionId = 'app-shell-calendar-year-action';
+      leadingActionLabel = 'Go to today';
+      leadingActionIcon = visibleIcon(_buildYearViewHeaderIcon());
+      leadingActionOnTap = _enterTodayCalendarDay;
+    } else if (configurationKey.startsWith('calendar-month-')) {
+      final mode = CalendarViewMode.values.firstWhere(
+        (value) => configurationKey == 'calendar-month-${value.name}',
+        orElse: () => _activeViewMode,
+      );
+      leadingActionId = 'app-shell-$configurationKey-action';
+      leadingActionLabel = 'Calendar view options';
+      final anchorKey = _toolbarActionAnchorKey(configurationKey);
+      leadingActionIcon = visibleIcon(
+        anchoredIcon(
+          configurationKey,
+          _buildViewModeHeaderIcon(mode: mode),
+        ),
+      );
+      leadingActionOnTap = () => _showViewModeMenu(anchorKey: anchorKey);
+    } else if (configurationKey.startsWith('calendar-day-')) {
+      final mode = DayViewSubMode.values.firstWhere(
+        (value) => configurationKey == 'calendar-day-${value.name}',
+        orElse: () => _activeDaySubMode,
+      );
+      leadingActionId = 'app-shell-$configurationKey-action';
+      leadingActionLabel = 'Day view options';
+      final anchorKey = _toolbarActionAnchorKey(configurationKey);
+      leadingActionIcon = visibleIcon(
+        anchoredIcon(
+          configurationKey,
+          _buildDayViewModeHeaderIcon(mode: mode),
+        ),
+      );
+      leadingActionOnTap = () => _showDayViewModeMenu(anchorKey: anchorKey);
     }
+
+    if (leadingActionIcon != null &&
+        leadingActionId != null &&
+        leadingActionLabel != null &&
+        leadingActionOnTap != null) {
+      actions.add(
+        navigation_glass.GlassBarItem.icon(
+          id: leadingActionId,
+          label: leadingActionLabel,
+          enabled: interactionsEnabled && visible > 0.01,
+          background: navigation_glass.GlassBarItemBackground.shared,
+          icon: leadingActionIcon,
+          onTap: leadingActionOnTap,
+        ),
+      );
+    }
+
+    // Search is always the rightmost action; Home and You have no other action.
+    actions.add(searchAction);
     return actions;
   }
 
@@ -2927,11 +3028,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       searchFocused: _searchToolbarHidden.value && !_searchEnteredOffScreen,
       selectedTabIndex: _selectedIndex,
       dcvToolbarVisible: _dcvToolbarVisible,
+      calendarToolbarVariant: _calendarToolbarVariant,
     );
   }
 
   Route<void> _toolbarStateRouteForKey(String key) {
-    final tabIndex = key == 'tab-3' ? 3 : 0;
     final isDcv = key == 'events-dcv';
 
     final route = appShellToolbarStateRoute(
@@ -2967,13 +3068,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   hideWhen: _searchToolbarHidden,
                   interactionsEnabled: _searchToolbarInteractionsEnabled,
                   actions: _buildPinnedHeaderActions(
-                    routeContext,
                     accent: accent,
                     opacity: 1.0,
                     interactionsEnabled:
                         _searchToolbarInteractionsEnabled.value,
-                    tabIndex: tabIndex,
-                    useDcvCategory: isDcv,
+                    configurationKey: key,
                   ),
                   onTap: _handlePrimaryToolbarTap,
                 );
@@ -3351,6 +3450,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                         _restoreHeaderScrollOffset();
                       }
                     }
+                    if (_selectedIndex == 1) _syncToolbarDestination();
                   }
                 },
             scrollableTitleBuilder: _buildScrollableCalendarTitle,
@@ -3873,16 +3973,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 width: 36,
                                                                                 height: 38,
                                                                               ),
-                                                                              // Shared slot for the mutually-exclusive secondary header
-                                                                              // actions. Add Category is painted as a shell overlay below
-                                                                              // so its transparent badge can punch through the header layer;
-                                                                              // this slot preserves the header's layout for the other actions.
+                                                                               // Keep this former secondary-action slot empty so the
+                                                                               // centered title retains its established geometry. These
+                                                                               // actions now live in the pinned trailing toolbar.
                                                                               SizedBox(
                                                                                 width: 36,
                                                                                 height: isLandscape
                                                                                     ? 52
                                                                                     : 38,
-                                                                                child: Stack(
+                                                                                 child: IgnorePointer(
+                                                                                   ignoring: true,
+                                                                                   child: Opacity(
+                                                                                     opacity: 0,
+                                                                                     child: Stack(
                                                                                   clipBehavior: Clip.none,
                                                                                   children: [
                                                                                     // ── Ellipsis (DCV) ─────────────────────────────────
@@ -4024,7 +4127,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                       ? 10
                                                                                                       : 0,
                                                                                                 ),
-                                                                                                onTap: _showViewModeMenu,
+                                                                                                 onTap: () => _showViewModeMenu(),
                                                                                                 child: _buildViewModeHeaderIcon(),
                                                                                               ),
                                                                                             ),
@@ -4075,7 +4178,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                       ? 10
                                                                                                       : 0,
                                                                                                 ),
-                                                                                                onTap: _showDayViewModeMenu,
+                                                                                                 onTap: () =>
+                                                                                                     _showDayViewModeMenu(),
                                                                                                 child: _buildDayViewModeHeaderIcon(),
                                                                                               ),
                                                                                             ),
@@ -4083,8 +4187,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                         ),
                                                                                       ),
                                                                                     ),
-                                                                                  ],
-                                                                                ),
+                                                                                     ],
+                                                                                   ),
+                                                                                 ),
+                                                                               ),
                                                                               ),
                                                                               const Spacer(),
                                                                             ],
@@ -4167,67 +4273,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
-              ),
-
-              // Add Category overlay — the CustomPaint must remain on the
-              // AppShell canvas.  Do not put this icon below an Opacity or
-              // Transform layer: BlendMode.clear must see the header/content
-              // destination to create a real hole in both themes and during a
-              // sheet's scale/color-filter transition.
-              AnimatedBuilder(
-                animation: Listenable.merge([
-                  _dcvSlideController,
-                  _searchModeAnim,
-                  appAccentNotifier,
-                  appAccentUsesSystemNotifier,
-                  appSystemAccentColorNotifier,
-                ]),
-                builder: (context, _) {
-                  final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
-                  final isDCVVisual =
-                      pageP >= _dcvColorSnapThreshold &&
-                      _selectedIndex == 2;
-                  final opacity =
-                      !_searchEnteredOffScreen &&
-                              !isDCVVisual &&
-                              _selectedIndex == 2
-                      ? (1.0 - _searchModeAnim.value).clamp(0.0, 1.0)
-                      : 0.0;
-                  if (opacity <= 0.0) return const SizedBox.shrink();
-                  return Positioned(
-                    left:
-                        AppWindowContentScope.of(context).horizontalInset + 42,
-                    top: topInset,
-                    child: IgnorePointer(
-                      ignoring: opacity < 0.01,
-                      child: SizedBox(
-                        width: 42,
-                        height: 46,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () =>
-                              _eventsTabKey.currentState?.addCategory(),
-                          child: Padding(
-                            // These are the old header slot's visual
-                            // coordinates, expressed as layout instead of
-                            // Transform/Opacity layers.
-                            padding: const EdgeInsets.only(left: 3.2, top: 6.1),
-                            child: MediaQuery(
-                              data: MediaQuery.of(
-                                context,
-                              ).copyWith(textScaler: TextScaler.noScaling),
-                              child: AddCategoryHeaderIcon(
-                                size: 36.8,
-                                opacity: opacity,
-                                color: resolveAccentColor(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
               ),
 
               // In normal navigation the pinned Navigator must remain above
