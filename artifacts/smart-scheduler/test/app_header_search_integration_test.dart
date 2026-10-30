@@ -21,6 +21,12 @@ import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
+  Future<void> tapToolbarSearch(WidgetTester tester) async {
+    final toolbarSearch = find.bySemanticsLabel('Search');
+    expect(toolbarSearch, findsOneWidget);
+    await tester.tap(toolbarSearch);
+  }
+
   testWidgets('real tabs inherit the package title and search collapse stages', (
     tester,
   ) async {
@@ -78,7 +84,7 @@ void main() {
 
     // Search may present its own header, but it must not rewrite the
     // collapsed parent state or translate the shell chrome.
-    await tester.tapAt(const Offset(366, 30));
+    await tapToolbarSearch(tester);
     await tester.pumpAndSettle();
     expect(
       tester
@@ -306,7 +312,7 @@ void main() {
       )!;
       headerPosition.jumpTo(headerPosition.maxScrollExtent);
       await tester.pumpAndSettle();
-      await tester.tapAt(const Offset(366, 30));
+      await tapToolbarSearch(tester);
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
       expectShellChromeAtRest();
@@ -325,7 +331,7 @@ void main() {
       )!;
       restoredHeaderPosition.jumpTo(restoredHeaderPosition.maxScrollExtent);
       await tester.pumpAndSettle();
-      await tester.tapAt(const Offset(366, 30));
+      await tapToolbarSearch(tester);
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
       expectShellChromeAtRest();
@@ -335,7 +341,7 @@ void main() {
       expectShellChromeAtRest();
 
       await tapTabIcon('Calendar');
-      await tester.tapAt(const Offset(366, 30));
+      await tapToolbarSearch(tester);
       await tester.pumpAndSettle();
       expect(find.byType(SearchModeHeader), findsOneWidget);
       expectShellChromeAtRest();
@@ -452,7 +458,7 @@ void main() {
 
       final parentHeaderPosition = transition.position!;
       final parentHeaderPixels = parentHeaderPosition.pixels;
-      await tester.tapAt(const Offset(366, 30));
+      await tapToolbarSearch(tester);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
 
@@ -590,7 +596,7 @@ void main() {
       final originalHeaderOffset = headerPosition.pixels;
 
       for (var cycle = 0; cycle < 3; cycle++) {
-        await tester.tapAt(const Offset(366, 30));
+        await tapToolbarSearch(tester);
         await tester.pumpAndSettle();
         drainKnownGridRoundingOverflow();
         expect(
@@ -718,7 +724,7 @@ void main() {
         );
     expect(toolbarShell.resolveState()!.to.actions, hasLength(1));
 
-    await tester.tapAt(const Offset(366, 30));
+    await tapToolbarSearch(tester);
     await tester.pumpAndSettle();
     expect(find.byType(SearchModeHeader), findsOneWidget);
     expect(

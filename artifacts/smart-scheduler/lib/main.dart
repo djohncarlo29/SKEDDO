@@ -1684,56 +1684,65 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     });
   }
 
-  Widget _buildViewModeHeaderIcon({CalendarViewMode? mode}) {
+  Widget _buildViewModeHeaderIcon({
+    CalendarViewMode? mode,
+    bool applyOpticalOffset = true,
+  }) {
     final c = resolveAccentColor(context);
     final landscapeDy =
         MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
         ? 1.0
         : 0.0;
+    Widget place(Widget child, Offset offset) => applyOpticalOffset
+        ? Transform.translate(offset: offset, child: child)
+        : child;
     switch (mode ?? _activeViewMode) {
       case CalendarViewMode.compact:
-        return Transform.translate(
-          offset: Offset(1.9, -1 + landscapeDy),
-          child: CompactViewIcon(color: c, size: 24),
+        return place(
+          CompactViewIcon(color: c, size: 24),
+          Offset(1.9, -1 + landscapeDy),
         );
       case CalendarViewMode.stacked:
-        return Transform.translate(
-          offset: Offset(1.9, -1 + landscapeDy),
-          child: StackedViewIcon(color: c, size: 24),
+        return place(
+          StackedViewIcon(color: c, size: 24),
+          Offset(1.9, -1 + landscapeDy),
         );
       case CalendarViewMode.details:
-        return Transform.translate(
-          offset: Offset(2.4, landscapeDy),
-          child: DetailsViewIcon(color: c, size: 24),
+        return place(
+          DetailsViewIcon(color: c, size: 24),
+          Offset(2.4, landscapeDy),
         );
       case CalendarViewMode.list:
-        return Transform.translate(
-          offset: Offset(2.4, landscapeDy),
-          child: ListViewIcon(color: c, size: 24),
+        return place(
+          ListViewIcon(color: c, size: 24),
+          Offset(2.4, landscapeDy),
         );
     }
   }
 
-  Widget _buildYearViewHeaderIcon() {
+  Widget _buildYearViewHeaderIcon({bool applyOpticalOffset = true}) {
     final isLandscape =
         MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    return Transform.translate(
-      // Match the Month View icon slot's optical centre.
-      offset: Offset(2.2, isLandscape ? 0 : -0.5),
-      child: SizedBox(
-        // Preserve the same 24×24 alignment box as the Month View icon while
-        // rendering the calendar glyph slightly smaller inside it.
-        width: 24,
-        height: 24,
-        child: Center(
-          child: FixedSFIcon(
-            SFIcons.sf_calendar,
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
-            color: resolveAccentColor(context),
-          ),
+    final icon = SizedBox(
+      // Preserve the same 24×24 alignment box as the Month View icon while
+      // rendering the calendar glyph slightly smaller inside it.
+      width: 24,
+      height: 24,
+      child: Center(
+        child: FixedSFIcon(
+          SFIcons.sf_calendar,
+          fontSize: 20,
+          fontWeight: FontWeight.w500,
+          color: resolveAccentColor(context),
         ),
       ),
+    );
+    if (!applyOpticalOffset) return icon;
+    // Match the ordinary header's optical centre. The trailing toolbar uses
+    // the unshifted icon centered by its shared action slot.
+    return Transform.translate(
+      offset: Offset(2.2, isLandscape ? 0 : -0.5),
+      child: icon,
     );
   }
 
@@ -2312,7 +2321,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // ── Day View sub-mode ──────────────────────────────────────────────────────
 
-  Widget _buildDayViewModeHeaderIcon({DayViewSubMode? mode}) {
+  Widget _buildDayViewModeHeaderIcon({
+    DayViewSubMode? mode,
+    bool applyOpticalOffset = true,
+  }) {
     final c = resolveAccentColor(context);
     const sz = 26.0;
     final cf = ColorFilter.mode(c, BlendMode.srcIn);
@@ -2320,39 +2332,41 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
         ? 0.5
         : 0.0;
-    // All icons shifted for optical alignment with the header title.
+    Widget place(Widget child, Offset offset) => applyOpticalOffset
+        ? Transform.translate(offset: offset, child: child)
+        : child;
+    // Ordinary header icons shift optically; trailing toolbar actions remain
+    // centered in their shared action slots.
     switch (mode ?? _activeDaySubMode) {
       case DayViewSubMode.singleDay:
-        return Transform.translate(
-          offset: Offset(2, -0.5 + landscapeDy),
-          child: SvgPicture.asset(
+        return place(
+          SvgPicture.asset(
             'assets/icons/day_view_single_day.svg',
             width: sz,
             height: sz,
             colorFilter: cf,
           ),
-          // Preserved painter-based alternatives (uncomment to revert):
-          // child: SingleDayViewIcon(color: c, size: sz),
+          Offset(2, -0.5 + landscapeDy),
         );
       case DayViewSubMode.multiDay:
-        return Transform.translate(
-          offset: Offset(2, -0.5 + landscapeDy),
-          child: SvgPicture.asset(
+        return place(
+          SvgPicture.asset(
             'assets/icons/day_view_multi_day.svg',
             width: sz,
             height: sz,
             colorFilter: cf,
           ),
+          Offset(2, -0.5 + landscapeDy),
         );
       case DayViewSubMode.list:
-        return Transform.translate(
-          offset: Offset(2, -0.3 + landscapeDy),
-          child: SvgPicture.asset(
+        return place(
+          SvgPicture.asset(
             'assets/icons/day_view_list.svg',
             width: sz,
             height: sz,
             colorFilter: cf,
           ),
+          Offset(2, -0.3 + landscapeDy),
         );
     }
   }
@@ -3474,7 +3488,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     } else if (configurationKey == 'calendar-year') {
       leadingActionId = 'app-shell-calendar-year-action';
       leadingActionLabel = 'Go to today';
-      leadingActionIcon = visibleIcon(_buildYearViewHeaderIcon());
+      leadingActionIcon = visibleIcon(
+        _buildYearViewHeaderIcon(applyOpticalOffset: false),
+      );
       leadingActionOnTap = _enterTodayCalendarDay;
     } else if (configurationKey.startsWith('calendar-month-')) {
       final mode = CalendarViewMode.values.firstWhere(
@@ -3484,7 +3500,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       leadingActionId = 'app-shell-$configurationKey-action';
       leadingActionLabel = 'Calendar view options';
       leadingActionIcon = visibleIcon(
-        anchoredIcon(_buildViewModeHeaderIcon(mode: mode)),
+        anchoredIcon(
+          _buildViewModeHeaderIcon(mode: mode, applyOpticalOffset: false),
+        ),
       );
       leadingActionMenuItems = _calendarViewModeMenuItems(accent);
     } else if (configurationKey.startsWith('calendar-day-')) {
@@ -3495,7 +3513,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       leadingActionId = 'app-shell-$configurationKey-action';
       leadingActionLabel = 'Day view options';
       leadingActionIcon = visibleIcon(
-        anchoredIcon(_buildDayViewModeHeaderIcon(mode: mode)),
+        anchoredIcon(
+          _buildDayViewModeHeaderIcon(mode: mode, applyOpticalOffset: false),
+        ),
       );
       leadingActionMenuItems = _calendarDayModeMenuItems(accent);
     }

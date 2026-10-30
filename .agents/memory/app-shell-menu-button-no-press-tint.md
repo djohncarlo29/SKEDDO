@@ -48,3 +48,27 @@ two-icon trailing toolbar.
 
 **How to apply:** Preserve each item's stable ID and behavior; only reorder the
 shared action list.
+
+## Trailing action icon alignment
+
+Pinned trailing action icons use their unshifted centered geometry. Optical
+offsets used by the normal calendar header must not be applied to these action
+icons.
+
+**Why:** The user requested removing offsets from every icon in the trailing
+toolbar without changing the separate in-content header icons.
+
+**How to apply:** Build calendar action icons with `applyOpticalOffset: false`;
+keep the default offset behavior for icons still used in the normal header.
+
+## Trailing action icon alignment
+
+Pinned trailing action icons use their unshifted centered geometry. Optical
+offsets used by the normal calendar header must not be applied to these action
+icons.
+
+**Why:** The user requested removing offsets from every icon in the trailing
+toolbar without changing the separate in-content header icons.
+
+**How to apply:** Build calendar action icons with `applyOpticalOffset: false`;
+keep the default offset behavior for icons still used in the normal header.
