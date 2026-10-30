@@ -388,7 +388,7 @@ void main() {
           .bySemanticsLabel('Calendar view options')
           .last;
       await tester.tap(calendarOptions);
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
       expect(find.text('Compact'), findsOneWidget);
       await tester.tapAt(const Offset(201, 600));
       await tester.pump(const Duration(milliseconds: 400));

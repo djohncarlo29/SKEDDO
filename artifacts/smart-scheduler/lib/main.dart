@@ -3267,7 +3267,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       leadingActionIcon = visibleIcon(
         anchoredIcon(
           SearchWeightedIcon(
-            CupertinoIcons.ellipsis_circle,
+            CupertinoIcons.ellipsis,
             size: 21,
             color: accent,
             weight: 0,
@@ -3553,7 +3553,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           key: interactive ? _splitDcvEllipsisKey : null,
                           onTap: _showSplitDcvMenu,
                           child: SearchWeightedIcon(
-                            CupertinoIcons.ellipsis_circle,
+                            CupertinoIcons.ellipsis,
                             size: 21,
                             color: pageAccent,
                             weight: 0,
@@ -4384,7 +4384,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                                                   : -3,
                                                                                                                             ),
                                                                                                                             child: SearchWeightedIcon(
-                                                                                                                              CupertinoIcons.ellipsis_circle,
+                                                                                                                              CupertinoIcons.ellipsis,
                                                                                                                               size: 21,
                                                                                                                               color: accent,
                                                                                                                               weight: 0.0,

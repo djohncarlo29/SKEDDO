@@ -15,10 +15,18 @@ Key toolbar routes by their visible glyph/action configuration, not by the desti
 
 **How to apply:** Use the nested AppShell Navigator for tab/Settings route changes and the root Navigator for app-wide presentations. Test that unchanged configurations stay settled, changed configurations morph without an empty frame, and both body and toolbar share the root route's dim filter.
 
-## Pinned action anchors
+## Pinned menus and anchors
 
-Do not put a `GlobalKey` on an individual pinned action's icon subtree. Give each toolbar-route instance its own key at the route-level `AppShellPinnedToolbar`, then derive custom-menu anchors from that toolbar frame and the package's slot dimensions.
+Use `GlassBarItem.menu` when the shared toolbar capsule itself should morph into an action menu; the package owns the trigger geometry and morph. If a custom overlay menu is required instead, do not put a `GlobalKey` on an individual pinned action's icon subtree. Give each toolbar-route instance its own key at the route-level `AppShellPinnedToolbar`, then derive custom-menu anchors from that toolbar frame and the package's slot dimensions.
 
-**Why:** The navigation shell paints a hoisted copy of pinned action icons as well as the in-route registration. A key inside an icon is therefore mounted twice and triggers a duplicate-key failure; a configuration-keyed frame key can also collide during fast overlapping route transitions.
+**Why:** The package menu already anchors and morphs the whole capsule. For custom overlays, the navigation shell paints a hoisted copy of pinned action icons as well as the in-route registration. A key inside an icon is therefore mounted twice and triggers a duplicate-key failure; a configuration-keyed frame key can also collide during fast overlapping route transitions.
 
-**How to apply:** Keep action widgets keyless. Capture a fresh frame key per toolbar route instance and calculate the action rectangle from its measured frame, toolbar insets, and shared-slot extent.
+**How to apply:** Prefer `GlassBarItem.menu` for capsule-to-menu transitions. For a custom overlay, keep action widgets keyless, capture a fresh frame key per toolbar route instance, and calculate the action rectangle from its measured frame, toolbar insets, and shared-slot extent.
+
+## Dynamic menu contents
+
+When a pinned menu's selected or conditional rows depend on state that can change while the visible toolbar configuration stays the same, rebuild the route-owned toolbar action list through a notifier included in that route's builder.
+
+**Why:** The pinned toolbar lives in its own route registration; a parent `setState` does not guarantee that the active route rebuilds its menu item list.
+
+**How to apply:** Increment the menu-content revision after changing menu state or changing the active DCV category, and listen to it from the toolbar route builder.
