@@ -789,7 +789,8 @@ const _kDateFormatWeekdayNames = <String>[
   'Sunday',
 ];
 
-/// New installs and legacy Date Format settings use MM/DD/YYYY for this test.
+/// The native system format is selected by default on new installs. Until the
+/// OS pattern is loaded, this notifier holds the closest supported fallback.
 final ValueNotifier<AppDateFormat> appDateFormatNotifier =
     ValueNotifier<AppDateFormat>(AppDateFormat.monthDayYearSlash);
 /// The saved App Only choice remains intact while System mode is active.
@@ -802,7 +803,7 @@ final ValueNotifier<String?> appSystemDateFormatPatternNotifier =
 final ValueNotifier<String?> appSystemDateFormatSampleNotifier =
     ValueNotifier<String?>(null);
 final ValueNotifier<bool> appDateFormatUsesSystemNotifier =
-    ValueNotifier<bool>(false);
+    ValueNotifier<bool>(true);
 
 String formatAppDate(DateTime date, {AppDateFormat? format}) {
   final systemPattern = appSystemDateFormatPatternNotifier.value;
@@ -1126,11 +1127,16 @@ Future<void> loadAppSettings() async {
     }
   }
 
+  final savedDateFormatName = prefs.getString(_kDateFormatKey);
   appCustomDateFormatNotifier.value =
-      AppDateFormat.fromName(prefs.getString(_kDateFormatKey)) ??
+      AppDateFormat.fromName(savedDateFormatName) ??
       AppDateFormat.monthDayYearSlash;
+  // New installations mirror the OS by default. If an older installation
+  // already saved an App Only format before the System toggle existed, keep
+  // that explicit choice rather than silently changing its behavior.
   appDateFormatUsesSystemNotifier.value =
-      prefs.getBool(_kDateFormatUsesSystemKey) ?? false;
+      prefs.getBool(_kDateFormatUsesSystemKey) ??
+      (savedDateFormatName == null);
   appDateFormatNotifier.value = appDateFormatUsesSystemNotifier.value
       ? appSystemDateFormatNotifier.value
       : appCustomDateFormatNotifier.value;

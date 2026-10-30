@@ -3246,7 +3246,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // new one (e.g. view=month but title="2026" mid-transition).
   //
   //   4-digit integer  →  year title  (blue iff == today.year)
-  //   contains space   →  day title   (blue iff == "MMM d" for today AND displayYear == today.year)
+  //   contains space   →  day title   (blue iff it matches the active Medium
+  //                                   date order for today and displayYear)
   //   otherwise        →  month title (blue iff == today's full month name AND displayYear == today.year)
   // displayYear is the year the calendar is actually showing (from _calendarDisplayYear),
   // so "June 2027" and "Jun 26, 2027" are never incorrectly highlighted.
@@ -3256,21 +3257,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (parsedYear != null) return parsedYear == today.year;
     if (title.contains(' ')) {
       if (displayYear != today.year) return false;
-      const s = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      return title == '${s[today.month - 1]} ${today.day}';
+      return title == formatAppDateMedium(today, includeYear: false);
     }
     if (displayYear != today.year) return false;
     return title == _monthNames[today.month - 1] ||

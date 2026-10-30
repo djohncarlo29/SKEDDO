@@ -6,12 +6,15 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassNavigationShell,
         GlassNavigationShellState;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/main.dart';
+import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/tabs/events_tab.dart';
 import 'package:smart_scheduler/tabs/notes_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
+import 'package:smart_scheduler/widgets/header_title_scroller.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
@@ -181,6 +184,7 @@ void main() {
           )
           .hitTestable()
           .first;
+      print('Theme first option top: ${tester.getTopLeft(firstOption).dy}');
       expect(
         tester.getTopLeft(firstOption).dy,
         greaterThan(settingsInset + kAppHeaderTitleHeight),
@@ -210,12 +214,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Mirror System Setting'), findsOneWidget);
       expect(find.text('Skeddo App Only'), findsOneWidget);
-      final dateFormatSection = find
-          .byWidgetPredicate(
+      final dateFormatSections = find.byWidgetPredicate(
             (widget) =>
                 widget.runtimeType.toString() == '_DateFormatSettingsSection',
-          )
-          .last;
+          );
+      print('Date Format sections: ${dateFormatSections.evaluate().length}');
+      for (var index = 0;
+          index < dateFormatSections.evaluate().length;
+          index++) {
+        print(
+          'Date Format section $index: '
+          '${tester.getTopLeft(dateFormatSections.at(index)).dy}',
+        );
+      }
+      final dateFormatSection = dateFormatSections.last;
       final systemFormatRow = find
           .descendant(
             of: dateFormatSection,
@@ -224,6 +236,10 @@ void main() {
             ),
           )
           .first;
+      print(
+        'Date Format system row top: ${tester.getTopLeft(systemFormatRow).dy}, '
+        'shared inset: $settingsInset',
+      );
       expect(
         tester.getTopLeft(systemFormatRow).dy,
         greaterThan(settingsInset + kAppHeaderTitleHeight),
@@ -576,4 +592,45 @@ void main() {
       drainKnownGridRoundingOverflow();
     },
   );
+
+  testWidgets('today Day View title stays accented in day-first format', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'app_date_format': AppDateFormat.dayMonthYearDot.name,
+      'app_date_format_uses_system': false,
+    });
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const SKEDDOApp());
+    await tester.pumpAndSettle();
+
+    final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
+    await calendar.enterTodayDay();
+    await tester.pumpAndSettle();
+
+    final expectedTitle = formatAppDateMedium(
+      DateTime.now(),
+      includeYear: false,
+    );
+    final titleScroller = find
+        .byWidgetPredicate(
+          (widget) =>
+              widget is HeaderTitleScroller && widget.title == expectedTitle,
+        )
+        .first;
+    final titleTextFinder = find.descendant(
+      of: titleScroller,
+      matching: find.text(expectedTitle),
+    );
+    expect(titleTextFinder, findsOneWidget);
+    final titleText = tester.widget<Text>(titleTextFinder);
+    expect(
+      titleText.style?.color,
+      resolveAccentColor(tester.element(titleTextFinder)),
+    );
+  });
 }

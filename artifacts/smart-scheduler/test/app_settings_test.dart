@@ -28,7 +28,7 @@ void main() {
     appSystemDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
     appSystemDateFormatPatternNotifier.value = null;
     appSystemDateFormatSampleNotifier.value = null;
-    appDateFormatUsesSystemNotifier.value = false;
+    appDateFormatUsesSystemNotifier.value = true;
     appDateLocaleNotifier.value = DateLocalePreference.monthFirst;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
@@ -198,11 +198,24 @@ void main() {
     );
   });
 
-  test('Date Format defaults to the requested test selection', () async {
+  test('Date Format defaults to System on a first install', () async {
     await loadAppSettings();
 
+    expect(appDateFormatUsesSystemNotifier.value, isTrue);
     expect(appDateFormatNotifier.value, AppDateFormat.monthDayYearSlash);
     expect(appDateFormatNotifier.value.sample, '08/19/2026');
+  });
+
+  test('legacy saved Date Format remains an App Only choice', () async {
+    SharedPreferences.setMockInitialValues({
+      'app_date_format': AppDateFormat.dayMonthYearDot.name,
+    });
+
+    await loadAppSettings();
+
+    expect(appDateFormatUsesSystemNotifier.value, isFalse);
+    expect(appCustomDateFormatNotifier.value, AppDateFormat.dayMonthYearDot);
+    expect(appDateFormatNotifier.value, AppDateFormat.dayMonthYearDot);
   });
 
   test('Date Format selection persists and keeps parser order aligned', () async {
