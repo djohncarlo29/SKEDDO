@@ -188,6 +188,9 @@ class GlassPullDownButton extends StatelessWidget {
             closeDelay: item.closeDelay,
             submenu: item.submenu,
             trailing: item.trailing,
+            trailingWidth: item.trailingWidth,
+            trailingBuilder: item.trailingBuilder,
+            submenuOpen: item.submenuOpen,
             onTap: () {
               item.onTap.call();
               onSelected!(item.title);

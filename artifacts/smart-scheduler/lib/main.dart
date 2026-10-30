@@ -1787,6 +1787,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required VoidCallback onTap,
     Widget? icon,
     Widget? trailing,
+    double? trailingWidth,
+    Widget Function(BuildContext context, bool submenuOpen)? trailingBuilder,
     String? subtitle,
     List<Widget>? submenu,
     bool isDestructive = false,
@@ -1838,6 +1840,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ),
       iconSize: iconSlotSize,
       trailing: trailing,
+      trailingWidth: trailing == null && trailingBuilder == null
+          ? null
+          : (trailingWidth ?? textScaler.scale(18)),
+      trailingBuilder: trailingBuilder,
       subtitle: subtitle,
       allowTextWrapping: true,
       submenu: submenu,
@@ -2014,7 +2020,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _toolbarMenuCheckmark(labelColor, selected: selected);
     Widget sf(IconData icon, {double size = 20, Color? color}) =>
         _toolbarMenuSfIcon(icon, color ?? labelColor, size: size);
-    Widget modeSubmenuIcon(bool selected, {bool hasChevron = true}) {
+    Widget modeSubmenuIcon(
+      bool selected, {
+      bool hasChevron = true,
+      bool isOpen = false,
+    }) {
       final textScaler = MediaQuery.textScalerOf(context);
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -2027,16 +2037,24 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ),
           if (selected) SizedBox(width: textScaler.scale(6)),
           if (hasChevron)
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: textScaler.scale(15),
-              color: resolveThemeColor(labelColor, context),
+            AnimatedRotation(
+              turns: isOpen ? 0.25 : 0,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeInOut,
+              child: Icon(
+                CupertinoIcons.chevron_right,
+                size: textScaler.scale(15),
+                color: resolveThemeColor(labelColor, context),
+              ),
             )
           else
             SizedBox(width: textScaler.scale(15)),
         ],
       );
     }
+
+    double modeSubmenuIconWidth(bool selected) =>
+        MediaQuery.textScalerOf(context).scale(selected ? 38 : 15);
 
     final sortItems = <Widget>[];
     if (isUtilityCategory) {
@@ -2064,6 +2082,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             _toolbarMenuItem(
               title: option,
               trailing: modeSubmenuIcon(sortBy == option, hasChevron: false),
+              trailingWidth: modeSubmenuIconWidth(sortBy == option),
               onTap: () => saveSort(option),
             ),
           );
@@ -2073,7 +2092,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             _toolbarMenuItem(
               title: option,
               subtitle: selected ? sortDir : null,
-              trailing: modeSubmenuIcon(selected),
+              trailingBuilder: (context, isOpen) =>
+                  modeSubmenuIcon(selected, isOpen: isOpen),
+              trailingWidth: modeSubmenuIconWidth(selected),
               submenu: [
                 for (final direction in optionDirections)
                   _toolbarMenuItem(
@@ -2117,7 +2138,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           _toolbarMenuItem(
             title: 'Manage Sections',
             icon: NewSectionIcon(size: 16, color: labelColor),
-            trailing: modeSubmenuIcon(false),
+            trailingBuilder: (context, isOpen) =>
+                modeSubmenuIcon(false, isOpen: isOpen),
+            trailingWidth: modeSubmenuIconWidth(false),
             submenu: [
               _toolbarMenuItem(
                 title: 'New Section',
@@ -2149,7 +2172,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         subtitle: isUtilityCategory ? sortDir : sortBy,
         icon: sf(SFIcons.sf_arrow_up_arrow_down),
         labelColor: labelColor,
-        trailing: modeSubmenuIcon(false),
+        trailingBuilder: (context, isOpen) =>
+            modeSubmenuIcon(false, isOpen: isOpen),
+        trailingWidth: modeSubmenuIconWidth(false),
         submenu: sortItems,
         onTap: () {},
       ),

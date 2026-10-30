@@ -49,6 +49,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   Offset? _menuPointerLocalPosition;
   int? _longPressCandidateIndex;
   bool _selectionPillActiveFromScroll = false;
+  bool _showTopScrollFade = false;
+  bool _showBottomScrollFade = false;
+  bool _scrollIndicatorVisible = false;
+  bool _scrollMetricsSyncScheduled = false;
+  Timer? _scrollIndicatorHideTimer;
 
   // --- Layered submenus (GlassMenuItem.submenu) ---
   // Every pushed level opens a second glass card OVER the menu body (the way
@@ -168,6 +173,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       }
     });
     _scrollController = ScrollController();
+    _scrollController.addListener(_onMenuScrollPositionChanged);
     _hoveredIndexNotifier = ValueNotifier(null);
     _isDraggingNotifier = ValueNotifier(false);
     _selectionPillActiveNotifier = ValueNotifier(false);
@@ -188,11 +194,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     widget.controller?._detach(this);
     _morphController.dispose();
     _contentMorph.dispose();
+    _scrollController.removeListener(_onMenuScrollPositionChanged);
     _scrollController.dispose();
     _hoveredIndexNotifier.dispose();
     _isDraggingNotifier.dispose();
     _selectionPillLongPressTimer?.cancel();
     _selectionPillScrollEndTimer?.cancel();
+    _scrollIndicatorHideTimer?.cancel();
     _selectionPillActiveNotifier.dispose();
     super.dispose();
   }
@@ -870,12 +878,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           height: parent.height,
           iconColor: parent.isDestructive ? null : parent.iconColor,
           iconSize: parent.iconSize,
+          trailingWidth: parent.trailingWidth,
           enablePressScale: parent.enablePressScale,
-          trailing: _submenuHeaderChevron(
-            parent,
-            depth,
-            isSubmenuOpen: isSubmenuOpen,
-          ),
+          trailing: parent.trailingBuilder?.call(context, isSubmenuOpen) ??
+              _submenuHeaderChevron(
+                parent,
+                depth,
+                isSubmenuOpen: isSubmenuOpen,
+              ),
           maxLines: parent.maxLines,
           allowTextWrapping: parent.allowTextWrapping,
         ),
@@ -1263,6 +1273,122 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     return offset;
   }
 
+  Shader _menuScrollFadeShader(Rect bounds) {
+    const white = Color(0xFFFFFFFF);
+    const transparent = Color(0x00FFFFFF);
+    if (bounds.height == 0) {
+      return const LinearGradient(colors: [white, white]).createShader(bounds);
+    }
+    const fadeHeight = 50.0;
+    final topFraction = _showTopScrollFade
+        ? (fadeHeight / bounds.height).clamp(0.0, 0.45)
+        : 0.0;
+    final bottomFraction = _showBottomScrollFade
+        ? (fadeHeight / bounds.height).clamp(0.0, 0.45)
+        : 0.0;
+    final topStart = topFraction * 0.30;
+    final topSolid = topFraction * 0.65;
+    final bottomSolid = 1.0 - bottomFraction * 0.65;
+    final bottomEnd = 1.0 - bottomFraction * 0.30;
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        _showTopScrollFade ? transparent : white,
+        _showTopScrollFade ? const Color(0x06FFFFFF) : white,
+        _showTopScrollFade ? const Color(0x38FFFFFF) : white,
+        white,
+        white,
+        _showBottomScrollFade ? const Color(0x38FFFFFF) : white,
+        _showBottomScrollFade ? const Color(0x06FFFFFF) : white,
+        _showBottomScrollFade ? transparent : white,
+      ],
+      stops: [
+        0.0,
+        topStart,
+        topSolid,
+        topFraction,
+        1.0 - bottomFraction,
+        bottomSolid,
+        bottomEnd,
+        1.0,
+      ],
+    ).createShader(bounds);
+  }
+
+  Widget _buildMenuScrollIndicator(BuildContext context) => Positioned(
+        right: 3,
+        top: 10,
+        bottom: 10,
+        width: 2.5,
+        child: IgnorePointer(
+          child: AnimatedOpacity(
+            key: const ValueKey('glass-menu-scroll-indicator'),
+            opacity: _scrollIndicatorVisible ? 0.8 : 0.0,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final trackHeight = constraints.maxHeight;
+                return AnimatedBuilder(
+                  animation: _scrollController,
+                  builder: (context, _) {
+                    if (!_scrollController.hasClients || trackHeight <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    final position = _scrollController.position;
+                    if (!position.hasContentDimensions ||
+                        position.maxScrollExtent < 1.0) {
+                      return const SizedBox.shrink();
+                    }
+                    final overscroll = position.pixels < 0
+                        ? -position.pixels
+                        : position.pixels > position.maxScrollExtent
+                            ? position.pixels - position.maxScrollExtent
+                            : 0.0;
+                    final total = position.maxScrollExtent +
+                        position.viewportDimension +
+                        overscroll;
+                    final fraction =
+                        (position.viewportDimension / total).clamp(0.0, 1.0);
+                    final minPillHeight = math.min(20.0, trackHeight);
+                    final pillHeight = (fraction * trackHeight)
+                        .clamp(minPillHeight, trackHeight)
+                        .toDouble();
+                    final ratio = position.maxScrollExtent > 0
+                        ? (position.pixels / position.maxScrollExtent)
+                            .clamp(0.0, 1.0)
+                        : 0.0;
+                    final pillTop = (ratio * (trackHeight - pillHeight))
+                        .clamp(0.0, trackHeight - pillHeight)
+                        .toDouble();
+                    return Stack(
+                      children: [
+                        Positioned(
+                          top: pillTop,
+                          left: 0,
+                          right: 0,
+                          height: pillHeight,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: CupertinoDynamicColor.resolve(
+                                CupertinoColors.tertiaryLabel,
+                                context,
+                              ),
+                              borderRadius: BorderRadius.circular(1.25),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
   double _listHeight(List<Widget> list) {
     var height = 2.0 * _kBodyVerticalPadding;
     for (var i = 0; i < list.length; i++) {
@@ -1391,6 +1517,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     ScrollNotification notification,
     BuildContext buildContext,
   ) {
+    _syncMenuScrollFades(notification.metrics);
+    if (notification is ScrollStartNotification ||
+        notification is ScrollUpdateNotification ||
+        notification is OverscrollNotification) {
+      _showMenuScrollIndicator();
+    }
+
     if (!widget.showSelectionPill ||
         widget.selectionPillBehavior !=
             GlassMenuSelectionPillBehavior.scrollOrLongPress ||
@@ -1432,6 +1565,46 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final index = _calculateIndexFromPosition(position, buildContext);
     _hoveredIndex = index;
     _hoveredIndexNotifier.value = index;
+  }
+
+  void _scheduleMenuScrollMetricsSync() {
+    if (_scrollMetricsSyncScheduled) return;
+    _scrollMetricsSyncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollMetricsSyncScheduled = false;
+      if (!mounted || !_scrollController.hasClients) return;
+      _syncMenuScrollFades(_scrollController.position);
+    });
+  }
+
+  void _onMenuScrollPositionChanged() {
+    if (!mounted || !_scrollController.hasClients) return;
+    _syncMenuScrollFades(_scrollController.position);
+  }
+
+  void _syncMenuScrollFades(ScrollMetrics metrics) {
+    final canScroll = metrics.maxScrollExtent > 1.0;
+    final showTop = canScroll && metrics.pixels > 1.0;
+    final showBottom =
+        canScroll && metrics.pixels < metrics.maxScrollExtent - 1.0;
+    if (_showTopScrollFade == showTop && _showBottomScrollFade == showBottom) {
+      return;
+    }
+    setState(() {
+      _showTopScrollFade = showTop;
+      _showBottomScrollFade = showBottom;
+    });
+  }
+
+  void _showMenuScrollIndicator() {
+    if (!_scrollIndicatorVisible) {
+      setState(() => _scrollIndicatorVisible = true);
+    }
+    _scrollIndicatorHideTimer?.cancel();
+    _scrollIndicatorHideTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted || !_scrollIndicatorVisible) return;
+      setState(() => _scrollIndicatorVisible = false);
+    });
   }
 
   // ─── External glide (GlassMenuController.glideTo / endGlide) ────────────────
@@ -2098,6 +2271,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     double passiveScrollOffset = 0.0,
     int? coveredDepth,
   }) {
+    if (interactive) _scheduleMenuScrollMetricsSync();
     final coveredOpacity =
         coveredDepth == null ? 1.0 : _coveredRowOpacity(coveredDepth);
     final itemOpacity = _morphController.isClosing
@@ -2121,7 +2295,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                     : itemOpacity,
             child: Transform.scale(
               scale: itemScale,
-              child: interactive ? _buildWrappedItems()[i] : items[i],
+              child: interactive
+                  ? _buildWrappedItems()[i]
+                  : _buildPassiveMenuItem(items[i]),
             ),
           ),
           if (i < items.length - 1) const SizedBox(height: _kRowGap),
@@ -2327,11 +2503,18 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                   child: NotificationListener<ScrollNotification>(
                     onNotification: (notification) =>
                         _handleMenuScrollNotification(notification, context),
-                    child: listBody.child!,
+                    child: ShaderMask(
+                      key: const ValueKey('glass-menu-scroll-fade'),
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: _menuScrollFadeShader,
+                      child: listBody.child!,
+                    ),
                   ),
                 ),
               ),
             ),
+            if (interactive && _isScrollable)
+              _buildMenuScrollIndicator(context),
           ],
         ));
   }
@@ -2354,6 +2537,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
               isDestructive: item.isDestructive,
               enabled: item.enabled,
               trailing: item.trailing,
+              trailingWidth: item.trailingWidth,
+              trailingBuilder: item.trailingBuilder,
+              submenuOpen: _isSubmenuOpen(item),
               height: item.height,
               titleStyle: item.titleStyle,
               subtitleStyle: item.subtitleStyle,
@@ -2388,6 +2574,44 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       }
       return item;
     }).toList();
+  }
+
+  bool _isSubmenuOpen(GlassMenuItem item) {
+    for (var depth = 0; depth < _submenuStack.length; depth++) {
+      if (identical(_submenuStack[depth].parent, item)) {
+        return !(depth == _submenuStack.length - 1 && _levelMorphPopping);
+      }
+    }
+    return false;
+  }
+
+  Widget _buildPassiveMenuItem(Widget item) {
+    if (item is! GlassMenuItem || !_isSubmenuOpen(item)) return item;
+    return GlassMenuItem(
+      key: item.key,
+      title: item.title,
+      subtitle: item.subtitle,
+      icon: item.icon,
+      isDestructive: item.isDestructive,
+      enabled: item.enabled,
+      trailing: item.trailing,
+      trailingWidth: item.trailingWidth,
+      trailingBuilder: item.trailingBuilder,
+      submenuOpen: true,
+      height: item.height,
+      titleStyle: item.titleStyle,
+      subtitleStyle: item.subtitleStyle,
+      iconColor: item.iconColor,
+      iconSize: item.iconSize,
+      maxLines: item.maxLines,
+      allowTextWrapping: item.allowTextWrapping,
+      closeDelay: item.closeDelay,
+      enablePressScale: item.enablePressScale,
+      submenu: item.submenu,
+      isSelected: item.isSelected,
+      isPressed: item.isPressed,
+      onTap: item.onTap,
+    );
   }
 
   bool get _isScrollable {
@@ -2431,11 +2655,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           textScaler.scale(baseContentHeight) + fixedPadding;
       final rowWidth = math.max(1.0, widget.menuWidth - 24.0 - 32.0);
       final leadingWidth = item.icon == null ? 0.0 : item.iconSize + 12.0;
-      final trailingWidth = item.trailing != null
-          ? 44.0
-          : item.submenu != null
-              ? 24.0
-              : 0.0;
+      final trailingWidth =
+          item.trailing != null || item.trailingBuilder != null
+              ? (item.trailingWidth ?? textScaler.scale(24.0)) + 8.0
+              : item.submenu != null
+                  ? 24.0
+                  : 0.0;
       final textWidth =
           math.max(1.0, rowWidth - leadingWidth - trailingWidth).toDouble();
       final maxLines = item.allowTextWrapping ? null : item.maxLines;
@@ -2626,6 +2851,7 @@ class _GlassMenuHeaderItem extends GlassMenuItem {
     super.subtitleStyle,
     super.icon,
     super.height,
+    super.trailingWidth,
     super.maxLines,
     super.allowTextWrapping,
     super.titleStyle,

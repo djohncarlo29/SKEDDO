@@ -25,6 +25,9 @@ class GlassMenuItem extends StatefulWidget {
     this.subtitleStyle,
     this.iconColor,
     this.iconSize = 20.0,
+    this.trailingWidth,
+    this.trailingBuilder,
+    this.submenuOpen = false,
     this.maxLines = 1,
     this.allowTextWrapping = false,
     this.enablePressScale = true,
@@ -51,6 +54,22 @@ class GlassMenuItem extends StatefulWidget {
 
   /// A widget to display after the title (e.g., shortcut key).
   final Widget? trailing;
+
+  /// Width of [trailing] used when measuring the menu row.
+  ///
+  /// The row keeps an 8px minimum gap before trailing content. Set this when
+  /// the trailing widget is wider than a standard icon slot.
+  final double? trailingWidth;
+
+  /// Builds trailing content with this item's submenu-open state.
+  ///
+  /// Use this when trailing content includes a chevron that should animate
+  /// only while this specific item's submenu is open.
+  final Widget Function(BuildContext context, bool submenuOpen)?
+      trailingBuilder;
+
+  /// Whether this item's submenu is open, managed by [GlassMenu].
+  final bool submenuOpen;
 
   /// Height of the item.
   ///
@@ -327,14 +346,23 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                 opacity: widget.enabled ? 1.0 : 0.4,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // A submenu row shows a chevron unless the caller supplied
-                    // its own trailing widget.
-                    final Widget? trailing = widget.trailing ??
+                    // Build custom trailing content with this item's submenu
+                    // state, or rotate the package's default chevron.
+                    final Widget? trailing = widget.trailingBuilder?.call(
+                          context,
+                          widget.submenuOpen,
+                        ) ??
+                        widget.trailing ??
                         (widget.submenu != null
-                            ? Icon(
-                                CupertinoIcons.chevron_right,
-                                size: 16,
-                                color: iconColor.withValues(alpha: 0.6),
+                            ? AnimatedRotation(
+                                turns: widget.submenuOpen ? 0.25 : 0,
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeInOut,
+                                child: Icon(
+                                  CupertinoIcons.chevron_right,
+                                  size: 16,
+                                  color: iconColor.withValues(alpha: 0.6),
+                                ),
                               )
                             : null);
                     final row = Row(
@@ -393,7 +421,10 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                         ),
 
                         // Trailing
-                        if (trailing != null) trailing,
+                        if (trailing != null) ...[
+                          const SizedBox(width: 8),
+                          trailing,
+                        ],
                       ],
                     );
 
