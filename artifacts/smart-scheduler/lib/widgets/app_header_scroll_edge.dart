@@ -9,6 +9,8 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderTitleCollapseDistance = kAppHeaderTitleHeight;
+const double kAppHeaderTitleTextBottomInset = 10;
+const double kAppHeaderExpandedTitleContentGap = 16;
 // The pinned toolbar button extends below the 44pt layout row. This expanded-
 // only adjustment brings the large-title capline to a 16pt gap below the
 // 40pt toolbar circle at the default title size, without changing collapse
@@ -861,6 +863,29 @@ class AppHeaderScrollView extends StatelessWidget {
           ? topExtension
           : 0.0;
 
+  /// Additional body spacing needed to keep [desiredGap] below the expanded
+  /// title text, while preserving any existing compact-state spacing.
+  ///
+  /// [existingSpacing] is measured from the title slot's bottom. The visible
+  /// title text ends [kAppHeaderTitleTextBottomInset] above that slot edge.
+  static double expandedTitleContentGapAdjustment({
+    required double desiredGap,
+    required double existingSpacing,
+    required double collapseProgress,
+  }) {
+    if (!desiredGap.isFinite ||
+        desiredGap <= 0 ||
+        !existingSpacing.isFinite) {
+      return 0.0;
+    }
+    final progress = collapseProgress.isFinite
+        ? collapseProgress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final targetFromSlotBottom =
+        desiredGap - kAppHeaderTitleTextBottomInset;
+    return (targetFromSlotBottom - existingSpacing) * (1.0 - progress);
+  }
+
   /// Remaining clearance for fixed Calendar layouts without a search region.
   /// It follows title collapse, rather than shifting the expanded layout.
   static double contentTopSpacingOf(
@@ -1130,10 +1155,22 @@ class AppHeaderScrollView extends StatelessWidget {
                               phaseController.collapseProgress,
                             )
                           : 0.0;
+                      final expandedTitleContentGapAdjustment =
+                          !titleInset.pinSearchBar
+                          ? AppHeaderScrollView
+                                .expandedTitleContentGapAdjustment(
+                                  desiredGap:
+                                      titleInset.expandedTitleContentGap,
+                                  existingSpacing: minimumContentTopSpacing,
+                                  collapseProgress:
+                                      phaseController.collapseProgress,
+                                )
+                          : 0.0;
                       return SizedBox(
                         height: minimumContentTopSpacing +
                             maxContentTopSpacing * progress +
-                            expandedTitleDownshift,
+                            expandedTitleDownshift +
+                            expandedTitleContentGapAdjustment,
                       );
                     },
                   ),
@@ -1150,6 +1187,10 @@ class AppHeaderScrollView extends StatelessWidget {
           leadingInset: leadingInset,
           titleCollapseExtent: titleCollapseExtent,
           titleInset: titleInset,
+          expandedTitleContentGap:
+              topExtension > 0 && !titleInset.pinSearchBar
+              ? titleInset.expandedTitleContentGap
+              : 0.0,
           sharedTitleTransition: sharedTitleTransition,
           mirrorSharedHeaderCollapse: mirrorSharedHeaderCollapse,
           initialHeaderOffset:
@@ -1199,6 +1240,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
     required this.leadingInset,
     required this.titleCollapseExtent,
     required this.titleInset,
+    required this.expandedTitleContentGap,
     required this.sharedTitleTransition,
     required this.mirrorSharedHeaderCollapse,
     required this.initialHeaderOffset,
@@ -1212,6 +1254,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
   final double leadingInset;
   final double titleCollapseExtent;
   final AppHeaderScrollInset titleInset;
+  final double expandedTitleContentGap;
   final AppHeaderTitleTransition? sharedTitleTransition;
   final bool mirrorSharedHeaderCollapse;
   final double initialHeaderOffset;
@@ -1465,6 +1508,7 @@ class _AppHeaderNestedScrollViewState
               searchBar: widget.titleInset.searchBar,
               searchBarExtent: widget.titleInset.searchBarExtent,
               pinSearchBar: widget.titleInset.pinSearchBar,
+              expandedTitleContentGap: widget.expandedTitleContentGap,
               bodyLeadingOverscroll: _bodyLeadingOverscroll,
               controller: _searchPhaseController,
             ),
@@ -1493,6 +1537,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     this.searchBar,
     this.searchBarExtent = 0,
     this.pinSearchBar = false,
+    this.expandedTitleContentGap = 0,
   });
 
   final double extent;
@@ -1504,6 +1549,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
   final Widget? searchBar;
   final double searchBarExtent;
   final bool pinSearchBar;
+  final double expandedTitleContentGap;
 
   @override
   double get minExtent =>
@@ -1554,6 +1600,13 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                 controller.collapseProgress,
               )
             : 0.0;
+        final expandedTitleContentGapOffset = pinSearchBar
+            ? 0.0
+            : AppHeaderScrollView.expandedTitleContentGapAdjustment(
+                desiredGap: expandedTitleContentGap,
+                existingSpacing: 0.0,
+                collapseProgress: controller.collapseProgress,
+              );
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -1568,7 +1621,9 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
             ),
             if (searchBar != null) Positioned(
               top: collapsedExtent +
-                  (titleExtent - shrinkOffset).clamp(0.0, titleExtent),
+                  (titleExtent - shrinkOffset).clamp(0.0, titleExtent) +
+                  expandedTitleDownshift +
+                  expandedTitleContentGapOffset,
               left: 0,
               right: 0,
               child: Transform.translate(
@@ -1594,6 +1649,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
       searchBar != oldDelegate.searchBar ||
       searchBarExtent != oldDelegate.searchBarExtent ||
       pinSearchBar != oldDelegate.pinSearchBar ||
+      expandedTitleContentGap != oldDelegate.expandedTitleContentGap ||
       controller != oldDelegate.controller;
 }
 
@@ -1636,7 +1692,9 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.searchBar,
     this.searchBarExtent = 0,
     this.pinSearchBar = false,
+    this.expandedTitleContentGap = 0,
   }) : assert(searchBarExtent >= 0),
+       assert(expandedTitleContentGap >= 0),
        assert(searchBar != null || searchBarExtent == 0);
 
   final Animation<double>? collapseAnimation;
@@ -1647,6 +1705,9 @@ class AppHeaderScrollInset extends StatelessWidget {
   final double searchBarExtent;
   /// Keeps the search row pinned and stationary during inline search.
   final bool pinSearchBar;
+  /// Desired expanded-state distance between the large title text bottom and
+  /// the first content item (or its search bar). Zero preserves legacy layout.
+  final double expandedTitleContentGap;
 
   @override
   Widget build(BuildContext context) {
@@ -1713,19 +1774,43 @@ class AppHeaderLargeTitleHandoff extends StatelessWidget {
     super.key,
     required this.progress,
     required this.child,
+    this.expandedDownshift = 0.0,
   });
 
   final double progress;
   final Widget child;
+  /// Moves the title within an equally enlarged hit-test box. This avoids
+  /// painting an interactive title outside the fixed handoff bounds.
+  final double expandedDownshift;
 
   @override
   Widget build(BuildContext context) {
     final visibleProgress = progress.isFinite
         ? progress.clamp(0.0, 1.0).toDouble()
         : 0.0;
+    final downshift = expandedDownshift.isFinite && expandedDownshift > 0.0
+        ? expandedDownshift
+        : 0.0;
+    final handedOffChild = downshift == 0.0
+        ? child
+        : Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: downshift,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: child,
+              ),
+            ],
+          );
     return IgnorePointer(
       ignoring: visibleProgress >= 0.5,
-      child: Opacity(opacity: 1.0 - visibleProgress, child: child),
+      child: Opacity(
+        opacity: 1.0 - visibleProgress,
+        child: handedOffChild,
+      ),
     );
   }
 }

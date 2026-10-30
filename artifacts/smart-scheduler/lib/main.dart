@@ -4365,10 +4365,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       : headerSurfaceColor;
                                                   final headerBaseHeight =
                                                       topInset + innerHeight;
+                                                  final expandedTitleDownshift =
+                                                      appHeaderExpandedTitleDownshiftForProgress(
+                                                        titleCollapseProgress,
+                                                      );
                                                   final shellTitleHitTestHeight =
                                                       !isLandscape &&
                                                           !calendarTitleInContent
-                                                      ? kAppHeaderTitleHeight *
+                                                      ? (kAppHeaderTitleHeight +
+                                                                kAppHeaderExpandedTitleDownshift) *
                                                             (1 - t)
                                                       : 0.0;
                                                   final headerBackgroundColor =
@@ -4454,7 +4459,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                             right: 0,
                                                             height:
                                                                 headerToolbarHeight +
-                                                                kAppHeaderTitleHeight,
+                                                                kAppHeaderTitleHeight +
+                                                                expandedTitleDownshift,
                                                             child: Transform.translate(
                                                               offset: Offset(
                                                                 0,
@@ -4475,16 +4481,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                   child: AppHeaderLargeTitleHandoff(
                                                                     progress:
                                                                         largeTitleFadeProgress,
-                                                                    child: Transform.translate(
-                                                                      offset: Offset(
-                                                                        0,
-                                                                        appHeaderExpandedTitleDownshiftForProgress(
-                                                                          titleCollapseProgress,
-                                                                        ),
-                                                                      ),
-                                                                      child:
-                                                                          largeHeaderTitleLayout,
-                                                                    ),
+                                                                    expandedDownshift:
+                                                                        expandedTitleDownshift,
+                                                                    child:
+                                                                        largeHeaderTitleLayout,
                                                                   ),
                                                                 ),
                                                               ),

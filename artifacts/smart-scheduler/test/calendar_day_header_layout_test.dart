@@ -174,6 +174,77 @@ void main() {
   );
 
   testWidgets(
+    'Day week-strip swipes use the strip’s actual screen position',
+    (tester) async {
+      const screenSize = Size(402, 874);
+      const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final previousFormat = appDateFormatNotifier.value;
+      appDateFormatNotifier.value = AppDateFormat.dayMonthYearSlash;
+      addTearDown(() => appDateFormatNotifier.value = previousFormat);
+
+      final transition = AppHeaderTitleTransition();
+      addTearDown(transition.dispose);
+      final calendarKey = GlobalKey<CalendarTabState>();
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppHeaderScrollInsetScope(
+            leadingInset: appShellLeadingInset,
+            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+            titleTransition: transition,
+            child: AppWindowContentBoundary(
+              child: Padding(
+                padding: const EdgeInsets.only(top: appShellLeadingInset),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          home: CalendarTab(
+            key: calendarKey,
+            onViewChanged: (_, _, _, _, _, _) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendar = calendarKey.currentState!;
+      await calendar.advanceCurrentHeader();
+      await tester.pumpAndSettle();
+      expect(calendar.view, CalendarView.day);
+
+      final stripRect = tester.getRect(
+        find.byKey(const Key('day-view-pinned-week-strip')),
+      );
+      final calendarRect = tester.getRect(find.byKey(calendarKey));
+      final localStripCenterY = stripRect.center.dy - calendarRect.top;
+      expect(
+        localStripCenterY,
+        greaterThan(28 + stripRect.height),
+        reason: 'The strip sits below the old fixed local-Y threshold.',
+      );
+
+      final startOfWeek = DateTime.now();
+      await tester.dragFrom(stripRect.center, const Offset(-180, 0));
+      await tester.pumpAndSettle();
+
+      expect(
+        calendar.headerTitle,
+        formatAppDateMedium(
+          startOfWeek.add(const Duration(days: 7)),
+          includeYear: false,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'entering Day View preserves compact shared-header geometry',
     (tester) async {
       const screenSize = Size(402, 874);

@@ -957,6 +957,7 @@ class _MainSettingsContent extends StatelessWidget {
         SliverToBoxAdapter(
           child: AppHeaderScrollInset(
             enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
+            expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
           ),
         ),
         // Already supplied by the shared portrait header/body boundary.
@@ -1234,6 +1235,7 @@ class _SubScreenState extends State<_SubScreen> {
         SliverToBoxAdapter(
           child: AppHeaderScrollInset(
             enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
+            expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
           ),
         ),
         // Already supplied by the shared portrait header/body boundary.

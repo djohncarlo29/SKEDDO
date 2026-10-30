@@ -828,6 +828,7 @@ class CalendarTabState extends State<CalendarTab>
   bool _navLocked = false; // true from nav-commit until anim fully settles
   bool _weekStripDrag =
       false; // true when drag started in the Day-View week strip
+  final GlobalKey _pinnedDayWeekStripGeometryKey = GlobalKey();
   Timer? _bloomTimer; // fires onBloom at 55% for pre-bloom visual
   DateTime? _pendingBloomDate; // target day for the 55% pre-bloom animation
   late final AnimationController _snapCtrl;
@@ -1701,8 +1702,24 @@ class CalendarTabState extends State<CalendarTab>
     _weekStripDrag =
         _view == CalendarView.day &&
         widget.daySubMode != DayViewSubMode.list &&
-        d.localPosition.dy <
-            _kDayLabelHeight + _dayViewWeekStripHeight(context);
+        _startsInPinnedDayWeekStrip(d.globalPosition);
+  }
+
+  bool _startsInPinnedDayWeekStrip(Offset globalPosition) {
+    final renderObject = _pinnedDayWeekStripGeometryKey.currentContext
+        ?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
+
+    // Use the laid-out strip's global bounds so the week/day swipe distinction
+    // follows the actual header position, including the AppShell inset and
+    // orientation-dependent layout.
+    final stripTopLeft = renderObject.localToGlobal(Offset.zero);
+    final stripBottomRight = renderObject.localToGlobal(
+      Offset(renderObject.size.width, renderObject.size.height),
+    );
+    return Rect.fromPoints(stripTopLeft, stripBottomRight).contains(
+      globalPosition,
+    );
   }
 
   void _onHDragUpdate(DragUpdateDetails d) {
@@ -2839,37 +2856,43 @@ class CalendarTabState extends State<CalendarTab>
     required double blobDeltaX,
     required int blobSnapCount,
     Key? stripKey,
+    GlobalKey? geometryKey,
   }) {
     return KeyedSubtree(
       key: stripKey,
-      child: _WeekRow(
-        year: selectedDate.year,
-        month: selectedDate.month,
-        row: _weekRowForDate(selectedDate),
-        today: _today,
-        selectedDate: selectedDate,
-        onDayTap: (date) {
-          setState(() {
-            _selected = date;
-            _dispMonth = date.month;
-            _dispYear = date.year;
-            _collapseRow = _weekRowForDate(date);
-          });
-          _notify();
-        },
-        rowHeight: rowHeight,
-        showOverflow: true,
-        circleSlideX: circleSlideX,
-        settleCount: settleCount,
-        blobDeltaX: blobDeltaX,
-        blobSnapCount: blobSnapCount,
-        pendingBloomDate: _pendingBloomDate,
-        suppressScaleAnimation: circleSlideX != 0.0 || blobDeltaX != 0.0,
-        daySubMode: daySubMode,
-        collapseProgress: 1.0,
-        contentInset: contentInset,
-        eventsByDay: const {},
-        viewMode: _viewMode,
+      child: SizedBox(
+        key: geometryKey,
+        width: double.infinity,
+        height: rowHeight,
+        child: _WeekRow(
+          year: selectedDate.year,
+          month: selectedDate.month,
+          row: _weekRowForDate(selectedDate),
+          today: _today,
+          selectedDate: selectedDate,
+          onDayTap: (date) {
+            setState(() {
+              _selected = date;
+              _dispMonth = date.month;
+              _dispYear = date.year;
+              _collapseRow = _weekRowForDate(date);
+            });
+            _notify();
+          },
+          rowHeight: rowHeight,
+          showOverflow: true,
+          circleSlideX: circleSlideX,
+          settleCount: settleCount,
+          blobDeltaX: blobDeltaX,
+          blobSnapCount: blobSnapCount,
+          pendingBloomDate: _pendingBloomDate,
+          suppressScaleAnimation: circleSlideX != 0.0 || blobDeltaX != 0.0,
+          daySubMode: daySubMode,
+          collapseProgress: 1.0,
+          contentInset: contentInset,
+          eventsByDay: const {},
+          viewMode: _viewMode,
+        ),
       ),
     );
   }
@@ -3292,6 +3315,8 @@ class CalendarTabState extends State<CalendarTab>
                                 stripKey: const Key(
                                   'day-view-pinned-week-strip',
                                 ),
+                                geometryKey:
+                                    _pinnedDayWeekStripGeometryKey,
                               ),
                             ),
                             Positioned(

@@ -173,3 +173,11 @@ In portrait expanded state, maintain the requested 16pt total gap from the pinne
 **Why:** The pinned toolbar's circle extends below its 44pt layout row. Increasing the title extent to create clearance changes scroll collapse travel and can disturb Calendar and search geometry.
 
 **How to apply:** Keep shell-owned titles, Settings titles, scroll-owned Calendar titles, and fixed Day View spacing on the same progress. Add equivalent body spacing only to ordinary expanded content; leave landscape, active search viewport extensions, modal sheets, and compact state unchanged.
+
+## Expanded title-to-content gap
+
+Keep the toolbar-to-title clearance above separate from the 16pt gap between the large-title text bottom and the first content item. Apply the latter to Settings section headings/cards, Notes and Events search rows, and DCV section headers/tiles. Calculate from the shared title text-bottom inset and preserve any authored baseline; interpolate only this added adjustment to zero as the title collapses. Do not add this content gap to Calendar or pinned/inline search. Calendar swipe classification must use the measured global bounds of the pinned week strip, not a fixed local-Y threshold, so the week/day gesture follows the strip through shell insets and orientation changes. When a shell-owned title is downshifted, its hit-test bounds must include that same shift.
+
+**Why:** The user confirmed the earlier toolbar-to-title movement is intentional, then requested a separate 16pt text-bottom-to-content gap while leaving Calendar's visual layout unchanged. Calendar's week-strip gesture had been classified against a fixed local coordinate that did not match the strip's actual position.
+
+**How to apply:** Use the shared title text-bottom inset for content-gap arithmetic and keep existing expanded spacing as the baseline. Leave Calendar's gap opt-out at zero, but resolve interactive gesture regions from their laid-out render bounds after transforms and viewport insets.

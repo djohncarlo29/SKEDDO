@@ -8403,6 +8403,7 @@ class EventsTabState extends State<EventsTab>
             collapseAnimation: widget.searchModeAnimation,
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
+            expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             // Inline search stays in the shared header but restores its fixed
             // background and separator while the results body scrolls.
             searchBar: isLandscape
@@ -21453,6 +21454,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             child: AppHeaderScrollInset(
               enabled:
                   MediaQuery.orientationOf(context) == Orientation.portrait,
+              expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             ),
           ),
           SliverToBoxAdapter(
@@ -21542,6 +21544,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               child: AppHeaderScrollInset(
                 enabled:
                     MediaQuery.orientationOf(context) == Orientation.portrait,
+                expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
               ),
             ),
             SliverPadding(
@@ -21747,6 +21750,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           child: AppHeaderScrollInset(
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
+            expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
           ),
         ),
         SliverFillRemaining(hasScrollBody: false, child: emptyStateContent),

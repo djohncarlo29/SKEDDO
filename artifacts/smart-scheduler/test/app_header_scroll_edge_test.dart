@@ -8,6 +8,84 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  test('expanded title content spacing measures from the text bottom', () {
+    for (final existingSpacing in [0.0, kAppHeaderContentTopSpacing]) {
+      final adjustment =
+          AppHeaderScrollView.expandedTitleContentGapAdjustment(
+            desiredGap: kAppHeaderExpandedTitleContentGap,
+            existingSpacing: existingSpacing,
+            collapseProgress: 0,
+          );
+      expect(
+        existingSpacing +
+            adjustment +
+            kAppHeaderTitleTextBottomInset,
+        kAppHeaderExpandedTitleContentGap,
+      );
+      expect(
+        AppHeaderScrollView.expandedTitleContentGapAdjustment(
+          desiredGap: kAppHeaderExpandedTitleContentGap,
+          existingSpacing: existingSpacing,
+          collapseProgress: 1,
+        ),
+        0,
+        reason: 'The compact-state spacing must remain unchanged.',
+      );
+    }
+
+    expect(
+      AppHeaderScrollView.expandedTitleContentGapAdjustment(
+        desiredGap: 0,
+        existingSpacing: 0,
+        collapseProgress: 0,
+      ),
+      0,
+      reason: 'Calendar opts out of the new content gap.',
+    );
+  });
+
+  testWidgets('expanded title hit area follows its visible downshift', (
+    tester,
+  ) async {
+    var tapped = false;
+    const downshift = 7.2;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 200,
+            height: 47.2,
+            child: AppHeaderLargeTitleHandoff(
+              progress: 0,
+              expandedDownshift: downshift,
+              child: SizedBox(
+                height: 40,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: GestureDetector(
+                    onTap: () => tapped = true,
+                    child: const SizedBox(
+                      width: 100,
+                      height: 20,
+                      child: ColoredBox(color: Color(0xff0000ff)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // This is within the shifted control's visible bounds, but below the
+    // unshifted 40px title box. Its hit target must still receive the tap.
+    await tester.tapAt(const Offset(100, 46));
+    expect(tapped, isTrue);
+  });
+
   test('expanded title downshift preserves the compact endpoint', () {
     expect(
       appHeaderExpandedTitleDownshiftForProgress(0),
