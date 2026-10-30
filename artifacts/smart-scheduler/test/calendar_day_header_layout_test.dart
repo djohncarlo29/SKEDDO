@@ -473,7 +473,12 @@ void main() {
 
       expect(
         dowRect.top,
-        closeTo(kAppHeaderTitleHeight - kContentAreaTopRaise, 0.5),
+        closeTo(
+          kAppHeaderTitleHeight +
+              kAppHeaderExpandedTitleDownshift -
+              kContentAreaTopRaise,
+          0.5,
+        ),
       );
       expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
       expect(selectedWeekRect.bottom, closeTo(centerBannerRect.top, 0.5));

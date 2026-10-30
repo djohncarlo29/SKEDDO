@@ -6148,7 +6148,6 @@ class _MonthView extends StatelessWidget {
         final expandedViewportHeight =
             constraints.maxHeight +
             kContentAreaTopRaise -
-            _calendarExpandedTitleDownshift(context) -
             AppHeaderScrollView.contentTopSpacingOf(
               context,
               topExtension: kContentAreaTopRaise,

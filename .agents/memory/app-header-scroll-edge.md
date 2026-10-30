@@ -165,3 +165,11 @@ Large and compact header-title groups have mutually exclusive visibility: fade t
 **Why:** The user explicitly requires that the large and compact title groups never be visible simultaneously, and that compact controls finish fading in by the point the content reaches the first-level header boundary.
 
 **How to apply:** Derive separate large-out and compact-in progress values from the non-negative owning scroll offset and shared title bottom inset. Use the shared 90% compact-title readiness fraction to calculate both curves from one handoff split, keeping a zero-opacity gap instead of crossfading. Include scroll-owned Calendar title rows and controls, and do not scale these phase values by a search transition. Derive glass-edge progress independently; preserve the first-level-only filter bounds and keep landscape and modal-sheet behavior separate.
+
+## Expanded title clearance
+
+In portrait expanded state, maintain the requested 16pt total gap from the pinned toolbar circle to the large-title capline, and move following content by the same amount. Interpolate this expanded-only clearance to zero through the existing title-collapse progress; do not lengthen the title extent or alter compact geometry.
+
+**Why:** The pinned toolbar's circle extends below its 44pt layout row. Increasing the title extent to create clearance changes scroll collapse travel and can disturb Calendar and search geometry.
+
+**How to apply:** Keep shell-owned titles, Settings titles, scroll-owned Calendar titles, and fixed Day View spacing on the same progress. Add equivalent body spacing only to ordinary expanded content; leave landscape, active search viewport extensions, modal sheets, and compact state unchanged.

@@ -9,7 +9,7 @@
 - [Calendar runtime behavior](calendar-runtime-index.md) — focused notes for swipes, list parity, timing, scroll restoration, and landscape layout.
 - [Calendar date display tiers](calendar-date-display-tiers.md) — Medium style for pills, banners, DCV, and Day View; Full Month Name also controls Year View month labels.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search clear icon have dedicated constants.
-- [App-header scroll-edge behavior](app-header-scroll-edge.md) — share the active header state across tabs, DCV and Settings; do not restore a destination's stale state.
+- [App-header scroll-edge behavior](app-header-scroll-edge.md) — shared title state spans tabs, DCV, and Settings; expanded clearance must not alter collapse travel or compact geometry.
 - [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep insets and wrapper ancestry stable; capture keyed scroll anchors after layout, not during mount.
 - [Landscape single-pane rule](landscape-events-master-detail.md) — Settings subscreens and Events DCV remain full-screen in landscape; do not restore side-by-side panes.
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
