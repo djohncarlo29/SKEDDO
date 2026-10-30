@@ -2338,28 +2338,38 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           alignment: _morphAlignment,
           clipBehavior: Clip.none,
           children: [
-            // Menu content scales up with the container morph — items
-            // enter the tree at 25% on open, and flush immediately on close
-            // so the droplet is clean liquid glass throughout its flight.
-            if (_morphController.isClosing
-                ? clampedValue > 0.85
-                : clampedValue > 0.25)
+            // Use the same content fade/scale profile as GlassPopover. Keep
+            // that animation around the whole list instead of applying a
+            // different scale independently to each row.
+            if (GlassMorphContentMotion.isVisible(
+              progress: clampedValue,
+              isClosing: _morphController.isClosing,
+            ))
               OverflowBox(
-                alignment: _morphAlignment,
+                alignment: Alignment.center,
                 minWidth: widget.menuWidth,
                 maxWidth: widget.menuWidth,
                 minHeight: 0.0,
                 maxHeight: double.infinity,
-                child: _buildListContent(
-                  widget.items,
-                  interactive: interactive,
-                  dimmed: !interactive,
-                  coveredDepth: interactive ? null : 0,
-                  coverProgress: _bodyRecede,
-                  viewportHeight: _targetBodyHeight(),
-                  morphValue: clampedValue,
-                  scrollDepth: 0,
-                  scrollController: _rootScrollController,
+                child: Opacity(
+                  opacity: GlassMorphContentMotion.opacity(
+                    progress: clampedValue,
+                    isClosing: _morphController.isClosing,
+                  ),
+                  child: Transform.scale(
+                    scale: GlassMorphContentMotion.scale(clampedValue),
+                    alignment: Alignment.center,
+                    child: _buildListContent(
+                      widget.items,
+                      interactive: interactive,
+                      dimmed: !interactive,
+                      coveredDepth: interactive ? null : 0,
+                      coverProgress: _bodyRecede,
+                      viewportHeight: _targetBodyHeight(),
+                      scrollDepth: 0,
+                      scrollController: _rootScrollController,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -2383,7 +2393,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     required double viewportHeight,
     required int scrollDepth,
     required ScrollController scrollController,
-    double morphValue = 1.0,
     int? coveredDepth,
   }) {
     _scheduleMenuScrollMetricsSync();
@@ -2396,14 +2405,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         ? _rootShowBottomScrollFade
         : _submenuStack[scrollDepth - 1].showBottomScrollFade;
     final listIsScrollable = _listHeight(items) > viewportHeight + 1.0;
-    final itemOpacity = _morphController.isClosing
-        ? ((morphValue - 0.85) / 0.15).clamp(0.0, 1.0)
-        : ((morphValue - 0.25) / 0.45).clamp(0.0, 1.0);
-    final itemScale = lerpDouble(
-        0.7,
-        1.0,
-        Curves.easeOut
-            .transform(((morphValue - 0.25) / 0.75).clamp(0.0, 1.0)))!;
     final wrappedItems =
         interactive ? _buildWrappedItems(items) : const <Widget>[];
     final rows = Column(
@@ -2415,14 +2416,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           Opacity(
             opacity:
                 coveredDepth != null && _isCoveredRow(coveredDepth, i, items)
-                    ? itemOpacity * coveredOpacity
-                    : itemOpacity,
-            child: Transform.scale(
-              scale: itemScale,
-              child: interactive
-                  ? wrappedItems[i]
-                  : _buildPassiveMenuItem(items[i]),
-            ),
+                    ? coveredOpacity
+                    : 1.0,
+            child: interactive
+                ? wrappedItems[i]
+                : _buildPassiveMenuItem(items[i]),
           ),
           if (i < items.length - 1) const SizedBox(height: _kRowGap),
         ],

@@ -41,6 +41,54 @@ enum MorphStyle {
   bloom,
 }
 
+/// Shared opacity and scale profile for content entering/leaving a liquid
+/// morph surface. Popovers and menus use this same profile so their contents
+/// appear and disappear in sync with the glass geometry.
+class GlassMorphContentMotion {
+  const GlassMorphContentMotion._();
+
+  /// The morph progress at which content first becomes visible.
+  static const double openVisibilityStart = 0.3;
+
+  /// The morph progress at which closing content begins to disappear.
+  static const double closeVisibilityStart = 0.85;
+
+  /// Returns whether the content should be mounted for this morph frame.
+  static bool isVisible({
+    required double progress,
+    required bool isClosing,
+  }) =>
+      isClosing
+          ? progress > closeVisibilityStart
+          : progress > openVisibilityStart;
+
+  /// Returns the shared content fade for the current morph frame.
+  static double opacity({
+    required double progress,
+    required bool isClosing,
+  }) =>
+      isClosing
+          ? ((progress - closeVisibilityStart) /
+                  (1.0 - closeVisibilityStart))
+              .clamp(0.0, 1.0)
+              .toDouble()
+          : ((progress - openVisibilityStart) /
+                  (0.7 - openVisibilityStart))
+              .clamp(0.0, 1.0)
+              .toDouble();
+
+  /// Returns the shared content scale for the current morph frame.
+  static double scale(double progress) {
+    final t = Curves.easeOut
+        .transform(
+          ((progress - openVisibilityStart) / 0.7)
+              .clamp(0.0, 1.0)
+              .toDouble(),
+        );
+    return 0.5 + 0.5 * t;
+  }
+}
+
 /// A Flutter-idiomatic controller for liquid glass morph animations.
 ///
 /// Works like [AnimationController] but encapsulates the iOS 26 spring physics,

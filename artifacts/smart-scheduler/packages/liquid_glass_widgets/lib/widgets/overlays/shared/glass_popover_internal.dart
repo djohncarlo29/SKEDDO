@@ -1049,9 +1049,10 @@ class _GlassPopoverState extends State<GlassPopover>
               children: [
                 // Content enters at 30 % morph progress and scales 0.5 → 1.0.
                 // On close the reverse plays, matching GlassMenu behaviour.
-                if (_morphController.isClosing
-                    ? clampedValue > 0.85
-                    : clampedValue > 0.3)
+                if (GlassMorphContentMotion.isVisible(
+                  progress: clampedValue,
+                  isClosing: _morphController.isClosing,
+                ))
                   _buildContentWithMeasurement(clampedValue, targetHeight),
               ],
             ),
@@ -1064,18 +1065,11 @@ class _GlassPopoverState extends State<GlassPopover>
   Widget _buildContentWithMeasurement(
       double clampedValue, double targetHeight) {
     // Fade in smoothly: fully opaque by 70 % morph progress.
-    final contentOpacity = _morphController.isClosing
-        ? ((clampedValue - 0.85) / 0.15).clamp(0.0, 1.0)
-        : ((clampedValue - 0.3) / 0.4).clamp(0.0, 1.0);
-
-    // Scale 0.5 → 1.0 with easeOut, in sync with the expanding container.
-    final contentScale = lerpDouble(
-      0.5,
-      1.0,
-      Curves.easeOut.transform(
-        ((clampedValue - 0.3) / 0.7).clamp(0.0, 1.0),
-      ),
-    )!;
+    final contentOpacity = GlassMorphContentMotion.opacity(
+      progress: clampedValue,
+      isClosing: _morphController.isClosing,
+    );
+    final contentScale = GlassMorphContentMotion.scale(clampedValue);
 
     // _cachedContent was set in _openPopover (or refreshed in didUpdateWidget).
     // The null-coalesce is a last-resort safety net only.

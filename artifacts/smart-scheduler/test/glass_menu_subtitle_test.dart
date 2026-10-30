@@ -3,11 +3,42 @@ import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassMenu, GlassMenuItem;
+import 'package:liquid_glass_widgets/utils/glass_morph_controller.dart'
+    show GlassMorphContentMotion;
 
 void main() {
   test('GlassMenu retains its original default corner radius', () {
     const menu = GlassMenu(items: [], trigger: Text('Actions'));
     expect(menu.menuBorderRadius, 32.0);
+  });
+
+  test('menu and popover content share the same morph fade and scale', () {
+    expect(
+      GlassMorphContentMotion.isVisible(progress: 0.29, isClosing: false),
+      isFalse,
+    );
+    expect(
+      GlassMorphContentMotion.isVisible(progress: 0.31, isClosing: false),
+      isTrue,
+    );
+    expect(
+      GlassMorphContentMotion.opacity(progress: 0.3, isClosing: false),
+      0.0,
+    );
+    expect(
+      GlassMorphContentMotion.opacity(progress: 0.5, isClosing: false),
+      closeTo(0.5, 0.001),
+    );
+    expect(GlassMorphContentMotion.scale(0.3), 0.5);
+    expect(GlassMorphContentMotion.scale(1.0), 1.0);
+    expect(
+      GlassMorphContentMotion.opacity(progress: 0.85, isClosing: true),
+      0.0,
+    );
+    expect(
+      GlassMorphContentMotion.opacity(progress: 0.925, isClosing: true),
+      closeTo(0.5, 0.001),
+    );
   });
 
   testWidgets('menu row centers leading and trailing controls with its label', (

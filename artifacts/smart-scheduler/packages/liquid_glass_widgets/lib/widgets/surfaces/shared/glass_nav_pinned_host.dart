@@ -2695,6 +2695,10 @@ class _PinnedGroupState extends State<_PinnedGroup> {
               menuWidth: menuItem?.menuWidth ?? 200,
               menuHeight: menuItem?.menuHeight,
               settings: menuItem?.menuSettings,
+              // Match GlassPopover's premium morph profile. The adaptive
+              // scope still caps this to the best quality supported by the
+              // current device.
+              quality: GlassQuality.premium,
               morphSpeed: MorphSpeed.normal,
               autoAdjustToScreen: true,
               platformViewBackdrop: platformViewBackdrop,
