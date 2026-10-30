@@ -2878,18 +2878,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
 
     final actions = <navigation_glass.GlassBarItem>[];
-    if (tabIndex != 3) {
-      actions.add(
-        navigation_glass.GlassBarItem.icon(
-          id: 'app-shell-search-action',
-          label: 'Search',
-          enabled: interactionsEnabled && visible > 0.01,
-          background: navigation_glass.GlassBarItemBackground.shared,
-          icon: icon('assets/icons/search.svg'),
-          onTap: _activateTabSearch,
-        ),
-      );
-    }
     actions.add(
       navigation_glass.GlassBarItem.icon(
         id: 'app-shell-create-event-action',
@@ -2905,6 +2893,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ),
       ),
     );
+    if (tabIndex != 3) {
+      actions.add(
+        navigation_glass.GlassBarItem.icon(
+          id: 'app-shell-search-action',
+          label: 'Search',
+          enabled: interactionsEnabled && visible > 0.01,
+          background: navigation_glass.GlassBarItemBackground.shared,
+          icon: icon('assets/icons/search.svg'),
+          onTap: _activateTabSearch,
+        ),
+      );
+    }
     return actions;
   }
 
