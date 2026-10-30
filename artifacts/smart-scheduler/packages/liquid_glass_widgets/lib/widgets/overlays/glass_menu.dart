@@ -163,7 +163,9 @@ class GlassMenu extends StatefulWidget {
   /// Higher values make the drag feel "stickier". Default: 0.08.
   final double stretchResistance;
 
-  /// The axis to constrain the stretch to. If null, stretches in both axes.
+  /// The axis to constrain the stretch to. If null, menu-surface stretching
+  /// uses the horizontal axis so vertical movement remains available for
+  /// scrolling, rubberbanding, and option selection.
   final Axis? stretchAxis;
 
   /// Whether to allow stretch in the positive X direction (Right).

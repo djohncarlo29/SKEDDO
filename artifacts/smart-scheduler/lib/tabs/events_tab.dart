@@ -12698,8 +12698,170 @@ class _DcvUtilityContent extends StatefulWidget {
   State<_DcvUtilityContent> createState() => _DcvUtilityContentState();
 }
 
-class _DcvUtilityContentState extends State<_DcvUtilityContent> {
+class _DcvUtilityContentState extends State<_DcvUtilityContent>
+    with TickerProviderStateMixin<_DcvUtilityContent> {
   final Set<String> _collapsedSections = {};
+  final Map<String, GlobalKey> _reflowSectionKeys = {};
+  final Map<String, GlobalKey> _reflowRowKeys = {};
+  final Map<String, double> _reflowSectionOffsets = {};
+  final Map<String, double> _reflowRowOffsets = {};
+  late final AnimationController _reflowController;
+  bool _measuringReflow = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reflowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() {
+            _reflowSectionOffsets.clear();
+            _reflowRowOffsets.clear();
+          });
+        }
+      });
+  }
+
+  @override
+  void didUpdateWidget(covariant _DcvUtilityContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_utilityLayoutInputsChanged(oldWidget)) return;
+
+    final oldSectionTops = _captureUtilityTops(_reflowSectionKeys);
+    final oldRowTops = _captureUtilityTops(_reflowRowKeys);
+    _reflowController.stop();
+    _reflowSectionOffsets.clear();
+    _reflowRowOffsets.clear();
+    _measuringReflow = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final sectionOffsets = _measureUtilityOffsets(
+        oldSectionTops,
+        _reflowSectionKeys,
+      );
+      final rowOffsets = _measureUtilityOffsets(oldRowTops, _reflowRowKeys);
+      setState(() {
+        _measuringReflow = false;
+        _reflowSectionOffsets
+          ..clear()
+          ..addAll(sectionOffsets);
+        _reflowRowOffsets
+          ..clear()
+          ..addAll(rowOffsets);
+      });
+      if (sectionOffsets.isEmpty && rowOffsets.isEmpty) return;
+      _reflowController.value = 0;
+      _reflowController.animateTo(1, curve: Curves.easeInOut);
+    });
+  }
+
+  @override
+  void dispose() {
+    _reflowController.dispose();
+    super.dispose();
+  }
+
+  bool _utilityLayoutInputsChanged(_DcvUtilityContent oldWidget) {
+    bool sameList<T>(List<T> a, List<T> b) {
+      if (identical(a, b)) return true;
+      if (a.length != b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (a[i] != b[i]) return false;
+      }
+      return true;
+    }
+
+    bool sameMap<K, V>(Map<K, V> a, Map<K, V> b) {
+      if (identical(a, b)) return true;
+      if (a.length != b.length) return false;
+      for (final entry in a.entries) {
+        if (!b.containsKey(entry.key) || b[entry.key] != entry.value) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return oldWidget.sortNewestFirst != widget.sortNewestFirst ||
+        !sameList(oldWidget.archivedSmartLabels, widget.archivedSmartLabels) ||
+        !sameList(oldWidget.archivedCategories, widget.archivedCategories) ||
+        !sameList(oldWidget.archivedEvents, widget.archivedEvents) ||
+        !sameList(oldWidget.deletedSmartLabels, widget.deletedSmartLabels) ||
+        !sameList(oldWidget.deletedCategories, widget.deletedCategories) ||
+        !sameList(oldWidget.deletedEvents, widget.deletedEvents) ||
+        !sameMap(oldWidget.archivedSmartDates, widget.archivedSmartDates) ||
+        !sameMap(oldWidget.archivedCategoryDates, widget.archivedCategoryDates) ||
+        !sameMap(oldWidget.archivedEventDates, widget.archivedEventDates) ||
+        !sameMap(oldWidget.deletedEventDates, widget.deletedEventDates) ||
+        !sameMap(oldWidget.deletedSmartDates, widget.deletedSmartDates) ||
+        !sameMap(oldWidget.deletedCategoryDates, widget.deletedCategoryDates) ||
+        !sameMap(oldWidget.categoryCounts, widget.categoryCounts);
+  }
+
+  Map<String, double> _captureUtilityTops(Map<String, GlobalKey> keys) {
+    final positions = <String, double>{};
+    for (final entry in keys.entries) {
+      final box = entry.value.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null && box.attached && box.hasSize) {
+        positions[entry.key] = box.localToGlobal(Offset.zero).dy;
+      }
+    }
+    return positions;
+  }
+
+  Map<String, double> _measureUtilityOffsets(
+    Map<String, double> oldTops,
+    Map<String, GlobalKey> keys,
+  ) {
+    final offsets = <String, double>{};
+    for (final entry in keys.entries) {
+      final oldY = oldTops[entry.key];
+      final box = entry.value.currentContext?.findRenderObject() as RenderBox?;
+      if (oldY == null || box == null || !box.attached || !box.hasSize) {
+        continue;
+      }
+      final delta = oldY - box.localToGlobal(Offset.zero).dy;
+      if (delta.abs() > 0.5) offsets[entry.key] = delta;
+    }
+    return offsets;
+  }
+
+  Widget _withUtilitySectionReflow(String sectionId, Widget child) {
+    final key = _reflowSectionKeys.putIfAbsent(sectionId, GlobalKey.new);
+    return AnimatedBuilder(
+      key: ValueKey<String>('utility-section-$sectionId'),
+      animation: _reflowController,
+      child: KeyedSubtree(key: key, child: child),
+      builder: (context, child) {
+        final dy = (_reflowSectionOffsets[sectionId] ?? 0.0) *
+            (1.0 - _reflowController.value);
+        return Transform.translate(offset: Offset(0, dy), child: child);
+      },
+    );
+  }
+
+  Widget _withUtilityRowReflow(
+    String rowId,
+    String sectionId,
+    Widget child,
+  ) {
+    final key = _reflowRowKeys.putIfAbsent(rowId, GlobalKey.new);
+    return AnimatedBuilder(
+      key: ValueKey<String>('utility-row-$rowId'),
+      animation: _reflowController,
+      child: KeyedSubtree(key: key, child: child),
+      builder: (context, child) {
+        final sectionDy = _reflowSectionOffsets[sectionId] ?? 0.0;
+        final rowDy = _reflowRowOffsets[rowId] ?? sectionDy;
+        final dy =
+            (rowDy - sectionDy) * (1.0 - _reflowController.value);
+        return Transform.translate(offset: Offset(0, dy), child: child);
+      },
+    );
+  }
 
   List<ScheduledEvent> _sortedChildEvents(
     Iterable<ScheduledEvent> events,
@@ -12902,18 +13064,23 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
     _DcvUtilityItem item,
     int index,
     int total,
+    String sectionId,
   ) {
     final isFirst = index == 0;
     final isLast = index == total - 1;
     final category = item.category;
     if (category != null) {
       final hasChildren = item.childEvents.isNotEmpty;
-      final child = _buildCategoryTile(
-        context,
-        category,
-        item.onTap,
-        isFirst,
-        isLast && !hasChildren,
+      final child = _withUtilityRowReflow(
+        'category:${category.id}',
+        sectionId,
+        _buildCategoryTile(
+          context,
+          category,
+          item.onTap,
+          isFirst,
+          isLast && !hasChildren,
+        ),
       );
       final rows = <Widget>[child];
       if (hasChildren) {
@@ -12927,14 +13094,18 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
       for (var childIndex = 0; childIndex < item.childEvents.length; childIndex++) {
         final event = item.childEvents[childIndex];
         rows.add(
-          _buildUtilityEventCard(
-            context,
-            event,
-            // Utility child separators are added below, outside the
-            // indentation wrapper, so they remain full width.
-            isLast: true,
-            indented: true,
-            onTap: () => item.onChildEventTap?.call(event),
+          _withUtilityRowReflow(
+            'child-event:${event.id}',
+            sectionId,
+            _buildUtilityEventCard(
+              context,
+              event,
+              // Utility child separators are added below, outside the
+              // indentation wrapper, so they remain full width.
+              isLast: true,
+              indented: true,
+              onTap: () => item.onChildEventTap?.call(event),
+            ),
           ),
         );
         final isLastChild = childIndex == item.childEvents.length - 1;
@@ -12962,12 +13133,16 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
     }
 
     final event = item.event!;
-    return _buildUtilityEventCard(
-      context,
-      event,
-      isLast: isLast,
-      indented: false,
-      onTap: item.onTap,
+    return _withUtilityRowReflow(
+      'event:${event.id}',
+      sectionId,
+      _buildUtilityEventCard(
+        context,
+        event,
+        isLast: isLast,
+        indented: false,
+        onTap: item.onTap,
+      ),
     );
   }
 
@@ -13036,11 +13211,13 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
   ) {
     final sectionKey = section.key;
     final isCollapsed = _collapsedSections.contains(sectionKey);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return _withUtilitySectionReflow(
+      sectionKey,
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           _DcvSectionLabel(
             text: section.label,
             isFirst: true,
@@ -13084,12 +13261,14 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
                               items[index],
                               index,
                               items.length,
+                              sectionKey,
                             ),
                         ],
                       ),
                     ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -13110,12 +13289,15 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
                 ? b.sortDate.compareTo(a.sortDate)
                 : a.sortDate.compareTo(b.sortDate),
       );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final section in orderedSections)
-          _buildSection(context, section, grouped[section.key]!),
-      ],
+    return Opacity(
+      opacity: _measuringReflow ? 0.0 : 1.0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final section in orderedSections)
+            _buildSection(context, section, grouped[section.key]!),
+        ],
+      ),
     );
   }
 }
@@ -19831,6 +20013,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // are looked up by event ID, not by list position.
   final Map<String, GlobalKey> _itemKeys = {};
   final Map<int, GlobalKey> _sectionKeys = {};
+  final Map<String, GlobalKey> _sectionLayoutKeys = {};
   final GlobalKey _dcvScrollViewportKey = GlobalKey();
   final ScrollController _dcvScrollController = ScrollController();
 
@@ -19867,6 +20050,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // Each card transforms by offset * (1 - ctrl.value), sliding from its old
   // position to its new one as ctrl goes 0 → 1.
   final Map<String, double> _sortAnimFromY = {};
+  final Map<String, double> _sortAnimSectionFromY = {};
   // True during the one invisible layout frame used to measure new positions.
   bool _sortMeasuring = false;
 
@@ -19887,7 +20071,10 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       duration: const Duration(milliseconds: 420),
     )..addStatusListener((s) {
       if (s == AnimationStatus.completed && mounted) {
-        setState(() => _sortAnimFromY.clear());
+        setState(() {
+          _sortAnimFromY.clear();
+          _sortAnimSectionFromY.clear();
+        });
       }
     });
     _items = List.of(widget.events);
@@ -19901,6 +20088,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     super.didUpdateWidget(old);
     if (_draggingIndex != null) return;
 
+    final oldItemTops = _captureYPositions(_itemKeys);
+    final oldSectionTops = _captureYPositions(_sectionLayoutKeys);
     final sortChanged =
         old.sortBy != widget.sortBy || old.sortDir != widget.sortDir;
 
@@ -19953,6 +20142,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       } else {
         _sortItems();
       }
+      _animateContentReflow(oldItemTops, oldSectionTops);
     }
   }
 
@@ -20123,16 +20313,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (_draggingIndex != null) return;
 
     // 1. Snapshot current (pre-sort) Y positions of every rendered card.
-    final preY = <String, double>{};
-    for (final e in _itemKeys.entries) {
-      final box = e.value.currentContext?.findRenderObject() as RenderBox?;
-      if (box != null && box.attached) {
-        preY[e.key] = box.localToGlobal(Offset.zero).dy;
-      }
-    }
+    final preY = _captureYPositions(_itemKeys);
+    final preSectionY = _captureYPositions(_sectionLayoutKeys);
 
     // 2. Apply the new sort order.
     _sortAnimCtrl.stop();
+    _sortAnimFromY.clear();
+    _sortAnimSectionFromY.clear();
     _sortItems();
 
     // 3. Rebuild invisibly so Flutter lays out the new order without the user
@@ -20151,15 +20338,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         return;
       }
       final offsets = <String, double>{};
-      for (final e in _itemKeys.entries) {
-        final box = e.value.currentContext?.findRenderObject() as RenderBox?;
-        if (box == null || !box.attached) continue;
-        final oldY = preY[e.key];
-        if (oldY == null) continue;
-        final newY = box.localToGlobal(Offset.zero).dy;
-        final delta = oldY - newY;
-        if (delta.abs() > 0.5) offsets[e.key] = delta;
-      }
+      final sectionOffsets = _measureYOffsets(preSectionY, _sectionLayoutKeys);
+      offsets.addAll(_measureYOffsets(preY, _itemKeys));
 
       // Make the list visible again and inject starting offsets.
       setState(() {
@@ -20167,14 +20347,102 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         _sortAnimFromY
           ..clear()
           ..addAll(offsets);
+        _sortAnimSectionFromY
+          ..clear()
+          ..addAll(sectionOffsets);
       });
 
-      if (offsets.isEmpty) return;
+      if (offsets.isEmpty && sectionOffsets.isEmpty) return;
 
       // Run the animation: ctrl 0 → 1 means offset → 0 (old position → new).
       _sortAnimCtrl.value = 0.0;
       _sortAnimCtrl.animateTo(1.0, curve: Curves.easeInOut);
     });
+  }
+
+  Map<String, double> _captureYPositions(Map<String, GlobalKey> keys) {
+    final positions = <String, double>{};
+    for (final entry in keys.entries) {
+      final box = entry.value.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null && box.attached && box.hasSize) {
+        positions[entry.key] = box.localToGlobal(Offset.zero).dy;
+      }
+    }
+    return positions;
+  }
+
+  Map<String, double> _measureYOffsets(
+    Map<String, double> oldTops,
+    Map<String, GlobalKey> keys,
+  ) {
+    final offsets = <String, double>{};
+    for (final entry in keys.entries) {
+      final oldY = oldTops[entry.key];
+      final box = entry.value.currentContext?.findRenderObject() as RenderBox?;
+      if (oldY == null || box == null || !box.attached || !box.hasSize) {
+        continue;
+      }
+      final delta = oldY - box.localToGlobal(Offset.zero).dy;
+      if (delta.abs() > 0.5) offsets[entry.key] = delta;
+    }
+    return offsets;
+  }
+
+  void _animateContentReflow(
+    Map<String, double> oldItemTops,
+    Map<String, double> oldSectionTops,
+  ) {
+    if (_draggingIndex != null) return;
+    _sortAnimCtrl.stop();
+    _sortAnimFromY.clear();
+    _sortAnimSectionFromY.clear();
+    _sortMeasuring = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_draggingIndex != null) {
+        setState(() => _sortMeasuring = false);
+        return;
+      }
+
+      final itemOffsets = _measureYOffsets(oldItemTops, _itemKeys);
+      final sectionOffsets = _measureYOffsets(
+        oldSectionTops,
+        _sectionLayoutKeys,
+      );
+      setState(() {
+        _sortMeasuring = false;
+        _sortAnimFromY
+          ..clear()
+          ..addAll(itemOffsets);
+        _sortAnimSectionFromY
+          ..clear()
+          ..addAll(sectionOffsets);
+      });
+
+      if (itemOffsets.isEmpty && sectionOffsets.isEmpty) return;
+      _sortAnimCtrl.value = 0.0;
+      _sortAnimCtrl.animateTo(1.0, curve: Curves.easeInOut);
+    });
+  }
+
+  String _sectionLayoutId(_DcvSection section) =>
+      section.collapseKey ??
+      (section.headerText == null ? 'flat-events' : 'header-${section.headerText}');
+
+  Widget _withSectionReflow(_DcvSection section, Widget child) {
+    final id = _sectionLayoutId(section);
+    final key = _sectionLayoutKeys.putIfAbsent(id, GlobalKey.new);
+    return AnimatedBuilder(
+      key: ValueKey<String>('dcv-section-reflow-$id'),
+      animation: _sortAnimCtrl,
+      child: KeyedSubtree(key: key, child: child),
+      builder: (context, child) {
+        final dy =
+            (_sortAnimSectionFromY[id] ?? 0.0) * (1.0 - _sortAnimCtrl.value);
+        return Transform.translate(offset: Offset(0, dy), child: child);
+      },
+    );
   }
 
   // ── Reorder helpers ───────────────────────────────────────────────────────
@@ -20999,6 +21267,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     int total,
     bool isReorderable,
     ScheduledEvent? previousEvent,
+    String sectionLayoutId,
   ) {
     final itemKey = _itemKeys.putIfAbsent(event.id, () => GlobalKey());
     final isDragging =
@@ -21045,8 +21314,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         ),
       ),
       builder: (ctx, child) {
+        final sectionDy = _sortAnimSectionFromY[sectionLayoutId] ?? 0.0;
+        final rowDy = _sortAnimFromY.containsKey(event.id)
+            ? _sortAnimFromY[event.id]!
+            : sectionDy;
         final dy =
-            (_sortAnimFromY[event.id] ?? 0.0) * (1.0 - _sortAnimCtrl.value);
+            (rowDy - sectionDy) * (1.0 - _sortAnimCtrl.value);
         return Transform.translate(offset: Offset(0, dy), child: child);
       },
     );
@@ -21068,9 +21341,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       () => GlobalKey(),
     );
 
-    return KeyedSubtree(
-      key: sectionKeyWidget,
-      child: Padding(
+    return _withSectionReflow(
+      section,
+      KeyedSubtree(
+        key: sectionKeyWidget,
+        child: Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -21145,12 +21420,14 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                 section.events.length,
                                 isReorderable,
                                 previousEventById[section.events[ei].id],
+                _sectionLayoutId(section),
                               ),
                           ],
                         ),
                       ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -21290,9 +21567,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                     () => GlobalKey(),
                   );
 
-                  return KeyedSubtree(
-                    key: sectionKeyWidget,
-                    child: Padding(
+                  return _withSectionReflow(
+                    section,
+                    KeyedSubtree(
+                      key: sectionKeyWidget,
+                      child: Padding(
                       // 16 px gap between consecutive sections (last section
                       // gets the same padding; SliverPadding.bottom adds another
                       // 16 so the final gap is 32 px, matching the old layout).
@@ -21397,12 +21676,14 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                               previousEventById[section
                                                   .events[ei]
                                                   .id],
+                                              _sectionLayoutId(section),
                                             ),
                                         ],
                                       ),
                                     ),
                           ),
                         ],
+                      ),
                       ),
                     ),
                   );

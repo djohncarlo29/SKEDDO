@@ -53,6 +53,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   int? _longPressCandidateIndex;
   bool _selectionPillActiveFromScroll = false;
   bool _selectionPillActiveFromSwipe = false;
+  bool _selectionPillActiveFromLongPress = false;
   bool _rootShowTopScrollFade = false;
   bool _rootShowBottomScrollFade = false;
   final Set<ScrollController> _visibleScrollIndicators = {};
@@ -1630,6 +1631,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _pointerDownLocalPosition = null;
     _selectionPillActiveFromScroll = false;
     _selectionPillActiveFromSwipe = false;
+    _selectionPillActiveFromLongPress = false;
     _selectionPillActiveNotifier.value = false;
     _hoveredIndex = null;
     _hoveredIndexNotifier.value = null;
@@ -1680,6 +1682,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         }
         _hoveredIndex = candidateIndex;
         _hoveredIndexNotifier.value = candidateIndex;
+        _selectionPillActiveFromLongPress = true;
         _selectionPillActiveNotifier.value = true;
       },
     );
@@ -1711,35 +1714,32 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       return false;
     }
 
-    if (notification is ScrollUpdateNotification) {
-      _selectionPillLongPressTimer?.cancel();
-      _selectionPillLongPressTimer = null;
-      _longPressCandidateIndex = null;
+    // Vertical movement has three distinct outcomes: scrolling inside the
+    // list, rubberbanding beyond an edge, and deliberate option selection.
+    // A normal scroll must not make the selector pill appear on every frame;
+    // the pill is reserved for a slide-to-select gesture on a fitting menu or
+    // an explicit long-press selection. Edge rubberbanding always suppresses it.
+    final isRubberbanding =
+        notification is OverscrollNotification || notification.metrics.outOfRange;
+    if (isRubberbanding) {
+      _cancelSelectionPillLongPress();
+      _selectionPillActiveFromScroll = false;
+      _selectionPillActiveFromSwipe = false;
+      _selectionPillActiveFromLongPress = false;
       _selectionPillScrollEndTimer?.cancel();
       _selectionPillScrollEndTimer = null;
-      _selectionPillActiveFromScroll = true;
-      _selectionPillActiveNotifier.value = true;
-      _updateSelectionPillIndexFromScroll(
-        buildContext,
-        items: items,
-        scrollController: scrollController,
-        viewportHeight: viewportHeight,
-      );
-    } else if (notification is ScrollEndNotification) {
-      _selectionPillActiveFromScroll = false;
-      _selectionPillScrollEndTimer?.cancel();
-      _selectionPillScrollEndTimer = Timer(
-        const Duration(milliseconds: 150),
-        () {
-          if (!mounted || _selectionPillActiveFromScroll || _isDragging) {
-            return;
-          }
-          _selectionPillActiveNotifier.value = false;
-          _hoveredIndex = null;
-          _hoveredIndexNotifier.value = null;
-          _selectionPillScrollEndTimer = null;
-        },
-      );
+      _selectionPillActiveNotifier.value = false;
+      _hoveredIndex = null;
+      _hoveredIndexNotifier.value = null;
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification) {
+      if (!_selectionPillActiveFromLongPress) {
+        _selectionPillLongPressTimer?.cancel();
+        _selectionPillLongPressTimer = null;
+        _longPressCandidateIndex = null;
+      }
     }
     return false;
   }
@@ -2388,7 +2388,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       stretch: widget.stretch,
       interactionScale: widget.interactionScale,
       resistance: widget.stretchResistance,
-      axis: widget.stretchAxis,
+      // The menu's vertical axis belongs to its list interaction: scrolling
+      // and edge rubberbanding are separate from stretching the glass surface.
+      // A caller can still explicitly choose another axis.
+      axis: widget.stretchAxis ?? Axis.horizontal,
       suppressInteractionOnChildren: false,
       anchorStretch: false, // Menus use jelly-follow, not anchored
       // Constrain stretch to 'Down' and 'Away from screen edge' by default,
@@ -2697,9 +2700,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                     if (!mounted || !_isDragging) return;
                     _menuPointerLocalPosition = event.localPosition;
                     final start = _pointerDownLocalPosition;
-                    final movedBeyondSlop = start != null &&
-                        (event.localPosition - start).distance >= kTouchSlop;
+                    final dragDelta = start == null
+                        ? Offset.zero
+                        : event.localPosition - start;
+                    final movedBeyondSlop =
+                        start != null && dragDelta.distance >= kTouchSlop;
                     if (movedBeyondSlop &&
+                        !listIsScrollable &&
+                        dragDelta.dy.abs() >= dragDelta.dx.abs() &&
                         widget.showSelectionPill &&
                         widget.selectionPillBehavior ==
                             GlassMenuSelectionPillBehavior.scrollOrLongPress &&
@@ -2720,7 +2728,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                             candidate) {
                       _cancelSelectionPillLongPress();
                       if (!_selectionPillActiveFromScroll &&
-                          !_selectionPillActiveFromSwipe) {
+                          !_selectionPillActiveFromSwipe &&
+                          !_selectionPillActiveFromLongPress) {
                         _selectionPillActiveNotifier.value = false;
                       }
                     }
@@ -2751,7 +2760,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
                       // Slide-to-select remains available on menus that fit
                       // without scrolling.
-                      if (scrollDisplacement < 10 && !_isScrollable) {
+                      final wasLongPressSelection =
+                          _selectionPillActiveFromLongPress;
+                      if (scrollDisplacement < 10 &&
+                          (!_isScrollable || wasLongPressSelection)) {
                         final indexToTap = _hoveredIndex ??
                             _calculateIndexFromPosition(
                               event.localPosition,
@@ -2774,6 +2786,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                       _pointerDownLocalPosition = null;
                       _longPressCandidateIndex = null;
                       _selectionPillActiveFromSwipe = false;
+                      _selectionPillActiveFromLongPress = false;
                       final wasScrolling = _selectionPillActiveFromScroll;
                       _selectionPillActiveFromScroll = false;
                       if (wasScrolling) {
