@@ -1413,7 +1413,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // ── DCV ellipsis context menu ────────────────────────────────────────────
   final GlobalKey _ellipsisKey = GlobalKey();
   final GlobalKey _splitDcvEllipsisKey = GlobalKey();
-  final Map<String, GlobalKey> _toolbarRouteFrameKeys = {};
   final ValueNotifier<bool> _dcvMenuClosing = ValueNotifier(false);
   OverlayEntry? _dcvMenuOverlay;
   bool _dcvMenuOpen = false;
@@ -1437,11 +1436,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   OverlayEntry? _dayViewModeOverlay;
   bool _dayViewModeMenuOpen = false;
   DayViewSubMode _activeDaySubMode = DayViewSubMode.singleDay;
-
-  void _showDcvMenu() {
-    final anchor = _pinnedToolbarActionRect('events-dcv');
-    if (anchor != null) _showDcvMenuAtRect(anchor);
-  }
 
   void _showSplitDcvMenu() {
     _showDcvMenuAt(_splitDcvEllipsisKey);
@@ -1722,14 +1716,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  void _showViewModeMenu({GlobalKey? anchorKey}) {
+  void _showViewModeMenu({Rect? anchorRect}) {
     if (_viewModeMenuOpen) return;
-    final box =
-        (anchorKey ?? _viewModeKey).currentContext?.findRenderObject()
-            as RenderBox?;
-    if (box == null) return;
-    final pos = box.localToGlobal(Offset.zero);
-    final size = box.size;
+    final box = anchorRect == null
+        ? _viewModeKey.currentContext?.findRenderObject() as RenderBox?
+        : null;
+    if (anchorRect == null && box == null) return;
+    final buttonRect =
+        anchorRect ??
+        Rect.fromLTWH(
+          box!.localToGlobal(Offset.zero).dx,
+          box.localToGlobal(Offset.zero).dy,
+          box.size.width,
+          box.size.height,
+        );
     _viewModeClosing.value = false;
     _viewModeMenuOpen = true;
     setState(() {});
@@ -1781,7 +1781,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     _viewModeOverlay = OverlayEntry(
       builder: (ctx) => ActionMenuOverlay(
-        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        buttonRect: buttonRect,
         isClosing: _viewModeClosing,
         onDismiss: _hideViewModeMenu,
         actions: items,
@@ -1854,14 +1854,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
-  void _showDayViewModeMenu({GlobalKey? anchorKey}) {
+  void _showDayViewModeMenu({Rect? anchorRect}) {
     if (_dayViewModeMenuOpen) return;
-    final box =
-        (anchorKey ?? _dayViewModeKey).currentContext?.findRenderObject()
-            as RenderBox?;
-    if (box == null) return;
-    final pos = box.localToGlobal(Offset.zero);
-    final size = box.size;
+    final box = anchorRect == null
+        ? _dayViewModeKey.currentContext?.findRenderObject() as RenderBox?
+        : null;
+    if (anchorRect == null && box == null) return;
+    final buttonRect =
+        anchorRect ??
+        Rect.fromLTWH(
+          box!.localToGlobal(Offset.zero).dx,
+          box.localToGlobal(Offset.zero).dy,
+          box.size.width,
+          box.size.height,
+        );
     _dayViewModeClosing.value = false;
     _dayViewModeMenuOpen = true;
     setState(() {});
@@ -1921,7 +1927,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     _dayViewModeOverlay = OverlayEntry(
       builder: (ctx) => ActionMenuOverlay(
-        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        buttonRect: buttonRect,
         isClosing: _dayViewModeClosing,
         onDismiss: _hideDayViewModeMenu,
         actions: items,
@@ -2893,14 +2899,32 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
-  GlobalKey _toolbarActionAnchorKey(String configurationKey) =>
-      _toolbarActionAnchorKeys.putIfAbsent(configurationKey, () => GlobalKey());
+  Rect? _pinnedToolbarActionRect(GlobalKey toolbarFrameKey) {
+    final box =
+        toolbarFrameKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+
+    final origin = box.localToGlobal(Offset.zero);
+    final horizontalInset =
+        AppWindowContentScope.of(context).horizontalInset + 16.0;
+    const buttonSize = AppShellPinnedToolbar.defaultButtonSize;
+    const sharedSlotExtent = buttonSize + 2.0;
+    const toolbarHeight = AppShellPinnedToolbar.defaultToolbarHeight;
+    final left =
+        origin.dx +
+        box.size.width -
+        horizontalInset -
+        sharedSlotExtent * 2;
+    final top = origin.dy + (toolbarHeight - sharedSlotExtent) / 2;
+    return Rect.fromLTWH(left, top, sharedSlotExtent, sharedSlotExtent);
+  }
 
   List<navigation_glass.GlassBarItem> _buildPinnedHeaderActions({
     required Color accent,
     required double opacity,
     required bool interactionsEnabled,
     required String configurationKey,
+    required GlobalKey toolbarFrameKey,
   }) {
     final visible = opacity.clamp(0.0, 1.0).toDouble();
     Widget icon(String asset) => SvgPicture.asset(
@@ -2909,8 +2933,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       height: 26,
       colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
     );
-    Widget anchoredIcon(String key, Widget child) => SizedBox(
-      key: _toolbarActionAnchorKey(key),
+    Widget anchoredIcon(Widget child) => SizedBox(
       width: 36,
       height: 36,
       child: Center(child: child),
@@ -2949,10 +2972,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     } else if (configurationKey == 'events-dcv') {
       leadingActionId = 'app-shell-dcv-ellipsis-action';
       leadingActionLabel = 'Category actions';
-      final anchorKey = _toolbarActionAnchorKey(configurationKey);
       leadingActionIcon = visibleIcon(
         anchoredIcon(
-          configurationKey,
           SearchWeightedIcon(
             CupertinoIcons.ellipsis_circle,
             size: 21,
@@ -2961,7 +2982,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           ),
         ),
       );
-      leadingActionOnTap = () => _showDcvMenuAt(anchorKey);
+      leadingActionOnTap = () {
+        final anchor = _pinnedToolbarActionRect(toolbarFrameKey);
+        if (anchor != null) _showDcvMenuAtRect(anchor);
+      };
     } else if (configurationKey == 'calendar-year') {
       leadingActionId = 'app-shell-calendar-year-action';
       leadingActionLabel = 'Go to today';
@@ -2974,14 +2998,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       );
       leadingActionId = 'app-shell-$configurationKey-action';
       leadingActionLabel = 'Calendar view options';
-      final anchorKey = _toolbarActionAnchorKey(configurationKey);
       leadingActionIcon = visibleIcon(
-        anchoredIcon(
-          configurationKey,
-          _buildViewModeHeaderIcon(mode: mode),
-        ),
+        anchoredIcon(_buildViewModeHeaderIcon(mode: mode)),
       );
-      leadingActionOnTap = () => _showViewModeMenu(anchorKey: anchorKey);
+      leadingActionOnTap = () {
+        final anchor = _pinnedToolbarActionRect(toolbarFrameKey);
+        if (anchor != null) _showViewModeMenu(anchorRect: anchor);
+      };
     } else if (configurationKey.startsWith('calendar-day-')) {
       final mode = DayViewSubMode.values.firstWhere(
         (value) => configurationKey == 'calendar-day-${value.name}',
@@ -2989,14 +3012,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       );
       leadingActionId = 'app-shell-$configurationKey-action';
       leadingActionLabel = 'Day view options';
-      final anchorKey = _toolbarActionAnchorKey(configurationKey);
       leadingActionIcon = visibleIcon(
-        anchoredIcon(
-          configurationKey,
-          _buildDayViewModeHeaderIcon(mode: mode),
-        ),
+        anchoredIcon(_buildDayViewModeHeaderIcon(mode: mode)),
       );
-      leadingActionOnTap = () => _showDayViewModeMenu(anchorKey: anchorKey);
+      leadingActionOnTap = () {
+        final anchor = _pinnedToolbarActionRect(toolbarFrameKey);
+        if (anchor != null) _showDayViewModeMenu(anchorRect: anchor);
+      };
     }
 
     if (leadingActionIcon != null &&
@@ -3034,6 +3056,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   Route<void> _toolbarStateRouteForKey(String key) {
     final isDcv = key == 'events-dcv';
+    final toolbarFrameKey = GlobalKey();
 
     final route = appShellToolbarStateRoute(
       name: 'app-shell-toolbar-$key',
@@ -3055,6 +3078,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                         ? _dcvToolbarAccent.value!
                         : resolveAccentColor(routeContext);
                 return AppShellPinnedToolbar(
+                  key: toolbarFrameKey,
                   glyph: isDcv
                       ? AppShellToolbarGlyph.back
                       : AppShellToolbarGlyph.menu,
@@ -3073,6 +3097,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     interactionsEnabled:
                         _searchToolbarInteractionsEnabled.value,
                     configurationKey: key,
+                    toolbarFrameKey: toolbarFrameKey,
                   ),
                   onTap: _handlePrimaryToolbarTap,
                 );
@@ -4023,7 +4048,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                       ? 10
                                                                                                       : 0,
                                                                                                 ),
-                                                                                                onTap: _showDcvMenu,
+                                                                                                onTap: () => _showDcvMenuAt(
+                                                                                                  _ellipsisKey,
+                                                                                                ),
                                                                                                 child: Transform.translate(
                                                                                                   offset: Offset(
                                                                                                     11.5,

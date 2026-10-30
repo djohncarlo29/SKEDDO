@@ -14,3 +14,11 @@ Key toolbar routes by their visible glyph/action configuration, not by the desti
 **Why:** The package renders pinned chrome above the Navigator it encloses and ranks registrations using route coverage within that Navigator. `pushReplacement` can deactivate the outgoing registration before it is available as the morph source; replacing routes for content-only tab changes also needlessly restarts chrome. A sheet pushed only into the AppShell Navigator cannot cover sibling tab bodies, and the root AppShell route cannot dim a shell hosted outside its subtree.
 
 **How to apply:** Use the nested AppShell Navigator for tab/Settings route changes and the root Navigator for app-wide presentations. Test that unchanged configurations stay settled, changed configurations morph without an empty frame, and both body and toolbar share the root route's dim filter.
+
+## Pinned action anchors
+
+Do not put a `GlobalKey` on an individual pinned action's icon subtree. Give each toolbar-route instance its own key at the route-level `AppShellPinnedToolbar`, then derive custom-menu anchors from that toolbar frame and the package's slot dimensions.
+
+**Why:** The navigation shell paints a hoisted copy of pinned action icons as well as the in-route registration. A key inside an icon is therefore mounted twice and triggers a duplicate-key failure; a configuration-keyed frame key can also collide during fast overlapping route transitions.
+
+**How to apply:** Keep action widgets keyless. Capture a fresh frame key per toolbar route instance and calculate the action rectangle from its measured frame, toolbar insets, and shared-slot extent.

@@ -47,7 +47,7 @@
 - [Separate glass control blending](shared-glass-control-blending.md) — neighboring controls need one AdaptiveLiquidGlassLayer to blend only when their shapes overlap.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — keep DEFAULT_JVM_OPTS in gradlew; daemon=false ignores org.gradle.jvmargs.
-- [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — key toolbar routes by visible configuration; push, morph, then prune, while global sheets stay on root.
+- [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — key toolbar routes by visible configuration; pinned action icons render twice, so anchor menus from route-level geometry.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders crash Android; use the pure-Flutter switch there.

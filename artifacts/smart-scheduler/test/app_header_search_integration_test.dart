@@ -381,6 +381,18 @@ void main() {
       final calendarLabel = find.text('Calendar').last;
       await tester.tapAt(tester.getCenter(calendarLabel) - const Offset(0, 24));
       await tester.pumpAndSettle();
+      final calendarToolbar = toolbarShell.resolveState()!;
+      expect(calendarToolbar.settled, isTrue);
+      expect(calendarToolbar.to.actions, hasLength(2));
+      final calendarOptions = find
+          .bySemanticsLabel('Calendar view options')
+          .first;
+      await tester.tap(calendarOptions);
+      await tester.pump();
+      expect(find.text('Compact'), findsOneWidget);
+      await tester.tapAt(const Offset(201, 600));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
       expect(transition.collapseProgress, closeTo(0, 0.001));
       expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));
 
@@ -455,11 +467,11 @@ void main() {
       );
       expect(
         toolbarAfterSearch.to.leading,
-        hasLength(initialToolbar.to.leading.length),
+        hasLength(calendarToolbar.to.leading.length),
       );
       expect(
         toolbarAfterSearch.to.actions,
-        hasLength(initialToolbar.to.actions.length),
+        hasLength(calendarToolbar.to.actions.length),
       );
       expect(transition.collapseProgress, closeTo(0, 0.001));
       expect(transition.searchBarCollapseProgress, closeTo(0, 0.001));

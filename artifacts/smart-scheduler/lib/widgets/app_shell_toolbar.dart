@@ -57,6 +57,9 @@ String appShellToolbarConfigurationKey({
 /// package can run its materialize/blur choreography instead of swapping the
 /// glyph inside a permanently matched item.
 class AppShellPinnedToolbar extends StatelessWidget {
+  static const defaultButtonSize = 40.0;
+  static const defaultToolbarHeight = 60.0;
+
   const AppShellPinnedToolbar({
     super.key,
     required this.glyph,
@@ -65,8 +68,8 @@ class AppShellPinnedToolbar extends StatelessWidget {
     required this.horizontalInset,
     this.color,
     this.opacity = 1,
-    this.buttonSize = 40,
-    this.toolbarHeight = 60,
+    this.buttonSize = defaultButtonSize,
+    this.toolbarHeight = defaultToolbarHeight,
     this.actions = const <navigation_glass.GlassBarItem>[],
     this.hideWhen,
     this.interactionsEnabled,
