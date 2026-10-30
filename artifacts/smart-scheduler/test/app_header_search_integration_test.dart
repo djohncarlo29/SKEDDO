@@ -184,7 +184,6 @@ void main() {
           )
           .hitTestable()
           .first;
-      print('Theme first option top: ${tester.getTopLeft(firstOption).dy}');
       expect(
         tester.getTopLeft(firstOption).dy,
         greaterThan(settingsInset + kAppHeaderTitleHeight),
@@ -218,15 +217,6 @@ void main() {
             (widget) =>
                 widget.runtimeType.toString() == '_DateFormatSettingsSection',
           );
-      print('Date Format sections: ${dateFormatSections.evaluate().length}');
-      for (var index = 0;
-          index < dateFormatSections.evaluate().length;
-          index++) {
-        print(
-          'Date Format section $index: '
-          '${tester.getTopLeft(dateFormatSections.at(index)).dy}',
-        );
-      }
       final dateFormatSection = dateFormatSections.last;
       final systemFormatRow = find
           .descendant(
@@ -236,13 +226,12 @@ void main() {
             ),
           )
           .first;
-      print(
-        'Date Format system row top: ${tester.getTopLeft(systemFormatRow).dy}, '
-        'shared inset: $settingsInset',
-      );
       expect(
         tester.getTopLeft(systemFormatRow).dy,
-        greaterThan(settingsInset + kAppHeaderTitleHeight),
+        lessThan(settingsInset + kAppHeaderTitleHeight),
+        reason:
+            'Date Format should not add an extra top inset beyond the shared '
+            'header spacing.',
       );
       final formatFooter = tester.widget<Text>(
         find.textContaining('Format Example:'),
@@ -608,6 +597,9 @@ void main() {
     await tester.pumpWidget(const SKEDDOApp());
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Calendar').last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarTab).hitTestable(), findsOneWidget);
     final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
     await calendar.enterTodayDay();
     await tester.pumpAndSettle();
