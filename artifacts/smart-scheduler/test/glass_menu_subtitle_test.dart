@@ -411,7 +411,7 @@ void main() {
     );
   });
 
-  testWidgets('selection pill appears during scrolling but not on menu open', (
+  testWidgets('overflow scrolling does not show the selection pill', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -457,9 +457,57 @@ void main() {
     );
     await tester.pump();
     expect(scrollable.position.pixels, greaterThan(0));
-    expect(pill, findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 151));
     expect(pill, findsNothing);
+
+    // Pulling beyond the top edge uses the scroll view's rubberband response,
+    // but must not turn that gesture into a row-selection highlight.
+    await tester.drag(scrollableFinderTarget, const Offset(0, 400));
+    await tester.pumpAndSettle();
+    expect(pill, findsNothing);
+  });
+
+  testWidgets('long-press selection remains available in an overflow menu', (
+    tester,
+  ) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Center(
+            child: GlassMenu(
+              menuWidth: 260,
+              menuHeight: 130,
+              selectionPillBehavior:
+                  GlassMenuSelectionPillBehavior.scrollOrLongPress,
+              items: [
+                for (var index = 0; index < 8; index++)
+                  GlassMenuItem(
+                    title: 'Option $index',
+                    onTap: () => tapped = true,
+                  ),
+              ],
+              triggerBuilder: (context, toggleMenu) => CupertinoButton(
+                onPressed: toggleMenu,
+                child: const Text('Actions'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Actions'));
+    await tester.pumpAndSettle();
+
+    final pill = find.byKey(const ValueKey('glass-menu-selection-pill'));
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Option 0')),
+    );
+    await tester.pump(const Duration(milliseconds: 510));
+    expect(pill, findsOneWidget);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tapped, isTrue);
   });
 
   testWidgets(
@@ -803,10 +851,7 @@ void main() {
       );
       await tester.pump();
       expect(tester.widget<AnimatedOpacity>(indicatorFinder).opacity, 0.8);
-      expect(
-        tester.widget<AnimatedScale>(scale).scale,
-        1.0,
-      );
+      expect(tester.widget<AnimatedScale>(scale).scale, 1.0);
 
       await tester.pump(const Duration(milliseconds: 1600));
       await tester.pump(const Duration(milliseconds: 200));

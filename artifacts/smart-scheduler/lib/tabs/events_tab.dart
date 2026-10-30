@@ -22433,6 +22433,12 @@ class _CustomRepeatSheet extends StatefulWidget {
 
 class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     with TickerProviderStateMixin {
+  final GlobalKey<DiscardChangesPopoverAnchorState> _discardPopoverKey =
+      GlobalKey<DiscardChangesPopoverAnchorState>();
+  bool _discarding = false;
+  bool _discardPromptOpen = false;
+  late String _initialConfigSignature;
+
   // ── Frequency state ───────────────────────────────────────────────────────
   String _frequency = 'Daily';
 
@@ -22715,6 +22721,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       _yearlyDayIndex = c.yearlyDayIndex;
     }
     _normalizeYearlyPositionSelection();
+    _initialConfigSignature = _configSignature(_currentConfig);
     _everyCountCtrl = FixedExtentScrollController(initialItem: _everyCount - 1);
     _onThePositionCtrl = FixedExtentScrollController(
       initialItem: _onThePositionIndex,
@@ -23588,15 +23595,64 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     yearlyDayIndex: _yearlyDayIndex,
   );
 
-  void _dismiss() => Navigator.of(context).pop<_CustomRepeatResult?>(null);
-  void _save() => Navigator.of(context).pop<_CustomRepeatResult?>(
-    _CustomRepeatResult(_customLabel, _currentConfig),
-  );
+  String _configSignature(_CustomRepeatConfig config) => jsonEncode({
+    'frequency': config.frequency,
+    'everyCount': config.everyCount,
+    'selectedDays': config.selectedDays.toList()..sort(),
+    'monthlyMode': config.monthlyMode,
+    'selectedDates': config.selectedDates.toList()..sort(),
+    'onThePositionIndex': config.onThePositionIndex,
+    'onTheDayIndex': config.onTheDayIndex,
+    'selectedMonths': config.selectedMonths.toList()..sort(),
+    'yearlyDaysEnabled': config.yearlyDaysEnabled,
+    'yearlyPositionIndex': config.yearlyPositionIndex,
+    'yearlyDayIndex': config.yearlyDayIndex,
+  });
+
+  bool get _hasUnsavedChanges =>
+      _configSignature(_currentConfig) != _initialConfigSignature;
+
+  Future<void> _requestDismiss() async {
+    if (dismissActiveDiscardChangesConfirmationSheet()) return;
+    if (_pickerMenuOpen) {
+      _dismissPickerOverlay();
+      return;
+    }
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop<_CustomRepeatResult?>(null);
+      return;
+    }
+    if (_discardPromptOpen) return;
+    _discardPromptOpen = true;
+    final discard = await showDiscardChangesConfirmationSheet(
+      context,
+      anchorKey: _discardPopoverKey,
+      entityLabel: 'custom repeat',
+      isNew: false,
+    );
+    _discardPromptOpen = false;
+    if (!mounted || discard != true) return;
+    setState(() => _discarding = true);
+    Navigator.of(context).pop<_CustomRepeatResult?>(null);
+  }
+
+  void _save() {
+    setState(() => _discarding = true);
+    Navigator.of(context).pop<_CustomRepeatResult?>(
+      _CustomRepeatResult(_customLabel, _currentConfig),
+    );
+  }
 
   // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
+    return PopScope(
+      canPop: !_pickerMenuOpen && (!_hasUnsavedChanges || _discarding),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _requestDismiss();
+      },
+      child: CupertinoPageScaffold(
       backgroundColor: kModalBackground,
       child: SafeArea(
         top: false,
@@ -23637,12 +23693,15 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                     ),
                     Positioned(
                       left: kModalSheetButtonEdgeGap,
-                      child: _ModalCircleButton(
-                        icon: CupertinoIcons.chevron_left,
-                        iconColor: resolveThemeColor(kPrimaryLabel, context),
-                        iconOffset: const Offset(-2, 0),
-                        tapDelay: const Duration(milliseconds: 130),
-                        onTap: _dismiss,
+                      child: DiscardChangesPopoverAnchor(
+                        key: _discardPopoverKey,
+                        child: _ModalCircleButton(
+                          icon: CupertinoIcons.chevron_left,
+                          iconColor: resolveThemeColor(kPrimaryLabel, context),
+                          iconOffset: const Offset(-2, 0),
+                          tapDelay: const Duration(milliseconds: 130),
+                          onTap: _requestDismiss,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -23740,6 +23799,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 ],
               ),
             ),
+      ),
       ),
     );
   }

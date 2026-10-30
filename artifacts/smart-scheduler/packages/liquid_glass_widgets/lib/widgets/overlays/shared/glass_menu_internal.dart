@@ -47,11 +47,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   late final ValueNotifier<bool> _selectionPillActiveNotifier;
   List<Widget>? _cachedWrappedItems;
   Timer? _selectionPillLongPressTimer;
-  Timer? _selectionPillScrollEndTimer;
   Offset? _menuPointerLocalPosition;
   Offset? _pointerDownLocalPosition;
   int? _longPressCandidateIndex;
-  bool _selectionPillActiveFromScroll = false;
   bool _selectionPillActiveFromSwipe = false;
   bool _selectionPillActiveFromLongPress = false;
   bool _rootShowTopScrollFade = false;
@@ -239,7 +237,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _hoveredIndexNotifier.dispose();
     _isDraggingNotifier.dispose();
     _selectionPillLongPressTimer?.cancel();
-    _selectionPillScrollEndTimer?.cancel();
     _selectionPillActiveNotifier.dispose();
     super.dispose();
   }
@@ -1413,12 +1410,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       return const LinearGradient(colors: [white, white]).createShader(bounds);
     }
     const fadeHeight = 50.0;
-    final topFraction = showTop
-        ? (fadeHeight / bounds.height).clamp(0.0, 0.45)
-        : 0.0;
-    final bottomFraction = showBottom
-        ? (fadeHeight / bounds.height).clamp(0.0, 0.45)
-        : 0.0;
+    final topFraction =
+        showTop ? (fadeHeight / bounds.height).clamp(0.0, 0.45) : 0.0;
+    final bottomFraction =
+        showBottom ? (fadeHeight / bounds.height).clamp(0.0, 0.45) : 0.0;
     final topStart = topFraction * 0.30;
     final topSolid = topFraction * 0.65;
     final bottomSolid = 1.0 - bottomFraction * 0.65;
@@ -1625,11 +1620,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
   void _resetSelectionPillInteraction() {
     _cancelSelectionPillLongPress();
-    _selectionPillScrollEndTimer?.cancel();
-    _selectionPillScrollEndTimer = null;
     _menuPointerLocalPosition = null;
     _pointerDownLocalPosition = null;
-    _selectionPillActiveFromScroll = false;
     _selectionPillActiveFromSwipe = false;
     _selectionPillActiveFromLongPress = false;
     _selectionPillActiveNotifier.value = false;
@@ -1664,7 +1656,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       () {
         if (!mounted ||
             !_isDragging ||
-            _selectionPillActiveFromScroll ||
             _longPressCandidateIndex != candidateIndex) {
           return;
         }
@@ -1689,13 +1680,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   }
 
   bool _handleMenuScrollNotification(
-    ScrollNotification notification,
-    BuildContext buildContext, {
+    ScrollNotification notification, {
     required int depth,
     required bool interactive,
     required ScrollController scrollController,
-    required List<Widget> items,
-    required double viewportHeight,
   }) {
     _syncMenuScrollFades(notification.metrics, depth: depth);
     if (interactive &&
@@ -1719,15 +1707,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     // A normal scroll must not make the selector pill appear on every frame;
     // the pill is reserved for a slide-to-select gesture on a fitting menu or
     // an explicit long-press selection. Edge rubberbanding always suppresses it.
-    final isRubberbanding =
-        notification is OverscrollNotification || notification.metrics.outOfRange;
+    final isRubberbanding = notification is OverscrollNotification ||
+        notification.metrics.outOfRange;
     if (isRubberbanding) {
       _cancelSelectionPillLongPress();
-      _selectionPillActiveFromScroll = false;
       _selectionPillActiveFromSwipe = false;
       _selectionPillActiveFromLongPress = false;
-      _selectionPillScrollEndTimer?.cancel();
-      _selectionPillScrollEndTimer = null;
       _selectionPillActiveNotifier.value = false;
       _hoveredIndex = null;
       _hoveredIndexNotifier.value = null;
@@ -1742,25 +1727,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       }
     }
     return false;
-  }
-
-  void _updateSelectionPillIndexFromScroll(
-    BuildContext buildContext, {
-    required List<Widget> items,
-    required ScrollController scrollController,
-    required double viewportHeight,
-  }) {
-    final position = _menuPointerLocalPosition ??
-        Offset(widget.menuWidth / 2, viewportHeight / 2);
-    final index = _calculateIndexFromPosition(
-      position,
-      buildContext,
-      items: items,
-      scrollController: scrollController,
-      visibleHeight: viewportHeight,
-    );
-    _hoveredIndex = index;
-    _hoveredIndexNotifier.value = index;
   }
 
   void _scheduleMenuScrollMetricsSync() {
@@ -2577,12 +2543,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) => _handleMenuScrollNotification(
           notification,
-          context,
           depth: scrollDepth,
           interactive: interactive,
           scrollController: scrollController,
-          items: items,
-          viewportHeight: viewportHeight,
         ),
         child: ShaderMask(
           key: scrollDepth == 0
@@ -2727,16 +2690,15 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                             ) !=
                             candidate) {
                       _cancelSelectionPillLongPress();
-                      if (!_selectionPillActiveFromScroll &&
-                          !_selectionPillActiveFromSwipe &&
+                      if (!_selectionPillActiveFromSwipe &&
                           !_selectionPillActiveFromLongPress) {
                         _selectionPillActiveNotifier.value = false;
                       }
                     }
                     if (!listIsScrollable ||
                         !_selectionPillActiveNotifier.value ||
-                        _selectionPillActiveFromScroll ||
-                        _selectionPillActiveFromSwipe) {
+                        _selectionPillActiveFromSwipe ||
+                        _selectionPillActiveFromLongPress) {
                       _updateHoveredIndex(
                         event.localPosition,
                         items: items,
@@ -2787,29 +2749,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                       _longPressCandidateIndex = null;
                       _selectionPillActiveFromSwipe = false;
                       _selectionPillActiveFromLongPress = false;
-                      final wasScrolling = _selectionPillActiveFromScroll;
-                      _selectionPillActiveFromScroll = false;
-                      if (wasScrolling) {
-                        _selectionPillScrollEndTimer?.cancel();
-                        _selectionPillScrollEndTimer = Timer(
-                          const Duration(milliseconds: 150),
-                          () {
-                            if (!mounted ||
-                                _selectionPillActiveFromScroll ||
-                                _isDragging) {
-                              return;
-                            }
-                            _selectionPillActiveNotifier.value = false;
-                            _hoveredIndex = null;
-                            _hoveredIndexNotifier.value = null;
-                            _selectionPillScrollEndTimer = null;
-                          },
-                        );
-                      } else {
-                        _selectionPillActiveNotifier.value = false;
-                        _hoveredIndex = null;
-                        _hoveredIndexNotifier.value = null;
-                      }
+                      _selectionPillActiveNotifier.value = false;
+                      _hoveredIndex = null;
+                      _hoveredIndexNotifier.value = null;
                       _hasStretched = false;
                     }
                   }
