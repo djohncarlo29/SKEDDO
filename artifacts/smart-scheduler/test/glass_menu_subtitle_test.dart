@@ -163,6 +163,7 @@ void main() {
     );
     expect(chevrons, isNotEmpty);
     expect(chevrons.every((icon) => icon.size == 32), isTrue);
+    expect(chevrons.every((icon) => icon.weight == 500), isTrue);
   });
 
   testWidgets('open submenu is repositioned after landscape-to-portrait', (

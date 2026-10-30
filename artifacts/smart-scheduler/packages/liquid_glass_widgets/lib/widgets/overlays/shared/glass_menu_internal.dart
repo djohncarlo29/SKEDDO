@@ -1025,6 +1025,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       ),
       child: Icon(
         CupertinoIcons.chevron_right,
+        weight: 500,
         size: MediaQuery.textScalerOf(context).scale(16),
         color: color,
       ),
@@ -1143,9 +1144,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   /// Whether the menu grows DOWN (anchored at its top edge).
   bool get _growsDown => _morphAlignment.y <= 0.0;
 
-  /// The scale the body recedes to while a submenu card is open, measured from
-  /// native iOS captures (416 → 404 px wide).
-  static const double _kRecedeScale = 0.971;
+  /// The scale the body recedes to while a submenu card is open: 4% smaller.
+  static const double _kRecedeScale = 0.96;
 
   /// The opacity the rows of a level covered by a card dim to (native iOS:
   /// text drops from 9/236 to 122/236 grey ≈ 0.5).

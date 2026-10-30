@@ -2050,9 +2050,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               turns: isOpen ? 0.25 : 0,
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeInOut,
-              child: Icon(
-                CupertinoIcons.chevron_right,
-                size: textScaler.scale(17),
+              child: FixedSFIcon(
+                SFIcons.sf_chevron_right,
+                fontSize: textScaler.scale(17),
+                fontWeight: FontWeight.w500,
                 color: resolveThemeColor(labelColor, context),
               ),
             )

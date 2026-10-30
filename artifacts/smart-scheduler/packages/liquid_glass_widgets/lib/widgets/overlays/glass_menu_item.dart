@@ -368,6 +368,7 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                                 curve: Curves.easeInOut,
                                 child: Icon(
                                   CupertinoIcons.chevron_right,
+                                  weight: 500,
                                   size: MediaQuery.textScalerOf(context)
                                       .scale(16),
                                   color: iconColor.withValues(alpha: 0.6),
