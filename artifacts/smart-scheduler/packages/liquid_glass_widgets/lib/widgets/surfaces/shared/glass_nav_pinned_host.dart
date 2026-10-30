@@ -2699,6 +2699,11 @@ class _PinnedGroupState extends State<_PinnedGroup> {
               // scope still caps this to the best quality supported by the
               // current device.
               quality: GlassQuality.premium,
+              // Match GlassPopover's softer surface stretch. The resistance
+              // coefficient is shared; the smaller stretch amount keeps the
+              // toolbar menu from feeling more elastic than the popover.
+              stretch: 0.3,
+              stretchResistance: 0.08,
               morphSpeed: MorphSpeed.normal,
               autoAdjustToScreen: true,
               platformViewBackdrop: platformViewBackdrop,

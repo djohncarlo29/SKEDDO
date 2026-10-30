@@ -38,6 +38,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   Offset _swipeStartPosition = Offset.zero;
   bool _swipeArmed = false;
   bool _openedOnPointerDown = false;
+  bool _openMorphPending = false;
+  int _openMorphGeneration = 0;
   final GlobalKey _menuContentKey = GlobalKey();
 
   // --- Granular Update System (Performance + No flicker) ---
@@ -413,6 +415,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   }
 
   void _dismissImmediately() {
+    // Invalidate a layout-deferred opening if a route change dismisses the
+    // menu before its first visible morph frame.
+    _openMorphGeneration++;
+    _openMorphPending = false;
     if (!_overlayController.isShowing && _morphController.value == 0.0) {
       return;
     }
@@ -592,7 +598,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       _openedOnPointerDown = false;
       return;
     }
-    if (_overlayController.isShowing && _morphController.value > 0.1) {
+    if (_overlayController.isShowing &&
+        (_morphController.value > 0.1 || _openMorphPending)) {
       _closeMenu();
     } else {
       _openMenu();
@@ -602,7 +609,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   void _handleTriggerPointerDown(PointerDownEvent event) {
     if (!widget.enableContinuousSwipe) return;
 
-    if (_overlayController.isShowing && _morphController.value > 0.1) {
+    if (_overlayController.isShowing &&
+        (_morphController.value > 0.1 || _openMorphPending)) {
       _closeMenu();
       return;
     }
@@ -815,6 +823,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   }
 
   void _openMenu() {
+    final openGeneration = ++_openMorphGeneration;
     _updateRouteListener();
     if (!_captureTriggerGeometry()) {
       // Safety: Cannot open menu if render box is not ready.
@@ -830,18 +839,38 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     // ...nor a previous open's submenu level.
     _resetSubmenus();
     _resetMenuSelectionGesture();
+    _openMorphPending = true;
     setState(_updateMenuPlacement);
 
+    // Match the discard popover's staging: first let this state/placement
+    // rebuild, then keep the mounted overlay inert for its layout frame before
+    // starting the spring and blur ramp together.
     _overlayController.show();
-    if (_morphController.disableAnimations) {
-      _blurRamp.value = 1.0;
-    } else {
-      _blurRamp.forward(from: 0.0);
-    }
-    // GlassMorphController.open() uses 0.0 velocity — spring starts from rest
-    // for a clean, smooth teardrop expansion with no artificial kick.
-    _morphController.open();
     widget.onLevelChanged?.call(0, _targetBodyHeight());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          openGeneration != _openMorphGeneration ||
+          !_overlayController.isShowing) {
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            openGeneration != _openMorphGeneration ||
+            !_overlayController.isShowing) {
+          return;
+        }
+        setState(() => _openMorphPending = false);
+        // GlassMorphController.open() uses 0.0 velocity — spring starts from
+        // rest for a clean, smooth teardrop expansion with no artificial kick.
+        _morphController.open();
+        if (_morphController.disableAnimations) {
+          _blurRamp.value = 1.0;
+        } else {
+          _blurRamp.forward(from: 0.0);
+        }
+      });
+      WidgetsBinding.instance.scheduleFrame();
+    });
   }
 
   /// Offsets that keep a menu of [menuHeight] inside the screen's safe area
@@ -1803,6 +1832,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
   void _closeMenu() {
     if (!_overlayController.isShowing) return;
+    _openMorphGeneration++;
+    final wasWaitingForLayout = _openMorphPending;
+    _openMorphPending = false;
     _resetMenuSelectionGesture();
     setState(() {
       _hoveredIndex = null;
@@ -1811,6 +1843,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _swipePointerId = null;
     _swipeArmed = false;
     _openedOnPointerDown = false;
+    if (wasWaitingForLayout) {
+      _blurRamp.stop();
+      _overlayController.hide();
+      _morphController.reset();
+      _blurRamp.value = 1.0;
+      widget.onClose?.call();
+      return;
+    }
     // GlassMorphController.close() injects the -2.5 velocity hint internally,
     // maximising the rubber-band bounce amplitude at close.
     _blurRamp.stop();
@@ -1848,7 +1888,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   }
 
   Widget _buildMorphingOverlay(BuildContext context) {
-    if (_triggerSize == null) return const SizedBox.shrink();
+    if (_triggerSize == null || _openMorphPending) {
+      return const SizedBox.shrink();
+    }
 
     // Raw value can legitimately exceed [0, 1]: the underdamped spring
     // overshoots on close (goes negative) to create the J-curve bounce.
