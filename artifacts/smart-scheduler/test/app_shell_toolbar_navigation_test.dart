@@ -84,11 +84,13 @@ void main() {
             physicalWidth: 402,
             child: child!,
           ),
-          home: CupertinoPageScaffold(
-            child: AppShellNavigationScope(
-              navigatorKey: toolbarNavigatorKey,
-              routeRevision: routeRevision,
-              child: navigation_glass.GlassNavigationShell(
+          home: RoundedSheetAppShellDimmer(
+            backgroundColor: const Color(0xFFFFFFFF),
+            child: CupertinoPageScaffold(
+              child: AppShellNavigationScope(
+                navigatorKey: toolbarNavigatorKey,
+                routeRevision: routeRevision,
+                child: navigation_glass.GlassNavigationShell(
                 key: shellKey,
                 effectTransition:
                     navigation_glass.GlassEffectTransition.materialize,
@@ -140,6 +142,7 @@ void main() {
                       ),
                     ),
                   ],
+                ),
                 ),
               ),
             ),

@@ -35,11 +35,13 @@ void main() {
               ),
             );
           },
-          home: ColoredBox(key: rootKey, color: Color(0xFF1F4D72)),
+          home: RoundedSheetAppShellDimmer(
+            child: ColoredBox(key: rootKey, color: Color(0xFF1F4D72)),
+          ),
         ),
       );
 
-      navigatorKey.currentState!.push<void>(
+      final parentSheetFuture = navigatorKey.currentState!.push<void>(
         RoundedCupertinoSheetRoute<void>(
           builder: (_) =>
               const ColoredBox(key: sheetKey, color: Color(0xFFFFFFFF)),
@@ -105,6 +107,100 @@ void main() {
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
       await nestedSheetFuture;
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      await parentSheetFuture;
+
+      expect(
+        find.byKey(const ValueKey('rounded-sheet-app-shell-dim-overlay')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<ColorFiltered>(
+              find.byKey(
+                const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+              ),
+            )
+            .colorFilter,
+        ColorFilter.mode(const Color(0x00A8A8A3), BlendMode.multiply),
+        reason: 'The app-shell filter remains mounted and neutral after pop.',
+      );
     },
+  );
+
+  testWidgets(
+    'top-level sheet dismissal preserves the AppShell scroll state',
+    (tester) async {
+      const surfaceSize = Size(400, 700);
+      await tester.binding.setSurfaceSize(surfaceSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final shellKey = GlobalKey<_ScrollableShellState>();
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: RoundedSheetAppShellDimmer(
+            child: _ScrollableShell(key: shellKey),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final shellState = shellKey.currentState!;
+      shellState.controller.jumpTo(180);
+      await tester.pump();
+
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) => const ColoredBox(color: Color(0xFFFFFFFF)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(shellKey.currentState, same(shellState));
+      expect(shellState.controller.offset, 180);
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(shellKey.currentState, same(shellState));
+      expect(
+        shellState.controller.offset,
+        180,
+        reason: 'Dismissing a top-level sheet must not reset the parent scroll.',
+      );
+    },
+  );
+}
+
+class _ScrollableShell extends StatefulWidget {
+  const _ScrollableShell({super.key});
+
+  @override
+  State<_ScrollableShell> createState() => _ScrollableShellState();
+}
+
+class _ScrollableShellState extends State<_ScrollableShell> {
+  final ScrollController controller = ScrollController();
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => CupertinoPageScaffold(
+    child: SingleChildScrollView(
+      controller: controller,
+      child: const SizedBox(
+        height: 1500,
+        child: ColoredBox(color: Color(0xFF1F4D72)),
+      ),
+    ),
   );
 }

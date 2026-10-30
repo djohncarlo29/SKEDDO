@@ -47,6 +47,8 @@ import 'widgets/app_shell_toolbar.dart';
 import 'widgets/app_shell_navigation_scope.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
+import 'widgets/rounded_cupertino_sheet.dart'
+    show RoundedSheetAppShellDimmer;
 import 'widgets/skeddo_glass_settings.dart'
     show
         skeddoNavigationGlassSettingsFromShared,
@@ -4112,8 +4114,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         if (!didPop) _handleBackGesture();
       },
       child: TapRegionSurface(
-        child: ColoredBox(
-          color: backgroundColor,
+        child: RoundedSheetAppShellDimmer(
+          backgroundColor: backgroundColor,
           child: AppShellNavigationScope(
             navigatorKey: _appShellNavigatorKey,
             routeRevision: _appShellRouteRevision,
@@ -4905,8 +4907,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _buildFloatingTabBar(),
               ],
             ),
-          ),
-        ), // AppShellNavigationScope
+          ), // AppShellNavigationScope
+        ),
       ),
     ); // PopScope
   }

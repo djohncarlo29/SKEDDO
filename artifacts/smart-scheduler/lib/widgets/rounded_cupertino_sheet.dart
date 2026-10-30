@@ -38,6 +38,80 @@ Animatable<double> _sheetOpacityTween(BuildContext context) => Tween<double>(
   end: CupertinoTheme.brightnessOf(context) == Brightness.dark ? 0.13 : 0.10,
 );
 
+/// Progress for the stable AppShell dim layer behind a top-level sheet.
+final ValueNotifier<double> roundedSheetAppShellDimProgress = ValueNotifier(
+  0.0,
+);
+Object? _roundedSheetAppShellDimOwner;
+
+void _publishRoundedSheetAppShellDim(Object owner, double progress) {
+  if (_roundedSheetAppShellDimOwner != null &&
+      !identical(_roundedSheetAppShellDimOwner, owner)) {
+    return;
+  }
+  _roundedSheetAppShellDimOwner = owner;
+  final value = progress.clamp(0.0, 1.0).toDouble();
+  if (roundedSheetAppShellDimProgress.value != value) {
+    roundedSheetAppShellDimProgress.value = value;
+  }
+}
+
+void _releaseRoundedSheetAppShellDim(Object owner) {
+  if (!identical(_roundedSheetAppShellDimOwner, owner)) return;
+  _roundedSheetAppShellDimOwner = null;
+  if (roundedSheetAppShellDimProgress.value != 0.0) {
+    roundedSheetAppShellDimProgress.value = 0.0;
+  }
+}
+
+/// Keeps the AppShell dimming filter mounted for the lifetime of the app page.
+///
+/// Removing a transition-only filter at sheet dismissal can detach and
+/// reparent scroll/render subtrees, including the DCV's scroll edge. This
+/// permanent wrapper changes only its filter value while a top-level sheet is
+/// animating.
+class RoundedSheetAppShellDimmer extends StatelessWidget {
+  const RoundedSheetAppShellDimmer({
+    super.key,
+    required this.child,
+    this.backgroundColor,
+  });
+
+  final Widget child;
+  final Color? backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: roundedSheetAppShellDimProgress,
+      child: child,
+      builder: (context, progress, child) {
+        final isLightMode =
+            CupertinoTheme.brightnessOf(context) == Brightness.light;
+        final Color filterColor = isLightMode
+            ? Color.lerp(
+                const Color(0x00A8A8A3),
+                kLightModeSheetAppShellDimColor,
+                progress,
+              )!
+            : const Color(
+                0xFF000000,
+              ).withValues(alpha: 0.13 * progress);
+        return ColorFiltered(
+          key: const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+          colorFilter: ColorFilter.mode(
+            filterColor,
+            isLightMode ? BlendMode.multiply : BlendMode.srcATop,
+          ),
+          child: backgroundColor == null
+              ? child!
+              : ColoredBox(color: backgroundColor!, child: child),
+        );
+      },
+    );
+  }
+}
+
 double _roundedSheetTopGapRatio(
   BuildContext context, {
   double? viewportHeight,
@@ -86,33 +160,6 @@ Widget? _withSheetDimOverlay(
         ),
       ],
     ),
-  );
-}
-
-Widget? _withAppShellDimOverlay(Widget? child, Animation<double> dimProgress) {
-  if (child == null) return null;
-  return AnimatedBuilder(
-    animation: dimProgress,
-    child: child,
-    builder: (context, child) {
-      final bool isLightMode =
-          CupertinoTheme.brightnessOf(context) == Brightness.light;
-      final Color filterColor = isLightMode
-          ? Color.lerp(
-              const Color(0x00A8A8A3),
-              kLightModeSheetAppShellDimColor,
-              dimProgress.value,
-            )!
-          : const Color(0xFF000000).withValues(alpha: dimProgress.value);
-      return ColorFiltered(
-        key: const ValueKey('rounded-sheet-app-shell-dim-overlay'),
-        colorFilter: ColorFilter.mode(
-          filterColor,
-          isLightMode ? BlendMode.multiply : BlendMode.srcATop,
-        ),
-        child: child,
-      );
-    },
   );
 }
 
@@ -242,18 +289,16 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   final bool enableDrag;
 
   /// Nested sheets use the underlying sheet's own secondary transition.
-  ///
-  /// Flutter removes a delegated transition as soon as that animation is
-  /// dismissed. Keeping nested sheets off that path prevents the parent
-  /// scroll-edge BackdropFilter from changing clip/transform ancestry at
-  /// dismissal.
+  /// Top-level sheets dim the AppShell through its permanent dimmer instead.
   final bool isNestedSheet;
 
   Future<void>? _restoreToOpenFuture;
 
   @override
-  DelegatedTransitionBuilder? get delegatedTransition =>
-      isNestedSheet ? null : _RoundedSheetTransition.delegateTransition;
+  DelegatedTransitionBuilder? get delegatedTransition => null;
+
+  @override
+  bool get dimsAppShell => !isNestedSheet;
 
   /// Restores this sheet to its fully-open position and shares the in-flight
   /// animation with other callers.
@@ -472,6 +517,8 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
 
   bool get enableDrag;
 
+  bool get dimsAppShell => true;
+
   @override
   Widget buildPage(
     BuildContext context,
@@ -511,6 +558,8 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
     bool enableDrag,
+    bool dimsAppShell,
+    Object dimOwner,
   ) {
     final bool linearTransition = route.popGestureInProgress;
     final double topGapRatio = _roundedSheetTopGapRatio(context);
@@ -518,6 +567,8 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
       primaryRouteAnimation: animation,
       secondaryRouteAnimation: secondaryAnimation,
       linearTransition: linearTransition,
+      dimsAppShell: dimsAppShell,
+      dimOwner: dimOwner,
       topGapRatio: topGapRatio,
       child: _RoundedDownGestureDetector<T>(
         enabledCallback: () => enableDrag,
@@ -547,6 +598,8 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
       secondaryAnimation,
       child,
       enableDrag,
+      dimsAppShell,
+      this,
     );
   }
 }
@@ -559,6 +612,8 @@ class _RoundedSheetTransition extends StatefulWidget {
     required this.secondaryRouteAnimation,
     required this.child,
     required this.linearTransition,
+    required this.dimsAppShell,
+    required this.dimOwner,
     required this.topGapRatio,
   });
 
@@ -566,42 +621,9 @@ class _RoundedSheetTransition extends StatefulWidget {
   final Animation<double> secondaryRouteAnimation;
   final Widget child;
   final bool linearTransition;
+  final bool dimsAppShell;
+  final Object dimOwner;
   final double topGapRatio;
-
-  /// Delegated to the route below a [RoundedCupertinoSheetRoute] so it
-  /// animates/rounds off correctly while covered by the sheet.
-  static Widget delegateTransition(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    bool allowSnapshotting,
-    Widget? child,
-  ) {
-    final bool linear = Navigator.of(context).userGestureInProgress;
-
-    final Curve curve = linear ? Curves.linear : Curves.linearToEaseOut;
-    final Curve reverseCurve = linear ? Curves.linear : Curves.easeInToLinear;
-    final CurvedAnimation curvedAnimation = CurvedAnimation(
-      curve: curve,
-      reverseCurve: reverseCurve,
-      parent: secondaryAnimation,
-    );
-
-    final bool isLightMode =
-        CupertinoTheme.brightnessOf(context) == Brightness.light;
-    final Animation<double> dimProgress = curvedAnimation.drive(
-      isLightMode
-          ? Tween<double>(begin: 0.0, end: 1.0)
-          : _sheetOpacityTween(context),
-    );
-    // A top-level modal dims the app but does not turn it into a receding
-    // sheet. Nested sheets use the parent route's secondary transition below.
-    final Widget? dimmedApp = child != null && !secondaryAnimation.isDismissed
-        ? _withAppShellDimOverlay(child, dimProgress)
-        : child;
-    curvedAnimation.dispose();
-    return dimmedApp ?? const SizedBox.shrink();
-  }
 
   @override
   State<_RoundedSheetTransition> createState() =>
@@ -615,10 +637,13 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
 
   CurvedAnimation? _primaryPositionCurve;
   CurvedAnimation? _secondaryPositionCurve;
+  Animation<double>? _appShellDimParent;
+  Object? _appShellDimOwner;
 
   @override
   void initState() {
     super.initState();
+    _setupAppShellDimAnimation();
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarBrightness: Brightness.dark,
@@ -642,12 +667,53 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
       _disposeCurve();
       _setupAnimation();
     }
+    if (oldWidget.primaryRouteAnimation != widget.primaryRouteAnimation ||
+        oldWidget.dimsAppShell != widget.dimsAppShell ||
+        !identical(oldWidget.dimOwner, widget.dimOwner)) {
+      _disposeAppShellDimAnimation();
+      _setupAppShellDimAnimation();
+    }
   }
 
   @override
   void dispose() {
     _disposeCurve();
+    _disposeAppShellDimAnimation();
     super.dispose();
+  }
+
+  void _setupAppShellDimAnimation() {
+    if (!widget.dimsAppShell) return;
+    _appShellDimOwner = widget.dimOwner;
+    _appShellDimParent = widget.primaryRouteAnimation;
+    _appShellDimParent!.addListener(_updateAppShellDimProgress);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          identical(_appShellDimParent, widget.primaryRouteAnimation)) {
+        _updateAppShellDimProgress();
+      }
+    });
+  }
+
+  void _updateAppShellDimProgress() {
+    final parent = _appShellDimParent;
+    final owner = _appShellDimOwner;
+    if (!widget.dimsAppShell || parent == null || owner == null) return;
+    final Curve curve = widget.linearTransition
+        ? Curves.linear
+        : parent.status == AnimationStatus.reverse
+        ? Curves.easeInToLinear
+        : Curves.linearToEaseOut;
+    final progress = curve.transform(parent.value.clamp(0.0, 1.0).toDouble());
+    _publishRoundedSheetAppShellDim(owner, progress);
+  }
+
+  void _disposeAppShellDimAnimation() {
+    _appShellDimParent?.removeListener(_updateAppShellDimProgress);
+    final owner = _appShellDimOwner;
+    if (owner != null) _releaseRoundedSheetAppShellDim(owner);
+    _appShellDimParent = null;
+    _appShellDimOwner = null;
   }
 
   void _setupAnimation() {
