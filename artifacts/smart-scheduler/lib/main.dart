@@ -3443,7 +3443,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
     Widget anchoredIcon(Widget child) =>
         SizedBox(width: 36, height: 36, child: Center(child: child));
-    Widget visibleIcon(Widget child) => Opacity(
+    Widget visibleIcon(Widget child) =>
+        Opacity(opacity: visible, child: child);
+    Widget shiftedVisibleIcon(Widget child) => Opacity(
       opacity: visible,
       child: Transform.translate(
         offset: const Offset(-2, 0),
@@ -3472,14 +3474,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (configurationKey == 'events') {
       leadingActionId = 'app-shell-add-category-action';
       leadingActionLabel = 'Add category';
-      leadingActionIcon = visibleIcon(
+      leadingActionIcon = shiftedVisibleIcon(
         AddCategoryHeaderIcon(size: 36.8, color: accent, opacity: visible),
       );
       leadingActionOnTap = () => _eventsTabKey.currentState?.addCategory();
     } else if (configurationKey == 'events-dcv') {
       leadingActionId = 'app-shell-dcv-ellipsis-action';
       leadingActionLabel = 'Category actions';
-      leadingActionIcon = visibleIcon(
+      leadingActionIcon = shiftedVisibleIcon(
         anchoredIcon(
           SearchWeightedIcon(
             CupertinoIcons.ellipsis,
@@ -3494,7 +3496,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     } else if (configurationKey == 'calendar-year') {
       leadingActionId = 'app-shell-calendar-year-action';
       leadingActionLabel = 'Go to today';
-      leadingActionIcon = visibleIcon(
+      leadingActionIcon = shiftedVisibleIcon(
         _buildYearViewHeaderIcon(applyOpticalOffset: false),
       );
       leadingActionOnTap = _enterTodayCalendarDay;
@@ -3505,7 +3507,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       );
       leadingActionId = 'app-shell-$configurationKey-action';
       leadingActionLabel = 'Calendar view options';
-      leadingActionIcon = visibleIcon(
+      leadingActionIcon = shiftedVisibleIcon(
         anchoredIcon(
           _buildViewModeHeaderIcon(mode: mode, applyOpticalOffset: false),
         ),
@@ -3518,7 +3520,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       );
       leadingActionId = 'app-shell-$configurationKey-action';
       leadingActionLabel = 'Day view options';
-      leadingActionIcon = visibleIcon(
+      leadingActionIcon = shiftedVisibleIcon(
         anchoredIcon(
           _buildDayViewModeHeaderIcon(mode: mode, applyOpticalOffset: false),
         ),
