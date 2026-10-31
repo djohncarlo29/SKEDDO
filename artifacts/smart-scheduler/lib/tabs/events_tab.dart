@@ -8405,6 +8405,7 @@ class EventsTabState extends State<EventsTab>
                 MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             expandedTitleContentGapFromBaseline: true,
+            compactContentTopSpacing: kAppHeaderContentTopSpacing,
             // Inline search stays in the shared header but restores its fixed
             // background and separator while the results body scrolls.
             searchBar: isLandscape
@@ -8450,7 +8451,9 @@ class EventsTabState extends State<EventsTab>
             // search row in portrait; landscape retains its existing inset.
             padding: EdgeInsets.fromLTRB(
               16,
-              isLandscape ? 16 : 0,
+              isLandscape || (_searchFocused && !_activatedFromOffScreen)
+                  ? 16
+                  : 0,
               16,
               0,
             ),

@@ -898,6 +898,18 @@ class AppHeaderScrollView extends StatelessWidget {
     return targetFromSlotBottom * (1.0 - progress);
   }
 
+  /// Restores authored first-content spacing as the search header collapses.
+  static double compactContentTopSpacingForProgress({
+    required double compactSpacing,
+    required double collapseProgress,
+  }) {
+    if (!compactSpacing.isFinite || compactSpacing <= 0.0) return 0.0;
+    final progress = collapseProgress.isFinite
+        ? collapseProgress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    return compactSpacing * progress;
+  }
+
   /// Baseline-to-line-bottom distance for the default 34pt bold Large Header.
   /// It converts the shared line-box inset into a baseline anchor.
   static final double titleBaselineDescent = _measureTitleBaselineDescent();
@@ -1208,9 +1220,19 @@ class AppHeaderScrollView extends StatelessWidget {
                                           : 0.0,
                                 )
                           : 0.0;
+                      final compactContentTopSpacing =
+                          titleInset.pinSearchBar
+                          ? 0.0
+                          : AppHeaderScrollView
+                                .compactContentTopSpacingForProgress(
+                                  compactSpacing:
+                                      titleInset.compactContentTopSpacing,
+                                  collapseProgress: progress,
+                                );
                       return SizedBox(
                         height: minimumContentTopSpacing +
                             maxContentTopSpacing * progress +
+                            compactContentTopSpacing +
                             expandedTitleDownshift +
                             expandedTitleContentGapAdjustment,
                       );
@@ -1752,8 +1774,10 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.pinSearchBar = false,
     this.expandedTitleContentGap = 0,
     this.expandedTitleContentGapFromBaseline = false,
+    this.compactContentTopSpacing = 0.0,
   }) : assert(searchBarExtent >= 0),
        assert(expandedTitleContentGap >= 0),
+       assert(compactContentTopSpacing >= 0),
        assert(searchBar != null || searchBarExtent == 0);
 
   final Animation<double>? collapseAnimation;
@@ -1770,6 +1794,8 @@ class AppHeaderScrollInset extends StatelessWidget {
   final double expandedTitleContentGap;
   /// Measure the desired gap from the title baseline instead of its text box.
   final bool expandedTitleContentGapFromBaseline;
+  /// Extra content inset restored only as the search header reaches compact.
+  final double compactContentTopSpacing;
 
   @override
   Widget build(BuildContext context) {

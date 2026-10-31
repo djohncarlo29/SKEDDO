@@ -147,6 +147,8 @@ void main() {
                               expandedTitleContentGap:
                                   kAppHeaderExpandedTitleContentGap,
                               expandedTitleContentGapFromBaseline: true,
+                              compactContentTopSpacing:
+                                  kAppHeaderContentTopSpacing,
                             ),
                           ),
                           SliverPadding(
@@ -360,6 +362,30 @@ void main() {
       ),
       0,
       reason: 'Calendar opts out of the new content gap.',
+    );
+  });
+
+  test('tab content inset returns only at compact state', () {
+    expect(
+      AppHeaderScrollView.compactContentTopSpacingForProgress(
+        compactSpacing: kAppHeaderContentTopSpacing,
+        collapseProgress: 0,
+      ),
+      0,
+    );
+    expect(
+      AppHeaderScrollView.compactContentTopSpacingForProgress(
+        compactSpacing: kAppHeaderContentTopSpacing,
+        collapseProgress: 0.5,
+      ),
+      8,
+    );
+    expect(
+      AppHeaderScrollView.compactContentTopSpacingForProgress(
+        compactSpacing: kAppHeaderContentTopSpacing,
+        collapseProgress: 1,
+      ),
+      kAppHeaderContentTopSpacing,
     );
   });
 

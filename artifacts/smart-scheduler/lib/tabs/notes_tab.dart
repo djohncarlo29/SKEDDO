@@ -745,6 +745,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 enabled: !isLandscape,
                 expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
                 expandedTitleContentGapFromBaseline: true,
+                compactContentTopSpacing: kAppHeaderContentTopSpacing,
                 // Inline search keeps the same keyed field in the shared
                 // header, but adds the fixed search surface and separator.
                 searchBar: isLandscape
@@ -800,7 +801,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 // search row in portrait; landscape retains its existing inset.
                 padding: EdgeInsets.fromLTRB(
                   16,
-                  isLandscape ? 16 : 0,
+                  isLandscape || (_searchFocused && !_activatedFromOffScreen)
+                      ? 16
+                      : 0,
                   16,
                   0,
                 ),
