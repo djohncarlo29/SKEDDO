@@ -4147,8 +4147,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final headerToolbarHeight = isLandscape
         ? headerContentHeight
         : kAppHeaderToolbarHeight;
-    final compactTitleToolbarCenterOffset =
-        kAppHeaderSettledToolbarCircleCenter - headerToolbarHeight / 2;
     final searchChromeTravel =
         topInset +
         headerToolbarHeight +
@@ -4826,16 +4824,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                 left: 84,
                                                                                                 right: 84,
                                                                                                 child: Center(
-                                                                                                  child: Transform.translate(
-                                                                                                    // Portrait action icons
-                                                                                                    // and compact title share
-                                                                                                    // the actual toolbar center,
-                                                                                                    // not the shorter row center.
-                                                                                                    offset: Offset(
-                                                                                                      0,
-                                                                                                      compactTitleToolbarCenterOffset,
-                                                                                                    ),
-                                                                                                    child: AppHeaderCompactTitle(
+                                                                                                                    child: AppHeaderCompactTitle(
                                                                                                       progress: compactTitleFadeProgress,
                                                                                                       isLandscape: isLandscape,
                                                                                                       child:
@@ -4850,8 +4839,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                               isDCVVisual: isDCVVisual,
                                                                                                               headerColor: backgroundColor,
                                                                                                               primaryLabel: primaryLabel,
-                                                                                                            ),
-                                                                                                    ),
+                                                                                                                    ),
                                                                                                   ),
                                                                                                 ),
                                                                                               ),

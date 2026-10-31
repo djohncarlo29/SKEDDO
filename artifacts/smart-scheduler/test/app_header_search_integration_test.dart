@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/main.dart';
+import 'package:smart_scheduler/settings_panel.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/tabs/events_tab.dart';
 import 'package:smart_scheduler/tabs/notes_tab.dart';
@@ -274,9 +275,13 @@ void main() {
         expect(searchAction.evaluate(), isNotEmpty);
         final toolbarCenterY = tester.getCenter(searchAction.last).dy;
         final compactTitle = find.byType(AppHeaderCompactTitle).last;
+        final titleScroller = find.descendant(
+          of: compactTitle,
+          matching: find.byType(HeaderTitleScroller),
+        ).last;
         final arrowCenters = <double>[];
         expect(
-          tester.getCenter(compactTitle).dy,
+          tester.getCenter(titleScroller).dy,
           closeTo(toolbarCenterY, 0.5),
         );
         for (final direction in ['left', 'right']) {
@@ -378,6 +383,72 @@ void main() {
       expect(calendar.view, CalendarView.day);
       await tapChevron('Return to calendar overview');
       expect(calendar.view, CalendarView.month);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'Settings and subscreen compact titles align with the toolbar in both orientations',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Open settings').last);
+      await tester.pumpAndSettle();
+
+      final settingsPanel = find.byType(SettingsPanel);
+      expect(settingsPanel, findsOneWidget);
+      final settingsScroll = find.descendant(
+        of: settingsPanel,
+        matching: find.byType(Scrollable),
+      ).first;
+      await tester.drag(settingsScroll, const Offset(0, -180));
+      await tester.pumpAndSettle();
+
+      void expectSettingsHeaderAligned(String titleText, String toolbarLabel) {
+        final header = find
+            .byKey(const ValueKey('settings-compact-header-title'))
+            .last;
+        final title = find.descendant(
+          of: header,
+          matching: find.text(titleText),
+        ).last;
+        final toolbar = find.bySemanticsLabel(toolbarLabel).last;
+        expect(header.evaluate(), isNotEmpty);
+        expect(title.evaluate(), isNotEmpty);
+        expect(toolbar.evaluate(), isNotEmpty, reason: toolbarLabel);
+        expect(
+          tester.getCenter(title).dy,
+          closeTo(tester.getCenter(toolbar).dy, 0.5),
+          reason: '$toolbarLabel alignment',
+        );
+      }
+
+      expectSettingsHeaderAligned('Settings', 'Close settings');
+
+      final themeRow = find.descendant(
+        of: settingsPanel,
+        matching: find.text('Theme'),
+      ).last;
+      await tester.ensureVisible(themeRow);
+      await tester.tap(themeRow);
+      await tester.pumpAndSettle();
+      expectSettingsHeaderAligned('Theme', 'Back from Theme');
+
+      tester.view.physicalSize = const Size(874, 402);
+      await tester.pumpAndSettle();
+      expectSettingsHeaderAligned('Theme', 'Back from Theme');
+      await tester.tap(find.bySemanticsLabel('Back from Theme').last);
+      await tester.pumpAndSettle();
+      expectSettingsHeaderAligned('Settings', 'Close settings');
 
       await tester.pumpWidget(const SizedBox.shrink());
     },

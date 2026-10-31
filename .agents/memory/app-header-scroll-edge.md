@@ -194,6 +194,6 @@ In every compact layout, including landscape, keep the first content edge 16pt b
 
 Compact titles and their controls align to the rendered toolbar control centerline, not the nominal 44pt portrait or 52pt landscape layout-row center. Calendar period-chevron slots must use the same orientation-specific row height so their centers follow the title.
 
-**Why:** The toolbar's rendered center sits below the shorter layout-row center; centering within the row leaves compact titles and chevrons visibly above the toolbar in both orientations.
+**Why:** The toolbar's rendered center sits below the shorter layout-row center; centering within the row leaves compact titles and chevrons visibly above the toolbar in both orientations. Settings has a separate header layout, so a fix made only in AppShell misses the Settings home and pushed subscreens.
 
-**How to apply:** Use the shared settled-toolbar center offset for the compact-title group, then verify its center against the actual toolbar action bounds in portrait and landscape. Keep the vertical navigation pair centered as a group and do not change expanded headers.
+**How to apply:** Use the shared settled-toolbar center offset for every compact-title group, including Settings home and pushed subscreens in portrait and landscape; verify each against the actual toolbar action bounds. Keep the vertical navigation pair centered as a group and do not change expanded headers.

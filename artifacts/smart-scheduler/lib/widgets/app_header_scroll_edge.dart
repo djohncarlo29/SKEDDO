@@ -1931,11 +1931,19 @@ class AppHeaderCompactTitle extends StatelessWidget {
     final visibleProgress = isLandscape
         ? 1.0
         : (progress.isFinite ? progress.clamp(0.0, 1.0).toDouble() : 0.0);
-    return IgnorePointer(
-      // Keep the compact title's controls from intercepting taps while they
-      // are still mostly transparent during the scroll handoff.
-      ignoring: !isLandscape && visibleProgress < 0.5,
-      child: Opacity(opacity: visibleProgress, child: child),
+    final toolbarHeight = isLandscape
+        ? kAppHeaderLandscapeToolbarHeight
+        : kAppHeaderToolbarHeight;
+    final toolbarCenterOffset =
+        kAppHeaderSettledToolbarCircleCenter - toolbarHeight / 2;
+    return Transform.translate(
+      offset: Offset(0, toolbarCenterOffset),
+      child: IgnorePointer(
+        // Keep the compact title's controls from intercepting taps while they
+        // are still mostly transparent during the scroll handoff.
+        ignoring: !isLandscape && visibleProgress < 0.5,
+        child: Opacity(opacity: visibleProgress, child: child),
+      ),
     );
   }
 }
