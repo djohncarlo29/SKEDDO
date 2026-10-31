@@ -5781,8 +5781,7 @@ class EventsTabState extends State<EventsTab>
             ),
           ),
           Positioned(
-            // Keep the circle-to-title relationship explicit: the title
-            // starts exactly 8pt below the circle, with no optical offset.
+            // Keep the smart-tile circle/title gap explicit.
             // Both horizontal bounds are required here because this card is
             // rendered in the global overlay; without a right bound, the
             // Positioned Text receives loose width constraints and stays on
@@ -5888,7 +5887,7 @@ class EventsTabState extends State<EventsTab>
             // starts exactly 8pt below the circle, with no optical offset.
             // Keep the overlay title width bounded just like the settled
             // pinned tile so long names wrap inside the captured card.
-            top: circleSize + _kGridTileTitleGap,
+            top: circleSize + _kPinnedCategoryGridTitleGap,
             left: 0,
             right: 0,
             child: Text(
@@ -9247,7 +9246,8 @@ class _GridItemGeometry {
 // content below the grid reflows smoothly too, rather than jumping.
 const _kGridTileInset = 16.0;
 const _kGridTileCircleSize = 35.5;
-const _kGridTileTitleGap = 8.0;
+const _kGridTileTitleGap = 16.0;
+const _kPinnedCategoryGridTitleGap = 8.0;
 const _kGridGeometryEpsilon = 0.5;
 
 /// Scales a category icon's complete visual unit from the active OS text
@@ -9792,8 +9792,7 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            // Keep the circle-to-title relationship explicit: the title
-            // starts exactly 8pt below the circle, with no optical offset.
+            // Keep the smart-tile circle/title gap explicit.
             top: circleSize + _kGridTileTitleGap,
             left: 0,
             right: 0,
@@ -10405,7 +10404,7 @@ class _PinnedUserTile extends StatelessWidget {
           Positioned(
             // Keep the circle-to-title relationship explicit: the title
             // starts exactly 8pt below the circle, with no optical offset.
-            top: circleSize + _kGridTileTitleGap,
+            top: circleSize + _kPinnedCategoryGridTitleGap,
             left: 0,
             right: 0,
             child: Text(
@@ -10480,7 +10479,7 @@ double _eventsMeasuredTextWidth(
 /// only their own row.
 const double _eventsCategoryTextTrailingGap = 16.0;
 const double _eventsCategoryIconTextGap = 16.0;
-const double _eventsCategoryStackedContentGap = 8.0;
+const double _eventsCategoryStackedContentGap = 16.0;
 
 /// Keep each whitespace-delimited word together in category rows.
 ///
@@ -10591,7 +10590,7 @@ double _eventsCategoryListRowHeight(
     letterSpacing: kTracking16,
   );
   const verticalPadding = 32.0; // 16 px top + 16 px bottom
-  const subtitleGap = 4.0;
+  const subtitleGap = 8.0;
   final iconHeight = _eventsScaledCategoryIconSize(context, 34.0);
   double measure(_FlatItem current) {
     final label = current.category?.name ?? current.group?.name;
@@ -10899,7 +10898,7 @@ Widget _buildCategoryListRowBody(
           overflow: TextOverflow.visible,
         ),
         if (subtitleText.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             subtitleText,
             style: subtitleStyle,
@@ -10926,7 +10925,7 @@ Widget _buildCategoryListRowBody(
             children: [
               Text(titleText, style: titleStyle, softWrap: true),
               if (subtitleText.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(subtitleText, style: subtitleStyle, softWrap: true),
               ],
             ],

@@ -143,22 +143,22 @@ const double _kCalendarDayCircleDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
-const double kFixedTopPadding = 8.0; // top padding above the day circle
+const double kFixedTopPadding = 16.0; // top padding above the day circle
 const double _kDayIndicatorBottomPadding =
-    8.0; // minimum breathing room above the separator
+    16.0; // minimum breathing room above the separator
 const double kDayCircleOffset =
-    26.0; // circle centre from row top (= kFixedTopPadding + 18)
+    34.0; // circle centre from row top (= kFixedTopPadding + 18)
 const double _kDayLabelHeight = 28.0;
 const double _kWeekNumWidth = 28.0;
 const double _kYearOuterPad = 16.0;
 const double _kYearColGap = 12.0;
-const double _kYearRowGap = 24.0;
+const double _kYearRowGap = 16.0;
 const double _kHourHeight = 64.0;
 const double _kTimelinePad =
-    8.0; // breathing room above 12 am and below midnight
+    16.0; // breathing room above 12 am and below midnight
 const double _kCurrentTimeIndicatorCenterOffset = 9.0;
 const double _kDayBannerHeight = 36.0;
-const double _kDayBannerVerticalInset = 4.0;
+const double _kDayBannerVerticalInset = 16.0;
 
 void _scheduleDayTimelinePosition({
   required BuildContext context,
@@ -213,10 +213,9 @@ void _scheduleDayTimelinePosition({
   });
 }
 
-// Fixed 8 pt breathing room between the large app header and the Month/Day
-// DOW row. Keep this independent from text scaling and the shared 16 pt
-// vertical padding token.
-const double _kCalendarHeaderToDowGap = 8.0;
+// Fixed 16 pt breathing room between the DOW row and calendar content.
+// The first DOW row itself follows the shared title-baseline spacing rule.
+const double _kCalendarHeaderToDowGap = 16.0;
 
 double _calendarExpandedTitleHeight(BuildContext context) {
   if (MediaQuery.orientationOf(context) != Orientation.portrait) return 0.0;
@@ -3127,11 +3126,23 @@ class CalendarTabState extends State<CalendarTab>
               context,
               topExtension: kContentAreaTopRaise,
             );
+            final titleToContentGap =
+                MediaQuery.orientationOf(context) == Orientation.portrait
+                    ? AppHeaderScrollView.expandedTitleContentGapAdjustment(
+                      desiredGap: kAppHeaderExpandedTitleContentGap,
+                      existingSpacing: 0.0,
+                      collapseProgress: sharedTitleCollapseProgress,
+                      topExtension: kContentAreaTopRaise,
+                      baselineDescent:
+                          AppHeaderScrollView.titleBaselineDescent,
+                    )
+                    : 0.0;
             final double dayHeaderGroupSlideY =
                 -listModeT *
                     (appHeaderLeadingInset +
                         expandedTitleHeight +
                          contentTopSpacing +
+                        titleToContentGap +
                         _kCalendarHeaderToDowGap +
                         _kDayLabelHeight +
                         dayWeekStripHeight +
@@ -3147,7 +3158,8 @@ class CalendarTabState extends State<CalendarTab>
                 _kDayLabelHeight +
                 dayWeekStripHeight -
                 kContentAreaTopRaise +
-                contentTopSpacing;
+                contentTopSpacing +
+                titleToContentGap;
             final showDayHeaderChrome =
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
@@ -3159,7 +3171,8 @@ class CalendarTabState extends State<CalendarTab>
             final dayDowTop =
                 expandedTitleHeight -
                 kContentAreaTopRaise +
-                contentTopSpacing;
+                contentTopSpacing +
+                titleToContentGap;
 
             // Adjacent year / month / day for the three-panel rendering
             final prevYear = _dispYear - 1;
@@ -4104,6 +4117,9 @@ class _YearView extends StatelessWidget {
                 SliverToBoxAdapter(
                   child: AppHeaderScrollInset(
                     enabled: isPortrait,
+                    expandedTitleContentGap:
+                        kAppHeaderExpandedTitleContentGap,
+                    expandedTitleContentGapFromBaseline: true,
                     child: stationaryScrollTitle == null
                         ? null
                         : Transform.translate(
@@ -4112,19 +4128,16 @@ class _YearView extends StatelessWidget {
                           ),
                   ),
                 ),
+                const SliverToBoxAdapter(
+                  child: AppHeaderContentSpacing(),
+                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.only(
                       bottom: 14.5 +
                           floatingTabBarContentBottomClearance(context),
                     ),
-                    child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 17.5),
-                  monthGrid,
-                ],
-                    ),
+                    child: monthGrid,
                   ),
                 ),
               ],
@@ -4239,7 +4252,7 @@ class _MiniMonthGrid extends StatelessWidget {
               )
               .toList(),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 16),
         // Week rows share one opaque backing surface. The individual rows
         // remain keyed for morph measurement, but must not repaint an opaque
         // surface over the part of a larger day circle that extends into the
@@ -4556,7 +4569,7 @@ class _MorphOverlay extends StatelessWidget {
               (r) => cellSz * (2.35 + yearLayout.rowMaxWeeks[r]) + 7.0,
             );
             final computed = <double>[];
-            var ry = 17.5;
+            var ry = 16.0;
             for (var r = 0; r < grid.rowCount; r++) {
               computed.add(ry);
               ry += rowH[r] + _kYearRowGap;
@@ -5337,7 +5350,7 @@ class _MorphPainter extends CustomPainter {
         (r) => cellSz * (2.35 + yearLayout.rowMaxWeeks[r]) + 7.0,
       );
       final computed = <double>[];
-      var ry = 17.5;
+      var ry = 16.0;
       for (var r = 0; r < grid.rowCount; r++) {
         computed.add(ry);
         ry += rowH[r] + _kYearRowGap;
@@ -6300,8 +6313,8 @@ class _MonthView extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: _kCalendarHeaderToDowGap),
                   SizedBox(height: _kDayLabelHeight),
+                  const SizedBox(height: _kCalendarHeaderToDowGap),
                   SizedBox(
                     height: totalRows * rowHeight,
                     child: Stack(
@@ -6447,9 +6460,10 @@ class _MonthView extends StatelessWidget {
               // fixed relative to the header (minus capturedOffset)
               // (above the fold, invisible).  Translating it DOWN by
               // collapseScrollOffset × collapseProgress brings it into
-              // view in lock-step with the week strip arriving at y=28.
+              // view in lock-step with the week strip arriving after the
+              // DOW row and its 16 pt gap.
               Positioned(
-                top: _kCalendarHeaderToDowGap,
+                top: 0,
                 left: 0,
                 right: 0,
                 height: _kDayLabelHeight,
@@ -6519,6 +6533,9 @@ class _MonthView extends StatelessWidget {
                 SliverToBoxAdapter(
                   child: AppHeaderScrollInset(
                     enabled: isPortrait,
+                    expandedTitleContentGap:
+                        kAppHeaderExpandedTitleContentGap,
+                    expandedTitleContentGapFromBaseline: true,
                     child: stationaryScrollTitleWidget == null
                         ? null
                         : Transform.translate(
@@ -6526,6 +6543,9 @@ class _MonthView extends StatelessWidget {
                             child: stationaryScrollTitleWidget,
                           ),
                   ),
+                ),
+                const SliverToBoxAdapter(
+                  child: AppHeaderContentSpacing(),
                 ),
                 if (monthListUsesNaturalHeight)
                   SliverFillRemaining(
@@ -8022,7 +8042,13 @@ class _DayListPlaceholder extends StatelessWidget {
           child: AppHeaderScrollInset(
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
+            expandedTitleContentGap:
+                kAppHeaderExpandedTitleContentGap,
+            expandedTitleContentGapFromBaseline: true,
           ),
+        ),
+        const SliverToBoxAdapter(
+          child: AppHeaderContentSpacing(),
         ),
         SliverFillRemaining(
           hasScrollBody: false,
@@ -8048,7 +8074,6 @@ class _DayViewDowMask extends StatelessWidget {
       color: resolveThemeColor(kBackgroundColor, context),
       child: Column(
         children: [
-          const SizedBox(height: _kCalendarHeaderToDowGap),
           SizedBox(
             height: _kDayLabelHeight,
             child: Padding(

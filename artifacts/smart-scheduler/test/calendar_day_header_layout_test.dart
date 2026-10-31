@@ -540,14 +540,23 @@ void main() {
       final centerTimelineRect = tester.getRect(timelines.at(1));
       expect(selectedWeek, findsOneWidget);
       final selectedWeekRect = tester.getRect(selectedWeek);
-      const weekStripHeight = 52.0;
+      const weekStripHeight = 68.0;
+      final titleBaselineGap =
+          AppHeaderScrollView.expandedTitleContentGapAdjustment(
+            desiredGap: kAppHeaderExpandedTitleContentGap,
+            existingSpacing: 0.0,
+            collapseProgress: 0.0,
+            topExtension: kContentAreaTopRaise,
+            baselineDescent: AppHeaderScrollView.titleBaselineDescent,
+          );
 
       expect(
         dowRect.top,
         closeTo(
           kAppHeaderTitleHeight +
               kAppHeaderExpandedTitleDownshift -
-              kContentAreaTopRaise,
+              kContentAreaTopRaise +
+              titleBaselineGap,
           0.5,
         ),
       );

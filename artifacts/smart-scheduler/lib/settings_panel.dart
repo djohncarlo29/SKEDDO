@@ -1909,8 +1909,7 @@ class _SettingsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section header label — 8 pt gap to card gives visual breathing
-            // room between the uppercase label and the card below.
+            // Keep an 8pt gap between section labels and their cards.
             Padding(
               padding: const EdgeInsets.only(left: 16, bottom: 8),
               child: Text(
@@ -2017,7 +2016,7 @@ class _ThemeSettingsSection extends StatelessWidget {
                   ),
                   settingsScreenName: _systemThemeSettingsDestination(),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 SkeddoAppOnlySettingsSection(
                   rows: [
                     for (final option in const ['Light', 'Dark'])
@@ -2070,7 +2069,7 @@ class _FirstDayOfWeekSettingsSection extends StatelessWidget {
                   settingsScreenName:
                       _systemFirstDayOfWeekSettingsDestination(),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 SkeddoAppOnlySettingsSection(
                   rows: [
                     for (final day in kFirstDayOfWeekOptions)
@@ -2226,7 +2225,7 @@ class _DateFormatSettingsSection extends StatelessWidget {
                   ),
                   settingsScreenName: settingsScreenName,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 SkeddoAppOnlySettingsSection(
                   rows: optionRows,
                   additionalFooter: usesSystem
@@ -2353,7 +2352,7 @@ class _TextSizeSection extends StatelessWidget {
                   ),
                   settingsScreenName: _systemTextSizeSettingsDestination(),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 SkeddoAppOnlySettingsSection(
                   rows: [
                     _TextSizeSliderRow(
@@ -3410,7 +3409,7 @@ class _AccentColorSection extends StatelessWidget {
                   footer:
                       'When selected, Skeddo uses your device’s system accent color.',
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 SkeddoAppOnlySettingsSection(rows: rows),
               ],
             ),
