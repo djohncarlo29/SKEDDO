@@ -23,6 +23,9 @@ const double kAppHeaderContentTopSpacing = 16;
 // Compact content starts 16pt below that visible edge, so account for the
 // different portrait and landscape header layout slots.
 const double kAppHeaderSettledToolbarCircleBottom = 50.0;
+// Shared toolbar centerline, measured from the app content origin below the
+// status-bar safe area. Compact titles align to this, not the shorter row.
+const double kAppHeaderSettledToolbarCircleCenter = 30.0;
 const double kAppHeaderLandscapeToolbarHeight = 52.0;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;

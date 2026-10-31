@@ -265,6 +265,37 @@ void main() {
         await tester.tap(target);
         await tester.pumpAndSettle();
       }
+      void expectCompactHeaderCenteredOnToolbar(double toolbarHeight) {
+        final shell = find.byType(navigation_glass.GlassNavigationShell).last;
+        final searchAction = find.descendant(
+          of: shell,
+          matching: find.bySemanticsLabel('Search'),
+        );
+        expect(searchAction.evaluate(), isNotEmpty);
+        final toolbarCenterY = tester.getCenter(searchAction.last).dy;
+        final compactTitle = find.byType(AppHeaderCompactTitle).last;
+        final arrowCenters = <double>[];
+        expect(
+          tester.getCenter(compactTitle).dy,
+          closeTo(toolbarCenterY, 0.5),
+        );
+        for (final direction in ['left', 'right']) {
+          final arrow = find.byKey(
+            ValueKey('calendar-compact-period-$direction'),
+          );
+          expect(tester.getSize(arrow).height, toolbarHeight);
+          final centerY = tester.getCenter(arrow).dy;
+          arrowCenters.add(centerY);
+          expect(centerY, closeTo(toolbarCenterY, 0.5));
+        }
+        final upCenter = tester.getCenter(
+          enabledChevron('Go to more detail'),
+        ).dy;
+        final downCenter = tester.getCenter(
+          enabledChevron('Return to calendar overview'),
+        ).dy;
+        expect((upCenter + downCenter) / 2, closeTo(toolbarCenterY, 0.5));
+      }
 
       expect(calendar.view, CalendarView.year);
       await tapChevron('Go to more detail');
@@ -332,6 +363,7 @@ void main() {
 
       calendar.headerScrollPosition!.jumpTo(kAppHeaderTitleCollapseDistance);
       await tester.pumpAndSettle();
+      expectCompactHeaderCenteredOnToolbar(kAppHeaderToolbarHeight);
       await tapChevron('Go to more detail');
       expect(calendar.view, CalendarView.day);
       await tapChevron('Return to calendar overview');
@@ -339,6 +371,9 @@ void main() {
 
       tester.view.physicalSize = const Size(874, 402);
       await tester.pumpAndSettle();
+      expectCompactHeaderCenteredOnToolbar(
+        kAppHeaderLandscapeToolbarHeight,
+      );
       await tapChevron('Go to more detail');
       expect(calendar.view, CalendarView.day);
       await tapChevron('Return to calendar overview');

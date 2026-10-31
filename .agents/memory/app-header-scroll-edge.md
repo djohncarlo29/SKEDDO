@@ -189,3 +189,11 @@ In every compact layout, including landscape, keep the first content edge 16pt b
 **Why:** The user specified one compact first-content boundary across Notes, Events, Settings and subscreens, Calendar views, and You. Landscape and portrait have different header slots and viewport raises, so treating a shared spacer value as the final screen coordinate causes inconsistent gaps.
 
 **How to apply:** Preserve the settled toolbar geometry, compensate for the content viewport's orientation-specific raise at the content boundary, and keep compact clearance separate from expanded title gaps and active search placement.
+
+## Compact title-to-toolbar centerline
+
+Compact titles and their controls align to the rendered toolbar control centerline, not the nominal 44pt portrait or 52pt landscape layout-row center. Calendar period-chevron slots must use the same orientation-specific row height so their centers follow the title.
+
+**Why:** The toolbar's rendered center sits below the shorter layout-row center; centering within the row leaves compact titles and chevrons visibly above the toolbar in both orientations.
+
+**How to apply:** Use the shared settled-toolbar center offset for the compact-title group, then verify its center against the actual toolbar action bounds in portrait and landscape. Keep the vertical navigation pair centered as a group and do not change expanded headers.

@@ -3213,6 +3213,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     const compactArrowWidth = 40.0;
     const compactTrailingControlsWidth = compactArrowWidth + 24.0;
+    final compactToolbarHeight =
+        MediaQuery.orientationOf(context) == Orientation.landscape
+        ? kAppHeaderLandscapeToolbarHeight
+        : kAppHeaderToolbarHeight;
     final displayTitle = _formattedCalendarMonthTitle(title);
     final isToday = _isTodayTitle(displayTitle, displayYear);
     final titleStyle = TextStyle(
@@ -3235,8 +3239,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       required VoidCallback? onTap,
     }) {
       return SizedBox(
+        key: ValueKey('calendar-compact-period-${direction.name}'),
         width: compactArrowWidth,
-        height: 52,
+        height: compactToolbarHeight,
         child: Center(
           child: SizedBox(
             width: compactArrowWidth,
@@ -4142,6 +4147,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final headerToolbarHeight = isLandscape
         ? headerContentHeight
         : kAppHeaderToolbarHeight;
+    final compactTitleToolbarCenterOffset =
+        kAppHeaderSettledToolbarCircleCenter - headerToolbarHeight / 2;
     final searchChromeTravel =
         topInset +
         headerToolbarHeight +
@@ -4821,14 +4828,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                 child: Center(
                                                                                                   child: Transform.translate(
                                                                                                     // Portrait action icons
-                                                                                                    // sit 3px below the
-                                                                                                    // center of the 44px
-                                                                                                    // toolbar slot.
+                                                                                                    // and compact title share
+                                                                                                    // the actual toolbar center,
+                                                                                                    // not the shorter row center.
                                                                                                     offset: Offset(
                                                                                                       0,
-                                                                                                      isLandscape
-                                                                                                          ? 0
-                                                                                                          : 3,
+                                                                                                      compactTitleToolbarCenterOffset,
                                                                                                     ),
                                                                                                     child: AppHeaderCompactTitle(
                                                                                                       progress: compactTitleFadeProgress,
