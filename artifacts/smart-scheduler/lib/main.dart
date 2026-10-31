@@ -3200,8 +3200,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Color? compactFadeColor,
     GlobalKey? titleTextKey,
   }) {
-    final canUp = view != CalendarView.day;
-    final canDown = view != CalendarView.year;
+    final activeView = isActive
+        ? (_calendarTabKey.currentState?.view ?? view)
+        : view;
+    final canUp = activeView != CalendarView.day;
+    final canDown = activeView != CalendarView.year;
+    final hierarchyNavigationReady =
+        !isActive ||
+        (_calendarTabKey.currentState?.canNavigateHierarchy ?? true);
+    final canShowActiveHierarchyNavigation =
+        !isActive || hierarchyNavigationReady;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     const compactArrowWidth = 40.0;
     const compactTrailingControlsWidth = compactArrowWidth + 24.0;
@@ -3261,7 +3269,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       title: displayTitle,
       titleTextKey: titleTextKey,
       fadeColor: compactFadeColor ?? resolveThemeColor(kCardColor, context),
-      onTap: isActive && (isToday || view == CalendarView.day)
+      onTap: isActive && (isToday || activeView == CalendarView.day)
           ? () {
               if (isToday) {
                 _advanceCurrentCalendarHeader();
@@ -3307,13 +3315,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           titleLineHeight: titlePainter.height,
           // The preview panel should look like the same view once settled;
           // its pointer and semantic actions remain disabled until activation.
-          canUp: canUp,
-          canDown: canDown,
+          canUp: canUp && canShowActiveHierarchyNavigation,
+          canDown: canDown && canShowActiveHierarchyNavigation,
           compact: compact,
-          onUp: isActive && canUp
+          onUp: isActive && hierarchyNavigationReady && canUp
               ? () => _calendarTabKey.currentState?.navigateUp()
               : null,
-          onDown: isActive && canDown
+          onDown: isActive && hierarchyNavigationReady && canDown
               ? () => _calendarTabKey.currentState?.navigateDown()
               : null,
         );
@@ -5134,18 +5142,25 @@ class _CalendarNavChevron extends StatelessWidget {
             enabled: onTap != null,
             label: isUp ? 'Go to more detail' : 'Return to calendar overview',
             onTap: onTap,
-            child: IgnorePointer(
-              child: Center(
-                child: Transform.translate(
-                  offset: Offset(
-                    0,
-                    isUp ? compactIconOffset : -compactIconOffset,
-                  ),
-                  child: _ChevronIcon(
-                    direction: direction,
-                    color: color,
-                    size: compactIconSize,
-                    strokeWidth: 1.6 * compactIconScale,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              excludeFromSemantics: true,
+              // Keep a child tap recognizer even when this direction is
+              // unavailable so the title's parent tap cannot fire instead.
+              onTap: onTap ?? () {},
+              child: IgnorePointer(
+                child: Center(
+                  child: Transform.translate(
+                    offset: Offset(
+                      0,
+                      isUp ? compactIconOffset : -compactIconOffset,
+                    ),
+                    child: _ChevronIcon(
+                      direction: direction,
+                      color: color,
+                      size: compactIconSize,
+                      strokeWidth: 1.6 * compactIconScale,
+                    ),
                   ),
                 ),
               ),
@@ -5157,26 +5172,20 @@ class _CalendarNavChevron extends StatelessWidget {
       return SizedBox(
         width: 24,
         height: compactControlHeight,
-        child: _CalendarNavTapTarget(
-          onTapAt: (position) {
-            final tappedUpperHalf = position.dy < compactHalfHeight;
-            (tappedUpperHalf ? onUp : onDown)?.call();
-          },
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              compactHalf(
-                direction: _ChevronDir.up,
-                color: canUp ? resolveAccentColor(context) : disabledColor,
-                onTap: onUp,
-              ),
-              compactHalf(
-                direction: _ChevronDir.down,
-                color: canDown ? resolveAccentColor(context) : disabledColor,
-                onTap: onDown,
-              ),
-            ],
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            compactHalf(
+              direction: _ChevronDir.up,
+              color: canUp ? resolveAccentColor(context) : disabledColor,
+              onTap: onUp,
+            ),
+            compactHalf(
+              direction: _ChevronDir.down,
+              color: canDown ? resolveAccentColor(context) : disabledColor,
+              onTap: onDown,
+            ),
+          ],
         ),
       );
     }
@@ -5209,8 +5218,12 @@ class _CalendarNavChevron extends StatelessWidget {
               ? 'Go to more detail'
               : 'Return to calendar overview',
           onTap: onTap,
-          child: _CalendarNavTapTarget(
-            onTapAt: onTap == null ? null : (_) => onTap(),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            excludeFromSemantics: true,
+            // This child recognizer wins over the title tap underneath. A
+            // no-op still consumes taps on a visibly disabled direction.
+            onTap: onTap ?? () {},
             child: Stack(
               clipBehavior: Clip.none,
               children: [

@@ -2382,8 +2382,11 @@ class CalendarTabState extends State<CalendarTab>
       if (mounted && _collapseTargetView != null) {
         setState(() => _view = _collapseTargetView!);
         _collapseTargetView = null;
-        _notify();
       }
+      // The midpoint may already have cleared the target and notified AppShell
+      // while the collapse controller was still animating. Notify once more
+      // after it settles so the shell-owned title re-enables its chevrons.
+      if (mounted) _notify();
     });
   }
 
@@ -2402,6 +2405,7 @@ class CalendarTabState extends State<CalendarTab>
       setState(() => _collapseScrollOffset = _savedMonthScrollOffset);
     }
     _collapseTargetView = CalendarView.month;
+    _notify();
     if (fast) {
       await _collapseCtrl.animateBack(
         0.0,
@@ -2663,6 +2667,11 @@ class CalendarTabState extends State<CalendarTab>
   // ── View-mode public API ──────────────────────────────────────────────────────
   CalendarView get view => _view;
   CalendarViewMode get viewMode => _viewMode;
+  bool get canNavigateHierarchy =>
+      !_zoomCtrl.isAnimating &&
+      !_collapseCtrl.isAnimating &&
+      _zoomTargetView == null &&
+      _collapseTargetView == null;
 
   void setViewMode(CalendarViewMode mode, {bool persist = true}) {
     if (mode == _viewMode) return;
@@ -3144,9 +3153,7 @@ class CalendarTabState extends State<CalendarTab>
                 : 0.0;
             final isPortrait =
                 MediaQuery.orientationOf(context) == Orientation.portrait;
-            final dowTextTopInset = isPortrait
-                ? _calendarDowTextTopInset(context)
-                : 0.0;
+            final dowTextTopInset = _calendarDowTextTopInset(context);
             final contentTopSpacing = AppHeaderScrollView.contentTopSpacingOf(
               context,
               topExtension: kContentAreaTopRaise,
@@ -3154,7 +3161,7 @@ class CalendarTabState extends State<CalendarTab>
                 (isPortrait
                     ? (kAppHeaderExpandedTitleContentGap - dowTextTopInset) *
                           sharedTitleCollapseProgress
-                    : 0.0);
+                    : -dowTextTopInset);
             final titleToContentGap =
                 isPortrait
                     ? AppHeaderScrollView.expandedTitleContentGapAdjustment(
@@ -6233,13 +6240,17 @@ class _MonthView extends StatelessWidget {
         // to the scroll document.  That leaves the scroll position at zero
         // while AlwaysScrollable+BouncingScrollPhysics still permits the
         // placeholder to move during a rubber-band overscroll.
+        final landscapeDowTextTopInset = isPortrait
+            ? 0.0
+            : _calendarDowTextTopInset(context);
         final expandedViewportHeight =
             constraints.maxHeight +
             kContentAreaTopRaise -
             AppHeaderScrollView.contentTopSpacingOf(
               context,
               topExtension: kContentAreaTopRaise,
-            );
+            ) +
+            landscapeDowTextTopInset;
         final availableListEmptyStateH = math.max(
           0.0,
           expandedViewportHeight -
@@ -6280,33 +6291,23 @@ class _MonthView extends StatelessWidget {
                     finalContentGap: _kMonthListFinalContentGap,
                   )
                 : floatingClearance;
-        final contentH = selectedDayIsEmpty
-            ? showMonthList
+        final contentH = showMonthList
+            ? selectedDayIsEmpty
                 ? emptyStateNeedsScrollableFallback
                     ? gridH +
-                        emptyStateFallbackH +
-                        emptyStateFloatingClearance
+                          emptyStateFallbackH +
+                          emptyStateFloatingClearance
                     : math.max(
                         expandedViewportHeight,
                         gridH +
                             availableListEmptyStateH +
                             emptyStateFloatingClearance,
                       )
-                : // Compact, Stacked, and Details end at the grid. Keep only
-                  // enough scroll tail to place its final separator 16 pt
-                  // above the Floating Tab Bar.
-                  math.max(
+                : math.max(
                     expandedViewportHeight,
-                    gridH + emptyStateFloatingClearance,
+                    gridH + listContentH + eventContentClearance,
                   )
-            : // Keep a short event list at zero positive scroll extent. The
-              // final-content clearance only contributes when the list is
-              // long enough to require scrolling; it must not be appended
-              // after a viewport-sized document.
-              math.max(
-                expandedViewportHeight,
-                gridH + listContentH + eventContentClearance,
-              );
+            : gridH;
         final emptyH =
             selectedDayIsEmpty && showMonthList ? contentH - gridH : 0.0;
         final emptyStateH = selectedDayIsEmpty
@@ -6620,10 +6621,50 @@ class _MonthView extends StatelessWidget {
                           ),
                   ),
                 ),
-                const SliverToBoxAdapter(
-                  child: AppHeaderContentSpacing(),
+                SliverToBoxAdapter(
+                  child: AppHeaderContentSpacing(
+                    visibleContentTopInset: landscapeDowTextTopInset,
+                  ),
                 ),
-                if (monthListUsesNaturalHeight)
+                if (!showMonthList)
+                  SliverLayoutBuilder(
+                    builder: (context, sliverConstraints) {
+                      final availableGridExtent = math.max(
+                        0.0,
+                        sliverConstraints.viewportMainAxisExtent -
+                            sliverConstraints.precedingScrollExtent,
+                      );
+                      final gridOverflows =
+                          gridH > availableGridExtent + 0.5;
+                      final documentHeight = gridOverflows
+                          ? gridH + emptyStateFloatingClearance
+                          : math.max(
+                              availableGridExtent,
+                              expandedViewportHeight,
+                            );
+                      return SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: SizedBox(
+                          height: gridOverflows
+                              ? documentHeight
+                              : availableGridExtent,
+                          child: OverflowBox(
+                            alignment: Alignment.topCenter,
+                            minWidth: sliverConstraints.crossAxisExtent,
+                            maxWidth: sliverConstraints.crossAxisExtent,
+                            minHeight: documentHeight,
+                            maxHeight: documentHeight,
+                            child: SizedBox(
+                              width: sliverConstraints.crossAxisExtent,
+                              height: documentHeight,
+                              child: monthDocument,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                else if (monthListUsesNaturalHeight)
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: monthDocument,

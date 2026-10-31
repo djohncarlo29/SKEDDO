@@ -405,6 +405,68 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a fitting compact Month grid returns to zero body scroll offset',
+    (tester) async {
+      const screenSize = Size(402, 650);
+      const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = screenSize;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+
+      final transition = AppHeaderTitleTransition();
+      final calendarKey = GlobalKey<CalendarTabState>();
+      addTearDown(transition.dispose);
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppHeaderScrollInsetScope(
+            leadingInset: appShellLeadingInset,
+            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+            titleTransition: transition,
+            child: AppWindowContentBoundary(
+              child: Padding(
+                padding: const EdgeInsets.only(top: appShellLeadingInset),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          home: CalendarTab(
+            key: calendarKey,
+            onViewChanged: (_, _, _, _, _, _) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendar = calendarKey.currentState!;
+      calendar.setViewMode(CalendarViewMode.details, persist: false);
+      await tester.pumpAndSettle();
+      final trailingSurface = find.byWidgetPredicate(
+        (widget) =>
+            widget is ColoredBox &&
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'calendar-month-trailing-surface-',
+            ),
+      ).at(1);
+      final monthPosition = Scrollable.of(
+        tester.element(trailingSurface),
+      ).position;
+      expect(monthPosition.maxScrollExtent, greaterThan(0.0));
+      monthPosition.jumpTo(monthPosition.maxScrollExtent);
+      await tester.pump();
+
+      calendar.setViewMode(CalendarViewMode.compact, persist: false);
+      await tester.pumpAndSettle();
+      expect(monthPosition.maxScrollExtent, closeTo(0.0, 0.5));
+      expect(monthPosition.pixels, closeTo(0.0, 0.5));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('empty Month List re-centers below the grid as the title collapses', (
     tester,
   ) async {

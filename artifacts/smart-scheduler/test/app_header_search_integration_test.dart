@@ -134,6 +134,49 @@ void main() {
     },
   );
 
+  testWidgets(
+    'landscape Month and Day DOW align 16pt below the settled toolbar',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(874, 402);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      final previousDefaultView = appDefaultViewNotifier.value;
+      appDefaultViewNotifier.value = 'Month';
+      addTearDown(() => appDefaultViewNotifier.value = previousDefaultView);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getCenter(find.text('Calendar').last));
+      await tester.pumpAndSettle();
+
+      final calendarFinder = find.byType(CalendarTab);
+      final calendar = tester.state<CalendarTabState>(calendarFinder);
+      final targetTop =
+          MediaQuery.paddingOf(tester.element(calendarFinder)).top +
+          kAppHeaderSettledToolbarCircleBottom +
+          16.0;
+      for (final label in _visibleMonthDowRects(tester, calendarFinder)) {
+        expect(label.top, closeTo(targetTop, 0.5));
+      }
+
+      await calendar.advanceCurrentHeader();
+      await tester.pumpAndSettle();
+      final dayDow = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+      );
+      final dayLabel = find.descendant(
+        of: dayDow,
+        matching: find.byType(Text),
+      ).first;
+      expect(tester.getRect(dayLabel).top, closeTo(targetTop, 0.5));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Default View selects the matching Calendar hierarchy', (
     tester,
   ) async {
@@ -172,6 +215,138 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     appDefaultViewNotifier.value = 'Month';
   });
+
+  testWidgets(
+    'calendar hierarchy chevrons navigate once in every month mode and title format',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      final previousDefaultView = appDefaultViewNotifier.value;
+      final previousFullMonthName = appFullMonthNameNotifier.value;
+      appDefaultViewNotifier.value = 'Year';
+      appFullMonthNameNotifier.value = false;
+      addTearDown(() {
+        appDefaultViewNotifier.value = previousDefaultView;
+        appFullMonthNameNotifier.value = previousFullMonthName;
+      });
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getCenter(find.text('Calendar').last));
+      await tester.pumpAndSettle();
+
+      final calendarFinder = find.byType(CalendarTab);
+      final calendar = tester.state<CalendarTabState>(calendarFinder);
+      Finder enabledChevron(String label) {
+        final candidates = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label == label &&
+              widget.properties.onTap != null,
+        );
+        for (final element in candidates.evaluate()) {
+          final candidate = find.byWidget(element.widget);
+          final hit = tester.hitTestOnBinding(tester.getCenter(candidate));
+          final renderObject = tester.renderObject(candidate);
+          if (hit.path.any((entry) => identical(entry.target, renderObject))) {
+            return candidate;
+          }
+        }
+        return candidates;
+      }
+      Future<void> tapChevron(String label) async {
+        final target = enabledChevron(label);
+        expect(target.evaluate(), isNotEmpty, reason: label);
+        await tester.tap(target);
+        await tester.pumpAndSettle();
+      }
+
+      expect(calendar.view, CalendarView.year);
+      await tapChevron('Go to more detail');
+      expect(calendar.view, CalendarView.month);
+      expect(calendar.canNavigateHierarchy, isTrue);
+
+      for (final fullMonthName in [false, true]) {
+        appFullMonthNameNotifier.value = fullMonthName;
+        await tester.pumpAndSettle();
+        for (final mode in CalendarViewMode.values) {
+          calendar.setViewMode(mode, persist: false);
+          await tester.pumpAndSettle();
+
+          await tapChevron('Go to more detail');
+          expect(calendar.view, CalendarView.day, reason: '$mode / $fullMonthName');
+          await tapChevron('Return to calendar overview');
+          expect(
+            calendar.view,
+            CalendarView.month,
+            reason: '$mode / $fullMonthName',
+          );
+        }
+      }
+
+      for (final (setting, expectedSubMode) in [
+        ('Day', 'singleDay'),
+        ('Week', 'multiDay'),
+      ]) {
+        appDefaultViewNotifier.value = setting;
+        await tester.pumpAndSettle();
+        expect(calendar.view, CalendarView.day, reason: setting);
+        await tapChevron('Return to calendar overview');
+        expect(calendar.view, CalendarView.month, reason: setting);
+        await tapChevron('Go to more detail');
+        expect(calendar.view, CalendarView.day, reason: setting);
+        expect(
+          tester.widget<CalendarTab>(calendarFinder).daySubMode.name,
+          expectedSubMode,
+          reason: setting,
+        );
+        await tapChevron('Return to calendar overview');
+      }
+
+      appDefaultViewNotifier.value = 'Day';
+      await tester.pumpAndSettle();
+      await tapChevron('Return to calendar overview');
+      await tapChevron('Go to more detail');
+      await tester.tap(find.bySemanticsLabel('Day view options').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('List').last);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CalendarTab>(calendarFinder).daySubMode.name,
+        'list',
+      );
+      await tapChevron('Return to calendar overview');
+      expect(calendar.view, CalendarView.month);
+      await tapChevron('Go to more detail');
+      expect(calendar.view, CalendarView.day);
+      expect(
+        tester.widget<CalendarTab>(calendarFinder).daySubMode.name,
+        'list',
+      );
+      await tapChevron('Return to calendar overview');
+
+      calendar.headerScrollPosition!.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pumpAndSettle();
+      await tapChevron('Go to more detail');
+      expect(calendar.view, CalendarView.day);
+      await tapChevron('Return to calendar overview');
+      expect(calendar.view, CalendarView.month);
+
+      tester.view.physicalSize = const Size(874, 402);
+      await tester.pumpAndSettle();
+      await tapChevron('Go to more detail');
+      expect(calendar.view, CalendarView.day);
+      await tapChevron('Return to calendar overview');
+      expect(calendar.view, CalendarView.month);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('real tabs inherit the package title and search collapse stages', (
     tester,

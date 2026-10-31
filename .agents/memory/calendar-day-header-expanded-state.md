@@ -19,8 +19,8 @@ In Month, Single Day, and Multi Day views, anchor each DOW label's alphabetic ba
 
 ## Visible DOW top edge at the shared header
 
-The 16pt gap from the expanded title baseline or settled toolbar circle is measured to the visible top of the DOW text, not the top of its fixed-height baseline row. In portrait Month, shift the whole active month document during shared header collapse so the DOW row and month grid retain their existing adjacency. Landscape remains unchanged.
+The 16pt gap from the expanded title baseline or settled toolbar circle is measured to the visible top of the DOW text, not the top of its fixed-height baseline row. In portrait Month, shift the whole active month document during shared header collapse so the DOW row and month grid retain their existing adjacency. In landscape, subtract the measured DOW glyph inset from the generic content spacer and shift the fixed Day header group by the same amount.
 
-**Why:** The 28pt baseline row includes font-metric space above the visible glyphs. Aligning the row box instead leaves the DOW text too low; moving only the DOW line would also create a new gap before the grid.
+**Why:** The 28pt baseline row includes font-metric space above the visible glyphs. Aligning the row box instead leaves the DOW text too low; moving only the DOW line would also create a new gap before the grid. Landscape has no title row, so its generic content spacing must account for the same glyph inset.
 
-**How to apply:** Measure the text inset with the active OS text scaler. Use it for the Month title/compact corrections and Day fixed-header geometry, and keep the separate Year mini-month DOW-to-week-row gap at its authored value.
+**How to apply:** Measure the text inset with the active OS text scaler. Use it for the Month title/compact corrections and Day fixed-header geometry in both orientations, preserving Month DOW-to-grid adjacency; keep the separate Year mini-month DOW-to-week-row gap at its authored value.

@@ -1810,7 +1810,14 @@ class AppHeaderScrollStack extends Stack {
 /// Declares existing leading content spacing, reused by the shared boundary.
 /// Outside that boundary (for example landscape), retain the authored inset.
 class AppHeaderContentSpacing extends StatelessWidget {
-  const AppHeaderContentSpacing({super.key});
+  const AppHeaderContentSpacing({
+    super.key,
+    this.visibleContentTopInset = 0.0,
+  }) : assert(visibleContentTopInset >= 0.0);
+
+  /// Removes the line-box space above a first element's visible glyphs when
+  /// the requested gap is measured to the glyph rather than its row box.
+  final double visibleContentTopInset;
 
   @override
   Widget build(BuildContext context) {
@@ -1821,7 +1828,11 @@ class AppHeaderContentSpacing extends StatelessWidget {
             MediaQuery.orientationOf(context),
           )
         : kAppHeaderContentTopSpacing;
-    return SizedBox(height: spacing);
+    return SizedBox(
+      height: (spacing - visibleContentTopInset)
+          .clamp(0.0, double.infinity)
+          .toDouble(),
+    );
   }
 }
 

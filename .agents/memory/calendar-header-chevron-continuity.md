@@ -21,3 +21,15 @@ Swipes do not have this conflict.
 
 **How to apply:** Keep compact left/right period navigation separate from the split
 hierarchy chevron, and verify the Day View remains open after tapping either arrow.
+
+Hierarchy navigation availability must be refreshed again after a Day View
+collapse finishes. The view handoff can happen at the animation midpoint, before
+the controller stops; a parent toolbar that disables chevrons while animating
+will otherwise stay stale-disabled.
+
+**Why:** A midpoint-only callback updates the displayed view while the collapse
+controller is still active, and no later parent rebuild may occur to restore the
+chevrons.
+
+**How to apply:** Notify the AppShell after the Day-entry animation settles, even
+if the midpoint already committed and cleared the target view.
