@@ -22460,6 +22460,10 @@ class _ScheduledEventCard extends StatelessWidget {
         categoryMeta == null
             ? null
             : renderCategoryColor(categoryMeta.rawColor, context);
+    final contentVerticalPadding =
+        isGrouped
+            ? kEventTileVerticalContentPadding
+            : kFixedVerticalPadding;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -22469,7 +22473,12 @@ class _ScheduledEventCard extends StatelessWidget {
           Container(height: 0.5, color: separatorColor),
         _TilePressScale(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              contentVerticalPadding,
+              16,
+              contentVerticalPadding,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [

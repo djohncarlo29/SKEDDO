@@ -67,6 +67,8 @@ const double kFloatingTabBarSafetyMargin = 12.0;
 // those controls may grow with the OS text scaler, but this authored breathing
 // room does not.
 const double kFixedVerticalPadding = 16.0;
+// Event cards share this vertical content inset in both DCVs and search results.
+const double kEventTileVerticalContentPadding = 12.0;
 // Raised top edge of the usable content viewport on primary app pages. Keep
 // this separate from content padding so the existing first-item gap stays intact.
 const double kContentAreaTopRaise = 16.0;

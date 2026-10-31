@@ -560,7 +560,12 @@ class _SearchEventTile extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        kEventTileVerticalContentPadding,
+        14,
+        kEventTileVerticalContentPadding,
+      ),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: const BoundedSquircleStadiumBorder(radius: kSbCornerRadius),
