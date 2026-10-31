@@ -6,6 +6,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
 
+import '../app_theme.dart' show kSFProText;
+
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderTitleCollapseDistance = kAppHeaderTitleHeight;
@@ -864,23 +866,21 @@ class AppHeaderScrollView extends StatelessWidget {
           : 0.0;
 
   /// Additional body spacing needed to keep [desiredGap] below the expanded
-  /// title text, while preserving any existing compact-state spacing.
+  /// title baseline or text bottom, while preserving compact-state spacing.
   ///
-  /// The scroll viewport is raised behind the shell by [topExtension], so the
-  /// expanded-only spacer compensates for that translation. [existingSpacing]
-  /// is the first body's authored top gap; [baselineDescent] is non-zero only
-  /// when the requested anchor is the title baseline.
+  /// [existingSpacing] is the first body's authored top gap.
+  /// [baselineDescent] converts the title-slot bottom inset to a baseline
+  /// anchor. Do not include viewport extension: that would double-count the
+  /// visible title-to-content gap in the shell layout.
   static double expandedTitleContentGapAdjustment({
     required double desiredGap,
     required double existingSpacing,
     required double collapseProgress,
-    double topExtension = 0.0,
     double baselineDescent = 0.0,
   }) {
     if (!desiredGap.isFinite ||
         desiredGap <= 0 ||
         !existingSpacing.isFinite ||
-        !topExtension.isFinite ||
         !baselineDescent.isFinite) {
       return 0.0;
     }
@@ -888,22 +888,26 @@ class AppHeaderScrollView extends StatelessWidget {
         ? collapseProgress.clamp(0.0, 1.0).toDouble()
         : 0.0;
     final targetFromSlotBottom =
-        desiredGap +
-        topExtension -
+        desiredGap -
         kAppHeaderTitleTextBottomInset -
+        existingSpacing -
         baselineDescent;
-    return (targetFromSlotBottom - existingSpacing) * (1.0 - progress);
+    return targetFromSlotBottom * (1.0 - progress);
   }
 
-  /// Baseline descent for the default 34pt bold Large Header style. Search
-  /// screens use a baseline gap; ordinary content uses the text-bottom inset.
+  /// Baseline-to-line-bottom distance for the default 34pt bold Large Header.
+  /// It converts the shared line-box inset into a baseline anchor.
   static final double titleBaselineDescent = _measureTitleBaselineDescent();
 
   static double _measureTitleBaselineDescent() {
     final painter = TextPainter(
-      text: const TextSpan(
+      text: TextSpan(
         text: 'Ag',
-        style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontFamily: kSFProText,
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+          ),
       ),
       textDirection: TextDirection.ltr,
       textScaler: TextScaler.noScaling,
@@ -1192,7 +1196,6 @@ class AppHeaderScrollView extends StatelessWidget {
                                   existingSpacing: minimumContentTopSpacing,
                                   collapseProgress:
                                       phaseController.collapseProgress,
-                                  topExtension: topExtension,
                                   baselineDescent:
                                       titleInset
                                               .expandedTitleContentGapFromBaseline
@@ -1651,7 +1654,6 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                 desiredGap: expandedTitleContentGap,
                 existingSpacing: 0.0,
                 collapseProgress: controller.collapseProgress,
-                topExtension: topExtension,
                 baselineDescent: expandedTitleContentGapFromBaseline
                     ? AppHeaderScrollView.titleBaselineDescent
                     : 0.0,
@@ -1758,8 +1760,9 @@ class AppHeaderScrollInset extends StatelessWidget {
   final double searchBarExtent;
   /// Keeps the search row pinned and stationary during inline search.
   final bool pinSearchBar;
-  /// Desired expanded-state distance between the large title text bottom and
-  /// the first content item (or its search bar). Zero preserves legacy layout.
+  /// Desired expanded-state distance between the large title baseline (when
+  /// [expandedTitleContentGapFromBaseline] is true) or text bottom and the
+  /// first content item. Zero preserves legacy layout.
   final double expandedTitleContentGap;
   /// Measure the desired gap from the title baseline instead of its text box.
   final bool expandedTitleContentGapFromBaseline;

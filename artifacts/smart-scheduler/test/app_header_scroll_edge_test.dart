@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassScrollEdge;
+import 'package:smart_scheduler/app_theme.dart' show kSFProText;
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
@@ -25,24 +26,32 @@ void main() {
                   child: AppHeaderScrollInsetScope(
                     leadingInset: headerHeight,
                     titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-                    child: AppHeaderScrollView(
-                      topExtension:
-                          kAppHeaderScrollEdgeHeaderBottomExtension,
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: AppHeaderScrollInset(
-                            searchBar: SizedBox(
-                              key: searchKey,
-                              height: 40,
+                    child: Transform.translate(
+                      offset: const Offset(
+                        0,
+                        kAppHeaderScrollEdgeHeaderBottomExtension,
+                      ),
+                      child: AppHeaderScrollView(
+                        topExtension:
+                            kAppHeaderScrollEdgeHeaderBottomExtension,
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: AppHeaderScrollInset(
+                              searchBar: SizedBox(
+                                key: searchKey,
+                                height: 40,
+                              ),
+                              searchBarExtent: 40,
+                              expandedTitleContentGap:
+                                  kAppHeaderExpandedTitleContentGap,
+                              expandedTitleContentGapFromBaseline: true,
                             ),
-                            searchBarExtent: 40,
-                            expandedTitleContentGap:
-                                kAppHeaderExpandedTitleContentGap,
-                            expandedTitleContentGapFromBaseline: true,
                           ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 200)),
-                      ],
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: 200),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -57,10 +66,11 @@ void main() {
                       alignment: Alignment.bottomLeft,
                       child: Transform.translate(
                         offset: const Offset(0, downshift),
-                        child: const Text(
+                        child: Text(
                           'All Notes',
                           key: ValueKey('expanded-title-text'),
                           style: TextStyle(
+                            fontFamily: kSFProText,
                             fontSize: 34,
                             fontWeight: FontWeight.bold,
                           ),
@@ -81,9 +91,13 @@ void main() {
       );
       final titleOrigin = titleParagraph.localToGlobal(Offset.zero);
       final titleMetrics = TextPainter(
-        text: const TextSpan(
+        text: TextSpan(
           text: 'All Notes',
-          style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontFamily: kSFProText,
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         textDirection: TextDirection.ltr,
         textScaler: TextScaler.noScaling,
@@ -100,7 +114,7 @@ void main() {
   );
 
   testWidgets(
-    'first settings content keeps a 16pt gap below the title text',
+    'first settings content keeps a 16pt gap below the title baseline',
     (tester) async {
       const headerHeight = 68.0;
       const titleHeight = kAppHeaderTitleHeight;
@@ -117,23 +131,30 @@ void main() {
                   child: AppHeaderScrollInsetScope(
                     leadingInset: headerHeight,
                     titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-                    child: AppHeaderScrollView(
-                      topExtension:
-                          kAppHeaderScrollEdgeHeaderBottomExtension,
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: AppHeaderScrollInset(
-                            expandedTitleContentGap:
-                                kAppHeaderExpandedTitleContentGap,
+                    child: Transform.translate(
+                      offset: const Offset(
+                        0,
+                        kAppHeaderScrollEdgeHeaderBottomExtension,
+                      ),
+                      child: AppHeaderScrollView(
+                        topExtension:
+                            kAppHeaderScrollEdgeHeaderBottomExtension,
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: AppHeaderScrollInset(
+                              expandedTitleContentGap:
+                                  kAppHeaderExpandedTitleContentGap,
+                              expandedTitleContentGapFromBaseline: true,
+                            ),
                           ),
-                        ),
-                        const SliverToBoxAdapter(
-                          child: AppHeaderContentSpacing(),
-                        ),
-                        SliverToBoxAdapter(
-                          child: SizedBox(key: firstContentKey, height: 48),
-                        ),
-                      ],
+                          const SliverToBoxAdapter(
+                            child: AppHeaderContentSpacing(),
+                          ),
+                          SliverToBoxAdapter(
+                            child: SizedBox(key: firstContentKey, height: 48),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -148,10 +169,11 @@ void main() {
                       alignment: Alignment.bottomLeft,
                       child: Transform.translate(
                         offset: const Offset(0, downshift),
-                        child: const Text(
+                        child: Text(
                           'Settings',
                           key: ValueKey('expanded-title-text'),
                           style: TextStyle(
+                            fontFamily: kSFProText,
                             fontSize: 34,
                             fontWeight: FontWeight.bold,
                           ),
@@ -170,33 +192,47 @@ void main() {
       final titleParagraph = tester.renderObject<RenderParagraph>(
         find.byKey(const ValueKey('expanded-title-text')),
       );
-      final titleTextBottom =
-          titleParagraph.localToGlobal(Offset.zero).dy +
-          titleParagraph.size.height;
+      final titleOrigin = titleParagraph.localToGlobal(Offset.zero);
+      final titleMetrics = TextPainter(
+        text: TextSpan(
+          text: 'Settings',
+          style: TextStyle(
+            fontFamily: kSFProText,
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: TextScaler.noScaling,
+      )..layout();
+      final titleBaseline =
+          titleOrigin.dy + titleMetrics.computeLineMetrics().first.baseline;
+      titleMetrics.dispose();
       final firstContentTop = tester.getTopLeft(
         find.byKey(firstContentKey),
       ).dy;
       expect(
-        firstContentTop - titleTextBottom,
+        firstContentTop - titleBaseline,
         closeTo(kAppHeaderExpandedTitleContentGap, 0.5),
       );
     },
   );
 
-  test('expanded title content spacing measures from the text bottom', () {
+  test('expanded title content spacing measures from the baseline', () {
     for (final existingSpacing in [0.0, kAppHeaderContentTopSpacing]) {
       final adjustment =
           AppHeaderScrollView.expandedTitleContentGapAdjustment(
             desiredGap: kAppHeaderExpandedTitleContentGap,
             existingSpacing: existingSpacing,
             collapseProgress: 0,
-            topExtension: 16,
+            baselineDescent:
+                AppHeaderScrollView.titleBaselineDescent,
           );
       expect(
-        -16 +
-            existingSpacing +
+        existingSpacing +
             adjustment +
-            kAppHeaderTitleTextBottomInset,
+            kAppHeaderTitleTextBottomInset +
+            AppHeaderScrollView.titleBaselineDescent,
         kAppHeaderExpandedTitleContentGap,
       );
       expect(
@@ -204,7 +240,6 @@ void main() {
           desiredGap: kAppHeaderExpandedTitleContentGap,
           existingSpacing: existingSpacing,
           collapseProgress: 1,
-          topExtension: 16,
         ),
         0,
         reason: 'The compact-state spacing must remain unchanged.',
@@ -218,12 +253,10 @@ void main() {
           desiredGap: kAppHeaderExpandedTitleContentGap,
           existingSpacing: 0,
           collapseProgress: 0,
-          topExtension: 16,
           baselineDescent: baselineDescent,
         );
     expect(
-      -16 +
-          baselineAdjustment +
+      baselineAdjustment +
           kAppHeaderTitleTextBottomInset +
           baselineDescent,
       kAppHeaderExpandedTitleContentGap,

@@ -21456,6 +21456,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               enabled:
                   MediaQuery.orientationOf(context) == Orientation.portrait,
               expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+              expandedTitleContentGapFromBaseline: true,
             ),
           ),
           const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
@@ -21547,6 +21548,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                 enabled:
                     MediaQuery.orientationOf(context) == Orientation.portrait,
                 expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+                expandedTitleContentGapFromBaseline: true,
               ),
             ),
             const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
@@ -21753,6 +21755,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+            expandedTitleContentGapFromBaseline: true,
           ),
         ),
         SliverFillRemaining(hasScrollBody: false, child: emptyStateContent),

@@ -958,6 +958,7 @@ class _MainSettingsContent extends StatelessWidget {
           child: AppHeaderScrollInset(
             enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+            expandedTitleContentGapFromBaseline: true,
           ),
         ),
         // Already supplied by the shared portrait header/body boundary.
@@ -1236,6 +1237,7 @@ class _SubScreenState extends State<_SubScreen> {
           child: AppHeaderScrollInset(
             enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+            expandedTitleContentGapFromBaseline: true,
           ),
         ),
         // Already supplied by the shared portrait header/body boundary.
