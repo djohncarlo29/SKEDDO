@@ -143,11 +143,11 @@ const double _kCalendarDayCircleDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
-const double kFixedTopPadding = 16.0; // top padding above the day circle
+const double kFixedTopPadding = 8.0; // top padding above the day circle
 const double _kDayIndicatorBottomPadding =
     16.0; // minimum breathing room above the separator
 const double kDayCircleOffset =
-    34.0; // circle centre from row top (= kFixedTopPadding + 18)
+    26.0; // circle centre from row top (= kFixedTopPadding + 18)
 const double _kDayLabelHeight = 28.0;
 const double _kWeekNumWidth = 28.0;
 const double _kYearOuterPad = 16.0;

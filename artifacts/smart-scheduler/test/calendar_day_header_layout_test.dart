@@ -540,7 +540,7 @@ void main() {
       final centerTimelineRect = tester.getRect(timelines.at(1));
       expect(selectedWeek, findsOneWidget);
       final selectedWeekRect = tester.getRect(selectedWeek);
-      const weekStripHeight = 68.0;
+      const weekStripHeight = 60.0;
       final titleBaselineGap =
           AppHeaderScrollView.expandedTitleContentGapAdjustment(
             desiredGap: kAppHeaderExpandedTitleContentGap,
