@@ -3503,6 +3503,104 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
+  void _deleteAllArchivedUtilityItems() {
+    final archivedCategories = List<_UserCategory>.of(
+      _archivedUserCategories,
+    );
+    final archivedSmartLabels = List<String>.of(_archivedSmartLabels);
+    final archivedEvents = List<ScheduledEvent>.of(
+      EventStore.instance.archivedEvents.value,
+    );
+
+    for (final category in archivedCategories) {
+      if (_isSmartUserCategory(category)) continue;
+      _ensureDefaultCategoryAvailable({category.id});
+      _removeCategoryEvents(
+        category.id,
+        deleteEvents: true,
+        deletionOrigin: EventLifecycleOrigin.all,
+      );
+    }
+    EventStore.instance.moveAllArchivedToDeleted();
+
+    setState(() {
+      for (final category in archivedCategories) {
+        _recentlyDeletedCategories.removeWhere(
+          (existing) => existing.id == category.id,
+        );
+        _recentlyDeletedCategories.add(category);
+        _setUtilityDate('deleted-category', category.id);
+        _removeUtilityDate('archived-category', category.id);
+        _userCategories.removeWhere(
+          (candidate) => candidate.id == category.id,
+        );
+        _pinnedUserCategories.removeWhere(
+          (candidate) => candidate.id == category.id,
+        );
+        _listTopOrder.remove(category.id);
+        _gridCombinedOrder.removeWhere(
+          (item) => item is _UserCategory && item.id == category.id,
+        );
+      }
+      for (final label in archivedSmartLabels) {
+        _archivedSmartCategories.remove(label);
+        if (!_recentlyDeletedSmartCategories.contains(label)) {
+          _recentlyDeletedSmartCategories.add(label);
+        }
+        _setUtilityDate('deleted-smart', label);
+        _removeUtilityDate('archived-smart', label);
+      }
+      for (final event in archivedEvents) {
+        _removeUtilityDate('archived-event', event.id);
+        _setUtilityDate('deleted-event', event.id);
+      }
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
+  }
+
+  void _permanentlyDeleteAllRecentlyDeletedItems() {
+    final deletedCategories = List<_UserCategory>.of(
+      _recentlyDeletedCategories,
+    );
+    final deletedSmartLabels = List<String>.of(
+      _recentlyDeletedSmartCategories,
+    );
+    final deletedEvents = List<ScheduledEvent>.of(
+      EventStore.instance.deletedEvents.value,
+    );
+
+    EventStore.instance.permanentlyDeleteAllDeleted();
+    setState(() {
+      _recentlyDeletedCategories.clear();
+      for (final category in deletedCategories) {
+        _removeUtilityDate('deleted-category', category.id);
+        _dcvCustomSectionNames.remove(category.name);
+        _dcvCustomSectionEventIds.remove(category.name);
+        if (_isSmartUserCategory(category)) {
+          _smartCategoryOrder.remove(category.name);
+          _gridCombinedOrder.remove(category.name);
+          _smartCategoryColors.remove(category.name);
+        }
+      }
+      _recentlyDeletedSmartCategories.clear();
+      for (final label in deletedSmartLabels) {
+        _smartCategoryOrder.remove(label);
+        _gridCombinedOrder.remove(label);
+        _smartCategoryColors.remove(label);
+        _archivedSmartCategories.remove(label);
+        _removeUtilityDate('deleted-smart', label);
+      }
+      for (final event in deletedEvents) {
+        _removeUtilityDate('deleted-event', event.id);
+      }
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
+  }
+
   void _unarchiveSmartCategory(String label) {
     if (!_archivedSmartCategories.contains(label)) return;
     setState(() {
@@ -6925,6 +7023,53 @@ class EventsTabState extends State<EventsTab>
         .cast<_UserCategory?>()
         .firstWhere((c) => c?.name == name, orElse: () => null);
     if (cat != null) _archiveCategory(cat, onConfirmed: onConfirmed);
+  }
+
+  Future<void> deleteAllUtilityItems(String utilityLabel) async {
+    final isArchived = utilityLabel == _kArchivedUtilityLabel;
+    final isRecentlyDeleted = utilityLabel == 'Recently Deleted';
+    if ((!isArchived && !isRecentlyDeleted) ||
+        widget.activeDCV != utilityLabel ||
+        _activeUtilityIsEmpty()) {
+      return;
+    }
+
+    final firstSubtitle = isArchived
+        ? 'This deletes all items in Archived Items. You can still recover '
+            'them from Recently Deleted.'
+        : 'Every item here will be permanently deleted and cannot be recovered.';
+    final confirmationSubtitle = isArchived
+        ? 'All archived items will be deleted and placed in Recently Deleted, '
+            'where you can still recover them.'
+        : 'This permanently deletes all items in Recently Deleted. This '
+            'cannot be undone.';
+
+    while (mounted) {
+      final action = await _UtilityItemSheet.show(
+        context,
+        title: 'Delete All?',
+        subtitle: firstSubtitle,
+        actionLabel: null,
+        destructiveActionLabel: 'Delete All',
+      );
+      if (!mounted || action != _UtilityItemAction.destructive) return;
+
+      final confirmed = await showDeleteConfirmationSheet(
+        context,
+        title: 'Are you sure?',
+        subtitle: confirmationSubtitle,
+        actionLabel: 'Delete All',
+      );
+      if (!mounted) return;
+      if (confirmed != true) continue;
+
+      if (isArchived) {
+        _deleteAllArchivedUtilityItems();
+      } else {
+        _permanentlyDeleteAllRecentlyDeletedItems();
+      }
+      return;
+    }
   }
 
   /// Exposed so AppShell can check whether the search bar is on-screen.
@@ -12275,14 +12420,14 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
 enum _UtilityItemAction { primary, destructive }
 
 /// Overlay action sheet used when an item in Archived Items or Recently
-/// Deleted is tapped. Recovery stays first, an optional destructive action is
-/// placed in the middle, and Cancel remains last.
+/// Deleted is tapped. Recovery stays first when present, an optional
+/// destructive action follows it, and Cancel remains last.
 class _UtilityItemSheet {
   static Future<_UtilityItemAction?> show(
     BuildContext context, {
     required String title,
     required String subtitle,
-    required String actionLabel,
+    required String? actionLabel,
     String? destructiveActionLabel,
   }) async {
     final completer = Completer<_UtilityItemAction?>();
@@ -12313,7 +12458,7 @@ class _UtilityItemSheet {
 class _UtilityItemSheetOverlay extends StatelessWidget {
   final String title;
   final String subtitle;
-  final String actionLabel;
+  final String? actionLabel;
   final String? destructiveActionLabel;
   final void Function(_UtilityItemAction?) onResult;
 
@@ -12442,13 +12587,14 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      button(
-                        label: actionLabel,
-                        labelColor: primary,
-                        onTap: () => onResult(_UtilityItemAction.primary),
-                      ),
+                      if (actionLabel != null)
+                        button(
+                          label: actionLabel!,
+                          labelColor: primary,
+                          onTap: () => onResult(_UtilityItemAction.primary),
+                        ),
                       if (destructiveActionLabel != null) ...[
-                        const SizedBox(height: 8),
+                        if (actionLabel != null) const SizedBox(height: 8),
                         button(
                           label: destructiveActionLabel!,
                           labelColor: CupertinoColors.destructiveRed,
@@ -14018,6 +14164,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                           cursorColor: resolveAccentColor(context),
                                           selectionControls:
                                               hapticQuietCupertinoTextSelectionControls,
+                                          contextMenuBuilder:
+                                              buildSkeddoTextSelectionContextMenu,
                                           padding: EdgeInsets.only(
                                             left: 0,
                                             right:
@@ -15411,11 +15559,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   // selectionControls uses a captured colour so handles update live
                   // when the user changes the category swatch.
                   selectionControls: _selectionControls,
-                  // No contextMenuBuilder here: _TintedCupertinoTextSelectionControls
-                  // inherits CupertinoTextSelectionControls.buildToolbar, which always
-                  // renders the full Cupertino floating-bubble toolbar (Select All,
-                  // Look Up, Share, etc.) regardless of platform — matching the Notes
-                  // tab and every other CupertinoTextField in the app.
+                  contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
                   placeholder: '',
                   placeholderStyle: _kPlaceholderStyle,
                   style:
@@ -15540,6 +15684,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                    enableInteractiveSelection: !_isSmart,
                   showCursor: !_isSmart,
                   selectionControls: _selectionControls,
+                  contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
                   placeholder: '',
                   placeholderStyle: _kPlaceholderStyle,
                   style:
@@ -15804,6 +15949,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               style: _kFieldStyle,
                               cursorColor: _resolvedSelectedColor,
                               selectionControls: _selectionControls,
+                              contextMenuBuilder:
+                                  buildSkeddoTextSelectionContextMenu,
                               expands: true,
                               maxLines: null,
                               minLines: null,
@@ -15908,6 +16055,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     style: _kFieldStyle,
                     cursorColor: _resolvedSelectedColor,
                     selectionControls: _selectionControls,
+                    contextMenuBuilder:
+                        buildSkeddoTextSelectionContextMenu,
                     padding: EdgeInsets.only(
                       left: kHorizontalFadeEdgeGap,
                       right: _locationClearFieldGap(),
@@ -19731,6 +19880,8 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                         textInputAction: TextInputAction.done,
                         textCapitalization: TextCapitalization.sentences,
                         selectionControls: _selectionControls,
+                        contextMenuBuilder:
+                            buildSkeddoTextSelectionContextMenu,
                         placeholder: '',
                         placeholderStyle: placeholderStyle,
                         style: labelStyle,

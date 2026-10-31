@@ -10,6 +10,7 @@ import 'package:flutter/rendering.dart'
 import 'package:flutter/widgets.dart';
 
 import 'native_text_input.dart';
+import 'text_selection_toolbar_hit_test_region.dart';
 
 /// Dismisses text-input focus when the user starts interacting outside an
 /// editable text field.
@@ -33,6 +34,7 @@ class InteractiveTapFocusDismissal extends StatelessWidget {
       event.position,
       event.viewId,
     );
+    if (hitTestIncludesTextSelectionToolbar(hitTest)) return;
     final hitEditableText = hitTest.path.any(
       (entry) => entry.target is RenderEditable,
     );

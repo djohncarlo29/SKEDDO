@@ -4,6 +4,8 @@ import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/interactive_tap_focus_dismissal.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 import 'package:smart_scheduler/widgets/route_transition_focus.dart';
+import 'package:smart_scheduler/widgets/selection_handle_haptics.dart';
+import 'package:smart_scheduler/widgets/text_selection_toolbar_hit_test_region.dart';
 
 void main() {
   testWidgets('rounded sheet dismisses from a downward drag', (tester) async {
@@ -83,6 +85,111 @@ void main() {
     expect(focusNode.hasFocus, isTrue);
 
     await tester.pumpWidget(const SizedBox.shrink());
+    focusNode.dispose();
+  });
+
+  testWidgets('Select All works from the text selection toolbar', (
+    tester,
+  ) async {
+    final controller = TextEditingController(text: 'Select all this text');
+    final focusNode = FocusNode();
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => InteractiveTapFocusDismissal(
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: CupertinoPageScaffold(
+          child: Center(
+            child: SizedBox(
+              width: 280,
+              child: CupertinoTextField(
+                controller: controller,
+                focusNode: focusNode,
+                selectionControls: hapticQuietCupertinoTextSelectionControls,
+                contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.byType(CupertinoTextField));
+    await tester.pumpAndSettle();
+
+    expect(focusNode.hasFocus, isTrue);
+    expect(find.text('Select All'), findsOneWidget);
+    await tester.tap(find.text('Select All'));
+    await tester.pump();
+
+    expect(
+      controller.selection,
+      TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+    );
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+    focusNode.dispose();
+  });
+
+  testWidgets('overflow-menu chevron taps remain inside text selection', (
+    tester,
+  ) async {
+    final focusNode = FocusNode();
+    final controller = TextEditingController(text: 'Toolbar actions');
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => InteractiveTapFocusDismissal(
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: CupertinoPageScaffold(
+          child: Center(
+            child: SizedBox(
+              width: 280,
+              child: CupertinoTextField(
+                controller: controller,
+                focusNode: focusNode,
+                selectionControls: hapticQuietCupertinoTextSelectionControls,
+                contextMenuBuilder: (context, editableTextState) {
+                  return TextSelectionToolbarHitTestRegion(
+                    child: CupertinoAdaptiveTextSelectionToolbar.buttonItems(
+                      anchors: editableTextState.contextMenuAnchors,
+                      buttonItems: List.generate(
+                        8,
+                        (index) => ContextMenuButtonItem(
+                          label: 'Action $index',
+                          onPressed: () {},
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.byType(CupertinoTextField));
+    await tester.pumpAndSettle();
+
+    expect(focusNode.hasFocus, isTrue);
+    final nextPageChevron = find.byWidgetPredicate(
+      (widget) =>
+          widget is CupertinoTextSelectionToolbarButton &&
+          widget.child is IgnorePointer,
+    );
+    expect(nextPageChevron, findsOneWidget);
+    expect(find.text('Action 0').hitTestable(), findsOneWidget);
+    await tester.tap(nextPageChevron);
+    await tester.pumpAndSettle();
+    expect(find.text('Action 0').hitTestable(), findsNothing);
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
     focusNode.dispose();
   });
 

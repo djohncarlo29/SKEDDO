@@ -267,6 +267,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       cursorColor: widget.cursorColor,
       selectionControls:
           widget.selectionControls ?? hapticQuietCupertinoTextSelectionControls,
+      contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
       cursorOpacityAnimates: true,
       enableInteractiveSelection: true,
       onTap: widget.caretToEndOnFirstTap

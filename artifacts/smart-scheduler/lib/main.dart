@@ -2201,15 +2201,28 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         submenu: sortItems,
         onTap: () {},
       ),
-      _toolbarMenuItem(
-        title: _dcvShowCompleted ? 'Show Completed' : 'Hide Completed',
-        icon: sf(_dcvShowCompleted ? SFIcons.sf_eye : SFIcons.sf_eye_slash),
-        labelColor: labelColor,
-        onTap: () {
-          setState(() => _dcvShowCompleted = !_dcvShowCompleted);
-          _toolbarMenuRevision.value++;
-        },
-      ),
+      if (isUtilityCategory)
+        _toolbarMenuItem(
+          title: 'Delete All',
+          icon: sf(
+            SFIcons.sf_trash,
+            color: CupertinoColors.destructiveRed,
+          ),
+          labelColor: CupertinoColors.destructiveRed,
+          isDestructive: true,
+          onTap: () =>
+              _eventsTabKey.currentState?.deleteAllUtilityItems(category),
+        )
+      else
+        _toolbarMenuItem(
+          title: _dcvShowCompleted ? 'Show Completed' : 'Hide Completed',
+          icon: sf(_dcvShowCompleted ? SFIcons.sf_eye : SFIcons.sf_eye_slash),
+          labelColor: labelColor,
+          onTap: () {
+            setState(() => _dcvShowCompleted = !_dcvShowCompleted);
+            _toolbarMenuRevision.value++;
+          },
+        ),
       if (!isUtilityCategory)
         _toolbarMenuItem(
           title: 'Archive Category',

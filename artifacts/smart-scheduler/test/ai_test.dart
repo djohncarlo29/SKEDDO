@@ -2267,6 +2267,56 @@ void main() {
       expect(store.deletedEvents.value.single.categoryId, 'category-work');
     });
 
+    test('bulk archive deletion moves every archived event to deleted storage', () {
+      final first = store.create(
+        title: 'First archived meeting',
+        categoryId: 'category-work',
+      );
+      final second = store.create(
+        title: 'Second archived meeting',
+        categoryId: 'category-work',
+      );
+      store.archiveEventsForCategory('category-work');
+
+      expect(store.moveAllArchivedToDeleted(), 2);
+      expect(store.archivedEvents.value, isEmpty);
+      expect(
+        store.deletedEvents.value.map((event) => event.id),
+        unorderedEquals([first.id, second.id]),
+      );
+      expect(
+        store.deletedEvents.value.every(
+          (event) => event.categoryId == 'category-work',
+        ),
+        isTrue,
+      );
+      expect(
+        store.deletedEvents.value.every(
+          (event) => event.deleteOrigin == EventLifecycleOrigin.all,
+        ),
+        isTrue,
+      );
+    });
+
+    test('bulk permanent deletion clears all recently deleted events', () {
+      store.deletedEvents.value = [
+        ScheduledEvent(
+          id: 'bulk-deleted-1',
+          title: 'First deleted meeting',
+          categoryId: 'category-work',
+        ),
+        ScheduledEvent(
+          id: 'bulk-deleted-2',
+          title: 'Second deleted meeting',
+          categoryId: 'category-work',
+        ),
+      ];
+
+      expect(store.permanentlyDeleteAllDeleted(), 2);
+      expect(store.deletedEvents.value, isEmpty);
+      expect(store.permanentlyDeleteAllDeleted(), 0);
+    });
+
     test('archived contents survive a reload from local storage', () async {
       final event = store.create(
         title: 'Persistent archived meeting',

@@ -799,6 +799,40 @@ class EventStore {
     return true;
   }
 
+  /// Moves every archived event into Recently Deleted while preserving its
+  /// category and archive provenance.
+  int moveAllArchivedToDeleted({
+    EventLifecycleOrigin origin = EventLifecycleOrigin.all,
+  }) {
+    final moving = archivedEvents.value
+        .map((event) => event.copyWithLifecycle(deleteOrigin: origin))
+        .toList();
+    if (moving.isEmpty) return 0;
+
+    final movingIds = {for (final event in moving) event.id};
+    final nextArchived = archivedEvents.value
+        .where((event) => !movingIds.contains(event.id))
+        .toList();
+    final nextDeleted = [
+      ...deletedEvents.value.where((event) => !movingIds.contains(event.id)),
+      ...moving,
+    ];
+    archivedEvents.value = nextArchived;
+    deletedEvents.value = nextDeleted;
+    LocalStorage.instance.saveArchivedEvents(nextArchived);
+    LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    return moving.length;
+  }
+
+  /// Permanently removes every event currently in Recently Deleted.
+  int permanentlyDeleteAllDeleted() {
+    final count = deletedEvents.value.length;
+    if (count == 0) return 0;
+    deletedEvents.value = [];
+    LocalStorage.instance.saveDeletedEvents(const []);
+    return count;
+  }
+
   /// Permanently removes an event that is still in the Archived Items utility.
   bool permanentlyDeleteArchived(String id) {
     final nextArchived = List<ScheduledEvent>.of(archivedEvents.value)

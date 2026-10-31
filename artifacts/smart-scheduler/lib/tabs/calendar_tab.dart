@@ -11461,6 +11461,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           cursorColor: renderCategoryColor(_categoryColor, context),
           decoration: null,
           selectionControls: hapticQuietCupertinoTextSelectionControls,
+          contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
           textCapitalization: TextCapitalization.sentences,
           maxLines: maxLinesOverride ?? (multiline ? null : 1),
           minLines: minLinesOverride ?? (multiline ? 3 : 1),
@@ -13356,6 +13357,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     decoration: null,
                     selectionControls:
                         hapticQuietCupertinoTextSelectionControls,
+                    contextMenuBuilder:
+                        buildSkeddoTextSelectionContextMenu,
                     textInputAction: TextInputAction.next,
                     onTap: () {
                       if (shouldMoveTextFieldCaretToEnd(focusNode)) {

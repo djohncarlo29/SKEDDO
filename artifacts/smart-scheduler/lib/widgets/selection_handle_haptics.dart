@@ -4,10 +4,25 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
+import 'text_selection_toolbar_hit_test_region.dart';
 
 const MethodChannel _selectionHapticsChannel = MethodChannel(
   'com.smartscheduler/selection_haptics',
 );
+
+/// Keeps Flutter's normal platform-specific text menu while marking its
+/// overlay as part of the active text interaction for app-wide focus handling.
+Widget buildSkeddoTextSelectionContextMenu(
+  BuildContext context,
+  EditableTextState editableTextState,
+) {
+  final Widget menu = SystemContextMenu.isSupportedByField(editableTextState)
+      ? SystemContextMenu.editableText(editableTextState: editableTextState)
+      : CupertinoAdaptiveTextSelectionToolbar.editableText(
+          editableTextState: editableTextState,
+        );
+  return TextSelectionToolbarHitTestRegion(child: menu);
+}
 
 /// Marks the pointer-down period on a selection handle so Android can ignore
 /// Flutter's repeated selection-click haptic while the handle is held.
