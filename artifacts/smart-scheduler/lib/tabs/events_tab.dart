@@ -22460,10 +22460,7 @@ class _ScheduledEventCard extends StatelessWidget {
         categoryMeta == null
             ? null
             : renderCategoryColor(categoryMeta.rawColor, context);
-    final contentVerticalPadding =
-        isGrouped
-            ? kEventTileVerticalContentPadding
-            : kFixedVerticalPadding;
+    final contentVerticalPadding = kEventTileVerticalContentPadding;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
