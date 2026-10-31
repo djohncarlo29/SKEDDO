@@ -1,13 +1,11 @@
 ---
 name: Context menu overlay covers underlying animation
-description: The _CategoryContextMenu closing overlay (420ms) paints an opaque floating copy of the tile/row directly over the real widget — any animation fired synchronously on action-tap plays and finishes invisibly underneath it.
+description: Preserve close-animation timing and source-preview geometry when context-menu actions run.
 ---
 
 ## Rule
-Never fire a destructive or mutation callback synchronously inside a context menu action button. Always defer it until the overlay's close animation completes.
+Do not run a context-menu mutation callback until the closing animation is complete, and give package preview builders explicit dimensions when their source is a constraint-dependent card.
 
-**Why:** `_CategoryContextMenu._hide()` starts a 420ms easeIn collapse animation on the overlay entry. During those 420ms the overlay's opaque floating preview copy sits exactly over the real widget in the tree. Any animation started on the real widget (archive collapse, delete flash, pin reflow) runs and completes entirely behind the overlay — invisible to the user. The user sees the overlay disappear and the row already in its final state, making it look like nothing animated.
+**Why:** SKEDDO's custom overlay keeps an opaque preview over the real row through its close animation. The package `showGlassContextMenu` route future completes as the pop starts, before its reverse morph finishes, and its action callback runs after `Navigator.pop()`. Also, a positioned-only `Stack` can measure at zero when the package builds a preview offstage without the grid's constraints.
 
-**How to apply:** Pass the action callback via `_hide(then: callback)`. The `then` parameter is invoked inside `cleanup()` which runs after `animateTo(0).then(...)` — i.e., after the overlay entry is removed and the real tree is fully visible. This applies to ALL five actions (pin, unpin, edit, archive, delete) uniformly.
-
-Implementation: `_hide({VoidCallback? then})` + `then?.call()` inside `cleanup()`.
+**How to apply:** For custom overlays, defer callbacks until the overlay is removed. For `showGlassContextMenu`, keep the source hidden and pending action through the package's reverse transition duration before restoring the source or invoking the callback. Wrap constraint-dependent previews in a `SizedBox` using the source tile's measured size.
