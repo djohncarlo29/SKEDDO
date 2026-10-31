@@ -560,6 +560,7 @@ void main() {
           0.5,
         ),
       );
+      expect(dowRect.height, closeTo(28.0, 0.5));
       expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
       expect(selectedWeekRect.bottom, closeTo(centerBannerRect.top, 0.5));
       expect(
@@ -637,6 +638,7 @@ void main() {
     expect(selectedWeek, findsOneWidget);
     final selectedWeekRect = tester.getRect(selectedWeek);
     final bannerRect = tester.getRect(centerBanner);
+    expect(dowRect.height, closeTo(28.0, 0.5));
     expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
     expect(
       selectedWeekRect.bottom,

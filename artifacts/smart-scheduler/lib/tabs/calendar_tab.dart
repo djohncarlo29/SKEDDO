@@ -213,9 +213,8 @@ void _scheduleDayTimelinePosition({
   });
 }
 
-// Fixed 16 pt breathing room between the DOW row and calendar content.
-// The first DOW row itself follows the shared title-baseline spacing rule.
-const double _kCalendarHeaderToDowGap = 16.0;
+// The DOW labels sit directly above the Month grid and pinned Day week strip.
+const double _kCalendarHeaderToDowGap = 0.0;
 
 double _calendarExpandedTitleHeight(BuildContext context) {
   if (MediaQuery.orientationOf(context) != Orientation.portrait) return 0.0;
