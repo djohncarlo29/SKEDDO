@@ -131,30 +131,23 @@ void main() {
                   child: AppHeaderScrollInsetScope(
                     leadingInset: headerHeight,
                     titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-                    child: Transform.translate(
-                      offset: const Offset(
-                        0,
-                        kAppHeaderScrollEdgeHeaderBottomExtension,
-                      ),
-                      child: AppHeaderScrollView(
-                        topExtension:
-                            kAppHeaderScrollEdgeHeaderBottomExtension,
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: AppHeaderScrollInset(
-                              expandedTitleContentGap:
-                                  kAppHeaderExpandedTitleContentGap,
-                              expandedTitleContentGapFromBaseline: true,
-                            ),
+                    child: AppHeaderScrollView(
+                      topExtension: kAppHeaderScrollEdgeHeaderBottomExtension,
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: AppHeaderScrollInset(
+                            expandedTitleContentGap:
+                                kAppHeaderExpandedTitleContentGap,
+                            expandedTitleContentGapFromBaseline: true,
                           ),
-                          const SliverToBoxAdapter(
-                            child: AppHeaderContentSpacing(),
-                          ),
-                          SliverToBoxAdapter(
-                            child: SizedBox(key: firstContentKey, height: 48),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SliverToBoxAdapter(
+                          child: AppHeaderContentSpacing(),
+                        ),
+                        SliverToBoxAdapter(
+                          child: SizedBox(key: firstContentKey, height: 48),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -225,11 +218,13 @@ void main() {
             desiredGap: kAppHeaderExpandedTitleContentGap,
             existingSpacing: existingSpacing,
             collapseProgress: 0,
+            topExtension: kAppHeaderScrollEdgeHeaderBottomExtension,
             baselineDescent:
                 AppHeaderScrollView.titleBaselineDescent,
           );
       expect(
-        existingSpacing +
+        -kAppHeaderScrollEdgeHeaderBottomExtension +
+            existingSpacing +
             adjustment +
             kAppHeaderTitleTextBottomInset +
             AppHeaderScrollView.titleBaselineDescent,
@@ -240,6 +235,7 @@ void main() {
           desiredGap: kAppHeaderExpandedTitleContentGap,
           existingSpacing: existingSpacing,
           collapseProgress: 1,
+          topExtension: kAppHeaderScrollEdgeHeaderBottomExtension,
         ),
         0,
         reason: 'The compact-state spacing must remain unchanged.',
@@ -253,10 +249,12 @@ void main() {
           desiredGap: kAppHeaderExpandedTitleContentGap,
           existingSpacing: 0,
           collapseProgress: 0,
+          topExtension: kAppHeaderScrollEdgeHeaderBottomExtension,
           baselineDescent: baselineDescent,
         );
     expect(
-      baselineAdjustment +
+      -kAppHeaderScrollEdgeHeaderBottomExtension +
+          baselineAdjustment +
           kAppHeaderTitleTextBottomInset +
           baselineDescent,
       kAppHeaderExpandedTitleContentGap,

@@ -870,17 +870,19 @@ class AppHeaderScrollView extends StatelessWidget {
   ///
   /// [existingSpacing] is the first body's authored top gap.
   /// [baselineDescent] converts the title-slot bottom inset to a baseline
-  /// anchor. Do not include viewport extension: that would double-count the
-  /// visible title-to-content gap in the shell layout.
+  /// anchor. Body content passes its viewport extension to compensate for the
+  /// raised scroll body; the pinned search-header call leaves it at zero.
   static double expandedTitleContentGapAdjustment({
     required double desiredGap,
     required double existingSpacing,
     required double collapseProgress,
+    double topExtension = 0.0,
     double baselineDescent = 0.0,
   }) {
     if (!desiredGap.isFinite ||
         desiredGap <= 0 ||
         !existingSpacing.isFinite ||
+        !topExtension.isFinite ||
         !baselineDescent.isFinite) {
       return 0.0;
     }
@@ -889,8 +891,9 @@ class AppHeaderScrollView extends StatelessWidget {
         : 0.0;
     final targetFromSlotBottom =
         desiredGap -
+        existingSpacing +
+        topExtension -
         kAppHeaderTitleTextBottomInset -
-        existingSpacing -
         baselineDescent;
     return targetFromSlotBottom * (1.0 - progress);
   }
@@ -1196,6 +1199,7 @@ class AppHeaderScrollView extends StatelessWidget {
                                   existingSpacing: minimumContentTopSpacing,
                                   collapseProgress:
                                       phaseController.collapseProgress,
+                                  topExtension: topExtension,
                                   baselineDescent:
                                       titleInset
                                               .expandedTitleContentGapFromBaseline
