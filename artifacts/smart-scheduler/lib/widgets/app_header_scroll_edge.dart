@@ -19,8 +19,31 @@ const double kAppHeaderExpandedTitleContentGap = 16;
 // distance or compact-state geometry.
 const double kAppHeaderExpandedTitleDownshift = 7.2;
 const double kAppHeaderContentTopSpacing = 16;
+// The settled leading circle extends to 50pt below the status-bar safe area.
+// Compact content starts 16pt below that visible edge, so account for the
+// different portrait and landscape header layout slots.
+const double kAppHeaderSettledToolbarCircleBottom = 50.0;
+const double kAppHeaderLandscapeToolbarHeight = 52.0;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
+
+double appHeaderCompactContentSpacingForOrientation(Orientation orientation) {
+  final toolbarSlotHeight = orientation == Orientation.landscape
+      ? kAppHeaderLandscapeToolbarHeight
+      : kAppHeaderToolbarHeight;
+  // Landscape pages have no collapsible title, so their scroll viewport
+  // remains raised by the shared 16pt edge extension. The local spacer must
+  // restore that extension before placing the first content edge.
+  final viewportRaise = orientation == Orientation.landscape
+      ? kAppHeaderScrollEdgeHeaderBottomExtension
+      : 0.0;
+  return (kAppHeaderSettledToolbarCircleBottom +
+          kAppHeaderContentTopSpacing -
+          toolbarSlotHeight +
+          viewportRaise)
+      .clamp(0.0, double.infinity)
+      .toDouble();
+}
 
 double appHeaderExpandedTitleDownshiftForProgress(double collapseProgress) =>
     kAppHeaderExpandedTitleDownshift *
@@ -938,10 +961,32 @@ class AppHeaderScrollView extends StatelessWidget {
   static double contentTopSpacingOf(
     BuildContext context, {
     required double topExtension,
-  }) =>
-      _maxContentTopSpacingOf(context, topExtension: topExtension) *
-      (AppHeaderScrollInsetScope.titleTransitionOf(context)?.collapseProgress ??
-          0.0);
+  }) {
+    final orientation = MediaQuery.orientationOf(context);
+    if (orientation == Orientation.landscape) {
+      // Landscape is already at the compact header endpoint and its viewport
+      // stays raised by topExtension, so restore that raise plus the
+      // toolbar-to-content clearance in the fixed Calendar chrome.
+      return topExtension.isFinite && topExtension > 0.0
+          ? appHeaderCompactContentSpacingForOrientation(orientation)
+          : 0.0;
+    }
+
+    if (AppHeaderScrollInsetScope.titleCollapseExtentOf(context) <= 0.0) {
+      return 0.0;
+    }
+    final collapseProgress =
+        AppHeaderScrollInsetScope.titleTransitionOf(context)?.collapseProgress ??
+        0.0;
+    final compactClearance =
+        appHeaderCompactContentSpacingForOrientation(orientation) -
+        kAppHeaderContentTopSpacing;
+    return (_maxContentTopSpacingOf(context, topExtension: topExtension) +
+            compactClearance) *
+        (collapseProgress.isFinite
+            ? collapseProgress.clamp(0.0, 1.0).toDouble()
+            : 0.0);
+  }
 
   static ScrollPosition? _outerPositionForBody(ScrollPosition bodyPosition) {
     for (final entry in _bodyPositionsByOuterPosition.entries) {
@@ -1156,6 +1201,7 @@ class AppHeaderScrollView extends StatelessWidget {
         topExtension: topExtension,
       );
       var minimumContentTopSpacing = 0.0;
+      var hasAuthoredContentSpacing = false;
       // Preserve Settings' authored expanded inset in the shared slot. This
       // baseline is separate from the additional compact-state clearance.
       if (maxContentTopSpacing > 0 &&
@@ -1164,8 +1210,15 @@ class AppHeaderScrollView extends StatelessWidget {
           (innerSlivers.first as SliverToBoxAdapter).child
               is AppHeaderContentSpacing) {
         minimumContentTopSpacing = kAppHeaderContentTopSpacing;
+        hasAuthoredContentSpacing = true;
         innerSlivers.removeAt(0);
       }
+      final authoredCompactClearance = hasAuthoredContentSpacing
+          ? appHeaderCompactContentSpacingForOrientation(
+                  MediaQuery.orientationOf(context),
+                ) -
+                kAppHeaderContentTopSpacing
+          : 0.0;
       return AppHeaderScrollViewport(
         leadingInset: leadingInset,
         topExtension: topExtension,
@@ -1218,7 +1271,10 @@ class AppHeaderScrollView extends StatelessWidget {
                                           ? AppHeaderScrollView
                                                 .titleBaselineDescent
                                           : 0.0,
-                                )
+                                ) -
+                                titleInset.expandedTitleContentGapContentInset *
+                                    (1.0 -
+                                        phaseController.collapseProgress)
                           : 0.0;
                       final compactContentTopSpacing =
                           titleInset.pinSearchBar
@@ -1226,15 +1282,18 @@ class AppHeaderScrollView extends StatelessWidget {
                           : AppHeaderScrollView
                                 .compactContentTopSpacingForProgress(
                                   compactSpacing:
-                                      titleInset.compactContentTopSpacing,
+                                      titleInset.compactContentTopSpacing +
+                                      authoredCompactClearance,
                                   collapseProgress: progress,
                                 );
                       return SizedBox(
-                        height: minimumContentTopSpacing +
-                            maxContentTopSpacing * progress +
-                            compactContentTopSpacing +
-                            expandedTitleDownshift +
-                            expandedTitleContentGapAdjustment,
+                        height:
+                            (minimumContentTopSpacing +
+                                    maxContentTopSpacing * progress +
+                                    compactContentTopSpacing +
+                                    expandedTitleDownshift +
+                                    expandedTitleContentGapAdjustment)
+                                .clamp(0.0, double.infinity),
                       );
                     },
                   ),
@@ -1754,8 +1813,16 @@ class AppHeaderContentSpacing extends StatelessWidget {
   const AppHeaderContentSpacing({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      const SizedBox(height: kAppHeaderContentTopSpacing);
+  Widget build(BuildContext context) {
+    final hasSharedHeader =
+        AppHeaderScrollInsetScope.maybeOf(context) > 0.0;
+    final spacing = hasSharedHeader
+        ? appHeaderCompactContentSpacingForOrientation(
+            MediaQuery.orientationOf(context),
+          )
+        : kAppHeaderContentTopSpacing;
+    return SizedBox(height: spacing);
+  }
 }
 
 /// Declares the page's collapsible title region.
@@ -1774,9 +1841,11 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.pinSearchBar = false,
     this.expandedTitleContentGap = 0,
     this.expandedTitleContentGapFromBaseline = false,
+    this.expandedTitleContentGapContentInset = 0.0,
     this.compactContentTopSpacing = 0.0,
   }) : assert(searchBarExtent >= 0),
        assert(expandedTitleContentGap >= 0),
+       assert(expandedTitleContentGapContentInset >= 0),
        assert(compactContentTopSpacing >= 0),
        assert(searchBar != null || searchBarExtent == 0);
 
@@ -1794,6 +1863,9 @@ class AppHeaderScrollInset extends StatelessWidget {
   final double expandedTitleContentGap;
   /// Measure the desired gap from the title baseline instead of its text box.
   final bool expandedTitleContentGapFromBaseline;
+  /// Distance from the first content box's top to the visible edge being
+  /// aligned (for example, a text line's top inside a fixed-height row).
+  final double expandedTitleContentGapContentInset;
   /// Extra content inset restored only as the search header reaches compact.
   final double compactContentTopSpacing;
 

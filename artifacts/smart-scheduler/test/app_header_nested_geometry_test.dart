@@ -22,7 +22,16 @@ void main() {
               controller: controller,
               topExtension: kAppHeaderContentTopSpacing,
               slivers: [
-                const SliverToBoxAdapter(child: AppHeaderScrollInset()),
+                SliverToBoxAdapter(
+                  child: AppHeaderScrollInset(
+                    compactContentTopSpacing: declaresExistingSpacing
+                        ? 0.0
+                        : appHeaderCompactContentSpacingForOrientation(
+                                Orientation.portrait,
+                              ) -
+                              kAppHeaderContentTopSpacing,
+                  ),
+                ),
                 if (declaresExistingSpacing)
                   const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
                 SliverPadding(
@@ -55,7 +64,8 @@ void main() {
         closeTo(
           expandedTop -
               kAppHeaderTitleHeight / 2 +
-              8.0 -
+              8.0 +
+              3.0 -
               kAppHeaderExpandedTitleDownshift / 2,
           1e-6,
         ),
@@ -65,19 +75,65 @@ void main() {
       expect(outer.maxScrollExtent, kAppHeaderTitleHeight);
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
-        kAppHeaderToolbarHeight + 16,
+        kAppHeaderSettledToolbarCircleBottom +
+            kAppHeaderContentTopSpacing,
       );
       controller.jumpTo(16);
       await tester.pump();
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
-        kAppHeaderToolbarHeight,
+        kAppHeaderSettledToolbarCircleBottom,
       );
       expect(outer.pixels, kAppHeaderTitleHeight);
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
     }
   });
+
+  testWidgets(
+    'landscape first content begins 16pt below the settled toolbar circle',
+    (tester) async {
+      tester.view.physicalSize = const Size(874, 402);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final firstContentKey = GlobalKey();
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: AppHeaderScrollInsetScope(
+            leadingInset: kAppHeaderLandscapeToolbarHeight,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: kAppHeaderLandscapeToolbarHeight,
+              ),
+              child: AppHeaderScrollView(
+                topExtension: kAppHeaderScrollEdgeHeaderBottomExtension,
+                slivers: [
+                  const SliverToBoxAdapter(
+                    child: AppHeaderContentSpacing(),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(key: firstContentKey, height: 40),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.byKey(firstContentKey)).dy,
+        closeTo(
+          kAppHeaderSettledToolbarCircleBottom +
+              kAppHeaderContentTopSpacing,
+          0.5,
+        ),
+      );
+    },
+  );
 
   testWidgets('package phases collapse title before search and release both extents', (
     tester,

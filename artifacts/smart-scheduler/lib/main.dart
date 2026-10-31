@@ -4128,7 +4128,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final topInset = MediaQuery.of(context).padding.top;
-    final headerContentHeight = isLandscape ? 52.0 : 101.0;
+    final headerContentHeight = isLandscape
+        ? kAppHeaderLandscapeToolbarHeight
+        : 101.0;
     final headerToolbarHeight = isLandscape
         ? headerContentHeight
         : kAppHeaderToolbarHeight;
@@ -5110,7 +5112,7 @@ class _CalendarNavChevron extends StatelessWidget {
       // only the transparent tap zones change height with the toolbar.
       final compactControlHeight =
           MediaQuery.orientationOf(context) == Orientation.landscape
-          ? 52.0
+          ? kAppHeaderLandscapeToolbarHeight
           : kAppHeaderToolbarHeight;
       final compactHalfHeight = compactControlHeight / 2;
       final compactIconCenterOffset = safeTitleFontSize * 0.3;

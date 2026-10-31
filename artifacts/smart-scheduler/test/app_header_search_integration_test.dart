@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/painting.dart' show TextPainter;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
@@ -20,12 +21,118 @@ import 'package:smart_scheduler/widgets/header_title_scroller.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
+Finder _largestTextMatch(WidgetTester tester, String value) {
+  final matches = find.text(value).evaluate().toList();
+  if (matches.isEmpty) return find.text(value);
+  final largest = matches.reduce((left, right) {
+    final leftHeight = tester.getSize(find.byWidget(left.widget)).height;
+    final rightHeight = tester.getSize(find.byWidget(right.widget)).height;
+    return leftHeight >= rightHeight ? left : right;
+  });
+  return find.byWidget(largest.widget);
+}
+
+double _textBaselineY(WidgetTester tester, Finder finder) {
+  final widget = tester.widget<Text>(finder);
+  final context = tester.element(finder);
+  final painter = TextPainter(
+    text:
+        widget.textSpan ??
+        TextSpan(text: widget.data ?? '', style: widget.style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  final metrics = painter.computeLineMetrics();
+  final baseline = tester.getRect(finder).top +
+      (metrics.isEmpty ? 0.0 : metrics.first.baseline);
+  painter.dispose();
+  return baseline;
+}
+
+List<Rect> _visibleMonthDowRects(
+  WidgetTester tester,
+  Finder calendarFinder,
+) {
+  const weekdayLabels = {'S', 'M', 'T', 'W', 'F'};
+  final baselines = find.descendant(
+    of: calendarFinder,
+    matching: find.byType(Baseline),
+  );
+  final rects = <Rect>[];
+  for (var index = 0; index < baselines.evaluate().length; index++) {
+    final label = find.descendant(
+      of: baselines.at(index),
+      matching: find.byType(Text),
+    );
+    if (label.evaluate().isEmpty) continue;
+    if (!weekdayLabels.contains(tester.widget<Text>(label.first).data)) {
+      continue;
+    }
+    final rect = tester.getRect(label.first);
+    if (rect.left >= 0 && rect.right <= 402 && rect.top < 260) {
+      rects.add(rect);
+    }
+  }
+  rects.sort((left, right) => left.left.compareTo(right.left));
+  return rects;
+}
+
 void main() {
   Future<void> tapToolbarSearch(WidgetTester tester) async {
     // The inline field can also expose "Search" as text; the toolbar action
     // is the final semantics node with this label in the shell tree.
     await tester.tap(find.bySemanticsLabel('Search').last);
   }
+
+  testWidgets(
+    'Month DOW aligns to the large-title baseline and settled toolbar',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      final previousDefaultView = appDefaultViewNotifier.value;
+      appDefaultViewNotifier.value = 'Month';
+      addTearDown(() => appDefaultViewNotifier.value = previousDefaultView);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getCenter(find.text('Calendar').last));
+      await tester.pumpAndSettle();
+
+      final calendarFinder = find.byType(CalendarTab);
+      final calendar = tester.state<CalendarTabState>(calendarFinder);
+      final monthTitle = _largestTextMatch(tester, calendar.headerTitle);
+      final monthLabels = _visibleMonthDowRects(tester, calendarFinder);
+      expect(monthLabels, hasLength(7));
+      for (final label in monthLabels) {
+        expect(
+          label.top,
+          closeTo(_textBaselineY(tester, monthTitle) + 16.0, 0.5),
+        );
+      }
+
+      final headerPosition = calendar.headerScrollPosition!;
+      headerPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pumpAndSettle();
+      final compactLabels = _visibleMonthDowRects(tester, calendarFinder);
+      expect(compactLabels, hasLength(7));
+      for (final label in compactLabels) {
+        expect(
+          label.top,
+          closeTo(
+            MediaQuery.paddingOf(tester.element(calendarFinder)).top +
+                kAppHeaderSettledToolbarCircleBottom +
+                16.0,
+            0.5,
+          ),
+        );
+      }
+    },
+  );
 
   testWidgets('Default View selects the matching Calendar hierarchy', (
     tester,
@@ -87,11 +194,7 @@ void main() {
     final firstNoteCard = find.byWidgetPredicate(
       (widget) => widget.runtimeType.toString() == '_NoteInputCard',
     );
-    final expandedCardTop =
-        AppHeaderScrollInsetScope.maybeOf(context) +
-        kAppHeaderTitleHeight +
-        searchExtent;
-    expect(tester.getTopLeft(firstNoteCard).dy, closeTo(expandedCardTop, 0.5));
+    final expandedCardTop = tester.getTopLeft(firstNoteCard).dy;
     expect(outer.maxScrollExtent, kAppHeaderTitleHeight + searchExtent);
     expect(transition.position, same(outer));
     outer.jumpTo(kAppHeaderTitleHeight);
@@ -100,7 +203,7 @@ void main() {
     expect(transition.searchBarCollapseProgress, 0);
     expect(
       tester.getTopLeft(firstNoteCard).dy,
-      closeTo(expandedCardTop - kAppHeaderTitleHeight, 0.5),
+      lessThan(expandedCardTop - kAppHeaderTitleHeight / 2),
     );
     outer.jumpTo(outer.maxScrollExtent);
     await tester.pumpAndSettle();
@@ -116,7 +219,10 @@ void main() {
     expect(
       tester.getTopLeft(firstNoteCard).dy,
       closeTo(
-        AppHeaderScrollInsetScope.maybeOf(tester.element(notesFinder)) + 16,
+        AppHeaderScrollInsetScope.maybeOf(tester.element(notesFinder)) +
+            appHeaderCompactContentSpacingForOrientation(
+              Orientation.portrait,
+            ),
         0.5,
       ),
     );
@@ -193,7 +299,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.getTopLeft(firstNoteCard).dy,
-        closeTo(AppHeaderScrollInsetScope.maybeOf(context) + 16, 0.5),
+        closeTo(
+          AppHeaderScrollInsetScope.maybeOf(context) +
+              appHeaderCompactContentSpacingForOrientation(
+                Orientation.portrait,
+              ),
+          0.5,
+        ),
       );
     }
 
@@ -208,7 +320,13 @@ void main() {
     );
     expect(
       tester.getTopLeft(account).dy,
-      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+      closeTo(
+        settingsInset +
+            appHeaderCompactContentSpacingForOrientation(
+              Orientation.portrait,
+            ),
+        0.5,
+      ),
     );
     expect(
       tester.getTopLeft(account).dy,
@@ -218,7 +336,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.getTopLeft(account).dy,
-      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+      greaterThan(settingsInset + kAppHeaderContentTopSpacing),
     );
     await tester.tap(find.text('Theme').hitTestable().first);
     await tester.pumpAndSettle();

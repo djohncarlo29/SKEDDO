@@ -8404,7 +8404,10 @@ class EventsTabState extends State<EventsTab>
                 MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             expandedTitleContentGapFromBaseline: true,
-            compactContentTopSpacing: kAppHeaderContentTopSpacing,
+            compactContentTopSpacing:
+                appHeaderCompactContentSpacingForOrientation(
+                  MediaQuery.orientationOf(context),
+                ),
             // Inline search stays in the shared header but restores its fixed
             // background and separator while the results body scrolls.
             searchBar: isLandscape
@@ -8446,12 +8449,16 @@ class EventsTabState extends State<EventsTab>
         // ── Normal grid (also shown behind the overlay when off-screen) ───
         else ...[
           SliverPadding(
-            // AppHeaderScrollView already supplies the 16pt gap below the
-            // search row in portrait; landscape retains its existing inset.
+            // Portrait uses the shared search/header spacing. Landscape
+            // applies the compact first-content clearance directly here.
             padding: EdgeInsets.fromLTRB(
               16,
               isLandscape || (_searchFocused && !_activatedFromOffScreen)
-                  ? 16
+                  ? (isLandscape
+                        ? appHeaderCompactContentSpacingForOrientation(
+                            Orientation.landscape,
+                          )
+                        : kAppHeaderContentTopSpacing)
                   : 0,
               16,
               0,

@@ -667,7 +667,9 @@ class _SettingsPanelState extends State<SettingsPanel>
 
         final isLandscape =
             MediaQuery.orientationOf(context) == Orientation.landscape;
-        final headerContentHeight = isLandscape ? 52.0 : 101.0;
+        final headerContentHeight = isLandscape
+            ? kAppHeaderLandscapeToolbarHeight
+            : 101.0;
         final headerToolbarHeight = isLandscape
             ? headerContentHeight
             : kAppHeaderToolbarHeight;
@@ -807,7 +809,9 @@ class _SettingsSubScreenRoute extends StatelessWidget {
     final geometry = AppWindowMasterDetailGeometry.of(context);
     final isLandscape = geometry.isLandscape;
     final topInset = MediaQuery.paddingOf(context).top;
-    final headerContentHeight = isLandscape ? 52.0 : 101.0;
+    final headerContentHeight = isLandscape
+        ? kAppHeaderLandscapeToolbarHeight
+        : 101.0;
     final toolbarHeight = isLandscape
         ? headerContentHeight
         : kAppHeaderToolbarHeight;

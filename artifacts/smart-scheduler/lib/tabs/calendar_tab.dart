@@ -143,11 +143,12 @@ const double _kCalendarDayCircleDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
-const double kFixedTopPadding = 8.0; // top padding above the day circle
+const double kFixedTopPadding =
+    12.0; // indicator allowance starts 12pt below the DOW baseline
 const double _kDayIndicatorBottomPadding =
     16.0; // minimum breathing room above the separator
 const double kDayCircleOffset =
-    26.0; // circle centre from row top (= kFixedTopPadding + 18)
+    30.0; // circle centre from row top (= kFixedTopPadding + 18)
 const double _kDayLabelHeight = 28.0;
 const double _kWeekNumWidth = 28.0;
 const double _kYearOuterPad = 16.0;
@@ -157,8 +158,7 @@ const double _kHourHeight = 64.0;
 const double _kTimelinePad =
     16.0; // breathing room above 12 am and below midnight
 const double _kCurrentTimeIndicatorCenterOffset = 9.0;
-const double _kDayBannerHeight = 36.0;
-const double _kDayBannerVerticalInset = 16.0;
+const double _kDayBannerVerticalInset = 12.0;
 
 void _scheduleDayTimelinePosition({
   required BuildContext context,
@@ -215,6 +215,27 @@ void _scheduleDayTimelinePosition({
 
 // The DOW labels sit directly above the Month grid and pinned Day week strip.
 const double _kCalendarHeaderToDowGap = 0.0;
+
+double _calendarDowTextTopInset(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: 'S',
+      style: TextStyle(
+        fontFamily: kSFProText,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.1,
+      ),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  final metrics = painter.computeLineMetrics();
+  painter.dispose();
+  if (metrics.isEmpty) return 0.0;
+  return (_kDayLabelHeight - metrics.first.baseline)
+      .clamp(0.0, _kDayLabelHeight);
+}
 
 double _calendarExpandedTitleHeight(BuildContext context) {
   if (MediaQuery.orientationOf(context) != Orientation.portrait) return 0.0;
@@ -3121,12 +3142,21 @@ class CalendarTabState extends State<CalendarTab>
                 ? (kAppHeaderTitleHeight + kAppHeaderExpandedTitleDownshift) *
                       (1.0 - sharedTitleCollapseProgress)
                 : 0.0;
+            final isPortrait =
+                MediaQuery.orientationOf(context) == Orientation.portrait;
+            final dowTextTopInset = isPortrait
+                ? _calendarDowTextTopInset(context)
+                : 0.0;
             final contentTopSpacing = AppHeaderScrollView.contentTopSpacingOf(
               context,
               topExtension: kContentAreaTopRaise,
-            );
+            ) +
+                (isPortrait
+                    ? (kAppHeaderExpandedTitleContentGap - dowTextTopInset) *
+                          sharedTitleCollapseProgress
+                    : 0.0);
             final titleToContentGap =
-                MediaQuery.orientationOf(context) == Orientation.portrait
+                isPortrait
                     ? AppHeaderScrollView.expandedTitleContentGapAdjustment(
                       desiredGap: kAppHeaderExpandedTitleContentGap,
                       existingSpacing: 0.0,
@@ -3134,7 +3164,8 @@ class CalendarTabState extends State<CalendarTab>
                       topExtension: kContentAreaTopRaise,
                       baselineDescent:
                           AppHeaderScrollView.titleBaselineDescent,
-                    )
+                    ) -
+                    dowTextTopInset * (1.0 - sharedTitleCollapseProgress)
                     : 0.0;
             final double dayHeaderGroupSlideY =
                 -listModeT *
@@ -4251,7 +4282,7 @@ class _MiniMonthGrid extends StatelessWidget {
               )
               .toList(),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 2),
         // Week rows share one opaque backing surface. The individual rows
         // remain keyed for morph measurement, but must not repaint an opaque
         // surface over the part of a larger day circle that extends into the
@@ -5155,6 +5186,25 @@ class _MorphPainter extends CustomPainter {
   static Color _fade(Color color, double a) =>
       color.withAlpha((color.alpha * a.clamp(0.0, 1.0)).round());
 
+  double _dowTextCenterYForBottomBaseline(double fontSize) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: 'M',
+        style: TextStyle(
+          fontFamily: kSFProText,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final baselineFromTop = painter.computeDistanceToActualBaseline(
+      TextBaseline.alphabetic,
+    );
+    return _kDayLabelHeight - baselineFromTop + painter.height / 2;
+  }
+
   // ── Draw text centred at [centre] with alpha multiplier [a] ───────────────
   void _textC(
     Canvas canvas,
@@ -5640,7 +5690,7 @@ class _MorphPainter extends CustomPainter {
           focalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
 
       // Month-view cell centre.
-      // Circles are pinned at kFixedTopPadding (8) from the row top, so
+      // Circles are pinned at kFixedTopPadding (12) from the row top, so
       // the centre is the scaled circle offset — NOT rowHeight/2.
       // monthScrollOffset shifts the end position up so the morph's t=1 frame
       // matches the _MonthView that is scrolled to _savedMonthScrollOffset.
@@ -5864,12 +5914,13 @@ class _MorphPainter extends CustomPainter {
         )!;
         // Month-side cy is shifted up by monthScrollOffset so the labels land
         // at the same visual position as in the scrolled _MonthView.
+        final monthDowCenterY =
+            (monthGeometry?.dowHeader.top ?? _kCalendarHeaderToDowGap) +
+            _dowTextCenterYForBottomBaseline(monthDowFontSize) -
+            monthScrollOffset;
         final cy = lerpDouble(
           yearDowCenter?.dy ?? focalY + cellSz / 2,
-          monthGeometry?.dowHeader.center.dy ??
-              _kCalendarHeaderToDowGap +
-                  _kDayLabelHeight / 2 -
-                  monthScrollOffset,
+          monthDowCenterY,
           t,
         )!;
         final fSz = lerpDouble(
@@ -6460,7 +6511,7 @@ class _MonthView extends StatelessWidget {
               // (above the fold, invisible).  Translating it DOWN by
               // collapseScrollOffset × collapseProgress brings it into
               // view in lock-step with the week strip arriving after the
-              // DOW row and its 16 pt gap.
+              // DOW baseline and the 12pt indicator allowance.
               Positioned(
                 top: 0,
                 left: 0,
@@ -6489,14 +6540,18 @@ class _MonthView extends StatelessWidget {
                                           i < morphDowLabelKeys!.length
                                       ? morphDowLabelKeys![i]
                                       : null,
-                                  child: Text(
-                                    _kDayLetters[i],
-                                    style: TextStyle(
-                                      fontFamily: kSFProText,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: secondaryC,
-                                      letterSpacing: -0.1,
+                                  child: Baseline(
+                                    baseline: _kDayLabelHeight,
+                                    baselineType: TextBaseline.alphabetic,
+                                    child: Text(
+                                      _kDayLetters[i],
+                                      style: TextStyle(
+                                        fontFamily: kSFProText,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: secondaryC,
+                                        letterSpacing: -0.1,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -6512,6 +6567,25 @@ class _MonthView extends StatelessWidget {
             ],
           ),
         );
+
+        final monthHeaderTransition =
+            AppHeaderScrollInsetScope.titleTransitionOf(context);
+        final Widget monthDocument;
+        if (isPortrait && scrollTitleIsActive && monthHeaderTransition != null) {
+          final compactOffset = -_calendarDowTextTopInset(context);
+          monthDocument = AnimatedBuilder(
+            animation: monthHeaderTransition,
+            builder: (context, _) => Transform.translate(
+              offset: Offset(
+                0.0,
+                compactOffset * monthHeaderTransition.collapseProgress,
+              ),
+              child: document,
+            ),
+          );
+        } else {
+          monthDocument = document;
+        }
 
         return KeyedSubtree(
             key: scrollViewportKey == null
@@ -6535,6 +6609,9 @@ class _MonthView extends StatelessWidget {
                     expandedTitleContentGap:
                         kAppHeaderExpandedTitleContentGap,
                     expandedTitleContentGapFromBaseline: true,
+                    expandedTitleContentGapContentInset: isPortrait
+                        ? _calendarDowTextTopInset(context)
+                        : 0.0,
                     child: stationaryScrollTitleWidget == null
                         ? null
                         : Transform.translate(
@@ -6549,11 +6626,11 @@ class _MonthView extends StatelessWidget {
                 if (monthListUsesNaturalHeight)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: document,
+                    child: monthDocument,
                   )
                 else
                   SliverToBoxAdapter(
-                    child: SizedBox(height: contentH, child: document),
+                    child: SizedBox(height: contentH, child: monthDocument),
                   ),
               ],
             ),
@@ -8084,14 +8161,18 @@ class _DayViewDowMask extends StatelessWidget {
                     7,
                     (i) => Expanded(
                       child: Center(
-                        child: Text(
-                          _kDayLetters[i],
-                          style: TextStyle(
-                            fontFamily: kSFProText,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: secondaryLabel,
-                            letterSpacing: -0.1,
+                        child: Baseline(
+                          baseline: _kDayLabelHeight,
+                          baselineType: TextBaseline.alphabetic,
+                          child: Text(
+                            _kDayLetters[i],
+                            style: TextStyle(
+                              fontFamily: kSFProText,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: secondaryLabel,
+                              letterSpacing: -0.1,
+                            ),
                           ),
                         ),
                       ),
@@ -8465,9 +8546,7 @@ class _DayBannerState extends State<_DayBanner>
 
     final lineCount = needsWrap ? 2 : 1;
     final textHeight = _lineHeight(context) * lineCount;
-    final minimumTextWithInsets =
-        textHeight + _kDayBannerVerticalInset * 2;
-    return math.max(_kDayBannerHeight, minimumTextWithInsets);
+    return textHeight + _kDayBannerVerticalInset * 2;
   }
 
   Widget _responsiveLabel(

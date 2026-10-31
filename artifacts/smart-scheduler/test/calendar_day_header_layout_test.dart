@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/painting.dart' show TextPainter;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_settings.dart';
@@ -8,7 +9,52 @@ import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/view_mode_icons.dart';
 
+void _expectDowBaselineAtHeaderBottom(WidgetTester tester, Finder header) {
+  final baseline = find.descendant(
+    of: header,
+    matching: find.byType(Baseline),
+  ).first;
+  expect(tester.widget<Baseline>(baseline).baseline, closeTo(28.0, 0.5));
+}
+
+double _calendarDowTextTopInset(WidgetTester tester) {
+  final label = find.text('S').first;
+  final text = tester.widget<Text>(label);
+  final context = tester.element(label);
+  final baseline = tester.widget<Baseline>(
+    find.ancestor(of: label, matching: find.byType(Baseline)).first,
+  );
+  final painter = TextPainter(
+    text: text.textSpan ?? TextSpan(text: text.data ?? '', style: text.style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  final metrics = painter.computeLineMetrics();
+  final inset = baseline.baseline -
+      (metrics.isEmpty ? 0.0 : metrics.first.baseline);
+  painter.dispose();
+  return inset;
+}
+
+void _expectDayBannerVerticalInset(WidgetTester tester, Finder banner) {
+  final textFinders = find.descendant(of: banner, matching: find.byType(Text));
+  final textRects = <Rect>[
+    for (var index = 0; index < textFinders.evaluate().length; index++)
+      tester.getRect(textFinders.at(index)),
+  ];
+  expect(textRects, isNotEmpty);
+  final textBounds = textRects.reduce((a, b) => a.expandToInclude(b));
+  final bannerBounds = tester.getRect(banner);
+  expect(textBounds.top - bannerBounds.top, closeTo(12.0, 0.5));
+  expect(bannerBounds.bottom - textBounds.bottom, closeTo(12.0, 0.5));
+}
+
 void main() {
+  test('day circle allowance starts 12pt below the DOW baseline', () {
+    expect(kFixedTopPadding, 12.0);
+    expect(kDayCircleOffset, kFixedTopPadding + 18.0);
+  });
+
   testWidgets(
     'Day View shell title updates immediately when date format changes',
     (tester) async {
@@ -53,6 +99,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+
+      _expectDowBaselineAtHeaderBottom(
+        tester,
+        find.byKey(const ValueKey('calendar-month-panels')),
+      );
 
       final calendar = calendarKey.currentState!;
       await calendar.advanceCurrentHeader();
@@ -302,6 +353,20 @@ void main() {
       final dow = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
       );
+      final dowLabel = find
+          .descendant(of: dow, matching: find.byType(Text))
+          .first;
+      final dowLabelRect = tester.getRect(dowLabel);
+      expect(
+        dowLabelRect.top,
+        closeTo(
+          appShellLeadingInset -
+              kAppHeaderToolbarHeight +
+              kAppHeaderSettledToolbarCircleBottom +
+              kAppHeaderExpandedTitleContentGap,
+          0.5,
+        ),
+      );
       final selectedWeek = find.byKey(
         const Key('day-view-pinned-week-strip'),
       );
@@ -329,6 +394,7 @@ void main() {
         closeTo(tester.getRect(dow).bottom, 0.5),
         reason: 'The compact selected week must begin immediately below DOW.',
       );
+      _expectDowBaselineAtHeaderBottom(tester, dow);
       expect(
         tester.getRect(banners.at(1)).top,
         closeTo(tester.getRect(selectedWeek).bottom, 0.5),
@@ -385,6 +451,8 @@ void main() {
     expect(calendar.viewMode, CalendarViewMode.list);
     final selectedEmptyState = find.text('No Events').at(1);
     final expandedCenterY = tester.getCenter(selectedEmptyState).dy;
+    final compactContentSpacing =
+        appHeaderCompactContentSpacingForOrientation(Orientation.portrait);
 
     final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
     transition.bindTo(source);
@@ -396,7 +464,8 @@ void main() {
       compactCenterY,
       closeTo(
         expandedCenterY +
-            (kAppHeaderTitleHeight - kAppHeaderContentTopSpacing) / 2,
+            (kAppHeaderTitleHeight - compactContentSpacing) / 2 -
+            _calendarDowTextTopInset(tester),
         1,
       ),
     );
@@ -538,9 +607,10 @@ void main() {
       );
       final centerBannerRect = tester.getRect(banners.at(1));
       final centerTimelineRect = tester.getRect(timelines.at(1));
+      _expectDayBannerVerticalInset(tester, banners.at(1));
       expect(selectedWeek, findsOneWidget);
       final selectedWeekRect = tester.getRect(selectedWeek);
-      const weekStripHeight = 60.0;
+      const weekStripHeight = 64.0;
       final titleBaselineGap =
           AppHeaderScrollView.expandedTitleContentGapAdjustment(
             desiredGap: kAppHeaderExpandedTitleContentGap,
@@ -549,18 +619,34 @@ void main() {
             topExtension: kContentAreaTopRaise,
             baselineDescent: AppHeaderScrollView.titleBaselineDescent,
           );
+      final targetDowLabelTop =
+          kAppHeaderTitleHeight +
+          kAppHeaderExpandedTitleDownshift -
+          kContentAreaTopRaise +
+          titleBaselineGap;
 
+      expect(
+        tester.getTopLeft(
+          find.descendant(of: dowMask, matching: find.byType(Text)).first,
+        ).dy,
+        closeTo(targetDowLabelTop, 0.5),
+      );
       expect(
         dowRect.top,
         closeTo(
-          kAppHeaderTitleHeight +
-              kAppHeaderExpandedTitleDownshift -
-              kContentAreaTopRaise +
-              titleBaselineGap,
+          targetDowLabelTop -
+              (tester.getTopLeft(
+                    find.descendant(
+                      of: dowMask,
+                      matching: find.byType(Text),
+                    ).first,
+                  ).dy -
+                  dowRect.top),
           0.5,
         ),
       );
       expect(dowRect.height, closeTo(28.0, 0.5));
+      _expectDowBaselineAtHeaderBottom(tester, dowMask);
       expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
       expect(selectedWeekRect.bottom, closeTo(centerBannerRect.top, 0.5));
       expect(
@@ -637,8 +723,9 @@ void main() {
     final selectedWeek = _selectedWeekRow(DateTime.now());
     expect(selectedWeek, findsOneWidget);
     final selectedWeekRect = tester.getRect(selectedWeek);
-    final bannerRect = tester.getRect(centerBanner);
+    _expectDayBannerVerticalInset(tester, centerBanner);
     expect(dowRect.height, closeTo(28.0, 0.5));
+    _expectDowBaselineAtHeaderBottom(tester, dowMask);
     expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
     expect(
       selectedWeekRect.bottom,

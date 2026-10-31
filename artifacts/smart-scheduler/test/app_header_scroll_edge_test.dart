@@ -389,6 +389,17 @@ void main() {
     );
   });
 
+  test('compact content spacing measures from the settled toolbar circle', () {
+    expect(
+      appHeaderCompactContentSpacingForOrientation(Orientation.portrait),
+      22,
+    );
+    expect(
+      appHeaderCompactContentSpacingForOrientation(Orientation.landscape),
+      30,
+    );
+  });
+
   testWidgets('expanded title hit area follows its visible downshift', (
     tester,
   ) async {

@@ -745,7 +745,10 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 enabled: !isLandscape,
                 expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
                 expandedTitleContentGapFromBaseline: true,
-                compactContentTopSpacing: kAppHeaderContentTopSpacing,
+                compactContentTopSpacing:
+                    appHeaderCompactContentSpacingForOrientation(
+                      MediaQuery.orientationOf(context),
+                    ),
                 // Inline search keeps the same keyed field in the shared
                 // header, but adds the fixed search surface and separator.
                 searchBar: isLandscape
@@ -797,12 +800,16 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // is active (it is hidden by the overlay) so it is already
               // rendered at the correct position when the overlay fades out.
               SliverPadding(
-                // AppHeaderScrollView already supplies the 16pt gap below the
-                // search row in portrait; landscape retains its existing inset.
+                // Portrait uses the shared search/header spacing. Landscape
+                // applies the compact first-content clearance directly here.
                 padding: EdgeInsets.fromLTRB(
                   16,
                   isLandscape || (_searchFocused && !_activatedFromOffScreen)
-                      ? 16
+                      ? (isLandscape
+                            ? appHeaderCompactContentSpacingForOrientation(
+                                Orientation.landscape,
+                              )
+                            : kAppHeaderContentTopSpacing)
                       : 0,
                   16,
                   0,
