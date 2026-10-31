@@ -796,7 +796,14 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // is active (it is hidden by the overlay) so it is already
               // rendered at the correct position when the overlay fades out.
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                // AppHeaderScrollView already supplies the 16pt gap below the
+                // search row in portrait; landscape retains its existing inset.
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  isLandscape ? 16 : 0,
+                  16,
+                  0,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

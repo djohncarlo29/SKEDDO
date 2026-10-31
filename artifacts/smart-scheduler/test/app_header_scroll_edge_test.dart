@@ -114,6 +114,97 @@ void main() {
   );
 
   testWidgets(
+    'first tab content keeps a 16pt gap below the search bar',
+    (tester) async {
+      const headerHeight = 68.0;
+      const titleHeight = kAppHeaderTitleHeight;
+      const downshift = kAppHeaderExpandedTitleDownshift;
+      final searchKey = GlobalKey();
+      final firstContentKey = GlobalKey();
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox.expand(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  top: headerHeight,
+                  child: AppHeaderScrollInsetScope(
+                    leadingInset: headerHeight,
+                    titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+                    child: Transform.translate(
+                      offset: const Offset(
+                        0,
+                        kAppHeaderScrollEdgeHeaderBottomExtension,
+                      ),
+                      child: AppHeaderScrollView(
+                        topExtension:
+                            kAppHeaderScrollEdgeHeaderBottomExtension,
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: AppHeaderScrollInset(
+                              searchBar: SizedBox(key: searchKey, height: 40),
+                              searchBarExtent: 40,
+                              expandedTitleContentGap:
+                                  kAppHeaderExpandedTitleContentGap,
+                              expandedTitleContentGapFromBaseline: true,
+                            ),
+                          ),
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                            sliver: SliverToBoxAdapter(
+                              child: SizedBox(
+                                key: firstContentKey,
+                                height: 48,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 24,
+                  left: 16,
+                  right: 16,
+                  height: 44 + titleHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Transform.translate(
+                        offset: const Offset(0, downshift),
+                        child: Text(
+                          'All Notes',
+                          style: TextStyle(
+                            fontFamily: kSFProText,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final searchBottom = tester.getBottomLeft(find.byKey(searchKey)).dy;
+      final firstContentTop = tester.getTopLeft(
+        find.byKey(firstContentKey),
+      ).dy;
+      expect(
+        firstContentTop - searchBottom,
+        closeTo(kAppHeaderExpandedTitleContentGap, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
     'first settings content keeps a 16pt gap below the title baseline',
     (tester) async {
       const headerHeight = 68.0;

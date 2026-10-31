@@ -8446,7 +8446,14 @@ class EventsTabState extends State<EventsTab>
         // ── Normal grid (also shown behind the overlay when off-screen) ───
         else ...[
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            // AppHeaderScrollView already supplies the 16pt gap below the
+            // search row in portrait; landscape retains its existing inset.
+            padding: EdgeInsets.fromLTRB(
+              16,
+              isLandscape ? 16 : 0,
+              16,
+              0,
+            ),
             sliver: SliverToBoxAdapter(
               child: AnimatedBuilder(
                 animation: widget.dcvSlideController,
