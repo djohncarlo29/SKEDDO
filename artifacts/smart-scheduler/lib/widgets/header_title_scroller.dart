@@ -116,6 +116,9 @@ class HeaderTitleScroller extends StatefulWidget {
   final bool fadeOnlyDuringHorizontalDrag;
   final bool centerWhenContentFits;
   final Alignment contentAlignment;
+  /// Translates the title/control row inside the unchanged viewport and fade
+  /// bounds. Used when a compact control group needs to move as one unit.
+  final double contentOffsetX;
   final CrossAxisAlignment contentCrossAxisAlignment;
   final VoidCallback? onTap;
 
@@ -139,6 +142,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.fadeOnlyDuringHorizontalDrag = false,
     this.centerWhenContentFits = false,
     this.contentAlignment = Alignment.bottomLeft,
+    this.contentOffsetX = 0.0,
     this.contentCrossAxisAlignment = CrossAxisAlignment.center,
     this.onTap,
   });
@@ -518,36 +522,43 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                       parent: AlwaysScrollableScrollPhysics(),
                                     ),
                                     padding: EdgeInsets.zero,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          widget.contentCrossAxisAlignment,
-                                      children: [
-                                        if (centeredInset > 0)
-                                          SizedBox(width: centeredInset),
-                                        if (leading != null) ...[
-                                          leading,
-                                          if (widget.leadingGap > 0)
-                                            SizedBox(width: widget.leadingGap),
+                                    child: Transform.translate(
+                                      offset: Offset(widget.contentOffsetX, 0),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            widget.contentCrossAxisAlignment,
+                                        children: [
+                                          if (centeredInset > 0)
+                                            SizedBox(width: centeredInset),
+                                          if (leading != null) ...[
+                                            leading,
+                                            if (widget.leadingGap > 0)
+                                              SizedBox(
+                                                width: widget.leadingGap,
+                                              ),
+                                          ],
+                                          Text(
+                                            key: widget.titleTextKey,
+                                            widget.title,
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            overflow: TextOverflow.visible,
+                                            // Large Header titles are fixed-height
+                                            // and use the bounded header scale.
+                                            textScaler: TextScaler.noScaling,
+                                            style: effectiveStyle,
+                                          ),
+                                          if (trailing != null) ...[
+                                            SizedBox(
+                                              width: widget.trailingGap,
+                                            ),
+                                            trailing,
+                                          ],
+                                          if (centeredInset > 0)
+                                            SizedBox(width: centeredInset),
                                         ],
-                                        Text(
-                                          key: widget.titleTextKey,
-                                          widget.title,
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          overflow: TextOverflow.visible,
-                                          // Large Header titles are fixed-height
-                                          // and use the bounded header scale.
-                                          textScaler: TextScaler.noScaling,
-                                          style: effectiveStyle,
-                                        ),
-                                        if (trailing != null) ...[
-                                          SizedBox(width: widget.trailingGap),
-                                          trailing,
-                                        ],
-                                        if (centeredInset > 0)
-                                          SizedBox(width: centeredInset),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),

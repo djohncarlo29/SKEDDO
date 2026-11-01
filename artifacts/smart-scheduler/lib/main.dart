@@ -3278,11 +3278,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               child: AnimatedTapIcon(
                 // Keep the thin chevron strokes optically stable while pressed.
                 scaleEnabled: false,
-                // The left arrow artwork begins at the 16pt toolbar clearance
-                // boundary; its full-width tap slot remains unchanged.
-                padding: direction == _ChevronDir.left
-                    ? const EdgeInsets.fromLTRB(0, 11, 22, 11)
-                    : const EdgeInsets.all(11),
+                padding: const EdgeInsets.all(11),
                 onTap: onTap,
                 child: _ChevronIcon(
                   direction: direction,
@@ -3318,6 +3314,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       leadingGap: 0,
       trailingContentWidth: compact ? compactTrailingControlsWidth : null,
       centerWhenContentFits: false,
+      contentOffsetX: compact ? -11.0 : 0.0,
       contentAlignment: compact ? Alignment.centerLeft : Alignment.bottomLeft,
       // Expanded Calendar titles share a row with taller vertical chevrons;
       // center-aligning the inner text lifts its baseline above other tabs.
