@@ -246,6 +246,7 @@ class GlassContextMenu extends StatefulWidget {
     required this.child,
     required this.actions,
     this.previewBuilder,
+    this.keepPreviewAtOrigin = false,
     this.enabled = true,
     this.enableHaptics = true,
     this.borderRadius = 32.0,
@@ -273,6 +274,12 @@ class GlassContextMenu extends StatefulWidget {
   /// Optional builder for a custom preview widget displayed when lifted.
   /// If null, [child] is displayed in the lifted preview.
   final WidgetBuilder? previewBuilder;
+
+  /// Keeps the preview centered on its source rectangle and scaled in place
+  /// while the platter is open, instead of moving it to the centered custom
+  /// preview position. When enabled, [previewBuilder] is ignored and [child]
+  /// is used for the anchored preview.
+  final bool keepPreviewAtOrigin;
 
   /// Whether context menu interaction is enabled.
   final bool enabled;
@@ -400,6 +407,7 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
       actions: widget.actions,
       previewBuilder: widget.previewBuilder,
       previewChild: widget.child,
+      keepPreviewAtOrigin: widget.keepPreviewAtOrigin,
       borderRadius: widget.borderRadius,
       previewBorderRadius: widget.previewBorderRadius,
       rowBorderRadius: widget.rowBorderRadius,
@@ -496,6 +504,7 @@ Future<T?> showGlassContextMenu<T>({
   required List<Widget> actions,
   WidgetBuilder? previewBuilder,
   Widget? previewChild,
+  bool keepPreviewAtOrigin = false,
   double borderRadius = 32.0,
   double? previewBorderRadius,
   double rowBorderRadius = 16.0,
@@ -521,6 +530,7 @@ Future<T?> showGlassContextMenu<T>({
       actions: actions,
       previewBuilder: previewBuilder,
       previewChild: previewChild,
+      keepPreviewAtOrigin: keepPreviewAtOrigin,
       borderRadius: borderRadius,
       previewBorderRadius: previewBorderRadius,
       rowBorderRadius: rowBorderRadius,
@@ -549,6 +559,9 @@ const double _kLiftSplit = 0.4;
 /// Scale the pressed row reaches at the end of the lift (native iOS ≈ 1.04×).
 const double _kLiftScale = 1.038;
 
+/// Scale held by an anchored preview while its action platter remains open.
+const double _kAnchoredPreviewScale = 1.07;
+
 /// Vertical inset above/below the action rows inside the platter.
 const double _kPlatterInset = 10.0;
 
@@ -558,6 +571,7 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
     required this.actions,
     this.previewBuilder,
     this.previewChild,
+    this.keepPreviewAtOrigin = false,
     required this.borderRadius,
     this.previewBorderRadius,
     this.rowBorderRadius = 16.0,
@@ -581,6 +595,7 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   final List<Widget> actions;
   final WidgetBuilder? previewBuilder;
   final Widget? previewChild;
+  final bool keepPreviewAtOrigin;
   final double borderRadius;
   final double? previewBorderRadius;
   final double rowBorderRadius;
@@ -702,6 +717,7 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
       actions: actions,
       previewBuilder: previewBuilder,
       previewChild: previewChild,
+      keepPreviewAtOrigin: keepPreviewAtOrigin,
       borderRadius: borderRadius,
       previewBorderRadius: previewBorderRadius,
       rowBorderRadius: rowBorderRadius,
@@ -734,6 +750,7 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
     required this.actions,
     this.previewBuilder,
     this.previewChild,
+    this.keepPreviewAtOrigin = false,
     required this.borderRadius,
     this.previewBorderRadius,
     this.rowBorderRadius = 16.0,
@@ -754,6 +771,7 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
   final List<Widget> actions;
   final WidgetBuilder? previewBuilder;
   final Widget? previewChild;
+  final bool keepPreviewAtOrigin;
   final double borderRadius;
   final double? previewBorderRadius;
   final double rowBorderRadius;
@@ -930,10 +948,15 @@ class _GlassContextMenuRouteStaticState
                 lightIntensity: 0.35,
               ));
 
-    final bool hasCustomPreview = widget.previewBuilder != null;
+    final bool hasCustomPreview =
+        widget.previewBuilder != null && !widget.keepPreviewAtOrigin;
     final Widget previewWidget = hasCustomPreview
         ? widget.previewBuilder!(context)
         : (widget.previewChild ?? const SizedBox.shrink());
+    final double sourcePreviewScale =
+        widget.keepPreviewAtOrigin ? _kAnchoredPreviewScale : 1.0;
+    final double liftScale =
+        widget.keepPreviewAtOrigin ? _kAnchoredPreviewScale : _kLiftScale;
 
     final double effectivePreviewBorderRadius = widget.previewBorderRadius ??
         (hasCustomPreview ? 34.0 : widget.rowBorderRadius);
@@ -1021,8 +1044,12 @@ class _GlassContextMenuRouteStaticState
     final double bottomSafe = screenSize.height - padding.bottom - 16.0;
     const double gap = 16.0;
 
-    final Size effectivePreviewSize = _measuredPreviewSize ??
-        (hasCustomPreview ? const Size(240.0, 201.0) : widget.targetRect.size);
+    final Size effectivePreviewSize = widget.keepPreviewAtOrigin
+        ? widget.targetRect.size
+        : (_measuredPreviewSize ??
+            (hasCustomPreview
+                ? const Size(240.0, 201.0)
+                : widget.targetRect.size));
 
     final double estimatedPlatterHeight =
         widget.actions.length * 42.0 + _kPlatterInset * 2;
@@ -1030,16 +1057,24 @@ class _GlassContextMenuRouteStaticState
         _measuredPlatterSize ?? Size(widget.menuWidth, estimatedPlatterHeight);
 
     final double previewWidth =
-        effectivePreviewSize.width.clamp(100.0, screenSize.width - 32.0);
-    final double previewHeight = effectivePreviewSize.height;
+        (effectivePreviewSize.width * sourcePreviewScale)
+            .clamp(100.0, screenSize.width - 32.0);
+    final double previewHeight =
+        effectivePreviewSize.height * sourcePreviewScale;
     final double platterWidth =
         effectivePlatterSize.width.clamp(100.0, screenSize.width - 32.0);
     final double platterHeight = effectivePlatterSize.height;
 
     final double totalHeight = previewHeight + gap + platterHeight;
 
-    final double spaceBelow = bottomSafe - widget.targetRect.bottom;
-    final double spaceAbove = widget.targetRect.top - topSafe;
+    final double sourceTop = widget.targetRect.center.dy - previewHeight / 2.0;
+    final double sourceBottom =
+        widget.targetRect.center.dy + previewHeight / 2.0;
+    final double spaceBelow = bottomSafe -
+        (widget.keepPreviewAtOrigin ? sourceBottom : widget.targetRect.bottom);
+    final double spaceAbove =
+        (widget.keepPreviewAtOrigin ? sourceTop : widget.targetRect.top) -
+            topSafe;
     bool placeBelow =
         (spaceBelow >= platterHeight + gap) || (spaceBelow >= spaceAbove);
 
@@ -1061,13 +1096,16 @@ class _GlassContextMenuRouteStaticState
             .clamp(minTop, bottomSafe - previewHeight);
       }
     } else {
-      restingPreviewTop = widget.targetRect.top;
+      restingPreviewTop =
+          widget.keepPreviewAtOrigin ? sourceTop : widget.targetRect.top;
     }
 
     final double restingPreviewLeft = hasCustomPreview
         ? ((screenSize.width - previewWidth) / 2.0)
             .clamp(16.0, screenSize.width - previewWidth - 16.0)
-        : widget.targetRect.left;
+        : widget.keepPreviewAtOrigin
+            ? widget.targetRect.center.dx - previewWidth / 2.0
+            : widget.targetRect.left;
 
     final Rect restingPreviewRect = Rect.fromLTWH(
       restingPreviewLeft,
@@ -1107,8 +1145,8 @@ class _GlassContextMenuRouteStaticState
 
         final Rect liftedRowRect = Rect.fromCenter(
           center: widget.targetRect.center,
-          width: widget.targetRect.width * _kLiftScale,
-          height: widget.targetRect.height * _kLiftScale,
+          width: widget.targetRect.width * liftScale,
+          height: widget.targetRect.height * liftScale,
         );
 
         Rect cardRect;
@@ -1137,7 +1175,8 @@ class _GlassContextMenuRouteStaticState
           shadowFactor = (1.0 - u) * (1.0 - u);
           rowAlpha = hasCustomPreview ? cf : 1.0;
           previewAlpha = hasCustomPreview ? 1.0 - cf : 0.0;
-          rowScale = 1.0;
+          rowScale =
+              widget.keepPreviewAtOrigin ? lerpDouble(liftScale, 1.0, u)! : 1.0;
           previewScale = lerpDouble(
             1.0,
             widget.targetRect.width / previewWidth,
@@ -1151,7 +1190,7 @@ class _GlassContextMenuRouteStaticState
           final double raw = (v / _kLiftSplit).clamp(0.0, 1.0);
           final double p =
               interactive ? raw : Curves.easeOutCubic.transform(raw);
-          final double scale = 1.0 + (_kLiftScale - 1.0) * p;
+          final double scale = 1.0 + (liftScale - 1.0) * p;
           cardRect = Rect.fromCenter(
             center: widget.targetRect.center,
             width: widget.targetRect.width * scale,
@@ -1180,8 +1219,9 @@ class _GlassContextMenuRouteStaticState
           shadowFactor = 1.0;
           rowAlpha = hasCustomPreview ? 1.0 - c : 1.0;
           previewAlpha = hasCustomPreview ? c : 0.0;
-          rowScale =
-              hasCustomPreview ? _kLiftScale : lerpDouble(_kLiftScale, 1.0, m)!;
+          rowScale = hasCustomPreview || widget.keepPreviewAtOrigin
+              ? liftScale
+              : lerpDouble(liftScale, 1.0, m)!;
           previewScale = lerpDouble(
             liftedRowRect.width / previewWidth,
             1.0,

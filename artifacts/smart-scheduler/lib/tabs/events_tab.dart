@@ -374,7 +374,6 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
     final editCallback = widget.onEdit;
     final archiveCallback = widget.onArchive;
-    final previewSize = renderBox.size;
     final actions = <Widget>[
       if (editCallback != null)
         GlassContextMenuAction(
@@ -426,13 +425,9 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       context: context,
       targetRect: targetRect,
       actions: actions,
-      // These category cards are laid out by the grid, so their preview needs
-      // the source tile's constraints when the package measures it offstage.
-      previewBuilder:
-          (context) => SizedBox.fromSize(
-            size: previewSize,
-            child: widget.previewBuilder(context),
-          ),
+      // Keep this tile at its source rect and scale it in place while the
+      // package's glass action platter remains open.
+      keepPreviewAtOrigin: true,
       previewChild: widget.child,
       rowBorderRadius: _kCornerRadius,
       previewBorderRadius: _kCornerRadius,
