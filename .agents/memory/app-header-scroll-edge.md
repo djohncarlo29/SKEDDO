@@ -210,6 +210,8 @@ In landscape, the app header has no expanded/collapsing state. Keep it compact a
 
 The horizontally rubberbandable compact-title viewport begins 16pt inside each present toolbar cluster's inner edge. If a side has no toolbar, use a 16pt inset from that screen's safe content edge. Derive cluster width from the actual pinned button-slot count; do not use a fixed symmetric title inset.
 
+Within that available viewport, compact title content starts at the leading edge; do not center short titles or the Calendar title-and-chevron group.
+
 **Why:** The toolbar changes between one and two trailing icons, and Settings has a leading control with no trailing cluster. A fixed inset can waste space or let title fades run beneath the controls. Landscape also has symmetric physical system insets that must remain outside the local title-slot calculation.
 
-**How to apply:** Compute the compact title's left/right viewport insets from visible toolbar presence and shared slot extents, then lay out the fade mask within those bounds. Keep the 16pt empty-edge fallback and preserve title alignment, fade width, and orientation-specific safe-area handling.
+**How to apply:** Compute the compact title's left/right viewport insets from visible toolbar presence and shared slot extents, then lay out the fade mask within those bounds. Left-align title content inside that viewport even when it fits, including the Calendar navigation group. Keep the 16pt empty-edge fallback and preserve fade width and orientation-specific safe-area handling.

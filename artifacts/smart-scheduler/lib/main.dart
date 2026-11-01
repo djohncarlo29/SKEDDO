@@ -3313,7 +3313,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       leadingContentWidth: compact ? compactArrowWidth : null,
       leadingGap: 0,
       trailingContentWidth: compact ? compactTrailingControlsWidth : null,
-      centerWhenContentFits: compact,
+      centerWhenContentFits: false,
       contentAlignment: compact ? Alignment.centerLeft : Alignment.bottomLeft,
       // Expanded Calendar titles share a row with taller vertical chevrons;
       // center-aligning the inner text lifts its baseline above other tabs.
@@ -3465,7 +3465,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return HeaderTitleScroller(
       title: isDCVVisual ? (_dcvCategory ?? '') : _nonDCVHeaderTitle,
       fadeColor: headerColor,
-      centerWhenContentFits: true,
+      centerWhenContentFits: false,
       contentAlignment: Alignment.centerLeft,
       style: TextStyle(
         fontFamily: kSFProText,
@@ -4868,23 +4868,29 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                               Positioned.fill(
                                                                                                 left: compactTitleLeadingInset,
                                                                                                 right: compactTitleTrailingInset,
-                                                                                                child: Center(
-                                                                                                                    child: AppHeaderCompactTitle(
-                                                                                                      progress: compactTitleFadeProgress,
-                                                                                                      isLandscape: isLandscape,
+                                                                                                child: Align(
+                                                                                                  alignment: Alignment.centerLeft,
+                                                                                                  child: AppHeaderCompactTitle(
+                                                                                                    progress: compactTitleFadeProgress,
+                                                                                                    isLandscape: isLandscape,
+                                                                                                    child: SizedBox.expand(
                                                                                                       child:
                                                                                                           !isDCVVisual &&
-                                                                                                              _selectedIndex ==
-                                                                                                                  1
+                                                                                                              _selectedIndex == 1
                                                                                                           ? _buildCalendarTitleRow(
                                                                                                               compact: true,
-                                                                                                              compactFadeColor: backgroundColor,
+                                                                                                              compactFadeColor:
+                                                                                                                  backgroundColor,
                                                                                                             )
                                                                                                           : _buildCompactHeaderTitle(
-                                                                                                              isDCVVisual: isDCVVisual,
-                                                                                                              headerColor: backgroundColor,
-                                                                                                              primaryLabel: primaryLabel,
-                                                                                                                    ),
+                                                                                                              isDCVVisual:
+                                                                                                                  isDCVVisual,
+                                                                                                              headerColor:
+                                                                                                                  backgroundColor,
+                                                                                                              primaryLabel:
+                                                                                                                  primaryLabel,
+                                                                                                            ),
+                                                                                                    ),
                                                                                                   ),
                                                                                                 ),
                                                                                               ),

@@ -1821,12 +1821,13 @@ class _SettingsHeader extends StatelessWidget {
               child: AppWindowContentPadding(
                 child: Padding(
                   padding: EdgeInsets.only(top: topInset),
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
                     child: Padding(
-                        padding: EdgeInsets.only(
-                          left: compactTitleLeadingInset,
-                          right: compactTitleTrailingInset,
-                        ),
+                      padding: EdgeInsets.only(
+                        left: compactTitleLeadingInset,
+                        right: compactTitleTrailingInset,
+                      ),
                       child: AppHeaderCompactTitle(
                         key: const ValueKey('settings-compact-header-title'),
                         progress: 1.0,
@@ -1835,7 +1836,7 @@ class _SettingsHeader extends StatelessWidget {
                           child: HeaderTitleScroller(
                             title: title,
                             fadeColor: backgroundColor,
-                            centerWhenContentFits: true,
+                            centerWhenContentFits: false,
                             contentAlignment: Alignment.centerLeft,
                             style: TextStyle(
                               fontFamily: kSFProText,
@@ -1873,7 +1874,7 @@ class _SettingsHeader extends StatelessWidget {
                       child: HeaderTitleScroller(
                         title: title,
                         fadeColor: backgroundColor,
-                        centerWhenContentFits: true,
+                        centerWhenContentFits: false,
                         contentAlignment: Alignment.centerLeft,
                         style: TextStyle(
                           fontFamily: kSFProText,
