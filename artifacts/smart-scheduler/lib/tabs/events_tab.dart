@@ -74,8 +74,6 @@ int _isoWeekNumber(DateTime date) {
 
 // ── shared card constants ─────────────────────────────────────────────────────
 const _kCornerRadius = kSbCornerRadius;
-const _kGlassContextMenuProofOfConceptCategory = 'All Events';
-const _kGlassContextMenuDismissDuration = Duration(milliseconds: 180);
 
 String _categoryDisplayName(String name) =>
     name.trim().isEmpty ? 'Unnamed' : name.trim();
@@ -209,7 +207,6 @@ class _TilePressScale extends StatelessWidget {
 class _CategoryContextMenu extends StatefulWidget {
   final Widget child;
   final WidgetBuilder previewBuilder;
-  final bool useGlassContextMenu;
   final bool isSmartCategory;
   final bool isPinned;
   final bool isUtilityCategory;
@@ -241,7 +238,6 @@ class _CategoryContextMenu extends StatefulWidget {
     super.key,
     required this.child,
     required this.previewBuilder,
-    this.useGlassContextMenu = false,
     this.isSmartCategory = false,
     this.isPinned = false,
     this.isUtilityCategory = false,
@@ -281,9 +277,6 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   OverlayEntry? _entry;
   OverlayEntry? _closingEntry;
-  bool _packageMenuOpen = false;
-  VoidCallback? _packagePendingAction;
-
   // ── Drag-reorder state ────────────────────────────────────────────────────
   // After onLongPressStart fires (system ≈ 500ms threshold), a second timer
   // begins.  Two things can happen before it fires:
@@ -327,16 +320,6 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   @override
   void dispose() {
-    if (_packageMenuOpen) {
-      final navigator = Navigator.maybeOf(context, rootNavigator: true);
-      // The route outlives this row if a list refresh removes the source while
-      // the menu is open. Keep the global back hook valid until that route has
-      // finished dismissing.
-      sbContextMenuDismiss.value = () {
-        navigator?.maybePop();
-      };
-      navigator?.maybePop();
-    }
     _entry?.remove();
     _entry = null;
     // Capture before nulling — used below to detect mid-animation disposal.
@@ -366,96 +349,13 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     super.dispose();
   }
 
-  void _showPackageContextMenu() {
-    if (_packageMenuOpen || sbContextMenuActive.value) return;
-
-    final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null || !renderBox.hasSize) return;
-
-    final editCallback = widget.onEdit;
-    final archiveCallback = widget.onArchive;
-    final actions = <Widget>[
-      if (editCallback != null)
-        GlassContextMenuAction(
-          icon: Icon(SFIcons.sf_pencil),
-          child: const Text('Edit Category Info'),
-          onPressed: () {
-            _packagePendingAction = editCallback;
-          },
-        ),
-      if (archiveCallback != null)
-        GlassContextMenuAction(
-          icon: Icon(SFIcons.sf_archivebox),
-          child: const Text('Archive Category'),
-          onPressed: () {
-            _packagePendingAction = archiveCallback;
-          },
-        ),
-    ];
-    if (actions.isEmpty) return;
-
-    final targetRect =
-        renderBox.localToGlobal(Offset.zero) & renderBox.size;
-    _packagePendingAction = null;
-    sbContextMenuActive.value = true;
-    sbContextMenuDismiss.value = _dismissPackageContextMenu;
-    setState(() => _packageMenuOpen = true);
-
-    void finish() {
-      sbContextMenuDismiss.value = null;
-      sbContextMenuActive.value = false;
-      final pendingAction = _packagePendingAction;
-      _packagePendingAction = null;
-      if (mounted) {
-        setState(() => _packageMenuOpen = false);
-      }
-      // Preserve SKEDDO's existing sequencing: edits and archive state changes
-      // run only after the package route has finished its return animation.
-      pendingAction?.call();
-    }
-
-    void finishAfterDismissal() {
-      // Navigator.push's future resolves when pop begins. The package's
-      // 170ms reverse morph still needs to finish before restoring the source
-      // tile or running its business callback.
-      Future<void>.delayed(_kGlassContextMenuDismissDuration, finish);
-    }
-
-    showGlassContextMenu<void>(
-      context: context,
-      targetRect: targetRect,
-      actions: actions,
-      // Keep this tile at its source rect and scale it in place while the
-      // package's glass action platter remains open.
-      keepPreviewAtOrigin: true,
-      previewChild: widget.child,
-      rowBorderRadius: _kCornerRadius,
-      previewBorderRadius: _kCornerRadius,
-      menuWidth: 260.0,
-    ).then<void>(
-      (_) => finishAfterDismissal(),
-      onError: (Object error, StackTrace stackTrace) =>
-          finishAfterDismissal(),
-    );
-  }
-
-  void _dismissPackageContextMenu() {
-    if (!mounted || !_packageMenuOpen) return;
-    Navigator.maybeOf(context, rootNavigator: true)?.maybePop();
-  }
-
   void _show() {
     if (_entry != null) return;
-    if (_packageMenuOpen) return;
     // Global exclusivity lock — prevents two simultaneous long-presses
     // (multi-touch) from each opening their own overlay at the same time.
     // Dart is single-threaded so this read-then-write is atomic; the first
     // long-press sets the flag to true before the second one can check it.
     if (sbContextMenuActive.value) return;
-    if (widget.useGlassContextMenu) {
-      _showPackageContextMenu();
-      return;
-    }
     sbContextMenuActive.value = true;
     sbContextMenuDismiss.value = _hide; // register OS-back dismiss hook
 
@@ -592,7 +492,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       return;
     }
     // Menu already opened — ignore subsequent moves.
-    if (_entry != null || _closingEntry != null || _packageMenuOpen) return;
+    if (_entry != null || _closingEntry != null) return;
     final start = _pressStartGlobal;
     if (start == null) return;
     // Any movement ≥ _kReorderSlop px after long-press fires → drag mode.
@@ -700,47 +600,44 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       onTapDown: widget.onTap != null ? _onTapDown : null,
       onTapCancel: widget.onTap != null ? _onTapCancel : null,
       onTap: widget.onTap != null ? _onTap : null,
-      child: Opacity(
-        opacity: _packageMenuOpen ? 0.0 : 1.0,
-        child: AnimatedBuilder(
-          // Listen to lift only — press feedback is broadcast via _TilePress so
-          // inner elements (icons, texts, counts, chevrons) scale independently
-          // while the card background stays static.
-          animation: _liftCtrl,
-          builder: (context, child) {
-            // Lift: 1.00 → 1.05 (elevate when drag activates)
-            final scale = 1.0 + 0.05 * _liftCtrl.value;
+      child: AnimatedBuilder(
+        // Listen to lift only — press feedback is broadcast via _TilePress so
+        // inner elements (icons, texts, counts, chevrons) scale independently
+        // while the card background stays static.
+        animation: _liftCtrl,
+        builder: (context, child) {
+          // Lift: 1.00 → 1.05 (elevate when drag activates)
+          final scale = 1.0 + 0.05 * _liftCtrl.value;
 
-            // Shadow fades in as the tile lifts; zero shadow at rest or press.
-            final shadowOpacity = _liftCtrl.value * 0.28;
-            final shadowBlur = _liftCtrl.value * 18.0;
-            final shadowOffset = Offset(0, _liftCtrl.value * 6.0);
+          // Shadow fades in as the tile lifts; zero shadow at rest or press.
+          final shadowOpacity = _liftCtrl.value * 0.28;
+          final shadowBlur = _liftCtrl.value * 18.0;
+          final shadowOffset = Offset(0, _liftCtrl.value * 6.0);
 
-            return Transform.scale(
-              scale: scale,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  boxShadow:
-                      _liftCtrl.value > 0.0
-                          ? resolveThemeShadows([
-                            BoxShadow(
-                              color: const Color(
-                                0xFF000000,
-                              ).withValues(alpha: shadowOpacity),
-                              blurRadius: shadowBlur,
-                              offset: shadowOffset,
-                            ),
-                          ], context)
-                          : const [],
-                ),
-                child: child,
+          return Transform.scale(
+            scale: scale,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                boxShadow:
+                    _liftCtrl.value > 0.0
+                        ? resolveThemeShadows([
+                          BoxShadow(
+                            color: const Color(
+                              0xFF000000,
+                            ).withValues(alpha: shadowOpacity),
+                            blurRadius: shadowBlur,
+                            offset: shadowOffset,
+                          ),
+                        ], context)
+                        : const [],
               ),
-            );
-          },
-          // _TilePress broadcasts _pressCtrl into the subtree so _TilePressScale
-          // widgets inside _CategoryRow / _GroupRow animate on tap.
-          child: _TilePress(press: _pressCtrl, child: widget.child),
-        ),
+              child: child,
+            ),
+          );
+        },
+        // _TilePress broadcasts _pressCtrl into the subtree so _TilePressScale
+        // widgets inside _CategoryRow / _GroupRow animate on tap.
+        child: _TilePress(press: _pressCtrl, child: widget.child),
       ),
     );
   }
@@ -8569,8 +8466,6 @@ class EventsTabState extends State<EventsTab>
                       color:
                           _smartCategoryColors[item] ??
                           resolveAccentColor(context),
-                      useGlassContextMenu:
-                          item == _kGlassContextMenuProofOfConceptCategory,
                       onEdit: () => _editSmartCategory(smartTileByLabel[item]!),
                       onArchive: () => _archiveSmartCategory(item),
                       reorderable: true,
@@ -9937,7 +9832,6 @@ class _AnimatedCategoryGrid extends StatelessWidget {
 class _CategoryTile extends StatelessWidget {
   final _TileData data;
   final Color color;
-  final bool useGlassContextMenu;
   final VoidCallback? onEdit;
   final VoidCallback? onArchive;
   final bool reorderable;
@@ -9949,7 +9843,6 @@ class _CategoryTile extends StatelessWidget {
     super.key,
     required this.data,
     this.color = kAccentColor,
-    this.useGlassContextMenu = false,
     this.onEdit,
     this.onArchive,
     this.reorderable = false,
@@ -9962,7 +9855,6 @@ class _CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final onTap = _CategoryTapCallback.of(context)?.onTileTapped;
     return _CategoryContextMenu(
-      useGlassContextMenu: useGlassContextMenu,
       isSmartCategory: true,
       onEdit: onEdit,
       onArchive: onArchive,
