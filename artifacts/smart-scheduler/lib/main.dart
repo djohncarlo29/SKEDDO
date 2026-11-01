@@ -3235,6 +3235,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         !isActive || hierarchyNavigationReady;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     const compactArrowWidth = 40.0;
+    const compactArrowPadding = 11.0;
+    const compactChevronSize = 18.0;
+    const compactChevronStrokeWidth = 1.6;
+    const compactRightChevronNudge = 4.0;
+    const compactLeftChevronInkInset =
+        compactArrowPadding +
+        compactChevronSize * 0.32 -
+        compactChevronStrokeWidth / 2;
     const compactTrailingControlsWidth = compactArrowWidth + 24.0;
     final compactToolbarHeight =
         MediaQuery.orientationOf(context) == Orientation.landscape
@@ -3278,13 +3286,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               child: AnimatedTapIcon(
                 // Keep the thin chevron strokes optically stable while pressed.
                 scaleEnabled: false,
-                padding: const EdgeInsets.all(11),
+                // Keep the full 40pt slot, but bring the right arrow artwork
+                // 4pt closer to the up/down hierarchy control.
+                padding: direction == _ChevronDir.right
+                    ? const EdgeInsets.fromLTRB(
+                        compactArrowPadding - compactRightChevronNudge,
+                        compactArrowPadding,
+                        compactArrowPadding + compactRightChevronNudge,
+                        compactArrowPadding,
+                      )
+                    : const EdgeInsets.all(compactArrowPadding),
                 onTap: onTap,
                 child: _ChevronIcon(
                   direction: direction,
                   color: resolveAccentColor(context),
-                  size: 18,
-                  strokeWidth: 1.6,
+                  size: compactChevronSize,
+                  strokeWidth: compactChevronStrokeWidth,
                 ),
               ),
             ),
@@ -3314,7 +3331,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       leadingGap: 0,
       trailingContentWidth: compact ? compactTrailingControlsWidth : null,
       centerWhenContentFits: false,
-      contentOffsetX: compact ? -11.0 : 0.0,
+      contentOffsetX: compact ? -compactLeftChevronInkInset : 0.0,
       contentAlignment: compact ? Alignment.centerLeft : Alignment.bottomLeft,
       // Expanded Calendar titles share a row with taller vertical chevrons;
       // center-aligning the inner text lifts its baseline above other tabs.
