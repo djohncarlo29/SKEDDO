@@ -163,17 +163,20 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   double? _lastPreparedCollapseProgress;
   bool _isBinding = false;
   bool _isSuspended = false;
+  bool _compactOnly = false;
   bool _notificationScheduled = false;
   bool _disposed = false;
 
   ScrollPosition? get position => _position;
-  double get collapseProgress =>
-      _pendingHandoffCollapseProgress ??
-      (_position == null
-          ? _cachedCollapseProgress
-          : _controller.collapseProgress);
+  double get collapseProgress => _compactOnly
+      ? 1.0
+      : _pendingHandoffCollapseProgress ??
+            (_position == null
+                ? _cachedCollapseProgress
+                : _controller.collapseProgress);
   double get rawScrollOffset => _controller.rawScrollOffset;
   double get searchBarCollapseProgress {
+    if (_compactOnly) return 1.0;
     final pending = _pendingHandoffSearchProgress;
     if (pending != null) return pending;
     if (_position == null) return _cachedSearchCollapseProgress;
@@ -211,9 +214,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   void bindTo(
     ScrollPosition? position, {
     bool preserveCollapseProgress = false,
+    bool compactOnly = false,
   }) {
     _isSuspended = false;
-    if (identical(position, _position)) {
+    if (identical(position, _position) && compactOnly == _compactOnly) {
       _syncNestedBodyPosition();
       if (_pendingHandoffCollapseProgress == null &&
           (!preserveCollapseProgress || position != null)) {
@@ -231,17 +235,20 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       return;
     }
 
-    final inheritedProgress = preserveCollapseProgress
+    final inheritedProgress = !compactOnly && preserveCollapseProgress
         ? collapseProgress
         : _pendingHandoffCollapseProgress;
-    final inheritedSearchProgress = preserveCollapseProgress
+    final inheritedSearchProgress = !compactOnly && preserveCollapseProgress
         ? searchBarCollapseProgress
         : _pendingHandoffSearchProgress;
     if (_position != null) {
       contentOffset;
       AppHeaderScrollView._rememberPositionBackup(_position!);
     }
-    if (preserveCollapseProgress) {
+    if (compactOnly) {
+      _pendingHandoffCollapseProgress = null;
+      _pendingHandoffSearchProgress = null;
+    } else if (preserveCollapseProgress) {
       _pendingHandoffCollapseProgress = inheritedProgress;
       _pendingHandoffSearchProgress = inheritedSearchProgress;
     }
@@ -258,8 +265,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _controller.dispose();
 
     _position = position;
+    _compactOnly = compactOnly;
     _syncNestedBodyPosition();
-    if (position != null && preserveCollapseProgress) {
+    if (position != null && preserveCollapseProgress && !compactOnly) {
       // Keep the destination's former scrolled position as its non-expanded
       // backup before aligning it with the active screen's header state.
       AppHeaderScrollView._rememberPositionBackup(position);
@@ -280,16 +288,26 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       // GlassLargeTitle reports the measured title row from layout. The
       // existing shell reserves a fixed title slot, so use that exact geometry.
       _controller.reportMeasuredHeight(kAppHeaderTitleCollapseDistance);
-      _applyPendingHandoff();
-      if (preserveCollapseProgress && inheritedProgress != null) {
+      if (!compactOnly) _applyPendingHandoff();
+      if (!compactOnly &&
+          preserveCollapseProgress &&
+          inheritedProgress != null) {
         _restoreBodyPositionForHandoff(position, inheritedProgress);
       }
+    } else if (compactOnly) {
+      _cachedContentOffset = 0.0;
+      _cachedCollapseProgress = 1.0;
+      _cachedSearchCollapseProgress = 1.0;
     } else if (_pendingHandoffCollapseProgress != null) {
       _cachedCollapseProgress = _pendingHandoffCollapseProgress!;
       _cachedContentOffset =
           _pendingHandoffCollapseProgress! * kAppHeaderTitleCollapseDistance;
     }
-    if (_pendingHandoffCollapseProgress == null) {
+    if (compactOnly) {
+      _cachedContentOffset = contentOffset;
+      _cachedCollapseProgress = 1.0;
+      _cachedSearchCollapseProgress = 1.0;
+    } else if (_pendingHandoffCollapseProgress == null) {
       _cachedContentOffset = contentOffset;
       _cachedCollapseProgress = collapseProgress;
     }
@@ -297,7 +315,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _lastNotifiedCollapseProgress = collapseProgress;
     _cachedSearchCollapseProgress = searchBarCollapseProgress;
     _isBinding = false;
-    _prepareInactiveDestinations(force: true);
+    if (!compactOnly) _prepareInactiveDestinations(force: true);
     _publishChange();
   }
 
@@ -357,7 +375,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     if (position != null) {
       AppHeaderScrollView._rememberPositionBackup(position);
     }
-    _prepareInactiveDestinations();
+    if (!_compactOnly) _prepareInactiveDestinations();
     _notifyIfChanged();
   }
 
@@ -366,7 +384,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   /// their local layouts already respond to the shared title, and their outer
   /// position is aligned by bindTo() before the destination is revealed.
   void _prepareInactiveDestinations({bool force = false}) {
-    if (_disposed || _isSuspended) return;
+    if (_disposed || _isSuspended || _compactOnly) return;
 
     final progress = collapseProgress.clamp(0.0, 1.0).toDouble();
     if (!force &&

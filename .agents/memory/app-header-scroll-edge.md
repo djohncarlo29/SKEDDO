@@ -197,3 +197,11 @@ Compact titles and their controls align to the rendered toolbar control centerli
 **Why:** The toolbar's rendered center sits below the shorter layout-row center; centering within the row leaves compact titles and chevrons visibly above the toolbar in both orientations. Settings has a separate header layout, so a fix made only in AppShell misses the Settings home and pushed subscreens.
 
 **How to apply:** Use the shared settled-toolbar center offset for every compact-title group, including Settings home and pushed subscreens in portrait and landscape; verify each against the actual toolbar action bounds. Keep the vertical navigation pair centered as a group and do not change expanded headers.
+
+## Landscape scroll-only header tracking
+
+In landscape, the app header has no expanded/collapsing state. Keep it compact and track each visible screen's body offset only; never align a destination body to a shared title-collapse offset or reset inactive screens from that offset. Continue using the active body offset for the landscape glass edge. Paint the edge blur and top gradient below the compact title and pinned toolbar, so the effect stays on scrolling content rather than washing out fixed text or controls.
+
+**Why:** A normal landscape body scroll position is not a title-collapse position. Treating it as one clamps handoffs to the title's collapse range and loses the screen's actual scroll position. Painting the edge overlay after compact chrome also blurs the fixed title and places its opaque-to-transparent gradient over the text.
+
+**How to apply:** Bind landscape scroll positions through a compact-only tracking path that skips collapse handoffs and inactive-destination preparation. Retain route-specific scroll storage where a screen is disposed and recreated, such as pushed Settings subscreens. Match AppShell stacking: scrolling content, edge blur/gradient, compact title, then pinned controls.

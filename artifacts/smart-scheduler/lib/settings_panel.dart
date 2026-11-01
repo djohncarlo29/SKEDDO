@@ -284,15 +284,18 @@ class _SettingsPanelState extends State<SettingsPanel>
   void _bindHeaderPositionFromContext(BuildContext context) {
     final position = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
     if (position != null) {
-      _headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+      final compactOnly =
+          MediaQuery.orientationOf(context) == Orientation.landscape;
+      _headerTitleTransition.bindTo(
+        position,
+        preserveCollapseProgress: !compactOnly,
+        compactOnly: compactOnly,
+      );
     }
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
-    if (!widget.isOpen ||
-        MediaQuery.orientationOf(context) != Orientation.portrait) {
-      return false;
-    }
+    if (!widget.isOpen) return false;
     if (!_isHeaderScrollSource(notification.metrics, notification.depth)) {
       return false;
     }
@@ -306,10 +309,7 @@ class _SettingsPanelState extends State<SettingsPanel>
   bool _onHeaderScrollMetricsNotification(
     ScrollMetricsNotification notification,
   ) {
-    if (!widget.isOpen ||
-        MediaQuery.orientationOf(context) != Orientation.portrait) {
-      return false;
-    }
+    if (!widget.isOpen) return false;
     if (!_isHeaderScrollSource(notification.metrics, notification.depth)) {
       return false;
     }
@@ -318,13 +318,19 @@ class _SettingsPanelState extends State<SettingsPanel>
   }
 
   void _restoreHeaderScrollOffset() {
+    final compactOnly =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final position = !widget.isLandscapeTwoPane && _activeRoute == null
         ? (AppHeaderScrollView.headerPositionFor(_mainScrollController) ??
               (_mainScrollController.hasClients
                   ? _mainScrollController.position
                   : null))
         : null;
-    _headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+    _headerTitleTransition.bindTo(
+      position,
+      preserveCollapseProgress: !compactOnly,
+      compactOnly: compactOnly,
+    );
   }
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
@@ -781,7 +787,14 @@ class _SettingsSubScreenRoute extends StatelessWidget {
       axis: Axis.vertical,
     )?.position;
     if (position != null) {
-      headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+      final compactOnly =
+          MediaQuery.orientationOf(notificationContext) ==
+          Orientation.landscape;
+      headerTitleTransition.bindTo(
+        position,
+        preserveCollapseProgress: !compactOnly,
+        compactOnly: compactOnly,
+      );
     }
     return false;
   }
@@ -799,7 +812,14 @@ class _SettingsSubScreenRoute extends StatelessWidget {
       axis: Axis.vertical,
     )?.position;
     if (position != null) {
-      headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+      final compactOnly =
+          MediaQuery.orientationOf(notificationContext) ==
+          Orientation.landscape;
+      headerTitleTransition.bindTo(
+        position,
+        preserveCollapseProgress: !compactOnly,
+        compactOnly: compactOnly,
+      );
     }
     return false;
   }
@@ -1231,6 +1251,9 @@ class _SubScreenState extends State<_SubScreen> {
   @override
   Widget build(BuildContext context) {
     final content = AppHeaderScrollView(
+      key: PageStorageKey<String>(
+        'settings-subscreen-${widget.route.title}',
+      ),
       topExtension: kContentAreaTopRaise,
       primary: false,
       physics: const AlwaysScrollableScrollPhysics(
@@ -1690,9 +1713,7 @@ class _SettingsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final headerSurfaceColor = isLandscape
-        ? backgroundColor
-        : const Color(0x00000000);
+    const headerSurfaceColor = Color(0x00000000);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final toolbarHeight = isLandscape ? contentHeight : kAppHeaderToolbarHeight;
     final titleCollapseProgress = isLandscape
@@ -1708,9 +1729,9 @@ class _SettingsHeader extends StatelessWidget {
         : AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
             collapseProgress,
           );
-    final edgeProgress = isLandscape
-        ? 0.0
-        : AppHeaderScrollBehavior.scrollEdgeProgress(scrollOffset);
+    final edgeProgress = AppHeaderScrollBehavior.scrollEdgeProgress(
+      scrollOffset,
+    );
     return SizedBox(
       width: double.infinity,
       height: topInset + contentHeight,
@@ -1725,76 +1746,6 @@ class _SettingsHeader extends StatelessWidget {
             child: ColoredBox(
               color: headerSurfaceColor.withValues(
                 alpha: (1 - titleCollapseProgress) * headerSurfaceColor.a,
-              ),
-            ),
-          ),
-          Offstage(
-            offstage: !isLandscape,
-            child: AppWindowContentPadding(
-              child: Padding(
-                padding: EdgeInsets.only(top: topInset),
-                child: isLandscape
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 84),
-                          child: AppHeaderCompactTitle(
-                            key: const ValueKey('settings-compact-header-title'),
-                            progress: 1.0,
-                            isLandscape: true,
-                            child: SizedBox.expand(
-                              child: HeaderTitleScroller(
-                                title: title,
-                                fadeColor: backgroundColor,
-                                centerWhenContentFits: true,
-                                contentAlignment: Alignment.centerLeft,
-                                style: TextStyle(
-                                  fontFamily: kSFProText,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  fontStyle: FontStyle.normal,
-                                  color: primaryLabel,
-                                  letterSpacing: -0.6,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 44 pt icon-row slot — empty (X / back button lives in AppShell)
-                          const SizedBox(height: 44),
-                          // Large title — snaps between "Settings" and sub-screen name
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                left: 16,
-                                right: 16,
-                                bottom: kHeaderTitleBottomInset,
-                              ),
-                              child: Align(
-                                alignment: Alignment.bottomLeft,
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: HeaderTitleScroller(
-                                    title: title,
-                                    fadeColor: backgroundColor,
-                                    style: TextStyle(
-                                      fontFamily: kSFProText,
-                                      fontSize: 34,
-                                      fontWeight: FontWeight.bold,
-                                      fontStyle: FontStyle.normal,
-                                      color: primaryLabel,
-                                      letterSpacing: -1.2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
               ),
             ),
           ),
@@ -1851,12 +1802,45 @@ class _SettingsHeader extends StatelessWidget {
                 ),
               ),
             ),
-          if (!isLandscape)
-            AppHeaderScrollEdge(
-              progress: edgeProgress,
-              surfaceColor: backgroundColor,
-              headerHeight: topInset + toolbarHeight,
-              backgroundGradientHeight: topInset + toolbarHeight,
+          AppHeaderScrollEdge(
+            progress: edgeProgress,
+            surfaceColor: backgroundColor,
+            headerHeight: topInset + toolbarHeight,
+            backgroundGradientHeight: topInset + toolbarHeight,
+          ),
+          if (isLandscape)
+            Positioned.fill(
+              child: AppWindowContentPadding(
+                child: Padding(
+                  padding: EdgeInsets.only(top: topInset),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 84),
+                      child: AppHeaderCompactTitle(
+                        key: const ValueKey('settings-compact-header-title'),
+                        progress: 1.0,
+                        isLandscape: true,
+                        child: SizedBox.expand(
+                          child: HeaderTitleScroller(
+                            title: title,
+                            fadeColor: backgroundColor,
+                            centerWhenContentFits: true,
+                            contentAlignment: Alignment.centerLeft,
+                            style: TextStyle(
+                              fontFamily: kSFProText,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              fontStyle: FontStyle.normal,
+                              color: primaryLabel,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           if (!isLandscape)
             Positioned(

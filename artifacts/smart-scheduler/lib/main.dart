@@ -1134,7 +1134,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       axis: Axis.vertical,
     )?.position;
     if (position != null) {
-      _headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+      final compactOnly =
+          MediaQuery.orientationOf(context) == Orientation.landscape;
+      _headerTitleTransition.bindTo(
+        position,
+        preserveCollapseProgress: !compactOnly,
+        compactOnly: compactOnly,
+      );
     }
   }
 
@@ -1235,12 +1241,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // its timeline scrolls independently. Keep the shell's last shared title
     // state instead of treating the missing position as an expanded header.
     final preserveCalendarDayHeader = _selectedIndex == 1 && position == null;
+    final compactOnly =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     _headerTitleTransition.bindTo(
       position,
       preserveCollapseProgress:
-          preserveCollapseProgress ||
-          preserveCalendarDayHeader ||
-          AppHeaderScrollView.isHeaderPosition(position),
+          !compactOnly &&
+          (preserveCollapseProgress ||
+              preserveCalendarDayHeader ||
+              AppHeaderScrollView.isHeaderPosition(position)),
+      compactOnly: compactOnly,
     );
   }
 
@@ -4167,9 +4177,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         8.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final headerSurfaceColor = isLandscape
-        ? backgroundColor
-        : const Color(0x00000000);
+    const headerSurfaceColor = Color(0x00000000);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     // AppShell uses a custom Stack instead of Scaffold, so the framework does
     // not automatically shrink the content viewport when the IME appears.
@@ -4353,8 +4361,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       _headerTitleTransition
                                                           .contentOffset;
                                                   final collapseProgress =
-                                                      _headerTitleTransition
-                                                          .collapseProgress;
+                                                      isLandscape
+                                                      ? 1.0
+                                                      : _headerTitleTransition
+                                                            .collapseProgress;
                                                   final titleCollapseProgress =
                                                       collapseProgress *
                                                       (1 - t);
@@ -4518,19 +4528,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                               ),
                                                             ),
                                                           ),
-                                                        if (!isLandscape)
-                                                          AppHeaderScrollEdge(
-                                                            progress:
-                                                                edgeProgress,
-                                                            surfaceColor:
-                                                                backgroundColor,
-                                                            headerHeight:
-                                                                headerBaseHeight,
-                                                            backgroundGradientHeight:
-                                                                topInset +
-                                                                headerToolbarHeight *
-                                                                    (1 - t),
-                                                          ),
+                                                        AppHeaderScrollEdge(
+                                                          progress:
+                                                              edgeProgress,
+                                                          surfaceColor:
+                                                              backgroundColor,
+                                                          headerHeight:
+                                                              headerBaseHeight,
+                                                          backgroundGradientHeight:
+                                                              topInset +
+                                                              headerToolbarHeight *
+                                                                  (1 - t),
+                                                        ),
                                                         AppWindowContentPadding(
                                                           child: LayoutBuilder(
                                                             builder:
