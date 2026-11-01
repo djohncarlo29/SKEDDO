@@ -206,6 +206,12 @@ In landscape, the app header has no expanded/collapsing state. Keep it compact a
 
 **How to apply:** Bind landscape scroll positions through a compact-only tracking path that skips collapse handoffs and inactive-destination preparation. Retain route-specific scroll storage where a screen is disposed and recreated, such as pushed Settings subscreens. Match AppShell stacking: scrolling content, edge blur/gradient, compact title, then pinned controls.
 
+During the landscape Events↔DCV slide, blend the scroll-edge offset between the active DCV body and the underlying Events grid using the same eased pane progress. This preserves the outgoing surface's edge and transfers it continuously to the incoming surface instead of waiting for a post-transition scroll notification.
+
+**Why:** Binding to the detail scrollable can replace a scrolled grid source with a zero-offset DCV position. Restoring the grid only after the slide completes makes its edge disappear during the handoff and reappear after settling.
+
+**How to apply:** Read both body offsets independently, identify whether the shared transition is bound to the grid or detail, and interpolate edge progress across the existing DCV slide. At each endpoint, use only the visible screen's offset. Keep portrait and non-Events landscape pages unchanged.
+
 ## Compact title fade bounds
 
 The horizontally rubberbandable compact-title viewport begins 16pt inside each present toolbar cluster's inner edge. If a side has no toolbar, use a 16pt inset from that screen's safe content edge. Derive cluster width from the actual pinned button-slot count; do not use a fixed symmetric title inset.

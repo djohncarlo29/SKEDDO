@@ -1195,6 +1195,24 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return null;
   }
 
+  double _scrollContentOffsetForController(ScrollController? controller) {
+    if (controller == null || !controller.hasClients) return 0.0;
+
+    final headerPosition = AppHeaderScrollView.headerPositionFor(controller);
+    final headerOffset = headerPosition == null
+        ? 0.0
+        : AppHeaderScrollBehavior.contentOffset(headerPosition);
+    var bodyOffset = 0.0;
+    for (final position in controller.positions) {
+      if (!position.hasContentDimensions) continue;
+      bodyOffset = max(
+        bodyOffset,
+        AppHeaderScrollBehavior.contentOffset(position),
+      );
+    }
+    return headerOffset + bodyOffset;
+  }
+
   void _restoreHeaderScrollOffset() =>
       _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
 
@@ -4421,9 +4439,57 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       appShellCompactTitleInsetForTrailingItems(
                                                         compactTrailingItemCount,
                                                       );
+                                                  var edgeContentOffset =
+                                                      scrollOffset;
+                                                  if (isLandscape &&
+                                                      _selectedIndex == 2 &&
+                                                      _dcvCategory != null) {
+                                                    final eventsScrollController =
+                                                        _eventsTabKey
+                                                            .currentState
+                                                            ?.scrollController;
+                                                    final eventsGridPosition =
+                                                        _headerPositionForController(
+                                                          eventsScrollController,
+                                                        );
+                                                    final eventsGridOffset =
+                                                        _scrollContentOffsetForController(
+                                                          eventsScrollController,
+                                                        );
+                                                    final boundPosition =
+                                                        _headerTitleTransition
+                                                            .position;
+                                                    final boundToDcv =
+                                                        boundPosition != null &&
+                                                        !identical(
+                                                          boundPosition,
+                                                          eventsGridPosition,
+                                                        );
+                                                    final dcvContentOffset =
+                                                        boundToDcv
+                                                        ? scrollOffset
+                                                        : eventsGridOffset;
+                                                    final dcvSlideProgress =
+                                                        _dcvSlideProgress.value
+                                                            .clamp(
+                                                              0.0,
+                                                              1.0,
+                                                            )
+                                                            .toDouble();
+                                                    // Blend the visible detail's edge with the
+                                                    // underlying Events grid during the horizontal
+                                                    // handoff. This keeps the grid's existing edge
+                                                    // treatment from dropping out before its scroll
+                                                    // position becomes active again.
+                                                    edgeContentOffset =
+                                                        eventsGridOffset +
+                                                        (dcvContentOffset -
+                                                                eventsGridOffset) *
+                                                            dcvSlideProgress;
+                                                  }
                                                   final edgeProgress =
                                                       AppHeaderScrollBehavior.scrollEdgeProgress(
-                                                        scrollOffset,
+                                                        edgeContentOffset,
                                                       ) *
                                                       (1 - t);
                                                   final calendarTitleInContent =
