@@ -205,3 +205,11 @@ In landscape, the app header has no expanded/collapsing state. Keep it compact a
 **Why:** A normal landscape body scroll position is not a title-collapse position. Treating it as one clamps handoffs to the title's collapse range and loses the screen's actual scroll position. Painting the edge overlay after compact chrome also blurs the fixed title and places its opaque-to-transparent gradient over the text.
 
 **How to apply:** Bind landscape scroll positions through a compact-only tracking path that skips collapse handoffs and inactive-destination preparation. Retain route-specific scroll storage where a screen is disposed and recreated, such as pushed Settings subscreens. Match AppShell stacking: scrolling content, edge blur/gradient, compact title, then pinned controls.
+
+## Compact title fade bounds
+
+The horizontally rubberbandable compact-title viewport begins 16pt inside each present toolbar cluster's inner edge. If a side has no toolbar, use a 16pt inset from that screen's safe content edge. Derive cluster width from the actual pinned button-slot count; do not use a fixed symmetric title inset.
+
+**Why:** The toolbar changes between one and two trailing icons, and Settings has a leading control with no trailing cluster. A fixed inset can waste space or let title fades run beneath the controls. Landscape also has symmetric physical system insets that must remain outside the local title-slot calculation.
+
+**How to apply:** Compute the compact title's left/right viewport insets from visible toolbar presence and shared slot extents, then lay out the fade mask within those bounds. Keep the 16pt empty-edge fallback and preserve title alignment, fade width, and orientation-specific safe-area handling.

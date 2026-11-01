@@ -901,7 +901,7 @@ class _SettingsSubScreenRoute extends StatelessWidget {
                         semanticLabel: 'Back from ${route.title}',
                         horizontalInset:
                             AppWindowContentScope.of(context).horizontalInset +
-                            16.0,
+                            kAppShellPinnedToolbarOuterInset,
                         onTap: () =>
                             AppShellNavigationScope.navigatorOf(context)
                                 .maybePop(),
@@ -1716,6 +1716,14 @@ class _SettingsHeader extends StatelessWidget {
     const headerSurfaceColor = Color(0x00000000);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final toolbarHeight = isLandscape ? contentHeight : kAppHeaderToolbarHeight;
+    final compactTitleLeadingInset = appShellCompactTitleInsetForToolbar(
+      hasToolbar: true,
+      toolbarWidth: kAppShellPinnedToolbarSharedItemExtent,
+    );
+    final compactTitleTrailingInset = appShellCompactTitleInsetForToolbar(
+      hasToolbar: false,
+      toolbarWidth: 0,
+    );
     final titleCollapseProgress = isLandscape
         ? 0.0
         : collapseProgress.clamp(0.0, 1.0).toDouble();
@@ -1815,7 +1823,10 @@ class _SettingsHeader extends StatelessWidget {
                   padding: EdgeInsets.only(top: topInset),
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 84),
+                        padding: EdgeInsets.only(
+                          left: compactTitleLeadingInset,
+                          right: compactTitleTrailingInset,
+                        ),
                       child: AppHeaderCompactTitle(
                         key: const ValueKey('settings-compact-header-title'),
                         progress: 1.0,
@@ -1850,7 +1861,10 @@ class _SettingsHeader extends StatelessWidget {
               height: toolbarHeight,
               child: AppWindowContentPadding(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 84),
+                  padding: EdgeInsets.only(
+                    left: compactTitleLeadingInset,
+                    right: compactTitleTrailingInset,
+                  ),
                   child: AppHeaderCompactTitle(
                     key: const ValueKey('settings-compact-header-title'),
                     progress: compactTitleFadeProgress,

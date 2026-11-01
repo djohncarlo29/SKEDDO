@@ -18,6 +18,42 @@ const Object _appShellMenuToolbarItemId = 'app-shell-menu-toolbar';
 const Object _appShellCloseToolbarItemId = 'app-shell-close-toolbar';
 const Object _appShellBackToolbarItemId = 'app-shell-back-toolbar';
 
+const double kAppShellPinnedToolbarOuterInset = 16.0;
+const double kAppShellCompactTitleToolbarGap = 16.0;
+const double kAppShellCompactTitleScreenEdgeInset = 16.0;
+const double kAppShellPinnedToolbarButtonSize = 40.0;
+// Shared pinned capsules use buttonSize + 2pt per icon slot in the package.
+const double kAppShellPinnedToolbarSharedItemExtent =
+    kAppShellPinnedToolbarButtonSize + 2.0;
+
+double appShellCompactTitleInsetForToolbar({
+  required bool hasToolbar,
+  required double toolbarWidth,
+}) {
+  if (!hasToolbar || !toolbarWidth.isFinite || toolbarWidth <= 0) {
+    return kAppShellCompactTitleScreenEdgeInset;
+  }
+  return kAppShellPinnedToolbarOuterInset +
+      toolbarWidth +
+      kAppShellCompactTitleToolbarGap;
+}
+
+double appShellCompactTitleInsetForTrailingItems(int itemCount) =>
+    appShellCompactTitleInsetForToolbar(
+      hasToolbar: itemCount > 0,
+      toolbarWidth: itemCount * kAppShellPinnedToolbarSharedItemExtent,
+    );
+
+int appShellPinnedTrailingItemCount(String configurationKey) {
+  if (configurationKey == 'search') return 0;
+  if (configurationKey == 'events' ||
+      configurationKey == 'events-dcv' ||
+      configurationKey.startsWith('calendar-')) {
+    return 2;
+  }
+  return 1;
+}
+
 enum AppShellToolbarGlyph { menu, close, back }
 
 extension AppShellToolbarGlyphIdentity on AppShellToolbarGlyph {
@@ -57,7 +93,7 @@ String appShellToolbarConfigurationKey({
 /// package can run its materialize/blur choreography instead of swapping the
 /// glyph inside a permanently matched item.
 class AppShellPinnedToolbar extends StatelessWidget {
-  static const defaultButtonSize = 40.0;
+  static const defaultButtonSize = kAppShellPinnedToolbarButtonSize;
   static const defaultToolbarHeight = 60.0;
 
   const AppShellPinnedToolbar({

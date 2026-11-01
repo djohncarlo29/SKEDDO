@@ -1368,7 +1368,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             AppWindowContentScope.of(
                               routeContext,
                             ).horizontalInset +
-                            16.0,
+                            kAppShellPinnedToolbarOuterInset,
                         onTap: _handlePrimaryToolbarTap,
                       );
                     },
@@ -3619,6 +3619,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     // Search is leftmost in two-action groups; the screen-specific action is
     // rightmost. Home and You keep Search as their only action.
+    assert(
+      actions.length == appShellPinnedTrailingItemCount(configurationKey),
+      'Toolbar action count must match compact-title toolbar geometry.',
+    );
     return actions;
   }
 
@@ -3664,7 +3668,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   semanticLabel: isDcv ? 'Back' : 'Open settings',
                   horizontalInset:
                       AppWindowContentScope.of(routeContext).horizontalInset +
-                      16.0,
+                      kAppShellPinnedToolbarOuterInset,
                   color: accent,
                   hideWhen: _searchToolbarHidden,
                   interactionsEnabled: _searchToolbarInteractionsEnabled,
@@ -4380,6 +4384,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
                                                         collapseProgress,
                                                       );
+                                                  final compactToolbarVisible =
+                                                      !_searchToolbarHidden.value;
+                                                  final compactTrailingItemCount =
+                                                      compactToolbarVisible
+                                                      ? appShellPinnedTrailingItemCount(
+                                                          _toolbarDestinationKey(),
+                                                        )
+                                                      : 0;
+                                                  final compactTitleLeadingInset =
+                                                      appShellCompactTitleInsetForToolbar(
+                                                        hasToolbar:
+                                                            compactToolbarVisible,
+                                                        toolbarWidth:
+                                                            kAppShellPinnedToolbarSharedItemExtent,
+                                                      );
+                                                  final compactTitleTrailingInset =
+                                                      appShellCompactTitleInsetForTrailingItems(
+                                                        compactTrailingItemCount,
+                                                      );
                                                   final edgeProgress =
                                                       AppHeaderScrollBehavior.scrollEdgeProgress(
                                                         scrollOffset,
@@ -4843,8 +4866,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                                 ),
                                                                                               ),
                                                                                               Positioned.fill(
-                                                                                                left: 84,
-                                                                                                right: 84,
+                                                                                                left: compactTitleLeadingInset,
+                                                                                                right: compactTitleTrailingInset,
                                                                                                 child: Center(
                                                                                                                     child: AppHeaderCompactTitle(
                                                                                                       progress: compactTitleFadeProgress,
