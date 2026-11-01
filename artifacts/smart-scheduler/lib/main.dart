@@ -3278,7 +3278,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               child: AnimatedTapIcon(
                 // Keep the thin chevron strokes optically stable while pressed.
                 scaleEnabled: false,
-                padding: const EdgeInsets.all(11),
+                // The left arrow artwork begins at the 16pt toolbar clearance
+                // boundary; its full-width tap slot remains unchanged.
+                padding: direction == _ChevronDir.left
+                    ? const EdgeInsets.fromLTRB(0, 11, 22, 11)
+                    : const EdgeInsets.all(11),
                 onTap: onTap,
                 child: _ChevronIcon(
                   direction: direction,

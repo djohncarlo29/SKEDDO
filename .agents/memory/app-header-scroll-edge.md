@@ -212,6 +212,8 @@ The horizontally rubberbandable compact-title viewport begins 16pt inside each p
 
 Within that available viewport, compact title content starts at the leading edge; do not center short titles or the Calendar title-and-chevron group.
 
+In compact Calendar headers, align the left-chevron artwork itself with that 16pt boundary; keep its full 40pt tap slot in place. The right chevron remains centered in its slot.
+
 **Why:** The toolbar changes between one and two trailing icons, and Settings has a leading control with no trailing cluster. A fixed inset can waste space or let title fades run beneath the controls. Landscape also has symmetric physical system insets that must remain outside the local title-slot calculation.
 
-**How to apply:** Compute the compact title's left/right viewport insets from visible toolbar presence and shared slot extents, then lay out the fade mask within those bounds. Left-align title content inside that viewport even when it fits, including the Calendar navigation group. Keep the 16pt empty-edge fallback and preserve fade width and orientation-specific safe-area handling.
+**How to apply:** Compute the compact title's left/right viewport insets from visible toolbar presence and shared slot extents, then lay out the fade mask within those bounds. Left-align title content inside that viewport even when it fits, including the Calendar navigation group. Shift only the left-chevron artwork within its unchanged hit slot so the visible stroke starts at the boundary. Keep the 16pt empty-edge fallback and preserve fade width and orientation-specific safe-area handling.
