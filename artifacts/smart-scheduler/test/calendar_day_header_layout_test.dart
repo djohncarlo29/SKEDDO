@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
+import 'package:smart_scheduler/services/event_store.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
@@ -552,6 +553,113 @@ void main() {
         tester.getCenter(selectedEmptyState).dy,
         closeTo(expandedCenterY, 1),
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'eventful Month List scrolls only when its content overflows',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+      const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+
+      final previousEvents = EventStore.instance.events.value;
+      addTearDown(() => EventStore.instance.events.value = previousEvents);
+      final selectedDate = DateTime.now();
+      final selectedDateKey =
+          '${selectedDate.year.toString().padLeft(4, '0')}-'
+          '${selectedDate.month.toString().padLeft(2, '0')}-'
+          '${selectedDate.day.toString().padLeft(2, '0')}';
+      List<ScheduledEvent> selectedDayEvents(int count) => List.generate(
+        count,
+        (index) => ScheduledEvent(
+          id: 'month-list-event-$index',
+          title: 'Event $index',
+          date: selectedDateKey,
+          isAllDay: true,
+        ),
+      );
+      EventStore.instance.events.value = selectedDayEvents(1);
+
+      final calendarKey = GlobalKey<CalendarTabState>();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(transition.dispose);
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppHeaderScrollInsetScope(
+            leadingInset: appShellLeadingInset,
+            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+            titleTransition: transition,
+            child: AppWindowContentBoundary(
+              child: Padding(
+                padding: const EdgeInsets.only(top: appShellLeadingInset),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          home: CalendarTab(
+            key: calendarKey,
+            onViewChanged: (_, _, _, _, _, _) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendar = calendarKey.currentState!;
+      calendar.setViewMode(CalendarViewMode.list, persist: false);
+      await tester.pumpAndSettle();
+      final trailingSurface = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is ColoredBox &&
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'calendar-month-trailing-surface-',
+                ),
+          )
+          .at(1);
+      final monthPosition = Scrollable.of(
+        tester.element(trailingSurface),
+      ).position;
+      expect(
+        monthPosition.maxScrollExtent,
+        closeTo(0.0, 0.5),
+        reason: 'An eventful month list that fits should have no scroll range.',
+      );
+
+      tester.view.physicalSize = const Size(402, 650);
+      EventStore.instance.events.value = selectedDayEvents(16);
+      await tester.pumpAndSettle();
+      final overflowingTrailingSurface = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is ColoredBox &&
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'calendar-month-trailing-surface-',
+                ),
+          )
+          .at(1);
+      final overflowingMonthPosition = Scrollable.of(
+        tester.element(overflowingTrailingSurface),
+      ).position;
+      expect(
+        overflowingMonthPosition.maxScrollExtent,
+        greaterThan(0.5),
+        reason:
+            'Event rows that extend beyond the viewport must remain scrollable.',
+      );
+      overflowingMonthPosition.jumpTo(
+        overflowingMonthPosition.maxScrollExtent,
+      );
+      await tester.pump();
+      expect(overflowingMonthPosition.pixels, greaterThan(0.5));
       expect(tester.takeException(), isNull);
     },
   );

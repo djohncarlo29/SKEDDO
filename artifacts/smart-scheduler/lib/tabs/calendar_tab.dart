@@ -6641,9 +6641,22 @@ class _MonthView extends StatelessWidget {
                       },
                     )
                   else if (monthListUsesNaturalHeight)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: monthDocument,
+                    SliverLayoutBuilder(
+                      builder: (context, sliverConstraints) {
+                        final availableBodyHeight = math.max(
+                          0.0,
+                          sliverConstraints.viewportMainAxisExtent -
+                              sliverConstraints.precedingScrollExtent,
+                        );
+                        return SliverToBoxAdapter(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: availableBodyHeight,
+                            ),
+                            child: monthDocument,
+                          ),
+                        );
+                      },
                     )
                   else
                     SliverToBoxAdapter(

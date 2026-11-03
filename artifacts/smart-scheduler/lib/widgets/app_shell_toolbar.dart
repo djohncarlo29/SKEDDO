@@ -183,14 +183,20 @@ class AppShellPinnedToolbar extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: horizontalInset),
       buttonSettings: settings,
     );
-    // With pinning active, the shell paints and owns the real button hit
-    // targets in its separate overlay. The in-route GlassAppBar still spans
-    // the whole toolbar row; its transparent surface must not intercept taps
-    // on controls placed in the empty space between those buttons.
-    return navigation_glass.GlassNavigationShell.maybeOf(context)?.isActive ??
-            false
-        ? IgnorePointer(child: toolbar)
-        : toolbar;
+    // Keep the in-route bar mounted so it registers with the shell, but do not
+    // paint a second copy while the shell owns the shared toolbar. Without an
+    // active shell, the bar renders normally.
+    final shellActive =
+        navigation_glass.GlassNavigationShell.maybeOf(context)?.isActive ??
+        false;
+    if (!shellActive) return toolbar;
+    return IgnorePointer(
+      child: Opacity(
+        key: const ValueKey<String>('app-shell-toolbar-route-copy'),
+        opacity: 0,
+        child: toolbar,
+      ),
+    );
   }
 }
 

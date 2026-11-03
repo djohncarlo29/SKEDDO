@@ -1,10 +1,10 @@
 ---
-name: Empty Month List scroll extent
-description: Keep a fitting Month List grid at zero scroll offset when its selected day has no events.
+name: Month List fit and overflow
+description: Fitting Month List content has no scroll range; natural overflow remains scrollable.
 ---
 
-In empty Month List mode, size the “No Events” placeholder from the viewport space remaining after the header and weekday/grid content. The placeholder should fill available space, not add scroll extent when the grid fits; only real grid overflow should make this empty state scrollable.
+Size the empty Month List placeholder from the viewport remaining after the header and grid; it must fill space without creating scroll range when the grid fits. For eventful days, preserve the embedded DCV’s natural height and give its document at least the remaining viewport height. The result should have zero scroll range when all content fits and a positive scroll range only when content overflows. Do not force the initial content position away from the top.
 
-**Why:** Giving the empty placeholder a full viewport-sized box after header slivers made compact List mode appear scrolled despite a fitting month grid.
+**Why:** An empty placeholder can add artificial scroll extent, while a viewport-constrained eventful document can hide real overflow. Both cases need sizing based on actual content versus the remaining viewport.
 
-**How to apply:** When adjusting Month List slivers, derive the empty body height from `viewportMainAxisExtent - precedingScrollExtent`, and preserve scroll extent only when the calendar grid itself exceeds that available height.
+**How to apply:** In Month List slivers, derive available height from `viewportMainAxisExtent - precedingScrollExtent`; fill that minimum for fitting content, and preserve natural document height for eventful lists that exceed it.
