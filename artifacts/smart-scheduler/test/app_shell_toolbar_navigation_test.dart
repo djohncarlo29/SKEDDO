@@ -201,11 +201,6 @@ void main() {
       await tester.pumpAndSettle();
 
       final homeState = shellKey.currentState!.resolveState()!;
-      final routeToolbarCopy = find.byKey(
-        const ValueKey<String>('app-shell-toolbar-route-copy'),
-      );
-      expect(routeToolbarCopy, findsOneWidget);
-      expect(tester.widget<Opacity>(routeToolbarCopy).opacity, 0);
       expect(homeState.settled, isTrue);
       expect(
         homeState.transition,

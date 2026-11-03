@@ -78,18 +78,3 @@ toolbar without changing the separate in-content header icons.
 
 **How to apply:** Build calendar action icons with `applyOpticalOffset: false`;
 keep the default offset behavior for icons still used in the normal header.
-
-## Route-copy visibility while pinned chrome is hoisted
-
-When the AppShell owns pinned chrome, keep each route's `GlassAppBar.pinned`
-mounted for registration, but make its rendered copy transparent and
-non-interactive. Do not remove it with `Offstage`, and do not rebuild the bar
-for every chrome animation tick; either can disrupt shell registration.
-
-**Why:** The route copy and the shell overlay can otherwise appear as offset
-duplicates or flicker during route transitions. `IgnorePointer` alone only
-removes taps; it does not hide the route copy.
-
-**How to apply:** Gate the route copy at the AppShell toolbar wrapper while the
-shell is active. Let the shell host provide the visible controls and hit
-targets, and leave the package's own pinned-bar handoff lifecycle intact.
