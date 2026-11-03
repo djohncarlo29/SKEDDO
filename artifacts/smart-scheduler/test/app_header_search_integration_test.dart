@@ -454,6 +454,108 @@ void main() {
     },
   );
 
+  testWidgets(
+    'portrait Single/Multi Day header follows scroll through intermediate states',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final previousDefaultView = appDefaultViewNotifier.value;
+      addTearDown(() => appDefaultViewNotifier.value = previousDefaultView);
+      appDefaultViewNotifier.value = 'Day';
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      await tester.tapAt(
+        tester.getCenter(find.text('Calendar').last) - const Offset(0, 24),
+      );
+      await tester.pumpAndSettle();
+
+      final calendarFinder = find.byType(CalendarTab);
+      final transition = AppHeaderScrollInsetScope.titleTransitionOf(
+        tester.element(calendarFinder),
+      )!;
+
+      for (final (setting, timelineType) in [
+        ('Day', '_DayTimeline'),
+        ('Week', '_DayTimelineMulti'),
+      ]) {
+        appDefaultViewNotifier.value = setting;
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<CalendarTab>(calendarFinder).daySubMode.name,
+          setting == 'Day' ? 'singleDay' : 'multiDay',
+        );
+        final timeline = find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == timelineType,
+        );
+        expect(
+          timeline,
+          findsNWidgets(setting == 'Day' ? 3 : 1),
+          reason: setting,
+        );
+        final activeTimeline = setting == 'Day' ? timeline.at(1) : timeline;
+        final timelineScroll = find.descendant(
+          of: activeTimeline,
+          matching: find.byType(Scrollable),
+        );
+        expect(timelineScroll, findsWidgets, reason: setting);
+
+        transition.setDetachedCollapseProgress(0);
+        await tester.pump();
+        final timelineScrollState = tester.state<ScrollableState>(
+          timelineScroll.first,
+        );
+        final position = timelineScrollState.position;
+        position.jumpTo(
+          position.minScrollExtent +
+              (position.maxScrollExtent - position.minScrollExtent) / 2,
+        );
+        await tester.pumpAndSettle();
+        transition.setDetachedCollapseProgress(0);
+        await tester.pump();
+        final pixelsBeforeCollapse = position.pixels;
+        await tester.timedDrag(
+          timelineScroll.first,
+          const Offset(0, -60),
+          const Duration(milliseconds: 400),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          position.pixels,
+          greaterThan(pixelsBeforeCollapse),
+          reason: '$setting upward drag moves the timeline',
+        );
+        final partiallyCollapsed = transition.collapseProgress;
+        expect(partiallyCollapsed, greaterThan(0), reason: setting);
+        expect(partiallyCollapsed, lessThan(1), reason: setting);
+
+        final pixelsAfterUp = position.pixels;
+        await tester.timedDrag(
+          timelineScroll.first,
+          const Offset(0, 30),
+          const Duration(milliseconds: 400),
+        );
+        await tester.pumpAndSettle();
+        expect(position.pixels, lessThan(pixelsAfterUp), reason: setting);
+        expect(
+          transition.collapseProgress,
+          lessThan(partiallyCollapsed),
+          reason: '$setting downward scroll expands incrementally',
+        );
+        expect(
+          transition.collapseProgress,
+          greaterThan(0),
+          reason: '$setting keeps its intermediate header state',
+        );
+      }
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   testWidgets('real tabs inherit the package title and search collapse stages', (
     tester,
   ) async {

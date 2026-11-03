@@ -1025,7 +1025,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       AppShellNavigationObserver(_appShellRouteRevision);
   final AppHeaderTitleTransition _headerTitleTransition =
       AppHeaderTitleTransition();
-  late final AnimationController _calendarDayHeaderDirectionController;
+  ScrollDirection _calendarDayHeaderUserScrollDirection =
+      ScrollDirection.idle;
+  ScrollPosition? _calendarDayHeaderUserScrollPosition;
   static const _nativeTabBarChannel = MethodChannel(
     'com.smartscheduler/native_tab_bar',
   );
@@ -1120,8 +1122,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     // Day timeline offsets do not bind to the shell header. Portrait
-    // Single/Multi direction toggles are handled separately; List mode remains
-    // part of the shell's normal header scroll hierarchy.
+    // Single/Multi scroll deltas update detached header progress separately;
+    // List mode remains part of the shell's normal header scroll hierarchy.
     if (_selectedIndex == 1 &&
         _calendarView == CalendarView.day &&
         _activeDaySubMode != DayViewSubMode.list) {
@@ -1151,44 +1153,47 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             null;
   }
 
-  void _animateCalendarDayHeaderForScrollDirection(
-    ScrollDirection direction,
+  ScrollPosition? _calendarDayScrollPosition(
+    ScrollNotification notification,
   ) {
+    final notificationContext = notification.context;
+    if (notificationContext == null) return null;
+    return Scrollable.maybeOf(
+      notificationContext,
+      axis: Axis.vertical,
+    )?.position;
+  }
+
+  void _updateCalendarDayHeaderFromScrollDelta(
+    double? scrollDelta, {
+    required ScrollPosition? sourcePosition,
+    bool isDirectUserScroll = false,
+  }) {
     if (!_usesDirectionalCalendarDayHeader ||
         _headerTitleTransition.position != null) {
       return;
     }
-    final target = switch (direction) {
-      ScrollDirection.reverse => 1.0,
-      ScrollDirection.forward => 0.0,
-      ScrollDirection.idle => null,
-    };
-    if (target == null) return;
+    if (scrollDelta == null || scrollDelta == 0) return;
+    if (isDirectUserScroll) {
+      _calendarDayHeaderUserScrollPosition = sourcePosition;
+      _calendarDayHeaderUserScrollDirection = scrollDelta > 0
+          ? ScrollDirection.reverse
+          : ScrollDirection.forward;
+    }
+    if (_calendarDayHeaderUserScrollDirection == ScrollDirection.idle ||
+        !identical(sourcePosition, _calendarDayHeaderUserScrollPosition)) {
+      return;
+    }
 
+    // Match the other tabs: each point of vertical scroll moves the shared
+    // title by the same amount, while the timeline keeps its own scroll offset.
+    final signedProgressDelta =
+        scrollDelta / kAppHeaderTitleCollapseDistance;
     final current = _headerTitleTransition.collapseProgress
         .clamp(0.0, 1.0)
         .toDouble();
-    if (current == target &&
-        !_calendarDayHeaderDirectionController.isAnimating) {
-      return;
-    }
-    _calendarDayHeaderDirectionController
-      ..stop()
-      ..value = current;
-    _calendarDayHeaderDirectionController.animateTo(
-      target,
-      duration: _kHeaderStateTransitionDuration,
-      curve: _kHeaderStateTransitionCurve,
-    );
-  }
-
-  void _applyCalendarDayHeaderDirectionProgress() {
-    if (!_usesDirectionalCalendarDayHeader ||
-        _headerTitleTransition.position != null) {
-      return;
-    }
     _headerTitleTransition.setDetachedCollapseProgress(
-      _calendarDayHeaderDirectionController.value,
+      (current + signedProgressDelta).clamp(0.0, 1.0).toDouble(),
     );
   }
 
@@ -1211,19 +1216,52 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
     if (_settingsOpen || _searchEnteredOffScreen) {
+      _calendarDayHeaderUserScrollDirection = ScrollDirection.idle;
+      _calendarDayHeaderUserScrollPosition = null;
       return false;
     }
     if (_searchModeController.value > 0.01) {
+      _calendarDayHeaderUserScrollDirection = ScrollDirection.idle;
+      _calendarDayHeaderUserScrollPosition = null;
       _headerTitleTransition.suspend();
       return false;
     }
     if (_isDirectionalCalendarDayScroll(notification)) {
-      if (notification is UserScrollNotification) {
-        _animateCalendarDayHeaderForScrollDirection(
-          notification.direction,
+      if (notification is UserScrollNotification &&
+          notification.direction != ScrollDirection.idle) {
+        _calendarDayHeaderUserScrollDirection = notification.direction;
+        _calendarDayHeaderUserScrollPosition =
+            _calendarDayScrollPosition(notification);
+      } else if (notification is ScrollStartNotification &&
+          notification.dragDetails != null) {
+        _calendarDayHeaderUserScrollPosition =
+            _calendarDayScrollPosition(notification);
+      } else if (notification is ScrollUpdateNotification) {
+        _updateCalendarDayHeaderFromScrollDelta(
+          notification.scrollDelta,
+          sourcePosition: _calendarDayScrollPosition(notification),
+          isDirectUserScroll: notification.dragDetails != null,
         );
+      } else if (notification is OverscrollNotification) {
+        _updateCalendarDayHeaderFromScrollDelta(
+          notification.overscroll,
+          sourcePosition: _calendarDayScrollPosition(notification),
+          isDirectUserScroll: notification.dragDetails != null,
+        );
+      } else if (notification is ScrollEndNotification) {
+        if (identical(
+          _calendarDayScrollPosition(notification),
+          _calendarDayHeaderUserScrollPosition,
+        )) {
+          _calendarDayHeaderUserScrollDirection = ScrollDirection.idle;
+          _calendarDayHeaderUserScrollPosition = null;
+        }
       }
       return false;
+    }
+    if (!_usesDirectionalCalendarDayHeader) {
+      _calendarDayHeaderUserScrollDirection = ScrollDirection.idle;
+      _calendarDayHeaderUserScrollPosition = null;
     }
     if (!_isHeaderScrollSource(
       metrics: notification.metrics,
@@ -2635,21 +2673,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // making the transition feel laggy on lower-end Android devices.
   late final Animation<double> _searchModeContentOpacity;
 
-  // Timed AppShell header-state transitions share one duration and curve.
-  // Scroll-bound tabs still follow the user's scroll directly; portrait
-  // Single/Multi Day uses this same motion when direction selects an endpoint.
-  static const _kHeaderStateTransitionDuration = Duration(milliseconds: 250);
-  static const _kHeaderStateTransitionCurve = Curves.easeInOutCubic;
-  static const _kSearchModeDuration = _kHeaderStateTransitionDuration;
-  static const _kSearchModeCurve = _kHeaderStateTransitionCurve;
+  // Search-mode transitions share one duration and curve in both directions.
+  static const _kSearchModeDuration = Duration(milliseconds: 250);
+  static const _kSearchModeCurve = Curves.easeInOutCubic;
 
   @override
   void initState() {
     super.initState();
-    _calendarDayHeaderDirectionController = AnimationController(
-      vsync: this,
-      duration: _kHeaderStateTransitionDuration,
-    )..addListener(_applyCalendarDayHeaderDirectionProgress);
     appDefaultViewNotifier.addListener(_onDefaultViewSettingChanged);
     _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
     unawaited(_configureNativeTabBar());
@@ -2776,9 +2806,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _appShellRouteRevision.dispose();
     _settingsBackAction.dispose();
     _settingsInlineBackVisible.dispose();
-    _calendarDayHeaderDirectionController
-      ..removeListener(_applyCalendarDayHeaderDirectionProgress)
-      ..dispose();
     _headerTitleTransition.dispose();
     super.dispose();
   }

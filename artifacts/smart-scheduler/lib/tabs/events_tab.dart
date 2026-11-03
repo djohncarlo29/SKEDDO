@@ -45,8 +45,6 @@ import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 import '../widgets/app_window_content_boundary.dart';
-import '../widgets/skeddo_glass_settings.dart'
-    show skeddoNavigationTabBarGlassSettingsFor;
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -12649,32 +12647,28 @@ class _AddCategoryButtonState extends State<_AddCategoryButton> {
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<double>(
-    valueListenable: appLiquidGlassOpacityNotifier,
-    builder: (context, _, _) {
-      final surfaceColor = resolveThemeColor(kSbSurface, context);
-      final cardShadows = resolveThemeShadows(kCardShadow, context);
-      final glassSettings = skeddoNavigationTabBarGlassSettingsFor(
-        CupertinoTheme.brightnessOf(context),
-      ).copyWith(backerColor: surfaceColor);
-      return LayoutBuilder(
-        builder: (context, constraints) => Container(
-          decoration: ShapeDecoration(
-            shape: const BoundedSquircleStadiumBorder(),
-            shadows: cardShadows,
-          ),
-          child: GlassButton.custom(
-            label: 'Add Category',
-            onTap: () async {
-              await Future<void>.delayed(const Duration(milliseconds: 80));
-              if (mounted) _openAddCategorySheet();
-            },
-            width: constraints.maxWidth,
-            shape: const LiquidRoundedSuperellipse(borderRadius: 24),
-            settings: glassSettings,
-            quality: GlassQuality.premium,
-            useOwnLayer: true,
-            style: GlassButtonStyle.filled,
+  Widget build(BuildContext context) {
+    final surfaceColor = resolveThemeColor(kSbSurface, context);
+    final cardShadows = resolveThemeShadows(kCardShadow, context);
+    return LayoutBuilder(
+      builder: (context, constraints) => Container(
+        decoration: ShapeDecoration(
+          shape: const BoundedSquircleStadiumBorder(),
+          shadows: cardShadows,
+        ),
+        child: GlassButton.custom(
+          label: 'Add Category',
+          onTap: () async {
+            await Future<void>.delayed(const Duration(milliseconds: 80));
+            if (mounted) _openAddCategorySheet();
+          },
+          width: constraints.maxWidth,
+          shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+          quality: GlassQuality.premium,
+          useOwnLayer: true,
+          style: GlassButtonStyle.transparent,
+          child: Container(
+            color: surfaceColor,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
@@ -12695,9 +12689,9 @@ class _AddCategoryButtonState extends State<_AddCategoryButton> {
             ),
           ),
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }
 
 DateTime _utilityDay(DateTime date) => DateTime(date.year, date.month, date.day);

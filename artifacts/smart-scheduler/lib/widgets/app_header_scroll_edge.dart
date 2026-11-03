@@ -322,7 +322,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
   /// Updates the shared title state when the visible screen has no
   /// header-owning scroll position. Calendar's portrait Single/Multi Day
-  /// timelines use scroll direction to select the header endpoint without
+  /// timelines apply scroll deltas to shared collapse progress without
   /// changing their independent timeline offset.
   void setDetachedCollapseProgress(double progress) {
     if (_position != null || _compactOnly || _isSuspended) return;

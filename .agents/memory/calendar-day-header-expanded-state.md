@@ -25,10 +25,10 @@ The 16pt gap from the expanded title baseline or settled toolbar circle is measu
 
 **How to apply:** Measure the text inset with the active OS text scaler. Use it for the Month title/compact corrections and Day fixed-header geometry in both orientations, preserving Month DOW-to-grid adjacency; keep the separate Year mini-month DOW-to-week-row gap at its authored value.
 
-## Portrait Day timeline direction controls the shared header
+## Portrait Day timeline scrolls the shared header proportionally
 
-In portrait Single Day and Multi Day, upward timeline scrolling moves the shared header to compact, and downward timeline scrolling moves it to expanded, regardless of the timeline's current offset. Keep the timeline's own scroll position independent. Do not apply this behavior to Day List or landscape.
+In portrait Single Day and Multi Day, apply each active vertical timeline scroll delta directly to the shared header's collapse progress: scrolling toward compact increases progress, scrolling toward expanded decreases it. Keep intermediate progress when scrolling stops and keep the timeline's own offset independent. Do not apply this behavior to Day List or landscape.
 
-**Why:** These Day timelines do not own the normal collapsible-header scroll position, so a downward scroll cannot wait for the timeline to reach zero before reopening the header. Direction itself must select the endpoint.
+**Why:** The timeline does not own the normal collapsible-header position, so expansion cannot wait for its offset to reach zero. Adjacent cached timelines mirror scroll offsets and also emit notifications; only the active user's scroll may drive the header.
 
-**How to apply:** Listen only to user-scroll direction from the active vertical Single/Multi timeline. Animate the detached shared title progress to the compact or expanded endpoint without binding the timeline controller to the header.
+**How to apply:** Capture the active ScrollPosition from user-scroll notifications; apply each signed update/overscroll delta only from that same position. Divide by kAppHeaderTitleCollapseDistance, clamp progress to 0–1, and clear the active position on its matching scroll end without binding the timeline controller to the header.

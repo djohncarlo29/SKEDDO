@@ -32,8 +32,6 @@ import '../widgets/app_window_content_boundary.dart';
 import '../widgets/app_shell_navigation_scope.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/edge_fade_metrics.dart';
-import '../widgets/skeddo_glass_settings.dart'
-    show skeddoNavigationTabBarGlassSettingsFor;
 import '../ai/search/search_service.dart';
 import '../services/event_store.dart' show EventStore;
 import 'events_tab.dart'
@@ -1757,29 +1755,25 @@ class _SaveEventButton extends StatelessWidget {
   const _SaveEventButton();
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<double>(
-    valueListenable: appLiquidGlassOpacityNotifier,
-    builder: (context, _, _) {
-      final surfaceColor = resolveThemeColor(kSbSurface, context);
-      final cardShadows = resolveThemeShadows(kCardShadow, context);
-      final glassSettings = skeddoNavigationTabBarGlassSettingsFor(
-        CupertinoTheme.brightnessOf(context),
-      ).copyWith(backerColor: surfaceColor);
-      return LayoutBuilder(
-        builder: (context, constraints) => Container(
-          decoration: ShapeDecoration(
-            shape: const BoundedSquircleStadiumBorder(),
-            shadows: cardShadows,
-          ),
-          child: GlassButton.custom(
-            label: 'Save Event',
-            onTap: sbDismissTextFieldFocus,
-            width: constraints.maxWidth,
-            shape: const LiquidRoundedSuperellipse(borderRadius: 24),
-            settings: glassSettings,
-            quality: GlassQuality.premium,
-            useOwnLayer: true,
-            style: GlassButtonStyle.filled,
+  Widget build(BuildContext context) {
+    final surfaceColor = resolveThemeColor(kSbSurface, context);
+    final cardShadows = resolveThemeShadows(kCardShadow, context);
+    return LayoutBuilder(
+      builder: (context, constraints) => Container(
+        decoration: ShapeDecoration(
+          shape: const BoundedSquircleStadiumBorder(),
+          shadows: cardShadows,
+        ),
+        child: GlassButton.custom(
+          label: 'Save Event',
+          onTap: sbDismissTextFieldFocus,
+          width: constraints.maxWidth,
+          shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+          quality: GlassQuality.premium,
+          useOwnLayer: true,
+          style: GlassButtonStyle.transparent,
+          child: Container(
+            color: surfaceColor,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 8,
@@ -1803,9 +1797,9 @@ class _SaveEventButton extends StatelessWidget {
             ),
           ),
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
