@@ -4970,6 +4970,7 @@ _MonthSelectedEvents _monthSelectedEventsWidgetFor({
   required int selectedDayIndex,
   required double? height,
   required double emptyStateHeight,
+  double compactHeaderTailCorrection = 0.0,
   required void Function(ScheduledEvent event)? onEditEvent,
   required ScrollController? scrollController,
   required GlobalKey? scrollViewportKey,
@@ -4981,6 +4982,7 @@ _MonthSelectedEvents _monthSelectedEventsWidgetFor({
     selectedDayIndex,
     height,
     emptyStateHeight,
+    compactHeaderTailCorrection,
     onEditEvent?.hashCode ?? 0,
     identityHashCode(scrollController),
     identityHashCode(scrollViewportKey),
@@ -4998,6 +5000,7 @@ _MonthSelectedEvents _monthSelectedEventsWidgetFor({
     selectedDayIndex: selectedDayIndex,
     height: height,
     emptyStateHeight: emptyStateHeight,
+    compactHeaderTailCorrection: compactHeaderTailCorrection,
     onEditEvent: onEditEvent,
     scrollController: scrollController,
     scrollViewportKey: scrollViewportKey,
@@ -6480,6 +6483,13 @@ class _MonthView extends StatelessWidget {
                                                   selectedListIsEmpty
                                                   ? listContentH
                                                   : availableListEmptyStateH,
+                                              compactHeaderTailCorrection:
+                                                  isPortrait &&
+                                                          scrollTitleIsActive
+                                                  ? _calendarDowTextTopInset(
+                                                      context,
+                                                    )
+                                                  : 0.0,
                                               onEditEvent: onEditEvent,
                                               scrollController:
                                                   scrollController,
@@ -7938,6 +7948,7 @@ class _MonthSelectedEvents extends StatelessWidget {
     required this.selectedDayIndex,
     required this.height,
     required this.emptyStateHeight,
+    this.compactHeaderTailCorrection = 0.0,
     this.onEditEvent,
     this.scrollController,
     this.scrollViewportKey,
@@ -7949,6 +7960,7 @@ class _MonthSelectedEvents extends StatelessWidget {
   final int selectedDayIndex;
   final double? height;
   final double emptyStateHeight;
+  final double compactHeaderTailCorrection;
   final void Function(ScheduledEvent event)? onEditEvent;
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
@@ -7990,6 +8002,8 @@ class _MonthSelectedEvents extends StatelessWidget {
               }
               return buildDcvEventList(
                 events: events,
+                compactHeaderTailCorrection:
+                    compactHeaderTailCorrection,
                 onEditEvent: onEditEvent,
                 onManualOrderChanged: (orderedEvents) {
                   onOrderChanged?.call(dayKeys[dayIndex], orderedEvents);

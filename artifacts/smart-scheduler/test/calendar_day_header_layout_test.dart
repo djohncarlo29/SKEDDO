@@ -620,6 +620,8 @@ void main() {
           home: CalendarTab(
             key: calendarKey,
             onViewChanged: (_, _, _, _, _, _) {},
+            scrollableTitleBuilder:
+                (context, title, year, view, isActive) => Text(title),
           ),
         ),
       );
@@ -656,7 +658,6 @@ void main() {
             ),
           )
           .first;
-      final fittingEventContext = tester.element(fittingEventTitle);
       final tabBarFinder = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString().contains('GlassTabBar'),
       );
@@ -696,6 +697,18 @@ void main() {
         ),
       ];
       await tester.pumpAndSettle();
+      final nestedScrollView = tester.state<NestedScrollViewState>(
+        find
+            .ancestor(
+              of: trailingSurface,
+              matching: find.byType(NestedScrollView),
+            )
+            .first,
+      );
+      final headerPosition = nestedScrollView.outerController.position;
+      transition.bindTo(headerPosition);
+      headerPosition.jumpTo(headerPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
       final screenshotLikePosition = Scrollable.of(
         tester.element(trailingSurface),
       ).position;
@@ -703,6 +716,11 @@ void main() {
         screenshotLikePosition.jumpTo(screenshotLikePosition.maxScrollExtent);
         await tester.pumpAndSettle();
       }
+      expect(
+        transition.collapseProgress,
+        closeTo(1.0, 0.01),
+        reason: 'The final-gap measurement must use the compact header state.',
+      );
       final screenshotLikeFinalTitle = find.text('10pm event').last;
       final screenshotLikeFinalCard = find
           .ancestor(
@@ -769,7 +787,6 @@ void main() {
             ),
           )
           .first;
-      final finalEventContext = tester.element(finalEventTitle);
       final tabBarTop = tester.getRect(tabBarFinder).top;
       expect(
         tabBarTop - tester.getRect(finalEventCard).bottom,
@@ -788,7 +805,6 @@ void main() {
         collapsedSectionPosition.maxScrollExtent,
       );
       await tester.pumpAndSettle();
-      final collapsedHeaderContext = tester.element(finalSectionHeader);
       final collapsedTabBarTop = tester.getRect(tabBarFinder).top;
       expect(
         collapsedTabBarTop - tester.getRect(finalSectionHeader).bottom,

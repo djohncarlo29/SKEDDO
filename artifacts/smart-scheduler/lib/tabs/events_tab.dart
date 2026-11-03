@@ -19600,6 +19600,7 @@ Color resolveEventCategoryColor(
 /// placeholder opacity, separator gaps, FLIP reflow, and auto-scroll.
 Widget buildDcvEventList({
   required List<ScheduledEvent> events,
+  double compactHeaderTailCorrection = 0.0,
   ValueChanged<ScheduledEvent>? onEditEvent,
   ValueChanged<List<ScheduledEvent>>? onManualOrderChanged,
   ScrollController? scrollController,
@@ -19612,6 +19613,7 @@ Widget buildDcvEventList({
     showManualDateSections: true,
     timeGroupedManualEvents: true,
     embedded: true,
+    embeddedCompactHeaderTailCorrection: compactHeaderTailCorrection,
     externalScrollController: scrollController,
     externalScrollViewportKey: scrollViewportKey,
     onEditEvent: onEditEvent,
@@ -20063,6 +20065,7 @@ class _DcvCategoryPageStackState extends State<_DcvCategoryPageStack> {
 class _CategoryDetailView extends StatefulWidget {
   final String label;
   final bool embedded;
+  final double embeddedCompactHeaderTailCorrection;
   final bool landscapeMasterDetail;
   final bool timeGroupedManualEvents;
   final ScrollController? externalScrollController;
@@ -20135,6 +20138,7 @@ class _CategoryDetailView extends StatefulWidget {
     super.key,
     required this.label,
     this.embedded = false,
+    this.embeddedCompactHeaderTailCorrection = 0.0,
     this.landscapeMasterDetail = false,
     this.timeGroupedManualEvents = false,
     this.externalScrollController,
@@ -21695,11 +21699,29 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         final existingTrailingContentPadding = lastSection == null
             ? 0.0
             : 16.0 + (lastVisibleSectionContentIsHeader ? 8.0 : 0.0);
-        final trailingClearance = floatingTabBarContentBottomClearance(
-          context,
-          existingTrailingContentPadding: existingTrailingContentPadding,
-          finalContentGap: _kDcvFinalContentGap,
-        );
+        final headerTransition =
+            AppHeaderScrollInsetScope.titleTransitionOf(context);
+        Widget buildTrailingClearance() {
+          final compactTranslation = widget
+              .embeddedCompactHeaderTailCorrection *
+              (headerTransition?.collapseProgress.clamp(0.0, 1.0) ?? 0.0);
+          final finalContentGap =
+              _kDcvFinalContentGap - compactTranslation;
+          return SizedBox(
+            height: floatingTabBarContentBottomClearance(
+              context,
+              existingTrailingContentPadding: existingTrailingContentPadding,
+              finalContentGap: finalContentGap,
+            ),
+          );
+        }
+
+        final trailingClearance = headerTransition == null
+            ? buildTrailingClearance()
+            : AnimatedBuilder(
+                animation: headerTransition,
+                builder: (context, _) => buildTrailingClearance(),
+              );
         return Opacity(
           opacity: hideForSortMeasurement ? 0.0 : 1.0,
           child: Padding(
@@ -21717,7 +21739,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                     previousEventById,
                     isReorderable,
                   ),
-                SizedBox(height: trailingClearance),
+                trailingClearance,
               ],
             ),
           ),
