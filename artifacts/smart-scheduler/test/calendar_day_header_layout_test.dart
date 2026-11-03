@@ -658,18 +658,20 @@ void main() {
             ),
           )
           .first;
+      final fittingSectionHeader = find.text('All-day').last;
+      expect(
+        tester.getRect(fittingSectionHeader).top -
+            tester.getRect(trailingSurface).top,
+        closeTo(16.0, 0.75),
+        reason:
+            'A fitting list should stay directly after the grid instead of being pushed down to the tab bar.',
+      );
       final tabBarFinder = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString().contains('GlassTabBar'),
       );
       expect(tabBarFinder, findsOneWidget);
-      final fittingTabBarTop = tester.getRect(tabBarFinder).top;
-      expect(
-        fittingTabBarTop - tester.getRect(fittingEventCard).bottom,
-        closeTo(16.0, 0.75),
-        reason:
-            'A fitting eventful month list should use remaining space before the list, not below its final tile.',
-      );
 
+      tester.view.physicalSize = const Size(402, 650);
       EventStore.instance.events.value = [
         ScheduledEvent(
           id: 'month-list-9pm-event',
@@ -712,10 +714,13 @@ void main() {
       final screenshotLikePosition = Scrollable.of(
         tester.element(trailingSurface),
       ).position;
-      if (screenshotLikePosition.maxScrollExtent > 0.5) {
-        screenshotLikePosition.jumpTo(screenshotLikePosition.maxScrollExtent);
-        await tester.pumpAndSettle();
-      }
+      expect(
+        screenshotLikePosition.maxScrollExtent,
+        greaterThan(0.5),
+        reason: 'The compact timed event list in this setup must overflow.',
+      );
+      screenshotLikePosition.jumpTo(screenshotLikePosition.maxScrollExtent);
+      await tester.pumpAndSettle();
       expect(
         transition.collapseProgress,
         closeTo(1.0, 0.01),

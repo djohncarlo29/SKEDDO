@@ -6043,9 +6043,11 @@ class _RenderMonthListNaturalFill extends RenderBox
 
     (grid.parentData! as _MonthListNaturalFillParentData).offset =
         Offset.zero;
+    // Keep event rows directly after the grid. Any unused minimum-height
+    // space belongs below them so fitting lists keep their natural position.
     (list.parentData! as _MonthListNaturalFillParentData).offset = Offset(
       0,
-      size.height - list.size.height,
+      grid.size.height,
     );
   }
 
