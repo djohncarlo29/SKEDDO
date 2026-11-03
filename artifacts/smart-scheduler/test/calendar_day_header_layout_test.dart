@@ -655,11 +655,65 @@ void main() {
         reason:
             'Event rows that extend beyond the viewport must remain scrollable.',
       );
-      overflowingMonthPosition.jumpTo(
-        overflowingMonthPosition.maxScrollExtent,
+      EventStore.instance.events.value = [
+        ...selectedDayEvents(24),
+        ScheduledEvent(
+          id: 'month-list-final-event',
+          title: 'Final timed event',
+          date: selectedDateKey,
+          time: '9:15 AM',
+        ),
+      ];
+      await tester.pumpAndSettle();
+      final finalEventPosition = Scrollable.of(
+        tester.element(overflowingTrailingSurface),
+      ).position;
+      expect(finalEventPosition.maxScrollExtent, greaterThan(0.5));
+      finalEventPosition.jumpTo(finalEventPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final finalEventTitle = find.text('Final timed event').last;
+      final finalEventCard = find
+          .ancestor(
+            of: finalEventTitle,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Container && widget.decoration is ShapeDecoration,
+            ),
+          )
+          .first;
+      final finalEventContext = tester.element(finalEventTitle);
+      final tabBarTop =
+          MediaQuery.sizeOf(finalEventContext).height -
+          floatingTabBarContentBottomOffset(finalEventContext) -
+          kFloatingTabBarHeight;
+      expect(
+        tabBarTop - tester.getRect(finalEventCard).bottom,
+        closeTo(16.0, 0.75),
+        reason: 'The final event tile should stop 16pt above the tab bar.',
       );
-      await tester.pump();
-      expect(overflowingMonthPosition.pixels, greaterThan(0.5));
+
+      final finalSectionHeader = find.text('9:00 AM').first;
+      await tester.tap(finalSectionHeader);
+      await tester.pumpAndSettle();
+      final collapsedSectionPosition = Scrollable.of(
+        tester.element(overflowingTrailingSurface),
+      ).position;
+      expect(collapsedSectionPosition.maxScrollExtent, greaterThan(0.5));
+      collapsedSectionPosition.jumpTo(
+        collapsedSectionPosition.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+      final collapsedHeaderContext = tester.element(finalSectionHeader);
+      final collapsedTabBarTop =
+          MediaQuery.sizeOf(collapsedHeaderContext).height -
+          floatingTabBarContentBottomOffset(collapsedHeaderContext) -
+          kFloatingTabBarHeight;
+      expect(
+        collapsedTabBarTop - tester.getRect(finalSectionHeader).bottom,
+        closeTo(16.0, 0.75),
+        reason:
+            'A collapsed final section header should stop 16pt above the tab bar.',
+      );
       expect(tester.takeException(), isNull);
     },
   );

@@ -21678,6 +21678,28 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       // measurement frame to a live drag: drag swaps update the list directly.
       final hideForSortMeasurement = _sortMeasuring && _draggingIndex == null;
       if (widget.embedded) {
+        // A collapsed final section ends at its label's 8pt bottom inset plus
+        // the section wrapper's 16pt inset. Subtract both from the tab-bar
+        // clearance so the label itself keeps the same visible 16pt gap as a
+        // final event card.
+        final lastSection = displaySections.isEmpty
+            ? null
+            : displaySections.last;
+        final lastSectionKey =
+            lastSection?.collapseKey ?? lastSection?.headerText;
+        final lastVisibleSectionContentIsHeader =
+            lastSection?.headerText != null &&
+            (lastSection!.events.isEmpty ||
+                (lastSectionKey != null &&
+                    _collapsedSections.contains(lastSectionKey)));
+        final existingTrailingContentPadding = lastSection == null
+            ? 0.0
+            : 16.0 + (lastVisibleSectionContentIsHeader ? 8.0 : 0.0);
+        final trailingClearance = floatingTabBarContentBottomClearance(
+          context,
+          existingTrailingContentPadding: existingTrailingContentPadding,
+          finalContentGap: _kDcvFinalContentGap,
+        );
         return Opacity(
           opacity: hideForSortMeasurement ? 0.0 : 1.0,
           child: Padding(
@@ -21695,6 +21717,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                     previousEventById,
                     isReorderable,
                   ),
+                SizedBox(height: trailingClearance),
               ],
             ),
           ),

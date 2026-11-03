@@ -129,12 +129,6 @@ const double _kYearMonthHandoffThreshold = 0.5;
 // they cannot leak into the incoming Day View week strip.
 const double _kMonthDayTransitionThreshold = 0.5;
 const double _kMonthListDotDiameter = 5.0;
-// The embedded DCV keeps one 16 pt trailing section gap outside its
-// AnimatedSize. That gap remains after a section's event card collapses, so it
-// is the correct existing trailing padding for both an event tile and a
-// collapsed section header.
-const double _kMonthListSectionTrailingContentPadding = 16.0;
-const double _kMonthListFinalContentGap = 16.0;
 // Calendar Tab day-circle diameter at the default System text size.  This is
 // circle geometry, not a value derived from any individual strip Text widget.
 // The active OS TextScaler applies Dynamic Type to this one authored baseline.
@@ -6123,9 +6117,6 @@ class _MonthView extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             final secondaryC = resolveThemeColor(kSecondaryLabel, context);
-            final floatingClearance = floatingTabBarContentBottomClearance(
-              context,
-            );
             final isPortrait =
                 MediaQuery.orientationOf(context) == Orientation.portrait;
             final scrollTitleWidget = scrollTitle == null
@@ -6199,14 +6190,6 @@ class _MonthView extends StatelessWidget {
             // Bar's height and bottom inset as well, then keep a separate 16 pt
             // gap between whichever element is last (event tile or section
             // header) and the pill.
-            final eventContentClearance = showMonthList
-                ? floatingTabBarContentBottomClearance(
-                    context,
-                    existingTrailingContentPadding:
-                        _kMonthListSectionTrailingContentPadding,
-                    finalContentGap: _kMonthListFinalContentGap,
-                  )
-                : floatingClearance;
             final contentH = showMonthList
                 ? selectedDayIsEmpty
                       ? emptyStateNeedsScrollableFallback
@@ -6221,7 +6204,7 @@ class _MonthView extends StatelessWidget {
                               )
                       : math.max(
                           expandedViewportHeight,
-                          gridH + listContentH + eventContentClearance,
+                          gridH + listContentH,
                         )
                 : gridH;
             final emptyH = selectedDayIsEmpty && showMonthList
@@ -6233,7 +6216,7 @@ class _MonthView extends StatelessWidget {
                             ? emptyStateFallbackH
                             : availableListEmptyStateH
                       : 0.0
-                : math.max(0.0, emptyH - eventContentClearance);
+                : 0.0;
             // A non-empty Month List must use the selected DCV's measured height.
             // A collapsed final section therefore measures as its header plus the
             // section wrapper's trailing 16 pt, rather than retaining an estimated
@@ -6380,10 +6363,6 @@ class _MonthView extends StatelessWidget {
                                                 onMonthListOrderChanged,
                                           ),
                                         ),
-                                        if (monthListUsesNaturalHeight)
-                                          SizedBox(
-                                            height: eventContentClearance,
-                                          ),
                                       ],
                                     ),
                                   ),

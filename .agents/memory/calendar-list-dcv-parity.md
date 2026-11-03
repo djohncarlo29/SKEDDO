@@ -36,8 +36,8 @@ The Calendar Month List text-only empty state centers in the live space below th
 
 ## Collapsed final section
 
-When the last Calendar List section is collapsed, its event card height must disappear from the natural document height. The section wrapper's 16pt bottom padding remains, so the visible 16pt target is measured from the collapsed section header.
+When the last Calendar List section is collapsed, its event card height must disappear from the natural document height. The final header retains an 8pt label inset and 16pt section inset; subtract both from tab-bar clearance so the header text itself remains 16pt above the bar.
 
-**Why:** The DCV's `AnimatedSize` collapses only the event content; the section wrapper remains. Keeping an estimated tile height makes the Calendar List stop too far above the Floating Tab Bar after dismissal.
+**Why:** The DCV's `AnimatedSize` collapses only the event content; the section label's bottom inset and wrapper remain. Treating the wrapper's 16pt as the only existing padding leaves the collapsed header 8pt too far from the Floating Tab Bar.
 
-**How to apply:** Let the selected embedded DCV use natural height and subtract only its persistent 16pt section trailing padding in `floatingTabBarContentBottomClearance`.
+**How to apply:** Let the selected embedded DCV use natural height; subtract 16pt for a final event tile, or 24pt for a final collapsed/empty section header, in `floatingTabBarContentBottomClearance`.
