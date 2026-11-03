@@ -8549,6 +8549,9 @@ class EventsTabState extends State<EventsTab>
                 MediaQuery.orientationOf(context) == Orientation.portrait,
             expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             expandedTitleContentGapFromBaseline: true,
+            searchBarContentGap: _searchFocused
+                ? 0.0
+                : kAppHeaderExpandedTitleContentGap,
             compactContentTopSpacing:
                 appHeaderCompactContentSpacingForOrientation(
                   MediaQuery.orientationOf(context),

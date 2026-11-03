@@ -745,6 +745,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 enabled: !isLandscape,
                 expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
                 expandedTitleContentGapFromBaseline: true,
+                searchBarContentGap: _searchFocused
+                    ? 0.0
+                    : kAppHeaderExpandedTitleContentGap,
                 compactContentTopSpacing:
                     appHeaderCompactContentSpacingForOrientation(
                       MediaQuery.orientationOf(context),

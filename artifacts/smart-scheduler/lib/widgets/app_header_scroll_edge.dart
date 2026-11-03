@@ -29,6 +29,7 @@ const double kAppHeaderSettledToolbarCircleCenter = 30.0;
 const double kAppHeaderLandscapeToolbarHeight = 52.0;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
+const double _kAppHeaderSearchGapReleaseProgress = 0.9;
 
 double appHeaderCompactContentSpacingForOrientation(Orientation orientation) {
   final toolbarSlotHeight = orientation == Orientation.landscape
@@ -954,6 +955,33 @@ class AppHeaderScrollView extends StatelessWidget {
     return compactSpacing * progress;
   }
 
+  /// Holds the first content edge [searchBarContentGap] below the collapsing
+  /// search bar while it remains visible, then eases back to compact spacing as
+  /// the bar finishes fading out.
+  static double searchBarContentTopSpacingForProgress({
+    required double searchBarContentGap,
+    required double compactContentSpacing,
+    required double collapseProgress,
+  }) {
+    if (!searchBarContentGap.isFinite ||
+        searchBarContentGap < 0 ||
+        !compactContentSpacing.isFinite ||
+        compactContentSpacing < 0) {
+      return 0.0;
+    }
+    final progress = collapseProgress.isFinite
+        ? collapseProgress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final releaseProgress =
+        ((progress - _kAppHeaderSearchGapReleaseProgress) /
+                (1.0 - _kAppHeaderSearchGapReleaseProgress))
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final easedRelease = Curves.easeIn.transform(releaseProgress);
+    return searchBarContentGap +
+        (compactContentSpacing - searchBarContentGap) * easedRelease;
+  }
+
   /// Baseline-to-line-bottom distance for the default 34pt bold Large Header.
   /// It converts the shared line-box inset into a baseline anchor.
   static final double titleBaselineDescent = _measureTitleBaselineDescent();
@@ -1307,13 +1335,42 @@ class AppHeaderScrollView extends StatelessWidget {
                                       authoredCompactClearance,
                                   collapseProgress: progress,
                                 );
+                      final normalContentTopSpacing =
+                          minimumContentTopSpacing +
+                          maxContentTopSpacing * progress +
+                          compactContentTopSpacing +
+                          expandedTitleContentGapAdjustment;
+                      var searchBarContentTopSpacing =
+                          normalContentTopSpacing;
+                      if (titleInset.searchBarExtent > 0.0 &&
+                          !titleInset.pinSearchBar &&
+                          titleInset.searchBarContentGap > 0.0) {
+                        final searchBarProgress =
+                            phaseController.searchBarCollapseProgress;
+                        if (searchBarProgress <= 0.0) {
+                          searchBarContentTopSpacing =
+                              normalContentTopSpacing +
+                              titleInset.searchBarContentGap *
+                                  phaseController.collapseProgress;
+                        } else {
+                          searchBarContentTopSpacing =
+                              AppHeaderScrollView
+                                  .searchBarContentTopSpacingForProgress(
+                                    searchBarContentGap:
+                                        titleInset.searchBarContentGap,
+                                    compactContentSpacing:
+                                        minimumContentTopSpacing +
+                                        maxContentTopSpacing +
+                                        titleInset.compactContentTopSpacing +
+                                        authoredCompactClearance,
+                                    collapseProgress: searchBarProgress,
+                                  );
+                        }
+                      }
                       return SizedBox(
                         height:
-                            (minimumContentTopSpacing +
-                                    maxContentTopSpacing * progress +
-                                    compactContentTopSpacing +
-                                    expandedTitleDownshift +
-                                    expandedTitleContentGapAdjustment)
+                            (searchBarContentTopSpacing +
+                                    expandedTitleDownshift)
                                 .clamp(0.0, double.infinity),
                       );
                     },
@@ -1875,10 +1932,12 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.expandedTitleContentGapFromBaseline = false,
     this.expandedTitleContentGapContentInset = 0.0,
     this.compactContentTopSpacing = 0.0,
+    this.searchBarContentGap = 0.0,
   }) : assert(searchBarExtent >= 0),
        assert(expandedTitleContentGap >= 0),
        assert(expandedTitleContentGapContentInset >= 0),
        assert(compactContentTopSpacing >= 0),
+       assert(searchBarContentGap >= 0),
        assert(searchBar != null || searchBarExtent == 0);
 
   final Animation<double>? collapseAnimation;
@@ -1900,6 +1959,8 @@ class AppHeaderScrollInset extends StatelessWidget {
   final double expandedTitleContentGapContentInset;
   /// Extra content inset restored only as the search header reaches compact.
   final double compactContentTopSpacing;
+  /// Desired distance from the collapsing search bar to the first body item.
+  final double searchBarContentGap;
 
   @override
   Widget build(BuildContext context) {

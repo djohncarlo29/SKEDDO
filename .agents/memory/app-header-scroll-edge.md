@@ -190,6 +190,14 @@ In every compact layout, including landscape, keep the first content edge 16pt b
 
 **How to apply:** Preserve the settled toolbar geometry, compensate for the content viewport's orientation-specific raise at the content boundary, and keep compact clearance separate from expanded title gaps and active search placement.
 
+## Search-bar-to-content gap during collapse
+
+On normal, unpinned Notes and Events headers, preserve a 16pt gap between the visible search row and the first body item throughout title and search-bar collapse. Once the search bar is effectively gone, return smoothly to the existing compact toolbar-to-content boundary. Do not change active or restored search-mode geometry.
+
+**Why:** The title and search row collapse in separate phases; the existing title spacing can reach zero before the search row finishes moving, causing the first card to crowd the bar. Extending that gap permanently would instead break the settled compact position.
+
+**How to apply:** Give normal search headers an explicit content-gap target and verify the expanded state, title-only collapse, mid-search collapse, and fully compact endpoint independently. Keep pinned search and parent-scroll restoration behavior on their existing geometry.
+
 ## Compact title-to-toolbar centerline
 
 Compact titles and their controls align to the rendered toolbar control centerline, not the nominal 44pt portrait or 52pt landscape layout-row center. Calendar period-chevron slots must use the same orientation-specific row height so their centers follow the title.

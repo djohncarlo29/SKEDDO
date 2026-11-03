@@ -271,6 +271,106 @@ void main() {
     expect(outer.pixels, titleExtent + searchExtent);
   });
 
+  testWidgets('search bar keeps a 16pt gap to first content while collapsing', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final bodyController = ScrollController();
+    final transition = AppHeaderTitleTransition();
+    addTearDown(() {
+      transition.dispose();
+      bodyController.dispose();
+    });
+    const searchExtent = 44.0;
+    const titleExtent = kAppHeaderTitleCollapseDistance;
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: AppHeaderScrollInsetScope(
+          leadingInset: kAppHeaderToolbarHeight,
+          titleCollapseExtent: titleExtent,
+          titleTransition: transition,
+          child: Padding(
+            padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+            child: AppHeaderScrollView(
+              controller: bodyController,
+              topExtension: kAppHeaderContentTopSpacing,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: AppHeaderScrollInset(
+                    searchBarExtent: searchExtent,
+                    searchBar: const SizedBox(
+                      key: ValueKey('gap-search'),
+                      height: searchExtent,
+                      child: Text('Search'),
+                    ),
+                    expandedTitleContentGap:
+                        kAppHeaderExpandedTitleContentGap,
+                    expandedTitleContentGapFromBaseline: true,
+                    compactContentTopSpacing:
+                        appHeaderCompactContentSpacingForOrientation(
+                          Orientation.portrait,
+                        ),
+                    searchBarContentGap: kAppHeaderExpandedTitleContentGap,
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(key: ValueKey('gap-body'), height: 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final outer = AppHeaderScrollView.headerPositionFor(bodyController)!;
+    transition.bindTo(outer);
+    final search = find.byKey(const ValueKey('gap-search'));
+    final body = find.byKey(const ValueKey('gap-body'));
+    final searchClip = find.ancestor(
+      of: search,
+      matching: find.byType(ClipRect),
+    );
+    final offsets = <double>[
+      0,
+      titleExtent / 2,
+      titleExtent,
+      titleExtent + searchExtent * 0.1,
+      titleExtent + searchExtent * 0.5,
+      titleExtent + searchExtent * 0.9,
+    ];
+    for (final offset in offsets) {
+      outer.jumpTo(offset);
+      await tester.pump();
+      final visibleSearchBottom = offset <= titleExtent
+          ? tester.getRect(search).bottom
+          : tester.getRect(searchClip.first).bottom;
+      expect(
+        tester.getTopLeft(body).dy - visibleSearchBottom,
+        closeTo(kAppHeaderExpandedTitleContentGap, 0.01),
+        reason: 'search/content gap at header offset $offset',
+      );
+    }
+
+    outer.jumpTo(titleExtent + searchExtent);
+    await tester.pump();
+    expect(
+      tester.getTopLeft(body).dy,
+      closeTo(
+        kAppHeaderSettledToolbarCircleBottom + kAppHeaderContentTopSpacing,
+        0.01,
+      ),
+      reason: 'fully compact content position stays unchanged',
+    );
+  });
+
   testWidgets('short body has only the outer header collapse travel', (
     tester,
   ) async {
