@@ -206,6 +206,23 @@ abstract final class GlassNavPinnedMetrics {
     return 1.0 - (progress / dematerializeEnd).clamp(0.0, 1.0);
   }
 
+  /// Opacity for one side of a sequential item-content handoff.
+  ///
+  /// The outgoing content reaches zero before the incoming content becomes
+  /// visible, so two different glyphs never appear on top of one another.
+  /// [progress] is the item's cross-fade-window progress, from zero to one.
+  @visibleForTesting
+  static double sequentialItemOpacityAt({
+    required double progress,
+    required bool incoming,
+  }) {
+    final t = progress.clamp(0.0, 1.0);
+    final sideProgress = incoming
+        ? (2.0 * t - 1.0).clamp(0.0, 1.0)
+        : (1.0 - 2.0 * t).clamp(0.0, 1.0);
+    return Curves.easeInOut.transform(sideProgress);
+  }
+
   /// Which side's configuration is showing at transition [progress].
   static bool showsIncomingAt(double progress) => progress >= swapAt;
 }
@@ -1641,7 +1658,7 @@ class GlassNavActionSlot {
     final to = toItem;
     return from != null &&
         to != null &&
-        !_sameContent(from.content, to.content);
+        (from.id != to.id || !_sameContent(from.content, to.content));
   }
 
   /// Whether two content widgets draw the same thing.
@@ -1699,7 +1716,22 @@ List<GlassNavActionSlot> matchGlassNavActions(
         if (from[i].id == toItem.id) return i;
       }
     }
-    // 2. Positional fallback, counting from the anchored edge. An item
+    // 2. A sequential visual handoff can pair two distinct actions in the same
+    // slot without conflating their route identities or tap callbacks.
+    if (toItem is GlassBarIconItem && toItem.sequentialTransition) {
+      final wanted = slotOf(toIndex, to.length);
+      for (var i = 0; i < from.length; i++) {
+        final fromItem = from[i];
+        if (usedFrom.contains(i) ||
+            fromItem is! GlassBarIconItem ||
+            !fromItem.sequentialTransition ||
+            slotOf(i, from.length) != wanted) {
+          continue;
+        }
+        return i;
+      }
+    }
+    // 3. Positional fallback, counting from the anchored edge. An item
     //    carrying a different explicit id is never matched positionally.
     final wanted = slotOf(toIndex, to.length);
     for (var i = 0; i < from.length; i++) {
@@ -2495,13 +2527,19 @@ class _PinnedGroupState extends State<_PinnedGroup> {
       final fromItem = slot.fromItem;
       final toItem = slot.toItem;
 
-      // Two surfaces of an item's own cannot cross-fade any more than a
-      // shell and a bare item can: stacked, each samples the other, and the
-      // overlap reads as a brighter pad inside the incoming capsule. They
-      // take turns instead, on the same windows a group only one route has.
-      final sequenced = crossFades &&
-          fromItem?.background == GlassBarItemBackground.own &&
-          toItem?.background == GlassBarItemBackground.own;
+      final sequentialIconHandoff =
+          crossFades &&
+          fromItem is GlassBarIconItem &&
+          toItem is GlassBarIconItem &&
+          fromItem.sequentialTransition &&
+          toItem.sequentialTransition;
+      // Sequential icon handoffs and two own-glass surfaces take turns rather
+      // than overlap. Own-glass surfaces cannot sample each other; sequential
+      // icons otherwise read as duplicated when both glyphs are visible.
+      final sequenced = sequentialIconHandoff ||
+          (crossFades &&
+              fromItem?.background == GlassBarItemBackground.own &&
+              toItem?.background == GlassBarItemBackground.own);
       double sequencedPhase({required bool inFrom}) => state.settled
           ? 1.0
           : showsIncoming == inFrom
@@ -2512,6 +2550,17 @@ class _PinnedGroupState extends State<_PinnedGroup> {
                   inFrom: inFrom,
                   inTo: !inFrom,
                 );
+      double sequencedIconOpacity({required bool inFrom}) {
+        if (state.settled) return 1.0;
+        return GlassNavPinnedMetrics.sequentialItemOpacityAt(
+          progress: q,
+          incoming: !inFrom,
+        );
+      }
+      double sequencedOpacity({required bool inFrom}) =>
+          sequentialIconHandoff
+          ? sequencedIconOpacity(inFrom: inFrom)
+          : sequencedPhase(inFrom: inFrom);
 
       if (fromItem != null) {
         if (toItem == null) {
@@ -2549,7 +2598,7 @@ class _PinnedGroupState extends State<_PinnedGroup> {
             slot: i,
             isFrom: true,
             opacity: sequenced
-                ? sequencedPhase(inFrom: true)
+                ? sequencedOpacity(inFrom: true)
                 : state.settled
                     ? 1.0
                     : (1.0 - q),
@@ -2604,7 +2653,7 @@ class _PinnedGroupState extends State<_PinnedGroup> {
             slot: i,
             isFrom: false,
             opacity: sequenced
-                ? sequencedPhase(inFrom: false)
+                ? sequencedOpacity(inFrom: false)
                 : crossFades
                     ? (state.settled ? 1.0 : q)
                     : 1.0,

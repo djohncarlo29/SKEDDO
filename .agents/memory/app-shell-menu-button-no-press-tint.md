@@ -13,12 +13,18 @@ Landscape Settings detail panes are in-place destinations and must expose the
 same back action on the shared toolbar.
 
 Reuse a `GlassBarItem` ID across destinations only while its glyph is unchanged.
-Menu, close, and back glyph states need distinct IDs: matching IDs tell
-`GlassNavigationShell` the item persists and skip the package's
-materialize/blur choreography. Keep shared IDs for menu-to-menu transitions and
-for action items that genuinely persist across screens. Set the shell's
+Menu, close, and back glyph states keep distinct IDs. For the AppShell leading
+button, opt into the package's sequential content handoff so its outgoing glyph
+fades away before the incoming glyph appears, while preserving each button's
+own action and identity. Keep shared IDs for unchanged items. Set the shell's
 `effectTransition` to `GlassEffectTransition.materialize`; do not custom-tween
 the hamburger strokes into the X or chevron.
+
+**Why:** The default overlapping content cross-fade made the leading toolbar
+look duplicated during route transitions, despite correct hit targets.
+
+**How to apply:** Use sequential content handoff on the changing leading
+menu/close/back item in both orientations. Leave trailing-item timing unchanged.
 
 The in-route pinned-bar placeholder must not intercept the empty center of the
 header while the shell owns the real hit targets. In search mode, disable all

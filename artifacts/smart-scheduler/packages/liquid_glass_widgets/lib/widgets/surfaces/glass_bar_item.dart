@@ -110,6 +110,9 @@ sealed class GlassBarItem {
     required Widget icon,
     required VoidCallback onTap,
     Object? id,
+    /// Serializes changed glyphs in this visual slot instead of overlapping
+    /// their cross-fade. The item's [id] remains its independent identity.
+    bool sequentialTransition,
     String? label,
     bool enabled,
     GlassBarItemBackground background,
@@ -320,6 +323,7 @@ final class GlassBarIconItem extends GlassBarActionItem {
     required this.icon,
     required super.onTap,
     super.id,
+    this.sequentialTransition = false,
     super.label,
     super.enabled,
     super.background,
@@ -331,6 +335,14 @@ final class GlassBarIconItem extends GlassBarActionItem {
   ///
   /// Size and colour are applied by the enclosing cluster.
   final Widget icon;
+
+  /// Whether changed content in this visual slot exits before its replacement
+  /// enters. The item [id] remains independent and continues to control
+  /// identity, callbacks, and semantics.
+  ///
+  /// This is useful for a single control whose action/glyph changes between
+  /// routes but must not show both glyphs at once.
+  final bool sequentialTransition;
 
   @override
   Widget get content => icon;

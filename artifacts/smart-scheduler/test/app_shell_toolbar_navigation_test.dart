@@ -7,12 +7,61 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassEffectTransition,
         GlassNavigationShell,
         GlassNavigationShellState;
+import 'package:liquid_glass_widgets/widgets/surfaces/shared/glass_nav_pinned_host.dart'
+    as pinned_host
+    show
+        GlassNavPinnedMetrics,
+        matchGlassNavActions;
+import 'package:liquid_glass_widgets/widgets/surfaces/glass_bar_item.dart'
+    as bar_items
+    show GlassBarActionItem;
 import 'package:smart_scheduler/widgets/app_shell_toolbar.dart';
 import 'package:smart_scheduler/widgets/app_shell_navigation_scope.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
+  test('sequential toolbar handoff preserves item IDs without pairing glyphs', () {
+    final menu = navigation_glass.GlassBarItem.icon(
+      id: 'menu',
+      sequentialTransition: true,
+      icon: const Icon(CupertinoIcons.line_horizontal_3),
+      onTap: () {},
+    ) as bar_items.GlassBarActionItem;
+    final back = navigation_glass.GlassBarItem.icon(
+      id: 'back',
+      sequentialTransition: true,
+      icon: const Icon(CupertinoIcons.back),
+      onTap: () {},
+    ) as bar_items.GlassBarActionItem;
+
+    final slots = pinned_host.matchGlassNavActions(
+      [menu],
+      [back],
+      anchoredAtStart: true,
+    );
+
+    expect(slots, hasLength(1));
+    expect(slots.single.fromItem, same(menu));
+    expect(slots.single.toItem, same(back));
+    expect(slots.single.fromItem!.id, 'menu');
+    expect(slots.single.toItem!.id, 'back');
+    expect(slots.single.crossFades, isTrue);
+  });
+
+  test('sequential toolbar glyphs never fade over each other', () {
+    for (final progress in <double>[0, 0.2, 0.45, 0.5, 0.65, 0.8, 1]) {
+      final outgoing = pinned_host.GlassNavPinnedMetrics
+          .sequentialItemOpacityAt(progress: progress, incoming: false);
+      final incoming = pinned_host.GlassNavPinnedMetrics
+          .sequentialItemOpacityAt(progress: progress, incoming: true);
+
+      expect(outgoing + incoming, lessThanOrEqualTo(1));
+      if (progress < 0.5) expect(incoming, 0);
+      if (progress > 0.5) expect(outgoing, 0);
+    }
+  });
+
   testWidgets(
     'nested pinned toolbar routes retain morph state and interactions',
     (tester) async {

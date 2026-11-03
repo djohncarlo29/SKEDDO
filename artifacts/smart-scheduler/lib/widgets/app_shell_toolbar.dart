@@ -157,6 +157,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     );
     final item = navigation_glass.GlassBarItem.icon(
       id: glyph.glassItemId,
+      sequentialTransition: true,
       label: semanticLabel,
       enabled: canInteract && visibility > 0.01,
       background: navigation_glass.GlassBarItemBackground.shared,
