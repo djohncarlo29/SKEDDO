@@ -598,31 +598,28 @@ void main() {
             titleCollapseExtent: kAppHeaderTitleCollapseDistance,
             titleTransition: transition,
             child: AppWindowContentBoundary(
-              child: Padding(
-                padding: const EdgeInsets.only(top: appShellLeadingInset),
-                child: child ?? const SizedBox.shrink(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: appShellLeadingInset),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                  Positioned.fill(
+                    child: FloatingTabPill(
+                      selectedIndex: 1,
+                      onTabSelected: (_) {},
+                      onCreateEvent: () {},
+                      eventsAccent: const Color(0xFF007AFF),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-           home: Stack(
-             fit: StackFit.expand,
-             children: [
-               Padding(
-                 padding: const EdgeInsets.only(top: appShellLeadingInset),
-                 child: CalendarTab(
-                   key: calendarKey,
-                   onViewChanged: (_, _, _, _, _, _) {},
-                 ),
-               ),
-               Positioned.fill(
-                 child: FloatingTabPill(
-                   selectedIndex: 1,
-                   onTabSelected: (_) {},
-                   onCreateEvent: () {},
-                   eventsAccent: const Color(0xFF007AFF),
-                 ),
-               ),
-             ],
+          home: CalendarTab(
+            key: calendarKey,
+            onViewChanged: (_, _, _, _, _, _) {},
           ),
         ),
       );
