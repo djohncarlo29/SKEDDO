@@ -228,12 +228,9 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               _portraitBarWidth ??
               (math.min(screenSize.width, screenSize.height) -
                   (kFloatingTabBarHorizontalMargin * 2));
-          final barWidth =
-              (isPortrait
-                      ? availableBarWidth
-                      : math.min(availableBarWidth, portraitWidth))
-                  .clamp(0.0, double.infinity)
-                  .toDouble();
+          final barWidth = (isPortrait ? availableBarWidth : portraitWidth)
+              .clamp(0.0, double.infinity)
+              .toDouble();
           if (isPortrait) _portraitBarWidth = barWidth;
           final frameWidth = (barWidth + tabBar.horizontalPadding * 2)
               .clamp(0.0, constraints.maxWidth)
@@ -242,26 +239,32 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
           return Stack(
             clipBehavior: Clip.none,
             children: [
-              AnimatedPositioned(
-                duration: widget.animateHorizontalOffset
-                    ? kDcvPaneTransitionDuration
-                    : Duration.zero,
-                curve: Curves.easeInOutCubic,
-                left: barSideInset + widget.horizontalOffset,
-                right: barSideInset - widget.horizontalOffset,
+              Positioned(
+                left: barSideInset,
                 bottom: bottomOffset - tabBar.verticalPadding,
+                width: frameWidth,
                 height: tabBar.preferredSize.height,
-                child: MediaQuery(
-                  data: MediaQuery.of(
-                    context,
-                  ).copyWith(textScaler: tabTextScaler),
-                  child: Builder(
-                    builder: (scaledContext) => MediaQuery.removePadding(
-                      context: scaledContext,
-                      removeBottom: true,
-                      child: navigation_glass.DefaultButtonSettings(
-                        settings: barGlassSettings,
-                        child: tabBar,
+                child: AnimatedSlide(
+                  duration: widget.animateHorizontalOffset
+                      ? kDcvPaneTransitionDuration
+                      : Duration.zero,
+                  curve: Curves.easeInOutCubic,
+                  offset: Offset(
+                    frameWidth == 0 ? 0 : widget.horizontalOffset / frameWidth,
+                    0,
+                  ),
+                  child: MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: tabTextScaler),
+                    child: Builder(
+                      builder: (scaledContext) => MediaQuery.removePadding(
+                        context: scaledContext,
+                        removeBottom: true,
+                        child: navigation_glass.DefaultButtonSettings(
+                          settings: barGlassSettings,
+                          child: tabBar,
+                        ),
                       ),
                     ),
                   ),

@@ -165,6 +165,50 @@ void main() {
     },
   );
 
+  testWidgets(
+    'floating tab bar keeps its width through orientation changes',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(402, 874);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Stack(
+            children: [
+              Positioned.fill(
+                child: FloatingTabPill(
+                  selectedIndex: 0,
+                  eventsAccent: const Color(0xFF007AFF),
+                  onTabSelected: (_) {},
+                  onCreateEvent: () {},
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tabBar = find.byType(navigation_glass.GlassTabBar);
+      final portraitSize = tester.getSize(tabBar);
+      expect(portraitSize.height, 49.0);
+
+      tester.view.physicalSize = const Size(874, 402);
+      await tester.pump();
+      expect(tester.getSize(tabBar).width, portraitSize.width);
+      expect(tester.getSize(tabBar).height, 49.0);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(tester.getSize(tabBar).width, portraitSize.width);
+
+      tester.view.physicalSize = const Size(402, 874);
+      await tester.pump();
+      expect(tester.getSize(tabBar).width, portraitSize.width);
+      expect(tester.getRect(tabBar).center.dx, 201.0);
+    },
+  );
+
   testWidgets('dark tab keeps package optics with SKEDDO charcoal tint', (
     tester,
   ) async {

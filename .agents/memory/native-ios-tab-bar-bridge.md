@@ -20,3 +20,9 @@ On web and Android, use `flutter_liquid_glass_widgets`' `GlassTabBar.bottom` for
 **Why:** Theme-only dark overrides do not reach the bar because its explicit settings take precedence. Applying every field from the package's general dark theme weakens thickness and refraction while increasing blur, making the surface look like a frosted overlay. A high-opacity charcoal replacement also darkens content seen through the glass.
 
 **How to apply:** Keep the UIKit overlay on native iOS. For web/Android, preserve AppShell positioning and navigation state around `GlassTabBar.bottom`, keep the pill and `extraButton` at 49 logical pixels, and size custom SF glyphs directly without changing the separate plus action. Merge only the package dark variant's tint and lighting into the bottom-bar preset; preserve its optical thickness, refraction, dispersion, saturation, and blur.
+
+On Flutter-rendered Android/web, keep the navigation pill at its portrait width when rotating to landscape. Reposition it for the new viewport without resizing it; animate explicit horizontal pane offsets separately.
+
+**Why:** Clamping the pill to landscape constraints and animating both left and right edges makes the whole control visibly shrink and expand during rotation, unlike the steady-width navigation the user expects.
+
+**How to apply:** Use the cached portrait width (or the short screen edge minus the standard margins when launched in landscape) as the bar width in both orientations. Give the positioned bar an explicit fixed width and animate only `horizontalOffset`, never its width.
