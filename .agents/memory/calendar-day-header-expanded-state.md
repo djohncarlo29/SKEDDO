@@ -24,3 +24,11 @@ The 16pt gap from the expanded title baseline or settled toolbar circle is measu
 **Why:** The 28pt baseline row includes font-metric space above the visible glyphs. Aligning the row box instead leaves the DOW text too low; moving only the DOW line would also create a new gap before the grid. Landscape has no title row, so its generic content spacing must account for the same glyph inset.
 
 **How to apply:** Measure the text inset with the active OS text scaler. Use it for the Month title/compact corrections and Day fixed-header geometry in both orientations, preserving Month DOW-to-grid adjacency; keep the separate Year mini-month DOW-to-week-row gap at its authored value.
+
+## Portrait Day timeline direction controls the shared header
+
+In portrait Single Day and Multi Day, upward timeline scrolling moves the shared header to compact, and downward timeline scrolling moves it to expanded, regardless of the timeline's current offset. Keep the timeline's own scroll position independent. Do not apply this behavior to Day List or landscape.
+
+**Why:** These Day timelines do not own the normal collapsible-header scroll position, so a downward scroll cannot wait for the timeline to reach zero before reopening the header. Direction itself must select the endpoint.
+
+**How to apply:** Listen only to user-scroll direction from the active vertical Single/Multi timeline. Animate the detached shared title progress to the compact or expanded endpoint without binding the timeline controller to the header.

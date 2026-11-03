@@ -320,6 +320,32 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _publishChange();
   }
 
+  /// Updates the shared title state when the visible screen has no
+  /// header-owning scroll position. Calendar's portrait Single/Multi Day
+  /// timelines use scroll direction to select the header endpoint without
+  /// changing their independent timeline offset.
+  void setDetachedCollapseProgress(double progress) {
+    if (_position != null || _compactOnly || _isSuspended) return;
+    final next = progress.isFinite
+        ? progress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final nextOffset = next * kAppHeaderTitleCollapseDistance;
+    if (next == collapseProgress &&
+        _cachedSearchCollapseProgress == next &&
+        _cachedContentOffset == nextOffset &&
+        _pendingHandoffCollapseProgress == null) {
+      return;
+    }
+
+    _pendingHandoffCollapseProgress = null;
+    _pendingHandoffSearchProgress = null;
+    _cachedCollapseProgress = next;
+    _cachedSearchCollapseProgress = next;
+    _cachedContentOffset = nextOffset;
+    _prepareInactiveDestinations();
+    _notifyIfChanged();
+  }
+
   /// Stops observing scroll changes while a search transition owns the header,
   /// without changing the current visual state.
   void suspend() {

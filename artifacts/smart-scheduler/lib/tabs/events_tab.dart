@@ -12636,20 +12636,7 @@ class _AddCategoryButton extends StatefulWidget {
   State<_AddCategoryButton> createState() => _AddCategoryButtonState();
 }
 
-class _AddCategoryButtonState extends State<_AddCategoryButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 80),
-    reverseDuration: const Duration(milliseconds: 120),
-  );
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
+class _AddCategoryButtonState extends State<_AddCategoryButton> {
   void _openAddCategorySheet() {
     showRoundedCupertinoSheet<void>(
       context: context,
@@ -12661,30 +12648,29 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = resolveThemeColor(kModalCard, context);
+    final surfaceColor = resolveThemeColor(kSbSurface, context);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapCancel: () => _ctrl.reverse(),
-      onTap:
-          () => _ctrl.forward(from: 0).then((_) {
-            if (mounted) _ctrl.reverse();
-            _openAddCategorySheet();
-          }),
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder:
-            (context, child) => Transform.scale(
-              scale: 1.0 - 0.04 * _ctrl.value,
-              child: Opacity(opacity: 1.0 - 0.35 * _ctrl.value, child: child!),
-            ),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: resolveThemeColor(kSbSurface, context),
-            shape: const BoundedSquircleStadiumBorder(),
-            shadows: cardShadows,
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) => Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: ShapeDecoration(
+          color: surfaceColor,
+          shape: const BoundedSquircleStadiumBorder(),
+          shadows: cardShadows,
+        ),
+        child: GlassButton.custom(
+          label: 'Add Category',
+          onTap: () async {
+            await Future<void>.delayed(const Duration(milliseconds: 80));
+            if (mounted) _openAddCategorySheet();
+          },
+          width: constraints.maxWidth,
+          shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+          useOwnLayer: true,
+          style: GlassButtonStyle.filled,
+          interactionScale: 1.0,
+          stretch: 0,
+          anchorStretch: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(

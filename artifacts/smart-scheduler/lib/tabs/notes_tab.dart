@@ -11,6 +11,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:pdfx/pdfx.dart';
 import '../app_settings.dart';
 import '../app_theme.dart';
@@ -1750,53 +1751,31 @@ class _NoteInputCardState extends State<_NoteInputCard>
 // ─────────────────────────────────────────────────────────────────────────────
 // Save button
 // ─────────────────────────────────────────────────────────────────────────────
-class _SaveEventButton extends StatefulWidget {
+class _SaveEventButton extends StatelessWidget {
   const _SaveEventButton();
-
-  @override
-  State<_SaveEventButton> createState() => _SaveEventButtonState();
-}
-
-class _SaveEventButtonState extends State<_SaveEventButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 80),
-    reverseDuration: const Duration(milliseconds: 120),
-  );
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapCancel: () => _ctrl.reverse(),
-      onTap: () {
-        sbDismissTextFieldFocus();
-        _ctrl.forward(from: 0).then((_) {
-          if (mounted) _ctrl.reverse();
-        });
-      },
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (context, child) => Transform.scale(
-          scale: 1.0 - 0.04 * _ctrl.value,
-          child: Opacity(opacity: 1.0 - 0.35 * _ctrl.value, child: child!),
+    return LayoutBuilder(
+      builder: (context, constraints) => Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: ShapeDecoration(
+          color: surfaceColor,
+          shape: const BoundedSquircleStadiumBorder(),
+          shadows: cardShadows,
         ),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: surfaceColor,
-            shape: const BoundedSquircleStadiumBorder(),
-            shadows: cardShadows,
-          ),
+        child: GlassButton.custom(
+          label: 'Save Event',
+          onTap: sbDismissTextFieldFocus,
+          width: constraints.maxWidth,
+          shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+          useOwnLayer: true,
+          style: GlassButtonStyle.filled,
+          interactionScale: 1.0,
+          stretch: 0,
+          anchorStretch: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
             child: Center(

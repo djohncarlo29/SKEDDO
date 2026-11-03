@@ -4,6 +4,7 @@ import 'dart:math' show max, min;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:dynamic_color/dynamic_color.dart'
     show DynamicColorBuilder, DynamicColorBuilderState;
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -1024,6 +1025,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       AppShellNavigationObserver(_appShellRouteRevision);
   final AppHeaderTitleTransition _headerTitleTransition =
       AppHeaderTitleTransition();
+  late final AnimationController _calendarDayHeaderDirectionController;
   static const _nativeTabBarChannel = MethodChannel(
     'com.smartscheduler/native_tab_bar',
   );
@@ -1117,7 +1119,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       }
     }
 
-    // Day timelines are independent scroll surfaces; the list mode remains
+    // Day timeline offsets do not bind to the shell header. Portrait
+    // Single/Multi direction toggles are handled separately; List mode remains
     // part of the shell's normal header scroll hierarchy.
     if (_selectedIndex == 1 &&
         _calendarView == CalendarView.day &&
@@ -1125,6 +1128,67 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return false;
     }
     return true;
+  }
+
+  bool get _usesDirectionalCalendarDayHeader =>
+      _selectedIndex == 1 &&
+      _calendarView == CalendarView.day &&
+      _activeDaySubMode != DayViewSubMode.list &&
+      MediaQuery.orientationOf(context) == Orientation.portrait &&
+      !_settingsOpen &&
+      !_searchEnteredOffScreen &&
+      _searchModeController.value <= 0.01;
+
+  bool _isDirectionalCalendarDayScroll(ScrollNotification notification) {
+    if (!_usesDirectionalCalendarDayHeader ||
+        notification.metrics.axis != Axis.vertical ||
+        notification.depth != 0) {
+      return false;
+    }
+    final notificationContext = notification.context;
+    return notificationContext != null &&
+        notificationContext.findAncestorStateOfType<CalendarTabState>() !=
+            null;
+  }
+
+  void _animateCalendarDayHeaderForScrollDirection(
+    ScrollDirection direction,
+  ) {
+    if (!_usesDirectionalCalendarDayHeader ||
+        _headerTitleTransition.position != null) {
+      return;
+    }
+    final target = switch (direction) {
+      ScrollDirection.reverse => 1.0,
+      ScrollDirection.forward => 0.0,
+      ScrollDirection.idle => null,
+    };
+    if (target == null) return;
+
+    final current = _headerTitleTransition.collapseProgress
+        .clamp(0.0, 1.0)
+        .toDouble();
+    if (current == target &&
+        !_calendarDayHeaderDirectionController.isAnimating) {
+      return;
+    }
+    _calendarDayHeaderDirectionController
+      ..stop()
+      ..value = current;
+    _calendarDayHeaderDirectionController.animateTo(
+      target,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _applyCalendarDayHeaderDirectionProgress() {
+    if (!_usesDirectionalCalendarDayHeader ||
+        _headerTitleTransition.position != null) {
+      return;
+    }
+    _headerTitleTransition.setDetachedCollapseProgress(
+      _calendarDayHeaderDirectionController.value,
+    );
   }
 
   void _bindHeaderPositionFromContext(BuildContext? notificationContext) {
@@ -1150,6 +1214,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     if (_searchModeController.value > 0.01) {
       _headerTitleTransition.suspend();
+      return false;
+    }
+    if (_isDirectionalCalendarDayScroll(notification)) {
+      if (notification is UserScrollNotification) {
+        _animateCalendarDayHeaderForScrollDirection(
+          notification.direction,
+        );
+      }
       return false;
     }
     if (!_isHeaderScrollSource(
@@ -2582,6 +2654,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _calendarDayHeaderDirectionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    )..addListener(_applyCalendarDayHeaderDirectionProgress);
     appDefaultViewNotifier.addListener(_onDefaultViewSettingChanged);
     _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
     unawaited(_configureNativeTabBar());
@@ -2708,6 +2784,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _appShellRouteRevision.dispose();
     _settingsBackAction.dispose();
     _settingsInlineBackVisible.dispose();
+    _calendarDayHeaderDirectionController
+      ..removeListener(_applyCalendarDayHeaderDirectionProgress)
+      ..dispose();
     _headerTitleTransition.dispose();
     super.dispose();
   }

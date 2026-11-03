@@ -9,6 +9,27 @@ import 'package:smart_scheduler/app_theme.dart' show kSFProText;
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  test(
+    'detached day header can expand from compact without returning to scroll top',
+    () {
+      final transition = AppHeaderTitleTransition();
+      addTearDown(transition.dispose);
+      var updates = 0;
+      transition.addListener(() => updates++);
+
+      transition.setDetachedCollapseProgress(1.0);
+      expect(transition.collapseProgress, 1.0);
+      expect(transition.searchBarCollapseProgress, 1.0);
+      expect(transition.contentOffset, kAppHeaderTitleCollapseDistance);
+
+      transition.setDetachedCollapseProgress(0.0);
+      expect(transition.collapseProgress, 0.0);
+      expect(transition.searchBarCollapseProgress, 0.0);
+      expect(transition.contentOffset, 0.0);
+      expect(updates, 2);
+    },
+  );
+
   testWidgets(
     'search bar keeps a 16pt gap below the title baseline',
     (tester) async {
