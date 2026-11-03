@@ -7,4 +7,6 @@ Size the empty Month List placeholder from the viewport remaining after the head
 
 **Why:** An empty placeholder can add artificial scroll extent, while minimum-height-only sizing for a fitting eventful document leaves unused space after its final item. Intrinsic sizing is also unsafe when the document contains `LayoutBuilder`.
 
-**How to apply:** In Month List slivers, derive available height from `viewportMainAxisExtent - precedingScrollExtent`; compare it against post-layout grid and list sizes, keep the grid at the top, and align the list tail to the document bottom. Avoid intrinsic-measurement wrappers around the `LayoutBuilder`-based month document.
+**How to apply:** In Month List slivers, derive available height from `viewportMainAxisExtent - precedingScrollExtent`; compare it against post-layout grid and list sizes, keep the grid at the top, and align the list tail to the document bottom. Avoid intrinsic-measurement wrappers around the `LayoutBuilder`-based month document. For final-gap tests, render `FloatingTabPill` and measure its actual `GlassTabBar` bounds instead of reconstructing its top from constants.
+
+**Why:** The AppShell’s rendered tab-bar bounds are the visible reference users compare against; a constants-only test can pass without proving the visible gap.

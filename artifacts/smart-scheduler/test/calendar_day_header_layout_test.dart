@@ -8,6 +8,7 @@ import 'package:smart_scheduler/services/event_store.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 import 'package:smart_scheduler/widgets/view_mode_icons.dart';
 
 void _expectDowBaselineAtHeaderBottom(WidgetTester tester, Finder header) {
@@ -585,7 +586,7 @@ void main() {
           isAllDay: true,
         ),
       );
-      EventStore.instance.events.value = selectedDayEvents(1);
+       EventStore.instance.events.value = selectedDayEvents(1);
 
       final calendarKey = GlobalKey<CalendarTabState>();
       final transition = AppHeaderTitleTransition();
@@ -603,9 +604,25 @@ void main() {
               ),
             ),
           ),
-          home: CalendarTab(
-            key: calendarKey,
-            onViewChanged: (_, _, _, _, _, _) {},
+           home: Stack(
+             fit: StackFit.expand,
+             children: [
+               Padding(
+                 padding: const EdgeInsets.only(top: appShellLeadingInset),
+                 child: CalendarTab(
+                   key: calendarKey,
+                   onViewChanged: (_, _, _, _, _, _) {},
+                 ),
+               ),
+               Positioned.fill(
+                 child: FloatingTabPill(
+                   selectedIndex: 1,
+                   onTabSelected: (_) {},
+                   onCreateEvent: () {},
+                   eventsAccent: const Color(0xFF007AFF),
+                 ),
+               ),
+             ],
           ),
         ),
       );
@@ -643,15 +660,68 @@ void main() {
           )
           .first;
       final fittingEventContext = tester.element(fittingEventTitle);
-      final fittingTabBarTop =
-          MediaQuery.sizeOf(fittingEventContext).height -
-          floatingTabBarContentBottomOffset(fittingEventContext) -
-          kFloatingTabBarHeight;
+      final tabBarFinder = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString().contains('GlassTabBar'),
+      );
+      expect(tabBarFinder, findsOneWidget);
+      final fittingTabBarTop = tester.getRect(tabBarFinder).top;
       expect(
         fittingTabBarTop - tester.getRect(fittingEventCard).bottom,
         closeTo(16.0, 0.75),
         reason:
             'A fitting eventful month list should use remaining space before the list, not below its final tile.',
+      );
+
+      EventStore.instance.events.value = [
+        ScheduledEvent(
+          id: 'month-list-9pm-event',
+          title: '9pm event',
+          date: selectedDateKey,
+          time: '9:00 PM',
+        ),
+        ScheduledEvent(
+          id: 'month-list-910pm-event',
+          title: '9:10 event',
+          date: selectedDateKey,
+          time: '9:10 PM',
+        ),
+        ScheduledEvent(
+          id: 'month-list-930pm-event',
+          title: '9:30 event',
+          date: selectedDateKey,
+          time: '9:30 PM',
+        ),
+        ScheduledEvent(
+          id: 'month-list-10pm-event',
+          title: '10pm event',
+          date: selectedDateKey,
+          time: '10:00 PM',
+        ),
+      ];
+      await tester.pumpAndSettle();
+      final screenshotLikePosition = Scrollable.of(
+        tester.element(trailingSurface),
+      ).position;
+      if (screenshotLikePosition.maxScrollExtent > 0.5) {
+        screenshotLikePosition.jumpTo(screenshotLikePosition.maxScrollExtent);
+        await tester.pumpAndSettle();
+      }
+      final screenshotLikeFinalTitle = find.text('10pm event').last;
+      final screenshotLikeFinalCard = find
+          .ancestor(
+            of: screenshotLikeFinalTitle,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Container && widget.decoration is ShapeDecoration,
+            ),
+          )
+          .first;
+      expect(
+        tester.getRect(tabBarFinder).top -
+            tester.getRect(screenshotLikeFinalCard).bottom,
+        closeTo(16.0, 0.75),
+        reason:
+            'Screenshot-like timed groups must end exactly 16pt above the rendered tab bar.',
       );
 
       tester.view.physicalSize = const Size(402, 650);
@@ -703,10 +773,7 @@ void main() {
           )
           .first;
       final finalEventContext = tester.element(finalEventTitle);
-      final tabBarTop =
-          MediaQuery.sizeOf(finalEventContext).height -
-          floatingTabBarContentBottomOffset(finalEventContext) -
-          kFloatingTabBarHeight;
+      final tabBarTop = tester.getRect(tabBarFinder).top;
       expect(
         tabBarTop - tester.getRect(finalEventCard).bottom,
         closeTo(16.0, 0.75),
@@ -725,10 +792,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final collapsedHeaderContext = tester.element(finalSectionHeader);
-      final collapsedTabBarTop =
-          MediaQuery.sizeOf(collapsedHeaderContext).height -
-          floatingTabBarContentBottomOffset(collapsedHeaderContext) -
-          kFloatingTabBarHeight;
+      final collapsedTabBarTop = tester.getRect(tabBarFinder).top;
       expect(
         collapsedTabBarTop - tester.getRect(finalSectionHeader).bottom,
         closeTo(16.0, 0.75),
