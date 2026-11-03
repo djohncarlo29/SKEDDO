@@ -17,6 +17,13 @@ import 'package:flutter/gestures.dart'
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/rendering.dart'
+    show
+        BoxHitTestResult,
+        ContainerBoxParentData,
+        ContainerRenderObjectMixin,
+        RenderBox,
+        RenderBoxContainerDefaultsMixin;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform, ValueListenable;
 import 'package:flutter/services.dart' show HapticFeedback, MethodChannel;
@@ -5939,6 +5946,117 @@ double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
       eventCount * eventRowHeight;
 }
 
+Widget _buildMonthGridListContent({
+  required double minimumHeight,
+  required bool monthListUsesNaturalHeight,
+  required Widget grid,
+  required Widget list,
+}) {
+  if (monthListUsesNaturalHeight) {
+    return _MonthListNaturalFill(
+      minimumHeight: minimumHeight,
+      grid: grid,
+      list: list,
+    );
+  }
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [grid, list],
+  );
+}
+
+class _MonthListNaturalFill extends MultiChildRenderObjectWidget {
+  _MonthListNaturalFill({
+    required this.minimumHeight,
+    required Widget grid,
+    required Widget list,
+  }) : super(children: [grid, list]);
+
+  final double minimumHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderMonthListNaturalFill(minimumHeight);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderMonthListNaturalFill renderObject,
+  ) {
+    renderObject.minimumHeight = minimumHeight;
+  }
+}
+
+class _MonthListNaturalFillParentData
+    extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderMonthListNaturalFill extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _MonthListNaturalFillParentData>,
+        RenderBoxContainerDefaultsMixin<
+          RenderBox,
+          _MonthListNaturalFillParentData
+        > {
+  _RenderMonthListNaturalFill(this._minimumHeight);
+
+  double _minimumHeight;
+
+  double get minimumHeight => _minimumHeight;
+
+  set minimumHeight(double value) {
+    if (_minimumHeight == value) return;
+    _minimumHeight = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _MonthListNaturalFillParentData) {
+      child.parentData = _MonthListNaturalFillParentData();
+    }
+  }
+
+  @override
+  void performLayout() {
+    final grid = firstChild;
+    final list = grid == null ? null : childAfter(grid);
+    if (grid == null || list == null) {
+      size = constraints.smallest;
+      return;
+    }
+
+    final childConstraints = constraints.hasBoundedWidth
+        ? BoxConstraints.tightFor(width: constraints.maxWidth)
+        : const BoxConstraints();
+    grid.layout(childConstraints, parentUsesSize: true);
+    list.layout(childConstraints, parentUsesSize: true);
+
+    final width = constraints.hasBoundedWidth
+        ? constraints.maxWidth
+        : math.max(grid.size.width, list.size.width);
+    final naturalHeight = grid.size.height + list.size.height;
+    final height = math.max(_minimumHeight, naturalHeight);
+    size = constraints.constrain(Size(width, height));
+
+    (grid.parentData! as _MonthListNaturalFillParentData).offset =
+        Offset.zero;
+    (list.parentData! as _MonthListNaturalFillParentData).offset = Offset(
+      0,
+      size.height - list.size.height,
+    );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    defaultPaint(context, offset);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    return defaultHitTestChildren(result, position: position);
+  }
+}
+
 List<ScheduledEvent> _applyMonthListOrder(
   List<ScheduledEvent> events,
   List<String>? savedOrder,
@@ -6275,149 +6393,158 @@ class _MonthView extends StatelessWidget {
                         ),
                       ),
                       // ── Scrollable body ───────────────────────────────────
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(height: _kDayLabelHeight),
-                          const SizedBox(height: _kCalendarHeaderToDowGap),
-                          SizedBox(
-                            height: totalRows * rowHeight,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                for (int row = 0; row < totalRows; row++)
-                                  if (!hidePinnedDayRow ||
-                                      row != collapseWeekRow)
-                                    _AnimatedWeekRow(
-                                      year: year,
-                                      month: month,
-                                      row: row,
-                                      morphRowKey:
-                                          morphWeekRowKeys != null &&
-                                              row < morphWeekRowKeys!.length
-                                          ? morphWeekRowKeys![row]
-                                          : null,
-                                      morphDayKeys: morphDayKeysForRow(row),
-                                      today: today,
-                                      selectedDate: selectedDate,
-                                      collapseProgress: collapseProgress,
-                                      collapseWeekRow: collapseWeekRow,
-                                      viewModeRowHeight: rowHeight,
-                                      screenHeight: constraints.maxHeight,
-                                      contentInset: monthContentInset,
-                                      scrollOffset: collapseScrollOffset,
-                                      eventsByDay: orderedEventsByDay,
-                                      viewMode: viewMode,
-                                      onDayTap: onDayTap,
-                                      onDayLongPress: onDayLongPress,
-                                      circleSlideX: row == collapseWeekRow
-                                          ? circleSlideX
-                                          : 0.0,
-                                      settleCount: settleCount,
-                                      blobDeltaX: row == collapseWeekRow
-                                          ? blobDeltaX
-                                          : 0.0,
-                                      blobSnapCount: blobSnapCount,
-                                      pendingBloomDate: pendingBloomDate,
-                                      suppressScaleAnimation:
-                                          suppressScaleAnimation,
-                                      daySubMode: daySubMode,
-                                    ),
-                              ],
-                            ),
-                          ),
-                          if (showMonthList)
-                            Transform.translate(
-                              offset: Offset(0, monthListStripOffsetY),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                      _buildMonthGridListContent(
+                        minimumHeight: documentConstraints.minHeight,
+                        monthListUsesNaturalHeight:
+                            monthListUsesNaturalHeight,
+                        grid: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(height: _kDayLabelHeight),
+                            const SizedBox(height: _kCalendarHeaderToDowGap),
+                            SizedBox(
+                              height: totalRows * rowHeight,
+                              child: Stack(
+                                clipBehavior: Clip.none,
                                 children: [
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: monthContentInset,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        KeyedSubtree(
-                                          key: morphListContentKey,
-                                          child: _monthSelectedEventsWidgetFor(
-                                            data: monthListData!,
-                                            selectedDayIndex:
-                                                selectedListChildIndex,
-                                            height: monthListUsesNaturalHeight
-                                                ? null
-                                                : listContentH,
-                                            emptyStateHeight:
-                                                selectedListIsEmpty
-                                                ? listContentH
-                                                : availableListEmptyStateH,
-                                            onEditEvent: onEditEvent,
-                                            scrollController: scrollController,
-                                            scrollViewportKey:
-                                                scrollViewportKey,
-                                            onOrderChanged:
-                                                onMonthListOrderChanged,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  for (int row = 0; row < totalRows; row++)
+                                    if (!hidePinnedDayRow ||
+                                        row != collapseWeekRow)
+                                      _AnimatedWeekRow(
+                                        year: year,
+                                        month: month,
+                                        row: row,
+                                        morphRowKey:
+                                            morphWeekRowKeys != null &&
+                                                row < morphWeekRowKeys!.length
+                                            ? morphWeekRowKeys![row]
+                                            : null,
+                                        morphDayKeys: morphDayKeysForRow(row),
+                                        today: today,
+                                        selectedDate: selectedDate,
+                                        collapseProgress: collapseProgress,
+                                        collapseWeekRow: collapseWeekRow,
+                                        viewModeRowHeight: rowHeight,
+                                        screenHeight: constraints.maxHeight,
+                                        contentInset: monthContentInset,
+                                        scrollOffset: collapseScrollOffset,
+                                        eventsByDay: orderedEventsByDay,
+                                        viewMode: viewMode,
+                                        onDayTap: onDayTap,
+                                        onDayLongPress: onDayLongPress,
+                                        circleSlideX: row == collapseWeekRow
+                                            ? circleSlideX
+                                            : 0.0,
+                                        settleCount: settleCount,
+                                        blobDeltaX: row == collapseWeekRow
+                                            ? blobDeltaX
+                                            : 0.0,
+                                        blobSnapCount: blobSnapCount,
+                                        pendingBloomDate: pendingBloomDate,
+                                        suppressScaleAnimation:
+                                            suppressScaleAnimation,
+                                        daySubMode: daySubMode,
+                                      ),
                                 ],
                               ),
-                            )
-                          else if (documentEmptyH > 0)
-                            Transform.translate(
-                              offset: Offset(0, monthListStripOffsetY),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: monthContentInset,
+                            ),
+                          ],
+                        ),
+                        list: showMonthList
+                            ? Transform.translate(
+                                offset: Offset(0, monthListStripOffsetY),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: monthContentInset,
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          KeyedSubtree(
+                                            key: morphListContentKey,
+                                            child: _monthSelectedEventsWidgetFor(
+                                              data: monthListData!,
+                                              selectedDayIndex:
+                                                  selectedListChildIndex,
+                                              height: monthListUsesNaturalHeight
+                                                  ? null
+                                                  : listContentH,
+                                              emptyStateHeight:
+                                                  selectedListIsEmpty
+                                                  ? listContentH
+                                                  : availableListEmptyStateH,
+                                              onEditEvent: onEditEvent,
+                                              scrollController:
+                                                  scrollController,
+                                              scrollViewportKey:
+                                                  scrollViewportKey,
+                                              onOrderChanged:
+                                                  onMonthListOrderChanged,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: SizedBox(
-                                  height: documentEmptyH,
-                                  child: Column(
-                                    children: [
-                                      SizedBox(
-                                        height: documentEmptyStateH,
-                                        child: Opacity(
-                                          opacity:
-                                              collapseProgress <
-                                                  _kMonthDayTransitionThreshold
-                                              ? (1.0 - collapseProgress * 4.0)
-                                                    .clamp(0.0, 1.0)
-                                              : 0.0,
-                                          child: Center(
-                                            child: Text(
-                                              'No Events',
-                                              style: TextStyle(
-                                                inherit: false,
-                                                fontFamily: kSFProText,
-                                                fontWeight: FontWeight.w400,
-                                                fontStyle: FontStyle.normal,
-                                                letterSpacing: kTracking16,
-                                                height: kLineHeight,
-                                                fontSize:
-                                                    kEmptyStateLabelFontSize,
-                                                color: secondaryC,
+                              )
+                            : documentEmptyH > 0
+                            ? Transform.translate(
+                                offset: Offset(0, monthListStripOffsetY),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: monthContentInset,
+                                  ),
+                                  child: SizedBox(
+                                    height: documentEmptyH,
+                                    child: Column(
+                                      children: [
+                                        SizedBox(
+                                          height: documentEmptyStateH,
+                                          child: Opacity(
+                                            opacity:
+                                                collapseProgress <
+                                                    _kMonthDayTransitionThreshold
+                                                ? (1.0 -
+                                                          collapseProgress * 4.0)
+                                                      .clamp(0.0, 1.0)
+                                                : 0.0,
+                                            child: Center(
+                                              child: Text(
+                                                'No Events',
+                                                style: TextStyle(
+                                                  inherit: false,
+                                                  fontFamily: kSFProText,
+                                                  fontWeight: FontWeight.w400,
+                                                  fontStyle: FontStyle.normal,
+                                                  letterSpacing: kTracking16,
+                                                  height: kLineHeight,
+                                                  fontSize:
+                                                      kEmptyStateLabelFontSize,
+                                                  color: secondaryC,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                      SizedBox(
-                                        height:
-                                            documentEmptyH -
-                                            documentEmptyStateH,
-                                      ),
-                                    ],
+                                        SizedBox(
+                                          height:
+                                              documentEmptyH -
+                                              documentEmptyStateH,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
+                              )
+                            : const SizedBox.shrink(),
                       ),
 
                       // ── Day-of-week header overlay ────────────────────────

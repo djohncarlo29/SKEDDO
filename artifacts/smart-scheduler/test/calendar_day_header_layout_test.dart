@@ -632,6 +632,27 @@ void main() {
         closeTo(0.0, 0.5),
         reason: 'An eventful month list that fits should have no scroll range.',
       );
+      final fittingEventTitle = find.text('Event 0').last;
+      final fittingEventCard = find
+          .ancestor(
+            of: fittingEventTitle,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Container && widget.decoration is ShapeDecoration,
+            ),
+          )
+          .first;
+      final fittingEventContext = tester.element(fittingEventTitle);
+      final fittingTabBarTop =
+          MediaQuery.sizeOf(fittingEventContext).height -
+          floatingTabBarContentBottomOffset(fittingEventContext) -
+          kFloatingTabBarHeight;
+      expect(
+        fittingTabBarTop - tester.getRect(fittingEventCard).bottom,
+        closeTo(16.0, 0.75),
+        reason:
+            'A fitting eventful month list should use remaining space before the list, not below its final tile.',
+      );
 
       tester.view.physicalSize = const Size(402, 650);
       EventStore.instance.events.value = selectedDayEvents(16);
