@@ -1177,7 +1177,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ..value = current;
     _calendarDayHeaderDirectionController.animateTo(
       target,
-      curve: Curves.easeInOutCubic,
+      duration: _kHeaderStateTransitionDuration,
+      curve: _kHeaderStateTransitionCurve,
     );
   }
 
@@ -2634,29 +2635,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // making the transition feel laggy on lower-end Android devices.
   late final Animation<double> _searchModeContentOpacity;
 
-  // Module-wide curve constants so NotesTab's Cancel-button animation can
-  // match these exactly without duplicating magic numbers.
-  //
-  // We deliberately use a SINGLE easeOutCubic for both forward and reverse
-  // (instead of asymmetric easeOut / easeIn). NotesTab's _CancelXButton is
-  // an implicit AnimatedSize, which only accepts one curve and applies it
-  // both ways — keeping the AppShell controller's curve symmetric here
-  // means the header collapse/expand and the X-button reveal/hide stay in
-  // perfect lockstep on BOTH directions, which is the actual premium feel.
-  //
-  // 200 ms hits the sweet spot for a "modal reveal" transition: short
-  // enough to feel snappy and responsive (anything ≥250 ms reads as
-  // sluggish for a single-axis collapse on mobile), but long enough that
-  // the eye still tracks the motion as continuous instead of a snap.
-  static const _kSearchModeDuration = Duration(milliseconds: 250);
-  static const _kSearchModeCurve = Curves.easeInOutCubic;
+  // Timed AppShell header-state transitions share one duration and curve.
+  // Scroll-bound tabs still follow the user's scroll directly; portrait
+  // Single/Multi Day uses this same motion when direction selects an endpoint.
+  static const _kHeaderStateTransitionDuration = Duration(milliseconds: 250);
+  static const _kHeaderStateTransitionCurve = Curves.easeInOutCubic;
+  static const _kSearchModeDuration = _kHeaderStateTransitionDuration;
+  static const _kSearchModeCurve = _kHeaderStateTransitionCurve;
 
   @override
   void initState() {
     super.initState();
     _calendarDayHeaderDirectionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: _kHeaderStateTransitionDuration,
     )..addListener(_applyCalendarDayHeaderDirectionProgress);
     appDefaultViewNotifier.addListener(_onDefaultViewSettingChanged);
     _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
