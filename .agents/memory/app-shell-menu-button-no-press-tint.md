@@ -12,20 +12,13 @@ returns to AppShell; Detailed Category View back returns to the Events tab.
 Landscape Settings detail panes are in-place destinations and must expose the
 same back action on the shared toolbar.
 
-In portrait, menu, close, and back glyph states keep distinct `GlassBarItem`
-IDs so `GlassNavigationShell` materializes only the changed leading item. In
-landscape, use one stable leading-item ID across those glyph states to prevent
-overlapping copies of the fixed toolbar during route handoffs. Keep shared IDs
-for unchanged trailing actions. Set the shell's `effectTransition` to
-`GlassEffectTransition.materialize`; do not custom-tween the hamburger strokes
-into the X or chevron.
-
-**Why:** The landscape pinned leading control was perceived as a duplicate
-when navigation changed between menu, close, and back. Distinct IDs render
-separate outgoing and incoming items; a shared ID keeps one toolbar slot.
-
-**How to apply:** Choose the leading item ID by orientation. Preserve the
-existing portrait transition behavior and do not change trailing item IDs.
+Reuse a `GlassBarItem` ID across destinations only while its glyph is unchanged.
+Menu, close, and back glyph states need distinct IDs: matching IDs tell
+`GlassNavigationShell` the item persists and skip the package's
+materialize/blur choreography. Keep shared IDs for menu-to-menu transitions and
+for action items that genuinely persist across screens. Set the shell's
+`effectTransition` to `GlassEffectTransition.materialize`; do not custom-tween
+the hamburger strokes into the X or chevron.
 
 The in-route pinned-bar placeholder must not intercept the empty center of the
 header while the shell owns the real hit targets. In search mode, disable all

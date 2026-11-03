@@ -17,8 +17,6 @@ import 'skeddo_glass_settings.dart';
 const Object _appShellMenuToolbarItemId = 'app-shell-menu-toolbar';
 const Object _appShellCloseToolbarItemId = 'app-shell-close-toolbar';
 const Object _appShellBackToolbarItemId = 'app-shell-back-toolbar';
-const Object _appShellLandscapeLeadingToolbarItemId =
-    'app-shell-landscape-leading-toolbar';
 
 const double kAppShellPinnedToolbarOuterInset = 16.0;
 const double kAppShellCompactTitleToolbarGap = 16.0;
@@ -64,19 +62,6 @@ extension AppShellToolbarGlyphIdentity on AppShellToolbarGlyph {
     AppShellToolbarGlyph.close => _appShellCloseToolbarItemId,
     AppShellToolbarGlyph.back => _appShellBackToolbarItemId,
   };
-}
-
-Object appShellLeadingToolbarItemId(
-  AppShellToolbarGlyph glyph,
-  Orientation orientation,
-) {
-  // In landscape the same fixed control changes among menu, close, and back.
-  // Keep it one matched GlassBarItem so the shell does not cross-materialize
-  // two overlapping leading buttons during those route handoffs.
-  if (orientation == Orientation.landscape) {
-    return _appShellLandscapeLeadingToolbarItemId;
-  }
-  return glyph.glassItemId;
 }
 
 /// Keys toolbar routes by the visible configuration, not the active screen.
@@ -171,10 +156,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
       visibility: visibility,
     );
     final item = navigation_glass.GlassBarItem.icon(
-      id: appShellLeadingToolbarItemId(
-        glyph,
-        MediaQuery.orientationOf(context),
-      ),
+      id: glyph.glassItemId,
       label: semanticLabel,
       enabled: canInteract && visibility > 0.01,
       background: navigation_glass.GlassBarItemBackground.shared,
