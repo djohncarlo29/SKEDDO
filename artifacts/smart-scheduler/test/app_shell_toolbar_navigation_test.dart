@@ -13,6 +13,28 @@ import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
+  test('landscape leading toolbar keeps one stable glass item slot', () {
+    final landscapeIds = AppShellToolbarGlyph.values
+        .map(
+          (glyph) => appShellLeadingToolbarItemId(
+            glyph,
+            Orientation.landscape,
+          ),
+        )
+        .toSet();
+    final portraitIds = AppShellToolbarGlyph.values
+        .map(
+          (glyph) => appShellLeadingToolbarItemId(
+            glyph,
+            Orientation.portrait,
+          ),
+        )
+        .toSet();
+
+    expect(landscapeIds, hasLength(1));
+    expect(portraitIds, hasLength(AppShellToolbarGlyph.values.length));
+  });
+
   testWidgets(
     'nested pinned toolbar routes retain morph state and interactions',
     (tester) async {
