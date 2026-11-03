@@ -10,10 +10,9 @@ import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/view_mode_icons.dart';
 
 void _expectDowBaselineAtHeaderBottom(WidgetTester tester, Finder header) {
-  final baseline = find.descendant(
-    of: header,
-    matching: find.byType(Baseline),
-  ).first;
+  final baseline = find
+      .descendant(of: header, matching: find.byType(Baseline))
+      .first;
   expect(tester.widget<Baseline>(baseline).baseline, closeTo(28.0, 0.5));
 }
 
@@ -30,8 +29,8 @@ double _calendarDowTextTopInset(WidgetTester tester) {
     textScaler: MediaQuery.textScalerOf(context),
   )..layout();
   final metrics = painter.computeLineMetrics();
-  final inset = baseline.baseline -
-      (metrics.isEmpty ? 0.0 : metrics.first.baseline);
+  final inset =
+      baseline.baseline - (metrics.isEmpty ? 0.0 : metrics.first.baseline);
   painter.dispose();
   return inset;
 }
@@ -119,291 +118,284 @@ void main() {
     },
   );
 
-  testWidgets(
-    'entering Day View preserves expanded shared-header geometry',
-    (tester) async {
-      const screenSize = Size(402, 874);
-      const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
-      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = screenSize;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('entering Day View preserves expanded shared-header geometry', (
+    tester,
+  ) async {
+    const screenSize = Size(402, 874);
+    const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = screenSize;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      final transition = AppHeaderTitleTransition();
-      final calendarKey = GlobalKey<CalendarTabState>();
-      var reportedView = CalendarView.month;
-      addTearDown(transition.dispose);
+    final transition = AppHeaderTitleTransition();
+    final calendarKey = GlobalKey<CalendarTabState>();
+    var reportedView = CalendarView.month;
+    addTearDown(transition.dispose);
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          builder: (context, child) => AppHeaderScrollInsetScope(
-            leadingInset: appShellLeadingInset,
-            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-            titleTransition: transition,
-            child: AppWindowContentBoundary(
-              child: Padding(
-                padding: const EdgeInsets.only(top: appShellLeadingInset),
-                child: child ?? const SizedBox.shrink(),
-              ),
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppHeaderScrollInsetScope(
+          leadingInset: appShellLeadingInset,
+          titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+          titleTransition: transition,
+          child: AppWindowContentBoundary(
+            child: Padding(
+              padding: const EdgeInsets.only(top: appShellLeadingInset),
+              child: child ?? const SizedBox.shrink(),
             ),
           ),
-          home: CalendarTab(
-            key: calendarKey,
-            onViewChanged: (view, _, _, _, _, _) {
-              reportedView = view;
-              if (view == CalendarView.day) {
-                transition.bindTo(null, preserveCollapseProgress: true);
-              }
-            },
-          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      final calendar = calendarKey.currentState!;
-      final monthHeaderPosition = calendar.headerScrollPosition!;
-      transition.bindTo(monthHeaderPosition);
-      expect(transition.collapseProgress, 0);
-
-      await calendar.advanceCurrentHeader();
-      await tester.pumpAndSettle();
-
-      expect(reportedView, CalendarView.day);
-      expect(
-        monthHeaderPosition.pixels,
-        closeTo(0, 0.5),
-        reason: 'The Month body reset must not collapse its independent header.',
-      );
-      expect(transition.collapseProgress, 0);
-
-      final dow = find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
-      );
-      final selectedWeek = find.byKey(
-        const Key('day-view-pinned-week-strip'),
-      );
-      final banners = find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_DayBanner',
-      );
-      expect(selectedWeek, findsOneWidget);
-      expect(dow, findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('calendar-month-panels')),
-        findsNothing,
-        reason: 'Settled Day View must not paint the Month rows behind its header.',
-      );
-      expect(
-        find.ancestor(
-          of: selectedWeek,
-          matching: find.byType(AppHeaderScrollClip),
+        home: CalendarTab(
+          key: calendarKey,
+          onViewChanged: (view, _, _, _, _, _) {
+            reportedView = view;
+            if (view == CalendarView.day) {
+              transition.bindTo(null, preserveCollapseProgress: true);
+            }
+          },
         ),
-        findsNothing,
-        reason: 'The settled strip must not remain inside the Month viewport clip.',
-      );
-      expect(
-        tester.getRect(selectedWeek).top,
-        closeTo(tester.getRect(dow).bottom, 0.5),
-      );
-      expect(
-        tester.getRect(banners.at(1)).top,
-        closeTo(tester.getRect(selectedWeek).bottom, 0.5),
-      );
-      expect(tester.takeException(), isNull);
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // On reverse, the Month grid returns under the same collapse progress
-      // that positions the selected strip and the rows above it.
-      final reverseToMonth = calendar.advanceCurrentHeader();
-      await tester.pump(const Duration(milliseconds: 16));
-      expect(
-        find.byKey(const ValueKey('calendar-month-panels')),
-        findsOneWidget,
-      );
-      await tester.pumpAndSettle();
-      await reverseToMonth;
-    },
-  );
+    final calendar = calendarKey.currentState!;
+    final monthHeaderPosition = calendar.headerScrollPosition!;
+    transition.bindTo(monthHeaderPosition);
+    expect(transition.collapseProgress, 0);
 
-  testWidgets(
-    'Day week-strip swipes use the strip’s actual screen position',
-    (tester) async {
-      const screenSize = Size(402, 874);
-      const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
-      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = screenSize;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    await calendar.advanceCurrentHeader();
+    await tester.pumpAndSettle();
 
-      final previousFormat = appDateFormatNotifier.value;
-      appDateFormatNotifier.value = AppDateFormat.dayMonthYearSlash;
-      addTearDown(() => appDateFormatNotifier.value = previousFormat);
+    expect(reportedView, CalendarView.day);
+    expect(
+      monthHeaderPosition.pixels,
+      closeTo(0, 0.5),
+      reason: 'The Month body reset must not collapse its independent header.',
+    );
+    expect(transition.collapseProgress, 0);
 
-      final transition = AppHeaderTitleTransition();
-      addTearDown(transition.dispose);
-      final calendarKey = GlobalKey<CalendarTabState>();
+    final dow = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+    );
+    final selectedWeek = find.byKey(const Key('day-view-pinned-week-strip'));
+    final banners = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayBanner',
+    );
+    expect(selectedWeek, findsOneWidget);
+    expect(dow, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('calendar-month-panels')),
+      findsNothing,
+      reason:
+          'Settled Day View must not paint the Month rows behind its header.',
+    );
+    expect(
+      find.ancestor(
+        of: selectedWeek,
+        matching: find.byType(AppHeaderScrollClip),
+      ),
+      findsNothing,
+      reason:
+          'The settled strip must not remain inside the Month viewport clip.',
+    );
+    expect(
+      tester.getRect(selectedWeek).top,
+      closeTo(tester.getRect(dow).bottom, 0.5),
+    );
+    expect(
+      tester.getRect(banners.at(1)).top,
+      closeTo(tester.getRect(selectedWeek).bottom, 0.5),
+    );
+    expect(tester.takeException(), isNull);
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          builder: (context, child) => AppHeaderScrollInsetScope(
-            leadingInset: appShellLeadingInset,
-            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-            titleTransition: transition,
-            child: AppWindowContentBoundary(
-              child: Padding(
-                padding: const EdgeInsets.only(top: appShellLeadingInset),
-                child: child ?? const SizedBox.shrink(),
-              ),
+    // On reverse, the Month grid returns under the same collapse progress
+    // that positions the selected strip and the rows above it.
+    final reverseToMonth = calendar.advanceCurrentHeader();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.byKey(const ValueKey('calendar-month-panels')), findsOneWidget);
+    await tester.pumpAndSettle();
+    await reverseToMonth;
+  });
+
+  testWidgets('Day week-strip swipes use the strip’s actual screen position', (
+    tester,
+  ) async {
+    const screenSize = Size(402, 874);
+    const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = screenSize;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final previousFormat = appDateFormatNotifier.value;
+    appDateFormatNotifier.value = AppDateFormat.dayMonthYearSlash;
+    addTearDown(() => appDateFormatNotifier.value = previousFormat);
+
+    final transition = AppHeaderTitleTransition();
+    addTearDown(transition.dispose);
+    final calendarKey = GlobalKey<CalendarTabState>();
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppHeaderScrollInsetScope(
+          leadingInset: appShellLeadingInset,
+          titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+          titleTransition: transition,
+          child: AppWindowContentBoundary(
+            child: Padding(
+              padding: const EdgeInsets.only(top: appShellLeadingInset),
+              child: child ?? const SizedBox.shrink(),
             ),
           ),
-          home: CalendarTab(
-            key: calendarKey,
-            onViewChanged: (_, _, _, _, _, _) {},
-          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      final calendar = calendarKey.currentState!;
-      await calendar.advanceCurrentHeader();
-      await tester.pumpAndSettle();
-      expect(calendar.view, CalendarView.day);
-
-      final stripRect = tester.getRect(
-        find.byKey(const Key('day-view-pinned-week-strip')),
-      );
-      final calendarRect = tester.getRect(find.byKey(calendarKey));
-      final localStripCenterY = stripRect.center.dy - calendarRect.top;
-      expect(
-        localStripCenterY,
-        greaterThan(28 + stripRect.height),
-        reason: 'The strip sits below the old fixed local-Y threshold.',
-      );
-
-      final startOfWeek = DateTime.now();
-      await tester.dragFrom(stripRect.center, const Offset(-180, 0));
-      await tester.pumpAndSettle();
-
-      expect(
-        calendar.headerTitle,
-        formatAppDateMedium(
-          startOfWeek.add(const Duration(days: 7)),
-          includeYear: false,
+        home: CalendarTab(
+          key: calendarKey,
+          onViewChanged: (_, _, _, _, _, _) {},
         ),
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+      ),
+    );
+    await tester.pumpAndSettle();
 
-  testWidgets(
-    'entering Day View preserves compact shared-header geometry',
-    (tester) async {
-      const screenSize = Size(402, 874);
-      const appShellLeadingInset =
-          24.0 + kAppHeaderToolbarHeight;
-      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = screenSize;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    final calendar = calendarKey.currentState!;
+    await calendar.advanceCurrentHeader();
+    await tester.pumpAndSettle();
+    expect(calendar.view, CalendarView.day);
 
-      final transition = AppHeaderTitleTransition();
-      final calendarKey = GlobalKey<CalendarTabState>();
-      var reportedView = CalendarView.month;
-      addTearDown(transition.dispose);
+    final stripRect = tester.getRect(
+      find.byKey(const Key('day-view-pinned-week-strip')),
+    );
+    final calendarRect = tester.getRect(find.byKey(calendarKey));
+    final localStripCenterY = stripRect.center.dy - calendarRect.top;
+    expect(
+      localStripCenterY,
+      greaterThan(28 + stripRect.height),
+      reason: 'The strip sits below the old fixed local-Y threshold.',
+    );
 
-      await tester.pumpWidget(
-        CupertinoApp(
-          builder: (context, child) => AppHeaderScrollInsetScope(
-            leadingInset: appShellLeadingInset,
-            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-            titleTransition: transition,
-            child: AppWindowContentBoundary(
-              child: Padding(
-                padding: const EdgeInsets.only(top: appShellLeadingInset),
-                child: child ?? const SizedBox.shrink(),
-              ),
+    final startOfWeek = DateTime.now();
+    await tester.dragFrom(stripRect.center, const Offset(-180, 0));
+    await tester.pumpAndSettle();
+
+    expect(
+      calendar.headerTitle,
+      formatAppDateMedium(
+        startOfWeek.add(const Duration(days: 7)),
+        includeYear: false,
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('entering Day View preserves compact shared-header geometry', (
+    tester,
+  ) async {
+    const screenSize = Size(402, 874);
+    const appShellLeadingInset = 24.0 + kAppHeaderToolbarHeight;
+    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = screenSize;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final transition = AppHeaderTitleTransition();
+    final calendarKey = GlobalKey<CalendarTabState>();
+    var reportedView = CalendarView.month;
+    addTearDown(transition.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppHeaderScrollInsetScope(
+          leadingInset: appShellLeadingInset,
+          titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+          titleTransition: transition,
+          child: AppWindowContentBoundary(
+            child: Padding(
+              padding: const EdgeInsets.only(top: appShellLeadingInset),
+              child: child ?? const SizedBox.shrink(),
             ),
           ),
-          home: CalendarTab(
-            key: calendarKey,
-            onViewChanged: (view, _, _, _, _, _) {
-              reportedView = view;
-              if (view == CalendarView.day) {
-                transition.bindTo(null, preserveCollapseProgress: true);
-              }
-            },
-          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      final calendar = calendarKey.currentState!;
-      final monthHeaderPosition = calendar.headerScrollPosition!;
-      transition.bindTo(monthHeaderPosition);
-      monthHeaderPosition.jumpTo(kAppHeaderTitleCollapseDistance);
-      await tester.pumpAndSettle();
-      expect(transition.collapseProgress, closeTo(1.0, 0.02));
-
-      await calendar.advanceCurrentHeader();
-      await tester.pumpAndSettle();
-      expect(reportedView, CalendarView.day);
-      expect(transition.collapseProgress, closeTo(1.0, 0.02));
-
-      final dow = find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
-      );
-      final dowLabel = find
-          .descendant(of: dow, matching: find.byType(Text))
-          .first;
-      final dowLabelRect = tester.getRect(dowLabel);
-      expect(
-        dowLabelRect.top,
-        closeTo(
-          appShellLeadingInset -
-              kAppHeaderToolbarHeight +
-              kAppHeaderSettledToolbarCircleBottom +
-              kAppHeaderExpandedTitleContentGap,
-          0.5,
+        home: CalendarTab(
+          key: calendarKey,
+          onViewChanged: (view, _, _, _, _, _) {
+            reportedView = view;
+            if (view == CalendarView.day) {
+              transition.bindTo(null, preserveCollapseProgress: true);
+            }
+          },
         ),
-      );
-      final selectedWeek = find.byKey(
-        const Key('day-view-pinned-week-strip'),
-      );
-      final banners = find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_DayBanner',
-      );
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(selectedWeek, findsOneWidget);
-      expect(dow, findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('calendar-month-panels')),
-        findsNothing,
-        reason: 'Settled Day View must not paint the Month rows behind its header.',
-      );
-      expect(
-        find.ancestor(
-          of: selectedWeek,
-          matching: find.byType(AppHeaderScrollClip),
-        ),
-        findsNothing,
-        reason: 'The settled strip must not remain inside the Month viewport clip.',
-      );
-      expect(
-        tester.getRect(selectedWeek).top,
-        closeTo(tester.getRect(dow).bottom, 0.5),
-        reason: 'The compact selected week must begin immediately below DOW.',
-      );
-      _expectDowBaselineAtHeaderBottom(tester, dow);
-      expect(
-        tester.getRect(banners.at(1)).top,
-        closeTo(tester.getRect(selectedWeek).bottom, 0.5),
-        reason: 'The compact Day Banner must begin immediately below strip.',
-      );
+    final calendar = calendarKey.currentState!;
+    final monthHeaderPosition = calendar.headerScrollPosition!;
+    transition.bindTo(monthHeaderPosition);
+    monthHeaderPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+    await tester.pumpAndSettle();
+    expect(transition.collapseProgress, closeTo(1.0, 0.02));
 
-      expect(tester.takeException(), isNull);
-    },
-  );
+    await calendar.advanceCurrentHeader();
+    await tester.pumpAndSettle();
+    expect(reportedView, CalendarView.day);
+    expect(transition.collapseProgress, closeTo(1.0, 0.02));
+
+    final dow = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+    );
+    final dowLabel = find
+        .descendant(of: dow, matching: find.byType(Text))
+        .first;
+    final dowLabelRect = tester.getRect(dowLabel);
+    expect(
+      dowLabelRect.top,
+      closeTo(
+        appShellLeadingInset -
+            kAppHeaderToolbarHeight +
+            kAppHeaderSettledToolbarCircleBottom +
+            kAppHeaderExpandedTitleContentGap,
+        0.5,
+      ),
+    );
+    final selectedWeek = find.byKey(const Key('day-view-pinned-week-strip'));
+    final banners = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayBanner',
+    );
+
+    expect(selectedWeek, findsOneWidget);
+    expect(dow, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('calendar-month-panels')),
+      findsNothing,
+      reason:
+          'Settled Day View must not paint the Month rows behind its header.',
+    );
+    expect(
+      find.ancestor(
+        of: selectedWeek,
+        matching: find.byType(AppHeaderScrollClip),
+      ),
+      findsNothing,
+      reason:
+          'The settled strip must not remain inside the Month viewport clip.',
+    );
+    expect(
+      tester.getRect(selectedWeek).top,
+      closeTo(tester.getRect(dow).bottom, 0.5),
+      reason: 'The compact selected week must begin immediately below DOW.',
+    );
+    _expectDowBaselineAtHeaderBottom(tester, dow);
+    expect(
+      tester.getRect(banners.at(1)).top,
+      closeTo(tester.getRect(selectedWeek).bottom, 0.5),
+      reason: 'The compact Day Banner must begin immediately below strip.',
+    );
+
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'a fitting compact Month grid returns to zero body scroll offset',
@@ -444,14 +436,16 @@ void main() {
       final calendar = calendarKey.currentState!;
       calendar.setViewMode(CalendarViewMode.details, persist: false);
       await tester.pumpAndSettle();
-      final trailingSurface = find.byWidgetPredicate(
-        (widget) =>
-            widget is ColoredBox &&
-            widget.key is ValueKey<String> &&
-            (widget.key! as ValueKey<String>).value.startsWith(
-              'calendar-month-trailing-surface-',
-            ),
-      ).at(1);
+      final trailingSurface = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is ColoredBox &&
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'calendar-month-trailing-surface-',
+                ),
+          )
+          .at(1);
       final monthPosition = Scrollable.of(
         tester.element(trailingSurface),
       ).position;
@@ -467,75 +461,100 @@ void main() {
     },
   );
 
-  testWidgets('empty Month List re-centers below the grid as the title collapses', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(402, 874);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final sourceController = ScrollController();
-    final transition = AppHeaderTitleTransition();
-    addTearDown(() {
-      transition.dispose();
-      sourceController.dispose();
-    });
+  testWidgets(
+    'empty Month List re-centers below the grid as the title collapses',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(402, 874);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final sourceController = ScrollController();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(() {
+        transition.dispose();
+        sourceController.dispose();
+      });
 
-    await tester.pumpWidget(
-      CupertinoApp(
-        builder: (context, child) => AppWindowContentBoundary(child: child!),
-        home: AppHeaderScrollInsetScope(
-          leadingInset: 0,
-          titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-          titleTransition: transition,
-          child: IndexedStack(
-            index: 1,
-            children: [
-              AppHeaderScrollView(
-                controller: sourceController,
-                slivers: const [
-                  SliverToBoxAdapter(child: AppHeaderScrollInset()),
-                  SliverToBoxAdapter(child: SizedBox(height: 100)),
-                ],
-              ),
-              CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
-            ],
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppWindowContentBoundary(child: child!),
+          home: AppHeaderScrollInsetScope(
+            leadingInset: 0,
+            titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+            titleTransition: transition,
+            child: IndexedStack(
+              index: 1,
+              children: [
+                AppHeaderScrollView(
+                  controller: sourceController,
+                  slivers: const [
+                    SliverToBoxAdapter(child: AppHeaderScrollInset()),
+                    SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  ],
+                ),
+                CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
-    calendar.setViewMode(CalendarViewMode.list, persist: false);
-    await tester.pumpAndSettle();
-    expect(calendar.viewMode, CalendarViewMode.list);
-    final selectedEmptyState = find.text('No Events').at(1);
-    final expandedCenterY = tester.getCenter(selectedEmptyState).dy;
-    final compactContentSpacing =
-        appHeaderCompactContentSpacingForOrientation(Orientation.portrait);
+      final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
+      calendar.setViewMode(CalendarViewMode.list, persist: false);
+      await tester.pumpAndSettle();
+      expect(calendar.viewMode, CalendarViewMode.list);
+      final trailingSurface = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is ColoredBox &&
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'calendar-month-trailing-surface-',
+                ),
+          )
+          .at(1);
+      final monthPosition = Scrollable.of(
+        tester.element(trailingSurface),
+      ).position;
+      expect(
+        monthPosition.maxScrollExtent,
+        closeTo(0.0, 0.5),
+        reason:
+            'An empty List-mode month should not become scrollable just to fill '
+            'the remaining viewport with its No Events placeholder.',
+      );
+      expect(monthPosition.pixels, closeTo(0.0, 0.5));
+      final selectedEmptyState = find.text('No Events').at(1);
+      final expandedCenterY = tester.getCenter(selectedEmptyState).dy;
+      final compactContentSpacing =
+          appHeaderCompactContentSpacingForOrientation(Orientation.portrait);
 
-    final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
-    transition.bindTo(source);
-    source.jumpTo(kAppHeaderTitleCollapseDistance);
-    await tester.pumpAndSettle();
-    expect(transition.collapseProgress, 1);
-    final compactCenterY = tester.getCenter(selectedEmptyState).dy;
-    expect(
-      compactCenterY,
-      closeTo(
-        expandedCenterY +
-            (kAppHeaderTitleHeight - compactContentSpacing) / 2 -
-            _calendarDowTextTopInset(tester),
-        1,
-      ),
-    );
-    source.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(tester.getCenter(selectedEmptyState).dy, closeTo(expandedCenterY, 1));
-    expect(tester.takeException(), isNull);
-  });
+      final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
+      transition.bindTo(source);
+      source.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pumpAndSettle();
+      expect(transition.collapseProgress, 1);
+      final compactCenterY = tester.getCenter(selectedEmptyState).dy;
+      expect(
+        compactCenterY,
+        closeTo(
+          expandedCenterY +
+              (kAppHeaderTitleHeight - compactContentSpacing) / 2 -
+              _calendarDowTextTopInset(tester),
+          1,
+        ),
+      );
+      source.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(selectedEmptyState).dy,
+        closeTo(expandedCenterY, 1),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'Month View trailing surface fills and follows the week strip in every mode',
@@ -550,9 +569,8 @@ void main() {
       final calendarKey = GlobalKey<CalendarTabState>();
       await tester.pumpWidget(
         CupertinoApp(
-          builder: (context, child) => AppWindowContentBoundary(
-            child: child ?? const SizedBox.shrink(),
-          ),
+          builder: (context, child) =>
+              AppWindowContentBoundary(child: child ?? const SizedBox.shrink()),
           home: CupertinoPageScaffold(
             child: CalendarTab(
               key: calendarKey,
@@ -628,9 +646,9 @@ void main() {
       await tester.pumpWidget(
         CupertinoApp(
           builder: (context, child) {
-            final mediaQuery = MediaQuery.of(context).copyWith(
-              size: screenSize,
-            );
+            final mediaQuery = MediaQuery.of(
+              context,
+            ).copyWith(size: screenSize);
             return MediaQuery(
               data: mediaQuery,
               child: AppWindowContentBoundary(
@@ -639,15 +657,13 @@ void main() {
             );
           },
           home: CupertinoPageScaffold(
-                 child: CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
+            child: CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      tester
-          .state<CalendarTabState>(find.byType(CalendarTab))
-          .jumpToTodayDay();
+      tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
       await tester.pumpAndSettle();
 
       final dowMask = find.byWidgetPredicate(
@@ -664,9 +680,7 @@ void main() {
       expect(timelines, findsNWidgets(3));
 
       final dowRect = tester.getRect(dowMask);
-      final selectedWeek = find.byKey(
-        const Key('day-view-pinned-week-strip'),
-      );
+      final selectedWeek = find.byKey(const Key('day-view-pinned-week-strip'));
       final centerBannerRect = tester.getRect(banners.at(1));
       final centerTimelineRect = tester.getRect(timelines.at(1));
       _expectDayBannerVerticalInset(tester, banners.at(1));
@@ -688,21 +702,27 @@ void main() {
           titleBaselineGap;
 
       expect(
-        tester.getTopLeft(
-          find.descendant(of: dowMask, matching: find.byType(Text)).first,
-        ).dy,
+        tester
+            .getTopLeft(
+              find.descendant(of: dowMask, matching: find.byType(Text)).first,
+            )
+            .dy,
         closeTo(targetDowLabelTop, 0.5),
       );
       expect(
         dowRect.top,
         closeTo(
           targetDowLabelTop -
-              (tester.getTopLeft(
-                    find.descendant(
-                      of: dowMask,
-                      matching: find.byType(Text),
-                    ).first,
-                  ).dy -
+              (tester
+                      .getTopLeft(
+                        find
+                            .descendant(
+                              of: dowMask,
+                              matching: find.byType(Text),
+                            )
+                            .first,
+                      )
+                      .dy -
                   dowRect.top),
           0.5,
         ),
@@ -793,10 +813,7 @@ void main() {
       selectedWeekRect.bottom,
       closeTo(tester.getRect(centerBanner).top, 0.5),
     );
-    expect(
-      tester.getRect(centerBanner).top,
-      greaterThan(dowRect.bottom),
-    );
+    expect(tester.getRect(centerBanner).top, greaterThan(dowRect.bottom));
   });
 
   testWidgets(
@@ -813,9 +830,9 @@ void main() {
       await tester.pumpWidget(
         CupertinoApp(
           builder: (context, child) {
-            final mediaQuery = MediaQuery.of(context).copyWith(
-              size: screenSize,
-            );
+            final mediaQuery = MediaQuery.of(
+              context,
+            ).copyWith(size: screenSize);
             return MediaQuery(
               data: mediaQuery,
               child: AppWindowContentBoundary(
@@ -864,6 +881,7 @@ void main() {
           ),
         );
       }
+
       expect(timelineSeparator, findsOneWidget);
       expect(centerBannerSeparator(), findsOneWidget);
       final settledX = tester.getRect(timelineSeparator).left;
@@ -899,9 +917,9 @@ void main() {
       await tester.pumpWidget(
         CupertinoApp(
           builder: (context, child) {
-            final mediaQuery = MediaQuery.of(context).copyWith(
-              size: screenSize,
-            );
+            final mediaQuery = MediaQuery.of(
+              context,
+            ).copyWith(size: screenSize);
             return MediaQuery(
               data: mediaQuery,
               child: AppHeaderScrollInsetScope(
@@ -951,7 +969,8 @@ void main() {
       expect(
         tester.getRect(selectedWeek).bottom,
         lessThanOrEqualTo(0.5),
-        reason: 'List Day View must not leave dates peeking into the status bar.',
+        reason:
+            'List Day View must not leave dates peeking into the status bar.',
       );
     },
   );

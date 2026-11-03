@@ -42,8 +42,7 @@ import '../widgets/app_window_content_boundary.dart';
 import '../widgets/selection_handle_haptics.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/horizontal_edge_fade.dart';
-import '../widgets/header_title_scroller.dart'
-    show headerTitleFontSize;
+import '../widgets/header_title_scroller.dart' show headerTitleFontSize;
 import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
@@ -57,14 +56,14 @@ import '../services/recurrence_expander.dart';
 import '../ai/search/search_service.dart';
 import 'events_tab.dart'
     show
-      buildDcvEventCard,
-      buildDcvSectionLabel,
-      buildDcvEventList,
-      buildDcvEmptyState,
-      dcvTimeSectionKey,
-      resolveEventCategoryColor,
-      wrapSearchEventTileWithActions,
-      wrapSearchEventTileWithPressScale;
+        buildDcvEventCard,
+        buildDcvSectionLabel,
+        buildDcvEventList,
+        buildDcvEmptyState,
+        dcvTimeSectionKey,
+        resolveEventCategoryColor,
+        wrapSearchEventTileWithActions,
+        wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 
@@ -191,8 +190,7 @@ void _scheduleDayTimelinePosition({
     } else {
       // Portrait keeps the existing initial framing: roughly two hours before
       // now, with early-morning times clamped to the start of the timeline.
-      desiredOffset =
-          _kTimelinePad + math.max(0, now.hour - 2) * _kHourHeight;
+      desiredOffset = _kTimelinePad + math.max(0, now.hour - 2) * _kHourHeight;
     }
     final targetOffset = desiredOffset
         .clamp(0.0, position.maxScrollExtent)
@@ -233,8 +231,10 @@ double _calendarDowTextTopInset(BuildContext context) {
   final metrics = painter.computeLineMetrics();
   painter.dispose();
   if (metrics.isEmpty) return 0.0;
-  return (_kDayLabelHeight - metrics.first.baseline)
-      .clamp(0.0, _kDayLabelHeight);
+  return (_kDayLabelHeight - metrics.first.baseline).clamp(
+    0.0,
+    _kDayLabelHeight,
+  );
 }
 
 double _calendarExpandedTitleHeight(BuildContext context) {
@@ -258,9 +258,9 @@ double _calendarExpandedTitleDownshift(BuildContext context) {
 // the in-cell marker. Extra row height is reserved below this slot, never
 // passed back into the circle's size.
 double _dayViewCircleDiameterFor(BuildContext context) => math.min(
-      _calendarDayCircleDiameterFor(context),
-      _kRowHeightList - kFixedTopPadding,
-    );
+  _calendarDayCircleDiameterFor(context),
+  _kRowHeightList - kFixedTopPadding,
+);
 
 // Keep the compact row when the scaled marker fits. For larger text sizes,
 // grow only the row's empty space so the fixed-size marker still has at least
@@ -269,9 +269,7 @@ double _dayViewWeekStripHeight(BuildContext context) {
   final indicatorDiameter = _dayViewCircleDiameterFor(context);
   return math.max(
     _kRowHeightList,
-    kFixedTopPadding +
-        indicatorDiameter +
-        _kDayIndicatorBottomPadding,
+    kFixedTopPadding + indicatorDiameter + _kDayIndicatorBottomPadding,
   );
 }
 
@@ -324,16 +322,13 @@ _YearGridGeometry _yearGridGeometry(
     1.0,
     (portraitContentWidth - 2.0 * _kYearColGap) / 3.0,
   );
-  final contentWidth = math.max(
-    0.0,
-    availableWidth - 2.0 * _kYearOuterPad,
-  );
+  final contentWidth = math.max(0.0, availableWidth - 2.0 * _kYearOuterPad);
 
   var columnCount = 3;
   if (isLandscape) {
-    columnCount = ((contentWidth + _kYearColGap) /
-            (portraitMonthWidth + _kYearColGap))
-        .floor();
+    columnCount =
+        ((contentWidth + _kYearColGap) / (portraitMonthWidth + _kYearColGap))
+            .floor();
     columnCount = columnCount.clamp(1, 12);
   }
 
@@ -341,8 +336,7 @@ _YearGridGeometry _yearGridGeometry(
       ? _kYearColGap
       : math.max(
           _kYearColGap,
-          (contentWidth - columnCount * portraitMonthWidth) /
-              (columnCount - 1),
+          (contentWidth - columnCount * portraitMonthWidth) / (columnCount - 1),
         );
 
   return _YearGridGeometry(
@@ -356,8 +350,7 @@ _YearGridGeometry _yearGridGeometry(
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 
 // Column offset from the user's selected first day of week.
-int _firstWeekday(int year, int month) =>
-    calendarMonthStartOffset(year, month);
+int _firstWeekday(int year, int month) => calendarMonthStartOffset(year, month);
 
 int _isoWeekNumber(DateTime date) {
   final thu = date.subtract(Duration(days: date.weekday - DateTime.thursday));
@@ -526,13 +519,13 @@ class CalendarTab extends StatefulWidget {
 
   /// Opens the shared event editor for a search result long-press action.
   final void Function(ScheduledEvent event)? onEditEvent;
+
   /// Live DCV section state owned by EventsTab. The event sheet uses these
   /// providers so it does not race a just-finished DCV edit against prefs.
   final Map<String, List<String>>? Function()? dcvSectionNamesProvider;
-  final Map<String, List<List<String>>>? Function()?
-      dcvSectionEventIdsProvider;
+  final Map<String, List<List<String>>>? Function()? dcvSectionEventIdsProvider;
   final void Function(String label, List<List<String>> sectionEventIds)?
-      onDcvSectionEventIdsChanged;
+  onDcvSectionEventIdsChanged;
   // Active Day View sub-mode — drives the timeline layout and week-strip
   // multi-day indicator.  Owned by AppShell; passed in on every rebuild.
   final DayViewSubMode daySubMode;
@@ -912,13 +905,12 @@ class CalendarTabState extends State<CalendarTab>
     showRoundedCupertinoSheet<void>(
       context: shellContext,
       requestFocus: true,
-      pageBuilder: (ctx) =>
-          _NewEventSheet(
-            initialCategoryId: initialCategoryId,
-            dcvSectionNamesProvider: widget.dcvSectionNamesProvider,
-            dcvSectionEventIdsProvider: widget.dcvSectionEventIdsProvider,
-            onDcvSectionEventIdsChanged: widget.onDcvSectionEventIdsChanged,
-          ),
+      pageBuilder: (ctx) => _NewEventSheet(
+        initialCategoryId: initialCategoryId,
+        dcvSectionNamesProvider: widget.dcvSectionNamesProvider,
+        dcvSectionEventIdsProvider: widget.dcvSectionEventIdsProvider,
+        onDcvSectionEventIdsChanged: widget.onDcvSectionEventIdsChanged,
+      ),
     );
   }
 
@@ -982,6 +974,7 @@ class CalendarTabState extends State<CalendarTab>
     }
     return null;
   }
+
   /// Current settled scroll offset for the shell-owned calendar header title.
   /// Day View owns its title in the shell, so its timeline position must not
   /// drive the large-title collapse state.
@@ -1006,11 +999,7 @@ class CalendarTabState extends State<CalendarTab>
         final nextM = _dispMonth == 12
             ? (_dispYear + 1, 1)
             : (_dispYear, _dispMonth + 1);
-        return (
-          _monthHeaderName(prevM.$2),
-          curr,
-          _monthHeaderName(nextM.$2),
-        );
+        return (_monthHeaderName(prevM.$2), curr, _monthHeaderName(nextM.$2));
       } else {
         return ('${_dispYear - 1}', curr, '${_dispYear + 1}');
       }
@@ -1025,11 +1014,7 @@ class CalendarTabState extends State<CalendarTab>
         final nextM = _dispMonth == 12
             ? (_dispYear + 1, 1)
             : (_dispYear, _dispMonth + 1);
-        return (
-          _monthHeaderName(prevM.$2),
-          curr,
-          _monthHeaderName(nextM.$2),
-        );
+        return (_monthHeaderName(prevM.$2), curr, _monthHeaderName(nextM.$2));
       case CalendarView.day:
         final prevD = _selected.subtract(const Duration(days: 1));
         final nextD = _selected.add(const Duration(days: 1));
@@ -1094,8 +1079,9 @@ class CalendarTabState extends State<CalendarTab>
     }
     if (_listModeCtrl.isAnimating) {
       _listModeCtrl.stop(canceled: false);
-      _listModeCtrl.value =
-          widget.daySubMode == DayViewSubMode.list ? 1.0 : 0.0;
+      _listModeCtrl.value = widget.daySubMode == DayViewSubMode.list
+          ? 1.0
+          : 0.0;
       _dayChromeModeTransitionActive = false;
     }
     _animateMultiDayTransition = false;
@@ -1122,8 +1108,7 @@ class CalendarTabState extends State<CalendarTab>
     _settleScrollControllerForSearch(_monthViewScrollCtrl);
     if (_view == CalendarView.year && _yearScrollCtrl.hasClients) {
       _savedYearScrollOffset = _yearScrollCtrl.offset;
-    } else if (_view == CalendarView.month &&
-        _monthViewScrollCtrl.hasClients) {
+    } else if (_view == CalendarView.month && _monthViewScrollCtrl.hasClients) {
       _savedMonthScrollOffset = _monthViewScrollCtrl.offset;
     }
 
@@ -1440,8 +1425,7 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   void _requestDayTimelinePositionReset() {
-    if (_view == CalendarView.day &&
-        widget.daySubMode != DayViewSubMode.list) {
+    if (_view == CalendarView.day && widget.daySubMode != DayViewSubMode.list) {
       _dayTimelinePositionReset.value++;
     }
   }
@@ -1650,9 +1634,7 @@ class CalendarTabState extends State<CalendarTab>
           ? _selected.add(const Duration(days: 1))
           : _selected.subtract(const Duration(days: 1));
       final selectedColumn = calendarWeekdayColumnForDate(_selected);
-      final isCrossWeek = isNext
-          ? selectedColumn == 6
-          : selectedColumn == 0;
+      final isCrossWeek = isNext ? selectedColumn == 6 : selectedColumn == 0;
       final isCrossMonth = target.month != _selected.month;
       shouldBloom = isCrossWeek || isCrossMonth;
     }
@@ -1736,9 +1718,10 @@ class CalendarTabState extends State<CalendarTab>
     final stripBottomRight = renderObject.localToGlobal(
       Offset(renderObject.size.width, renderObject.size.height),
     );
-    return Rect.fromPoints(stripTopLeft, stripBottomRight).contains(
-      globalPosition,
-    );
+    return Rect.fromPoints(
+      stripTopLeft,
+      stripBottomRight,
+    ).contains(globalPosition);
   }
 
   void _onHDragUpdate(DragUpdateDetails d) {
@@ -1922,9 +1905,7 @@ class CalendarTabState extends State<CalendarTab>
       Offset(box.size.width, 0.0),
       Offset(0.0, box.size.height),
       Offset(box.size.width, box.size.height),
-    ].map(
-      (point) => calendarBox.globalToLocal(box.localToGlobal(point)),
-    );
+    ].map((point) => calendarBox.globalToLocal(box.localToGlobal(point)));
     var left = double.infinity;
     var top = double.infinity;
     var right = double.negativeInfinity;
@@ -2102,6 +2083,7 @@ class CalendarTabState extends State<CalendarTab>
         if (from == null || to == null) return null;
         return lerpDouble(from, to, _zoomCtrl.value);
       }
+
       double? firstTop(List<Rect>? rows) =>
           rows == null || rows.isEmpty ? null : rows.first.top;
       final yearGridTop = firstTop(_yearMorphGeometry?.weekRows);
@@ -2312,8 +2294,7 @@ class CalendarTabState extends State<CalendarTab>
           _zoomPrevT >= _kYearMonthHandoffThreshold &&
           t < _kYearMonthHandoffThreshold;
       if ((crossedForward || crossedReverse) &&
-          ((t >= _kYearMonthHandoffThreshold &&
-                  target == CalendarView.month) ||
+          ((t >= _kYearMonthHandoffThreshold && target == CalendarView.month) ||
               (t < _kYearMonthHandoffThreshold &&
                   target == CalendarView.year))) {
         setState(() => _view = target);
@@ -2786,10 +2767,7 @@ class CalendarTabState extends State<CalendarTab>
     required bool suppressScaleAnimation,
   }) {
     final panelKey = '$year-$month-${selectedDate.day}';
-    final scrollController = _previewScrollCtrl(
-      isPrev: isPrev,
-      key: panelKey,
-    );
+    final scrollController = _previewScrollCtrl(isPrev: isPrev, key: panelKey);
     final cacheKey = [
       panelKey,
       '${today.year}-${today.month}-${today.day}',
@@ -2952,82 +2930,82 @@ class CalendarTabState extends State<CalendarTab>
       ),
     );
     return AnimatedOpacity(
-        opacity: _greyFadeIn ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        child: ColoredBox(
-          color: resolveThemeColor(kBackgroundColor, context),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SearchModeHeader(searchBarRow: searchBarRow),
-              Expanded(
-                child: CustomScrollView(
-                  primary: false,
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.manual,
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal:
-                            AppWindowContentScope.of(context).horizontalInset,
-                      ),
-                      sliver: SmartSearchResultsSliver(
-                        hits: _searchText.isEmpty ? const [] : _searchHits,
-                        emptyStateBottomClearance:
-                            floatingTabBarContentBottomClearance(
-                              context,
-                              finalContentGap: 0,
-                            ),
-                        viewportBottomOffset: 0,
-                        suggestedQuery: _searchText.isEmpty
-                            ? null
-                            : _searchSuggestion,
-                        onSuggestionTap: _applySearchSuggestion,
-                        eventTopPadding: 18,
-                        eventTileWrapper: (hit, child, previewBuilder) =>
-                            wrapSearchEventTileWithActions(
-                              hit: hit,
-                              child: child,
-                              previewBuilder: previewBuilder,
-                              onEdit: widget.onEditEvent == null
-                                  ? null
-                                  : () {
-                                      // Exit Calendar's overlay search session
-                                      // before presenting the edit sheet. The
-                                      // search field is focus-locked while
-                                      // search mode is active; leaving it
-                                      // mounted makes it reclaim focus when a
-                                      // sheet text field is tapped.
-                                      cancelSearch();
-                                      widget.onEditEvent!(hit.event);
-                                    },
-                              onDelete: () =>
-                                  confirmDeleteEvent(context, hit.event),
-                            ),
-                        eventTilePressWrapper:
-                            wrapSearchEventTileWithPressScale,
-                      ),
+      opacity: _greyFadeIn ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      child: ColoredBox(
+        color: resolveThemeColor(kBackgroundColor, context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SearchModeHeader(searchBarRow: searchBarRow),
+            Expanded(
+              child: CustomScrollView(
+                primary: false,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.manual,
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppWindowContentScope.of(
+                        context,
+                      ).horizontalInset,
                     ),
-                    if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: floatingTabBarContentBottomClearance(
+                    sliver: SmartSearchResultsSliver(
+                      hits: _searchText.isEmpty ? const [] : _searchHits,
+                      emptyStateBottomClearance:
+                          floatingTabBarContentBottomClearance(
                             context,
-                            existingTrailingContentPadding: 32,
-                            finalContentGap: 16,
+                            finalContentGap: 0,
                           ),
+                      viewportBottomOffset: 0,
+                      suggestedQuery: _searchText.isEmpty
+                          ? null
+                          : _searchSuggestion,
+                      onSuggestionTap: _applySearchSuggestion,
+                      eventTopPadding: 18,
+                      eventTileWrapper: (hit, child, previewBuilder) =>
+                          wrapSearchEventTileWithActions(
+                            hit: hit,
+                            child: child,
+                            previewBuilder: previewBuilder,
+                            onEdit: widget.onEditEvent == null
+                                ? null
+                                : () {
+                                    // Exit Calendar's overlay search session
+                                    // before presenting the edit sheet. The
+                                    // search field is focus-locked while
+                                    // search mode is active; leaving it
+                                    // mounted makes it reclaim focus when a
+                                    // sheet text field is tapped.
+                                    cancelSearch();
+                                    widget.onEditEvent!(hit.event);
+                                  },
+                            onDelete: () =>
+                                confirmDeleteEvent(context, hit.event),
+                          ),
+                      eventTilePressWrapper: wrapSearchEventTileWithPressScale,
+                    ),
+                  ),
+                  if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: floatingTabBarContentBottomClearance(
+                          context,
+                          existingTrailingContentPadding: 32,
+                          finalContentGap: 16,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 
@@ -3099,8 +3077,7 @@ class CalendarTabState extends State<CalendarTab>
               daySubMode: dayHeaderSubMode,
             );
             final dayBannerHeight = () {
-              if (dayHeaderSubMode == DayViewSubMode.list ||
-                  slideX == 0.0) {
+              if (dayHeaderSubMode == DayViewSubMode.list || slideX == 0.0) {
                 return currentDayBannerHeight;
               }
 
@@ -3112,13 +3089,12 @@ class CalendarTabState extends State<CalendarTab>
               final targetDate = slideX < 0
                   ? _selected.add(Duration(days: bannerDayStep))
                   : _selected.subtract(Duration(days: bannerDayStep));
-              final targetDayBannerHeight =
-                  _DayBannerState.requiredHeight(
-                    context,
-                    width: sw,
-                    date: targetDate,
-                    daySubMode: dayHeaderSubMode,
-                  );
+              final targetDayBannerHeight = _DayBannerState.requiredHeight(
+                context,
+                width: sw,
+                date: targetDate,
+                daySubMode: dayHeaderSubMode,
+              );
               final slideProgress = (slideX.abs() / sw).clamp(0.0, 1.0);
               return lerpDouble(
                 currentDayBannerHeight,
@@ -3154,36 +3130,36 @@ class CalendarTabState extends State<CalendarTab>
             final isPortrait =
                 MediaQuery.orientationOf(context) == Orientation.portrait;
             final dowTextTopInset = _calendarDowTextTopInset(context);
-            final contentTopSpacing = AppHeaderScrollView.contentTopSpacingOf(
-              context,
-              topExtension: kContentAreaTopRaise,
-            ) +
+            final contentTopSpacing =
+                AppHeaderScrollView.contentTopSpacingOf(
+                  context,
+                  topExtension: kContentAreaTopRaise,
+                ) +
                 (isPortrait
                     ? (kAppHeaderExpandedTitleContentGap - dowTextTopInset) *
                           sharedTitleCollapseProgress
                     : -dowTextTopInset);
-            final titleToContentGap =
-                isPortrait
-                    ? AppHeaderScrollView.expandedTitleContentGapAdjustment(
-                      desiredGap: kAppHeaderExpandedTitleContentGap,
-                      existingSpacing: 0.0,
-                      collapseProgress: sharedTitleCollapseProgress,
-                      topExtension: kContentAreaTopRaise,
-                      baselineDescent:
-                          AppHeaderScrollView.titleBaselineDescent,
-                    ) -
-                    dowTextTopInset * (1.0 - sharedTitleCollapseProgress)
-                    : 0.0;
+            final titleToContentGap = isPortrait
+                ? AppHeaderScrollView.expandedTitleContentGapAdjustment(
+                        desiredGap: kAppHeaderExpandedTitleContentGap,
+                        existingSpacing: 0.0,
+                        collapseProgress: sharedTitleCollapseProgress,
+                        topExtension: kContentAreaTopRaise,
+                        baselineDescent:
+                            AppHeaderScrollView.titleBaselineDescent,
+                      ) -
+                      dowTextTopInset * (1.0 - sharedTitleCollapseProgress)
+                : 0.0;
             final double dayHeaderGroupSlideY =
                 -listModeT *
-                    (appHeaderLeadingInset +
-                        expandedTitleHeight +
-                         contentTopSpacing +
-                        titleToContentGap +
-                        _kCalendarHeaderToDowGap +
-                        _kDayLabelHeight +
-                        dayWeekStripHeight +
-                        dayBannerHeight);
+                (appHeaderLeadingInset +
+                    expandedTitleHeight +
+                    contentTopSpacing +
+                    titleToContentGap +
+                    _kCalendarHeaderToDowGap +
+                    _kDayLabelHeight +
+                    dayWeekStripHeight +
+                    dayBannerHeight);
             // Keep the month panel (which owns the week strip) on the same
             // List-mode track while the header group enters and leaves. On the
             // reverse transition daySubMode has already changed away from List,
@@ -3365,8 +3341,7 @@ class CalendarTabState extends State<CalendarTab>
                                 stripKey: const Key(
                                   'day-view-pinned-week-strip',
                                 ),
-                                geometryKey:
-                                    _pinnedDayWeekStripGeometryKey,
+                                geometryKey: _pinnedDayWeekStripGeometryKey,
                               ),
                             ),
                             Positioned(
@@ -3494,8 +3469,7 @@ class CalendarTabState extends State<CalendarTab>
                                         widget.daySubMode ==
                                             DayViewSubMode.multiDay &&
                                         _animateMultiDayTransition,
-                                    animateExit:
-                                        _retainMultiDayTimelineForExit,
+                                    animateExit: _retainMultiDayTimelineForExit,
                                     onExitAnimationComplete:
                                         _retainMultiDayTimelineForExit
                                         ? () {
@@ -3765,167 +3739,176 @@ class CalendarTabState extends State<CalendarTab>
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
-                            // Day View owns the layer underneath. The month
-                            // rows below are the moving opaque veils.
-                            // During the collapse the Month View remains on
-                            // top of the fully laid-out Day View. Once the
-                            // transition settles, put Day content back on
-                            // top so its native scroll views receive input.
-                            if (colT > 0.01 && colT < 0.99)
-                              buildDayViewUnderlay(),
-                            // Prev panel — display only, no tap
-                            Positioned(
-                              left: monthSlideX - sw,
-                              top: 0,
-                              bottom: 0,
-                              width: sw,
-                               child: AppHeaderScrollClip(
-                                 child: Transform.translate(
-                                   offset: Offset(0, monthPanelSlideY),
-                                   child: IgnorePointer(
-                                      child: _monthPreviewView(
-                                        isPrev: true,
-                                        showScrollTitle:
-                                            titleInScrollContent,
-                                        year: prevPanelYear,
-                                        month: prevPanelMonth,
+                                // Day View owns the layer underneath. The month
+                                // rows below are the moving opaque veils.
+                                // During the collapse the Month View remains on
+                                // top of the fully laid-out Day View. Once the
+                                // transition settles, put Day content back on
+                                // top so its native scroll views receive input.
+                                if (colT > 0.01 && colT < 0.99)
+                                  buildDayViewUnderlay(),
+                                // Prev panel — display only, no tap
+                                Positioned(
+                                  left: monthSlideX - sw,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: sw,
+                                  child: AppHeaderScrollClip(
+                                    child: Transform.translate(
+                                      offset: Offset(0, monthPanelSlideY),
+                                      child: IgnorePointer(
+                                        child: _monthPreviewView(
+                                          isPrev: true,
+                                          showScrollTitle: titleInScrollContent,
+                                          year: prevPanelYear,
+                                          month: prevPanelMonth,
+                                          today: _today,
+                                          selectedDate: prevPanelSel,
+                                          collapseProgress: prevColT,
+                                          collapseWeekRow: prevColRow,
+                                          rowHeight: rowHeight,
+                                          pendingBloomDate: _pendingBloomDate,
+                                          suppressScaleAnimation:
+                                              inDayView && slideX != 0.0,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                // Current month — fully interactive
+                                Positioned(
+                                  left: monthSlideX,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: sw,
+                                  child: AppHeaderScrollClip(
+                                    child: Transform.translate(
+                                      offset: Offset(0, monthPanelSlideY),
+                                      child: _MonthView(
+                                        key: ValueKey('$_dispYear-$_dispMonth'),
+                                        year: _dispYear,
+                                        month: _dispMonth,
                                         today: _today,
-                                        selectedDate: prevPanelSel,
-                                        collapseProgress: prevColT,
-                                        collapseWeekRow: prevColRow,
+                                        selectedDate: _selected,
+                                        collapseProgress: colT,
+                                        collapseWeekRow: _collapseRow,
+                                        hidePinnedDayRow:
+                                            handOffPinnedDayWeekStrip,
                                         rowHeight: rowHeight,
+                                        viewMode: _viewMode,
+                                        circleSlideX: circleSlideX,
+                                        settleCount: _settleCount,
+                                        blobDeltaX: circleMode
+                                            ? _blobDeltaX
+                                            : 0.0,
+                                        blobSnapCount: _blobSnapCount,
                                         pendingBloomDate: _pendingBloomDate,
                                         suppressScaleAnimation:
                                             inDayView && slideX != 0.0,
+                                        daySubMode: widget.daySubMode,
+                                        onEditEvent: widget.onEditEvent,
+                                        scrollController: _monthViewScrollCtrl,
+                                        scrollableTitleBuilder:
+                                            scrollableTitleBuilder,
+                                        scrollTitle: _monthHeaderName(
+                                          _dispMonth,
+                                        ),
+                                        scrollTitleIsActive: true,
+                                        scrollViewportKey:
+                                            _monthViewScrollViewportKey,
+                                        morphWeekRowKeys: _monthMorphRowKeys,
+                                        morphDayKeys: _monthMorphDayKeys,
+                                        morphDowHeaderKey: _monthMorphDowKey,
+                                        morphDowLabelKeys:
+                                            _monthMorphDowLabelKeys,
+                                        morphListContentKey: _monthMorphListKey,
+                                        monthListOrderByDay:
+                                            _monthListOrderByDay,
+                                        monthListOrderRevision:
+                                            _monthListOrderRevision,
+                                        onMonthListOrderChanged:
+                                            _onMonthListOrderChanged,
+                                        collapseScrollOffset:
+                                            _collapseScrollOffset,
+                                        onDayTap: (date) {
+                                          if (colT < 0.1) {
+                                            // Month view: tap selects; tap the
+                                            // already-selected day enters Day View.
+                                            if (_sameDay(date, _selected)) {
+                                              _enterDay(date);
+                                            } else {
+                                              setState(() {
+                                                _selected = date;
+                                                _dispMonth = date.month;
+                                                _dispYear = date.year;
+                                                _collapseRow = _weekRowForDate(
+                                                  date,
+                                                );
+                                              });
+                                              _notify();
+                                            }
+                                          } else {
+                                            setState(() {
+                                              _selected = date;
+                                              _dispMonth = date.month;
+                                              _dispYear = date.year;
+                                              _collapseRow = _weekRowForDate(
+                                                date,
+                                              );
+                                            });
+                                            _notify();
+                                          }
+                                        },
+                                        onDayLongPress: (date) {
+                                          if (colT < 0.1) {
+                                            // Long press always enters Day View,
+                                            // selecting the day if not already.
+                                            if (!_sameDay(date, _selected)) {
+                                              setState(() {
+                                                _selected = date;
+                                                _dispMonth = date.month;
+                                                _dispYear = date.year;
+                                                _collapseRow = _weekRowForDate(
+                                                  date,
+                                                );
+                                              });
+                                              _notify();
+                                            }
+                                            _enterDay(date);
+                                          }
+                                        },
                                       ),
-                                   ),
-                                 ),
-                              ),
-                            ),
-                            // Current month — fully interactive
-                            Positioned(
-                              left: monthSlideX,
-                              top: 0,
-                              bottom: 0,
-                              width: sw,
-                               child: AppHeaderScrollClip(
-                                 child: Transform.translate(
-                                   offset: Offset(0, monthPanelSlideY),
-                                   child: _MonthView(
-                                  key: ValueKey('$_dispYear-$_dispMonth'),
-                                  year: _dispYear,
-                                  month: _dispMonth,
-                                  today: _today,
-                                  selectedDate: _selected,
-                                  collapseProgress: colT,
-                                  collapseWeekRow: _collapseRow,
-                                  hidePinnedDayRow:
-                                      handOffPinnedDayWeekStrip,
-                                  rowHeight: rowHeight,
-                                   viewMode: _viewMode,
-                                  circleSlideX: circleSlideX,
-                                  settleCount: _settleCount,
-                                  blobDeltaX: circleMode ? _blobDeltaX : 0.0,
-                                  blobSnapCount: _blobSnapCount,
-                                  pendingBloomDate: _pendingBloomDate,
-                                  suppressScaleAnimation:
-                                      inDayView && slideX != 0.0,
-                                  daySubMode: widget.daySubMode,
-                                   onEditEvent: widget.onEditEvent,
-                                  scrollController: _monthViewScrollCtrl,
-                                  scrollableTitleBuilder:
-                                      scrollableTitleBuilder,
-                                  scrollTitle: _monthHeaderName(_dispMonth),
-                                  scrollTitleIsActive: true,
-                                  scrollViewportKey:
-                                      _monthViewScrollViewportKey,
-                                   morphWeekRowKeys: _monthMorphRowKeys,
-                                   morphDayKeys: _monthMorphDayKeys,
-                                   morphDowHeaderKey: _monthMorphDowKey,
-                                   morphDowLabelKeys:
-                                       _monthMorphDowLabelKeys,
-                                   morphListContentKey: _monthMorphListKey,
-                                   monthListOrderByDay:
-                                       _monthListOrderByDay,
-                                   monthListOrderRevision:
-                                       _monthListOrderRevision,
-                                   onMonthListOrderChanged:
-                                       _onMonthListOrderChanged,
-                                  collapseScrollOffset: _collapseScrollOffset,
-                                  onDayTap: (date) {
-                                    if (colT < 0.1) {
-                                      // Month view: tap selects; tap the
-                                      // already-selected day enters Day View.
-                                      if (_sameDay(date, _selected)) {
-                                        _enterDay(date);
-                                      } else {
-                                        setState(() {
-                                          _selected = date;
-                                          _dispMonth = date.month;
-                                          _dispYear = date.year;
-                                          _collapseRow = _weekRowForDate(date);
-                                        });
-                                        _notify();
-                                      }
-                                    } else {
-                                      setState(() {
-                                        _selected = date;
-                                        _dispMonth = date.month;
-                                        _dispYear = date.year;
-                                        _collapseRow = _weekRowForDate(date);
-                                      });
-                                      _notify();
-                                    }
-                                  },
-                                  onDayLongPress: (date) {
-                                    if (colT < 0.1) {
-                                      // Long press always enters Day View,
-                                      // selecting the day if not already.
-                                      if (!_sameDay(date, _selected)) {
-                                        setState(() {
-                                          _selected = date;
-                                          _dispMonth = date.month;
-                                          _dispYear = date.year;
-                                          _collapseRow = _weekRowForDate(date);
-                                        });
-                                        _notify();
-                                      }
-                                      _enterDay(date);
-                                    }
-                                  },
-                                   ),
-                                 ),
-                              ),
-                            ),
-                            // Next panel — display only, no tap
-                            Positioned(
-                              left: monthSlideX + sw,
-                              top: 0,
-                              bottom: 0,
-                              width: sw,
-                               child: AppHeaderScrollClip(
-                                 child: Transform.translate(
-                                   offset: Offset(0, monthPanelSlideY),
-                                   child: IgnorePointer(
-                                      child: _monthPreviewView(
-                                        isPrev: false,
-                                        showScrollTitle:
-                                            titleInScrollContent,
-                                        year: nextPanelYear,
-                                        month: nextPanelMonth,
-                                        today: _today,
-                                        selectedDate: nextPanelSel,
-                                        collapseProgress: nextColT,
-                                        collapseWeekRow: nextColRow,
-                                        rowHeight: rowHeight,
-                                        pendingBloomDate: null,
-                                        suppressScaleAnimation:
-                                            inDayView && slideX != 0.0,
+                                    ),
+                                  ),
+                                ),
+                                // Next panel — display only, no tap
+                                Positioned(
+                                  left: monthSlideX + sw,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: sw,
+                                  child: AppHeaderScrollClip(
+                                    child: Transform.translate(
+                                      offset: Offset(0, monthPanelSlideY),
+                                      child: IgnorePointer(
+                                        child: _monthPreviewView(
+                                          isPrev: false,
+                                          showScrollTitle: titleInScrollContent,
+                                          year: nextPanelYear,
+                                          month: nextPanelMonth,
+                                          today: _today,
+                                          selectedDate: nextPanelSel,
+                                          collapseProgress: nextColT,
+                                          collapseWeekRow: nextColRow,
+                                          rowHeight: rowHeight,
+                                          pendingBloomDate: null,
+                                          suppressScaleAnimation:
+                                              inDayView && slideX != 0.0,
+                                        ),
                                       ),
-                                   ),
-                                 ),
-                              ),
-                            ),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -4058,9 +4041,7 @@ class _YearView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final horizontalInset = AppWindowContentScope.of(
-      context,
-    ).horizontalInset;
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
@@ -4079,10 +4060,7 @@ class _YearView extends StatelessWidget {
         );
         final stationaryScrollTitle = scrollTitle == null
             ? null
-            : AppHeaderScrollTitle(
-                controller: controller,
-                child: scrollTitle,
-              );
+            : AppHeaderScrollTitle(controller: controller, child: scrollTitle);
         final monthGrid = Padding(
           padding: EdgeInsets.symmetric(
             horizontal: _kYearOuterPad + horizontalInset,
@@ -4117,12 +4095,10 @@ class _YearView extends StatelessWidget {
                               today: today,
                               selectedDate: selectedDate,
                               width: grid.monthWidth,
-                              morphWeekRowKeys:
-                                  morphWeekRowKeys == null
+                              morphWeekRowKeys: morphWeekRowKeys == null
                                   ? null
-                                  : morphWeekRowKeys![
-                                      row * grid.columnCount + col
-                                    ],
+                                  : morphWeekRowKeys![row * grid.columnCount +
+                                        col],
                             ),
                           ),
                         ),
@@ -4138,47 +4114,44 @@ class _YearView extends StatelessWidget {
         );
 
         return KeyedSubtree(
-            key: scrollViewportKey == null
-                ? null
-                : const ValueKey('calendar-year-scroll-viewport'),
-            child: AppHeaderScrollView(
-              key: scrollViewportKey,
-              topExtension: kContentAreaTopRaise,
-              controller: controller,
-              mirrorSharedHeaderCollapse: !titleIsActive,
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
+          key: scrollViewportKey == null
+              ? null
+              : const ValueKey('calendar-year-scroll-viewport'),
+          child: AppHeaderScrollView(
+            key: scrollViewportKey,
+            topExtension: kContentAreaTopRaise,
+            controller: controller,
+            mirrorSharedHeaderCollapse: !titleIsActive,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            clipBehavior: Clip.none,
+            slivers: [
+              SliverToBoxAdapter(
+                child: AppHeaderScrollInset(
+                  enabled: isPortrait,
+                  expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+                  expandedTitleContentGapFromBaseline: true,
+                  child: stationaryScrollTitle == null
+                      ? null
+                      : Transform.translate(
+                          offset: const Offset(0.0, kContentAreaTopRaise),
+                          child: stationaryScrollTitle,
+                        ),
+                ),
               ),
-              clipBehavior: Clip.none,
-              slivers: [
-                SliverToBoxAdapter(
-                  child: AppHeaderScrollInset(
-                    enabled: isPortrait,
-                    expandedTitleContentGap:
-                        kAppHeaderExpandedTitleContentGap,
-                    expandedTitleContentGapFromBaseline: true,
-                    child: stationaryScrollTitle == null
-                        ? null
-                        : Transform.translate(
-                            offset: const Offset(0.0, kContentAreaTopRaise),
-                            child: stationaryScrollTitle,
-                          ),
+              const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom:
+                        14.5 + floatingTabBarContentBottomClearance(context),
                   ),
+                  child: monthGrid,
                 ),
-                const SliverToBoxAdapter(
-                  child: AppHeaderContentSpacing(),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: 14.5 +
-                          floatingTabBarContentBottomClearance(context),
-                    ),
-                    child: monthGrid,
-                  ),
-                ),
-              ],
               ),
+            ],
+          ),
         );
       },
     );
@@ -4302,8 +4275,7 @@ class _MiniMonthGrid extends StatelessWidget {
               for (int row = 0; row < rows; row++)
                 ColoredBox(
                   key:
-                      morphWeekRowKeys != null &&
-                          row < morphWeekRowKeys!.length
+                      morphWeekRowKeys != null && row < morphWeekRowKeys!.length
                       ? morphWeekRowKeys![row]
                       : null,
                   color: const Color(0x00000000),
@@ -4529,9 +4501,11 @@ class _MorphOverlay extends StatelessWidget {
     final List<Color?> monthListDotColors;
     if (viewMode == CalendarViewMode.list) {
       final month = zoomMonthIdx + 1;
-      final firstGridDay = DateTime(year, month, 1).subtract(
-        Duration(days: _firstWeekday(year, month)),
-      );
+      final firstGridDay = DateTime(
+        year,
+        month,
+        1,
+      ).subtract(Duration(days: _firstWeekday(year, month)));
       final monthListData = _monthListDataFor(
         sourceEvents: EventStore.instance.events.value,
         year: year,
@@ -4574,13 +4548,11 @@ class _MorphOverlay extends StatelessWidget {
                 0.0,
                 _kCalendarHeaderToDowGap +
                     _kDayLabelHeight +
-                    _totalWeekRows(year, zoomMonthIdx + 1) *
-                        viewModeRowHeight -
+                    _totalWeekRows(year, zoomMonthIdx + 1) * viewModeRowHeight -
                     monthScrollOffset,
               );
           final cellSz = grid.cellSize;
-          final renderedMonthWidth =
-              monthGeometry?.weekRows.isNotEmpty == true
+          final renderedMonthWidth = monthGeometry?.weekRows.isNotEmpty == true
               ? monthGeometry!.weekRows.first.width
               : screenW;
           final monthContentWidth = math.max(
@@ -4589,8 +4561,7 @@ class _MorphOverlay extends StatelessWidget {
           );
           final zCol = zoomMonthIdx % grid.columnCount;
           final zRow = zoomMonthIdx ~/ grid.columnCount;
-          final focalX =
-              yearGeometry?.weekRows.isNotEmpty == true
+          final focalX = yearGeometry?.weekRows.isNotEmpty == true
               ? yearGeometry!.weekRows.first.left
               : yearHorizontalInset +
                     _kYearOuterPad +
@@ -4624,11 +4595,7 @@ class _MorphOverlay extends StatelessWidget {
           final yearListContentTop =
               yearGeometry?.weekRows.last.bottom ??
               focalY + (totalRows + 1) * cellSz + 2.0;
-          final contentTop = lerpDouble(
-            yearListContentTop,
-            listContentTop,
-            t,
-          )!;
+          final contentTop = lerpDouble(yearListContentTop, listContentTop, t)!;
           final contentLeft = lerpDouble(
             focalX,
             measuredListContent?.left ?? yearHorizontalInset,
@@ -4735,9 +4702,11 @@ class _MonthListMorphContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstGridDay = DateTime(year, month, 1).subtract(
-      Duration(days: _firstWeekday(year, month)),
-    );
+    final firstGridDay = DateTime(
+      year,
+      month,
+      1,
+    ).subtract(Duration(days: _firstWeekday(year, month)));
     final totalRows = _totalWeekRows(year, month);
     final data = _monthListDataFor(
       sourceEvents: EventStore.instance.events.value,
@@ -4773,8 +4742,8 @@ class _MonthListMorphContent extends StatelessWidget {
         availableListEmptyStateHeight < emptyStateFallbackHeight;
     final emptyStateHeight = selectedDayIsEmpty
         ? emptyStateNeedsScrollableFallback
-            ? emptyStateFallbackHeight
-            : availableListEmptyStateHeight
+              ? emptyStateFallbackHeight
+              : availableListEmptyStateHeight
         : 0.0;
 
     // This is the content-sized child of the Positioned in _MorphOverlay.
@@ -4808,10 +4777,7 @@ class _MonthListMorphContent extends StatelessWidget {
 /// grey scrim. The morph must keep the cards/placeholder, but it must not give
 /// that subtree ownership of the unused calendar area.
 class _MorphListContentViewport extends StatelessWidget {
-  const _MorphListContentViewport({
-    required this.height,
-    required this.child,
-  });
+  const _MorphListContentViewport({required this.height, required this.child});
 
   final double? height;
   final Widget child;
@@ -4878,11 +4844,7 @@ class _MorphMonthLayout {
       days = List.generate(_daysInMonth(year, month), (index) {
         final day = index + 1;
         final slot = _firstWeekday(year, month) + index;
-        return _MorphDayCell(
-          day: day,
-          dayColumn: slot % 7,
-          weekRow: slot ~/ 7,
-        );
+        return _MorphDayCell(day: day, dayColumn: slot % 7, weekRow: slot ~/ 7);
       }),
       weekNumbers = List.generate(
         _totalWeekRows(year, month),
@@ -4899,25 +4861,16 @@ class _MorphMonthLayout {
 
 class _MorphYearLayout {
   _MorphYearLayout(int year, int columnCount)
-    : months = List.generate(
-        12,
-        (index) => _MorphMonthLayout(year, index + 1),
-      ),
-      rowMaxWeeks = List.generate(
-        (12 + columnCount - 1) ~/ columnCount,
-        (row) {
+    : months = List.generate(12, (index) => _MorphMonthLayout(year, index + 1)),
+      rowMaxWeeks = List.generate((12 + columnCount - 1) ~/ columnCount, (row) {
         var maxRows = 0;
         for (var col = 0; col < columnCount; col++) {
           final monthIndex = row * columnCount + col;
           if (monthIndex >= 12) break;
-          maxRows = math.max(
-            maxRows,
-            _totalWeekRows(year, monthIndex + 1),
-          );
+          maxRows = math.max(maxRows, _totalWeekRows(year, monthIndex + 1));
         }
         return maxRows;
-      },
-      );
+      });
 
   final List<_MorphMonthLayout> months;
   final List<int> rowMaxWeeks;
@@ -4983,10 +4936,7 @@ _MonthListData _monthListDataFor({
   }
   final orderedEventsByDay = <String, List<ScheduledEvent>>{
     for (final entry in eventsByDay.entries)
-      entry.key: _applyMonthListOrder(
-        entry.value,
-        savedOrderByDay[entry.key],
-      ),
+      entry.key: _applyMonthListOrder(entry.value, savedOrderByDay[entry.key]),
   };
   final dayKeys = [
     for (var i = 0; i < totalRows * 7; i++)
@@ -5023,7 +4973,7 @@ _MonthSelectedEvents _monthSelectedEventsWidgetFor({
   required ScrollController? scrollController,
   required GlobalKey? scrollViewportKey,
   required void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
-      onOrderChanged,
+  onOrderChanged,
 }) {
   final cacheKey = [
     identityHashCode(data),
@@ -5379,8 +5329,7 @@ class _MorphPainter extends CustomPainter {
     final miniW = grid.monthWidth;
     final cellSz = grid.cellSize;
     final yearGridLeft = yearHorizontalInset + _kYearOuterPad;
-    final renderedMonthWidth =
-        monthGeometry?.weekRows.isNotEmpty == true
+    final renderedMonthWidth = monthGeometry?.weekRows.isNotEmpty == true
         ? monthGeometry!.weekRows.first.width
         : sw;
     final monthContentWidth = math.max(
@@ -5397,8 +5346,7 @@ class _MorphPainter extends CustomPainter {
 
     // ── Row geometry ─────────────────────────────────────────────────────────
     final List<double> rowTop;
-    if (measuredRowTops != null &&
-        measuredRowTops!.length == grid.rowCount) {
+    if (measuredRowTops != null && measuredRowTops!.length == grid.rowCount) {
       rowTop = measuredRowTops!;
     } else {
       final rowH = List.generate(
@@ -5415,8 +5363,7 @@ class _MorphPainter extends CustomPainter {
     }
 
     // Focal point: selected month's DOW-row top-left in year-view screen coords
-    final focalX =
-        yearGeometry?.weekRows.isNotEmpty == true
+    final focalX = yearGeometry?.weekRows.isNotEmpty == true
         ? yearGeometry!.weekRows.first.left
         : yearGridLeft + zCol * (miniW + grid.columnGap);
     final focalY =
@@ -5431,8 +5378,7 @@ class _MorphPainter extends CustomPainter {
     // Zoom-transform helpers
     double xZ(double px) =>
         s * px - sFinal * focalX * t + yearHorizontalInset * t;
-    double yZ(double py) =>
-        s * py - sFinal * focalY * t + monthFocalY * t;
+    double yZ(double py) => s * py - sFinal * focalY * t + monthFocalY * t;
 
     final mCellW = (monthContentWidth - 7) / 8;
     final totalRows = zoomMonthLayout.totalRows;
@@ -5444,11 +5390,7 @@ class _MorphPainter extends CustomPainter {
         titleTargetRect != null && monthTitleFontSize > 0.0
         ? titleTargetRect!.height / monthTitleFontSize
         : 1.0;
-    final titleLineHeight = lerpDouble(
-      1.0,
-      titleLineHeightRatio,
-      t,
-    )!;
+    final titleLineHeight = lerpDouble(1.0, titleLineHeightRatio, t)!;
 
     // Week-row surfaces are part of the same shared element as the row's
     // dates. Keep them separate per row so each strip carries its background
@@ -5477,9 +5419,7 @@ class _MorphPainter extends CustomPainter {
     // over the actual second-level Calendar header.
     canvas.save();
     final contentTop = contentClipTop.clamp(0.0, size.height);
-    canvas.clipRect(
-      Rect.fromLTRB(0.0, contentTop, size.width, size.height),
-    );
+    canvas.clipRect(Rect.fromLTRB(0.0, contentTop, size.width, size.height));
     for (var mi = 0; mi < 12; mi++) {
       if (mi == zoomMonthIdx) continue;
       final mCol = mi % grid.columnCount;
@@ -5564,8 +5504,7 @@ class _MorphPainter extends CustomPainter {
 
           // Destination at t=1: zoom-transform equivalent, offset into the
           // inset Month content box rather than the physical panel edge.
-          final monthCX =
-              yearHorizontalInset + sFinal * (yearCX - focalX);
+          final monthCX = yearHorizontalInset + sFinal * (yearCX - focalX);
           final cx = lerpDouble(yearCX, monthCX, t)!;
           // Use the measured Month content origin just like xZ/yZ. Without
           // this anchor, same-row cells travel toward canvas y=0 (above the
@@ -5616,12 +5555,8 @@ class _MorphPainter extends CustomPainter {
             _MorphTextDraw(
               text: '$d',
               fontSize: fSize,
-              fromWeight: isEmphasized
-                  ? FontWeight.w600
-                  : FontWeight.w500,
-              toWeight: isEmphasized
-                  ? FontWeight.w600
-                  : FontWeight.w400,
+              fromWeight: isEmphasized ? FontWeight.w600 : FontWeight.w500,
+              toWeight: isEmphasized ? FontWeight.w600 : FontWeight.w400,
               color: isEmphasized ? const Color(0xFFFFFFFF) : primaryColor,
               opacity: cellAlpha,
               center: Offset(cx, cy),
@@ -5638,12 +5573,10 @@ class _MorphPainter extends CustomPainter {
     // settled _WeekRow widget. Each surface follows its own year-view to
     // month-view geometry, so no full month-grid background is left behind.
     for (var wr = 0; wr < totalRows; wr++) {
-      final yearRow =
-          yearGeometry != null && wr < yearGeometry!.weekRows.length
+      final yearRow = yearGeometry != null && wr < yearGeometry!.weekRows.length
           ? yearGeometry!.weekRows[wr]
           : null;
-      final yearRowTop =
-          yearRow?.top ?? focalY + (wr + 1) * cellSz + 2.0;
+      final yearRowTop = yearRow?.top ?? focalY + (wr + 1) * cellSz + 2.0;
       final measuredRow =
           monthGeometry != null && wr < monthGeometry!.weekRows.length
           ? monthGeometry!.weekRows[wr]
@@ -5657,7 +5590,11 @@ class _MorphPainter extends CustomPainter {
       paintWeekStripSurface(
         left: lerpDouble(yearRow?.left ?? focalX, measuredRow?.left ?? 0.0, t)!,
         top: lerpDouble(yearRowTop, monthRowTop, t)!,
-        width: lerpDouble(yearRow?.width ?? miniW, measuredRow?.width ?? sw, t)!,
+        width: lerpDouble(
+          yearRow?.width ?? miniW,
+          measuredRow?.width ?? sw,
+          t,
+        )!,
         height: lerpDouble(
           yearRow?.height ?? cellSz,
           measuredRow?.height ?? viewModeRowHeight,
@@ -5666,8 +5603,7 @@ class _MorphPainter extends CustomPainter {
       );
     }
 
-    final monthDayCircleOffset =
-        kFixedTopPadding + monthDayCircleDiameter / 2;
+    final monthDayCircleOffset = kFixedTopPadding + monthDayCircleDiameter / 2;
 
     // 3. Selected-month day cells — per-element lerp year → month ─────────────
     final selectedMonthNumberDraws = <_MorphTextDraw>[];
@@ -5690,8 +5626,7 @@ class _MorphPainter extends CustomPainter {
               yearGeometry!.daySizes[d]!.height,
             )
           : cellSz;
-      final yearCX =
-          yearDayCenter?.dx ?? focalX + (dow + 0.5) * cellSz;
+      final yearCX = yearDayCenter?.dx ?? focalX + (dow + 0.5) * cellSz;
       final yearCY =
           yearDayCenter?.dy ??
           focalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
@@ -5769,9 +5704,10 @@ class _MorphPainter extends CustomPainter {
       // then travel with their day cell to the exact settled Month List offset.
       if (d < monthListDotColors.length) {
         final dotColor = monthListDotColors[d];
-        final dotAlpha = ((t - _kYearMonthHandoffThreshold) /
-                (1.0 - _kYearMonthHandoffThreshold))
-            .clamp(0.0, 1.0);
+        final dotAlpha =
+            ((t - _kYearMonthHandoffThreshold) /
+                    (1.0 - _kYearMonthHandoffThreshold))
+                .clamp(0.0, 1.0);
         if (dotColor != null && dotAlpha > 0.0) {
           final dotCX = lerpDouble(yearCX, monthCX, t)!;
           final monthDotCY =
@@ -5796,8 +5732,7 @@ class _MorphPainter extends CustomPainter {
     // Separators widen from mini-month width → full screen width.
     for (var wr = 0; wr < totalRows; wr++) {
       final wkNum = zoomMonthLayout.weekNumbers[wr];
-      final yearRow =
-          yearGeometry != null && wr < yearGeometry!.weekRows.length
+      final yearRow = yearGeometry != null && wr < yearGeometry!.weekRows.length
           ? yearGeometry!.weekRows[wr]
           : null;
       final measuredRow =
@@ -5854,11 +5789,7 @@ class _MorphPainter extends CustomPainter {
         t,
       )!;
       final sepLeft = lerpDouble(focalX, measuredRow?.left ?? 0.0, t)!;
-      final sepRight = lerpDouble(
-        focalX + miniW,
-        measuredRow?.right ?? sw,
-        t,
-      )!;
+      final sepRight = lerpDouble(focalX + miniW, measuredRow?.right ?? sw, t)!;
       _p.color = _fade(separatorColor, t.clamp(0.0, 1.0));
       canvas.drawRect(
         Rect.fromLTWH(sepLeft, sepY, sepRight - sepLeft, 0.5),
@@ -5907,14 +5838,12 @@ class _MorphPainter extends CustomPainter {
       final dowColor = Color.lerp(tertiaryColor, secondaryColor, t)!;
       for (int i = 0; i < 7; i++) {
         final yearDowCenter =
-            yearGeometry != null &&
-                i < yearGeometry!.dowLabelCenters.length
+            yearGeometry != null && i < yearGeometry!.dowLabelCenters.length
             ? yearGeometry!.dowLabelCenters[i]
             : null;
         final cx = lerpDouble(
           yearDowCenter?.dx ?? focalX + (i + 0.5) * cellSz,
-          monthGeometry != null &&
-                  i < monthGeometry!.dowLabelCenters.length
+          monthGeometry != null && i < monthGeometry!.dowLabelCenters.length
               ? monthGeometry!.dowLabelCenters[i].dx
               : yearHorizontalInset + mCellW * (i + 1.5),
           t,
@@ -5955,10 +5884,7 @@ class _MorphPainter extends CustomPainter {
         monthTitleFontSize,
         t,
       )!.clamp(1.0, 200.0);
-      final yearTitleTopLeft = Offset(
-        focalX,
-        rowTop[zRow] - scrollOffset,
-      );
+      final yearTitleTopLeft = Offset(focalX, rowTop[zRow] - scrollOffset);
       final titleTopLeft = titleTargetRect == null
           ? Offset(xZ(yearTitleTopLeft.dx), yZ(yearTitleTopLeft.dy))
           : Offset(
@@ -5966,9 +5892,7 @@ class _MorphPainter extends CustomPainter {
               lerpDouble(yearTitleTopLeft.dy, titleTargetRect!.top, t)!,
             );
       canvas.save();
-      canvas.clipRect(
-        Rect.fromLTRB(0.0, contentTop, size.width, size.height),
-      );
+      canvas.clipRect(Rect.fromLTRB(0.0, contentTop, size.width, size.height));
       _textL(
         canvas,
         _yearViewMonthName(zMonth, fullMonthName: fullMonthName),
@@ -5979,11 +5903,7 @@ class _MorphPainter extends CustomPainter {
         titleTopLeft,
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
-        maxWidth: lerpDouble(
-          miniW,
-          titleTargetRect?.width ?? screenW,
-          t,
-        )!,
+        maxWidth: lerpDouble(miniW, titleTargetRect?.width ?? screenW, t)!,
       );
       canvas.restore();
     }
@@ -5998,18 +5918,15 @@ List<List<ScheduledEvent>> _groupMonthEvents(List<ScheduledEvent> events) {
     (event.isAllDay || event.time == null ? allDay : timed).add(event);
   }
   timed.sort((a, b) {
-    final byTime = _calendarTimeToMinutes(a.time) -
-        _calendarTimeToMinutes(b.time);
+    final byTime =
+        _calendarTimeToMinutes(a.time) - _calendarTimeToMinutes(b.time);
     return byTime;
   });
   final groups = <String, List<ScheduledEvent>>{};
   for (final event in timed) {
     (groups[dcvTimeSectionKey(event.time!)] ??= []).add(event);
   }
-  return [
-    if (allDay.isNotEmpty) allDay,
-    ...groups.values,
-  ];
+  return [if (allDay.isNotEmpty) allDay, ...groups.values];
 }
 
 double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
@@ -6023,8 +5940,7 @@ double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
   const sectionLabelHeight = 26.0;
   const eventRowHeight = 72.0;
   const sectionBottomPadding = 16.0;
-  return
-      listTopPadding +
+  return listTopPadding +
       groups.length * (sectionLabelHeight + sectionBottomPadding) +
       eventCount * eventRowHeight;
 }
@@ -6120,7 +6036,7 @@ class _MonthView extends StatelessWidget {
   final Map<String, List<String>> monthListOrderByDay;
   final int monthListOrderRevision;
   final void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
-      onMonthListOrderChanged;
+  onMonthListOrderChanged;
   final List<GlobalKey>? morphWeekRowKeys;
   final List<GlobalKey>? morphDayKeys;
   final GlobalKey? morphDowHeaderKey;
@@ -6135,9 +6051,7 @@ class _MonthView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final horizontalInset = AppWindowContentScope.of(
-      context,
-    ).horizontalInset;
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     // Keep the selected week strip inset through the Month↔Day transition so
     // it meets the Day View's settled content geometry. The panel, row
     // backgrounds, and week-row separators remain full-width.
@@ -6145,9 +6059,11 @@ class _MonthView extends StatelessWidget {
     return ValueListenableBuilder<List<ScheduledEvent>>(
       valueListenable: EventStore.instance.events,
       builder: (context, eventsSnapshot, __) {
-        final firstGridDay = DateTime(year, month, 1).subtract(
-          Duration(days: _firstWeekday(year, month)),
-        );
+        final firstGridDay = DateTime(
+          year,
+          month,
+          1,
+        ).subtract(Duration(days: _firstWeekday(year, month)));
         final totalRows = _totalWeekRows(year, month);
         List<GlobalKey?>? morphDayKeysForRow(int row) {
           final keys = morphDayKeys;
@@ -6161,6 +6077,7 @@ class _MonthView extends StatelessWidget {
                 : null;
           });
         }
+
         // The grid is the only content used by Compact, Stacked, and Details
         // modes.  During Month↔Day transitions it is also the only content
         // visible after the midpoint.  Do not expand recurring events or
@@ -6191,8 +6108,9 @@ class _MonthView extends StatelessWidget {
             monthListData?.dayGroups ?? const <List<List<ScheduledEvent>>>[];
         final selectedDayKey = _calendarDateKey(selectedDate);
         final selectedListIndex = listDayKeys.indexOf(selectedDayKey);
-        final selectedListChildIndex =
-            selectedListIndex < 0 ? 0 : selectedListIndex;
+        final selectedListChildIndex = selectedListIndex < 0
+            ? 0
+            : selectedListIndex;
         final selectedListGroups = listDayGroups.isEmpty
             ? const <List<ScheduledEvent>>[]
             : listDayGroups[selectedListChildIndex];
@@ -6204,86 +6122,84 @@ class _MonthView extends StatelessWidget {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-        final secondaryC = resolveThemeColor(kSecondaryLabel, context);
-        final floatingClearance = floatingTabBarContentBottomClearance(context);
-        final isPortrait =
-            MediaQuery.orientationOf(context) == Orientation.portrait;
-        final scrollTitleWidget = scrollTitle == null
-            ? null
-            : scrollableTitleBuilder?.call(
-                context,
-                scrollTitle!,
-                year,
-                CalendarView.month,
-                scrollTitleIsActive,
-              );
-        final stationaryScrollTitleWidget = scrollTitleWidget == null
-            ? null
-            : AppHeaderScrollTitle(
-                controller: scrollController,
-                child: scrollTitleWidget,
-              );
-        // Match the Notes tab's viewport-relative empty state. The expanded
-        // title slot disappears as the shared header collapses, so keep only
-        // its actual remaining height in this measurement.
-        final listContentTitleSlotHeight =
-            stationaryScrollTitleWidget != null || isPortrait
-            ? _calendarExpandedTitleHeight(context)
-            : 0.0;
-        final emptyStateFloatingClearance =
-            floatingTabBarContentBottomClearance(
+            final secondaryC = resolveThemeColor(kSecondaryLabel, context);
+            final floatingClearance = floatingTabBarContentBottomClearance(
               context,
-              finalContentGap: 16.0,
             );
-        // An empty selected day is a viewport placeholder, not a list item.
-        // Keep the pill clearance inside the viewport rather than appending it
-        // to the scroll document.  That leaves the scroll position at zero
-        // while AlwaysScrollable+BouncingScrollPhysics still permits the
-        // placeholder to move during a rubber-band overscroll.
-        final landscapeDowTextTopInset = isPortrait
-            ? 0.0
-            : _calendarDowTextTopInset(context);
-        final expandedViewportHeight =
-            constraints.maxHeight +
-            kContentAreaTopRaise -
-            AppHeaderScrollView.contentTopSpacingOf(
-              context,
-              topExtension: kContentAreaTopRaise,
-            ) +
-            landscapeDowTextTopInset;
-        final availableListEmptyStateH = math.max(
-          0.0,
-          expandedViewportHeight -
-              listContentTitleSlotHeight -
-              gridH -
-              emptyStateFloatingClearance,
-        );
-        final selectedDayIsEmpty =
-            listDayGroups.isEmpty ||
-            listDayGroups[selectedListChildIndex].isEmpty;
-        final emptyStateLabelH =
-            kEmptyStateLabelFontSize * kLineHeight;
-        final emptyStateFallbackH = emptyStateLabelH + 32.0;
-        final emptyStateNeedsScrollableFallback =
-            selectedDayIsEmpty &&
-            availableListEmptyStateH < emptyStateFallbackH;
-        final selectedListIsEmpty =
-            showMonthList &&
-            selectedDayIsEmpty;
-        final listContentH = showMonthList
-            ? selectedListIsEmpty
-                ? emptyStateNeedsScrollableFallback
-                    ? emptyStateFallbackH
-                    : availableListEmptyStateH
-                : estimatedListContentH
-            : 80.0;
-        // The embedded DCV already supplies a 16 pt trailing section gap
-        // outside the collapsible event card. Account for the Floating Tab
-        // Bar's height and bottom inset as well, then keep a separate 16 pt
-        // gap between whichever element is last (event tile or section
-        // header) and the pill.
-        final eventContentClearance =
-            showMonthList
+            final isPortrait =
+                MediaQuery.orientationOf(context) == Orientation.portrait;
+            final scrollTitleWidget = scrollTitle == null
+                ? null
+                : scrollableTitleBuilder?.call(
+                    context,
+                    scrollTitle!,
+                    year,
+                    CalendarView.month,
+                    scrollTitleIsActive,
+                  );
+            final stationaryScrollTitleWidget = scrollTitleWidget == null
+                ? null
+                : AppHeaderScrollTitle(
+                    controller: scrollController,
+                    child: scrollTitleWidget,
+                  );
+            // Match the Notes tab's viewport-relative empty state. The expanded
+            // title slot disappears as the shared header collapses, so keep only
+            // its actual remaining height in this measurement.
+            final listContentTitleSlotHeight =
+                stationaryScrollTitleWidget != null || isPortrait
+                ? _calendarExpandedTitleHeight(context)
+                : 0.0;
+            final emptyStateFloatingClearance =
+                floatingTabBarContentBottomClearance(
+                  context,
+                  finalContentGap: 16.0,
+                );
+            // An empty selected day is a viewport placeholder, not a list item.
+            // Keep the pill clearance inside the viewport rather than appending it
+            // to the scroll document.  That leaves the scroll position at zero
+            // while AlwaysScrollable+BouncingScrollPhysics still permits the
+            // placeholder to move during a rubber-band overscroll.
+            final landscapeDowTextTopInset = isPortrait
+                ? 0.0
+                : _calendarDowTextTopInset(context);
+            final expandedViewportHeight =
+                constraints.maxHeight +
+                kContentAreaTopRaise -
+                AppHeaderScrollView.contentTopSpacingOf(
+                  context,
+                  topExtension: kContentAreaTopRaise,
+                ) +
+                landscapeDowTextTopInset;
+            final availableListEmptyStateH = math.max(
+              0.0,
+              expandedViewportHeight -
+                  listContentTitleSlotHeight -
+                  gridH -
+                  emptyStateFloatingClearance,
+            );
+            final selectedDayIsEmpty =
+                listDayGroups.isEmpty ||
+                listDayGroups[selectedListChildIndex].isEmpty;
+            final emptyStateLabelH = kEmptyStateLabelFontSize * kLineHeight;
+            final emptyStateFallbackH = emptyStateLabelH + 32.0;
+            final emptyStateNeedsScrollableFallback =
+                selectedDayIsEmpty &&
+                availableListEmptyStateH < emptyStateFallbackH;
+            final selectedListIsEmpty = showMonthList && selectedDayIsEmpty;
+            final listContentH = showMonthList
+                ? selectedListIsEmpty
+                      ? emptyStateNeedsScrollableFallback
+                            ? emptyStateFallbackH
+                            : availableListEmptyStateH
+                      : estimatedListContentH
+                : 80.0;
+            // The embedded DCV already supplies a 16 pt trailing section gap
+            // outside the collapsible event card. Account for the Floating Tab
+            // Bar's height and bottom inset as well, then keep a separate 16 pt
+            // gap between whichever element is last (event tile or section
+            // header) and the pill.
+            final eventContentClearance = showMonthList
                 ? floatingTabBarContentBottomClearance(
                     context,
                     existingTrailingContentPadding:
@@ -6291,391 +6207,451 @@ class _MonthView extends StatelessWidget {
                     finalContentGap: _kMonthListFinalContentGap,
                   )
                 : floatingClearance;
-        final contentH = showMonthList
-            ? selectedDayIsEmpty
-                ? emptyStateNeedsScrollableFallback
-                    ? gridH +
-                          emptyStateFallbackH +
-                          emptyStateFloatingClearance
-                    : math.max(
-                        expandedViewportHeight,
-                        gridH +
-                            availableListEmptyStateH +
-                            emptyStateFloatingClearance,
-                      )
-                : math.max(
-                    expandedViewportHeight,
-                    gridH + listContentH + eventContentClearance,
-                  )
-            : gridH;
-        final emptyH =
-            selectedDayIsEmpty && showMonthList ? contentH - gridH : 0.0;
-        final emptyStateH = selectedDayIsEmpty
-            ? showMonthList
-                ? emptyStateNeedsScrollableFallback
-                    ? emptyStateFallbackH
-                    : availableListEmptyStateH
-                : 0.0
-            : math.max(0.0, emptyH - eventContentClearance);
-        // A non-empty Month List must use the selected DCV's measured height.
-        // A collapsed final section therefore measures as its header plus the
-        // section wrapper's trailing 16 pt, rather than retaining an estimated
-        // event-tile height.
-        final monthListUsesNaturalHeight = showMonthList && !selectedDayIsEmpty;
-        // The selected day’s Month List content is the virtual final strip
-        // after the calendar week rows. Like every strip below the selected
-        // week, it travels down by the same viewport-scaled offset and returns
-        // from there when the Month↔Day transition reverses.
-        final monthListStripOffsetY = constraints.maxHeight * collapseProgress;
-        final movingWeekRowHeight = lerpDouble(
-          rowHeight,
-          _dayViewWeekStripHeight(context),
-          collapseProgress,
-        )!;
-        final trailingMonthSurfaceTop =
-            _kCalendarHeaderToDowGap +
-            _kDayLabelHeight +
-            totalRows * movingWeekRowHeight;
+            final contentH = showMonthList
+                ? selectedDayIsEmpty
+                      ? emptyStateNeedsScrollableFallback
+                            ? gridH +
+                                  emptyStateFallbackH +
+                                  emptyStateFloatingClearance
+                            : math.max(
+                                expandedViewportHeight,
+                                gridH +
+                                    availableListEmptyStateH +
+                                    emptyStateFloatingClearance,
+                              )
+                      : math.max(
+                          expandedViewportHeight,
+                          gridH + listContentH + eventContentClearance,
+                        )
+                : gridH;
+            final emptyH = selectedDayIsEmpty && showMonthList
+                ? contentH - gridH
+                : 0.0;
+            final emptyStateH = selectedDayIsEmpty
+                ? showMonthList
+                      ? emptyStateNeedsScrollableFallback
+                            ? emptyStateFallbackH
+                            : availableListEmptyStateH
+                      : 0.0
+                : math.max(0.0, emptyH - eventContentClearance);
+            // A non-empty Month List must use the selected DCV's measured height.
+            // A collapsed final section therefore measures as its header plus the
+            // section wrapper's trailing 16 pt, rather than retaining an estimated
+            // event-tile height.
+            final monthListUsesNaturalHeight =
+                showMonthList && !selectedDayIsEmpty;
+            // The selected day’s Month List content is the virtual final strip
+            // after the calendar week rows. Like every strip below the selected
+            // week, it travels down by the same viewport-scaled offset and returns
+            // from there when the Month↔Day transition reverses.
+            final monthListStripOffsetY =
+                constraints.maxHeight * collapseProgress;
+            final movingWeekRowHeight = lerpDouble(
+              rowHeight,
+              _dayViewWeekStripHeight(context),
+              collapseProgress,
+            )!;
+            final trailingMonthSurfaceTop =
+                _kCalendarHeaderToDowGap +
+                _kDayLabelHeight +
+                totalRows * movingWeekRowHeight;
 
-        final document = ClipRect(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Keep the viewport tail opaque like the week rows. This
-              // trailing surface behaves like the next strip below the month:
-              // it moves down with the rows below the selected week, including
-              // when the selected week is the final row and no lower row exists.
-              Positioned(
-                left: 0,
-                right: 0,
-                top: trailingMonthSurfaceTop,
-                bottom: 0,
-                child: Transform.translate(
-                  offset: Offset(0, monthListStripOffsetY),
-                  child: ColoredBox(
-                    key: ValueKey(
-                      'calendar-month-trailing-surface-$year-$month',
-                    ),
-                    color: resolveThemeColor(kBackgroundColor, context),
-                  ),
-                ),
-              ),
-              // ── Scrollable body ───────────────────────────────────
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: _kDayLabelHeight),
-                  const SizedBox(height: _kCalendarHeaderToDowGap),
-                  SizedBox(
-                    height: totalRows * rowHeight,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        for (int row = 0; row < totalRows; row++)
-                          if (!hidePinnedDayRow || row != collapseWeekRow)
-                            _AnimatedWeekRow(
-                            year: year,
-                            month: month,
-                            row: row,
-                            morphRowKey:
-                                morphWeekRowKeys != null &&
-                                    row < morphWeekRowKeys!.length
-                                ? morphWeekRowKeys![row]
-                                : null,
-                            morphDayKeys: morphDayKeysForRow(row),
-                            today: today,
-                            selectedDate: selectedDate,
-                            collapseProgress: collapseProgress,
-                            collapseWeekRow: collapseWeekRow,
-                            viewModeRowHeight: rowHeight,
-                            screenHeight: constraints.maxHeight,
-                    contentInset: monthContentInset,
-                            scrollOffset: collapseScrollOffset,
-                            eventsByDay: orderedEventsByDay,
-                            viewMode: viewMode,
-                            onDayTap: onDayTap,
-                            onDayLongPress: onDayLongPress,
-                            circleSlideX: row == collapseWeekRow
-                                ? circleSlideX
-                                : 0.0,
-                            settleCount: settleCount,
-                            blobDeltaX: row == collapseWeekRow
-                                ? blobDeltaX
-                                : 0.0,
-                            blobSnapCount: blobSnapCount,
-                            pendingBloomDate: pendingBloomDate,
-                            suppressScaleAnimation: suppressScaleAnimation,
-                            daySubMode: daySubMode,
+            final document = ClipRect(
+              child: LayoutBuilder(
+                builder: (context, documentConstraints) {
+                  final documentEmptyH = selectedDayIsEmpty && showMonthList
+                      ? math.max(0.0, documentConstraints.maxHeight - gridH)
+                      : emptyH;
+                  final documentEmptyStateH =
+                      selectedDayIsEmpty && showMonthList
+                      ? math.max(
+                          0.0,
+                          documentEmptyH - emptyStateFloatingClearance,
+                        )
+                      : emptyStateH;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Keep the viewport tail opaque like the week rows. This
+                      // trailing surface behaves like the next strip below the month:
+                      // it moves down with the rows below the selected week, including
+                      // when the selected week is the final row and no lower row exists.
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: trailingMonthSurfaceTop,
+                        bottom: 0,
+                        child: Transform.translate(
+                          offset: Offset(0, monthListStripOffsetY),
+                          child: ColoredBox(
+                            key: ValueKey(
+                              'calendar-month-trailing-surface-$year-$month',
+                            ),
+                            color: resolveThemeColor(kBackgroundColor, context),
                           ),
-                      ],
-                    ),
-                  ),
-                  if (showMonthList)
-                    Transform.translate(
-                      offset: Offset(0, monthListStripOffsetY),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        ),
+                      ),
+                      // ── Scrollable body ───────────────────────────────────
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: monthContentInset,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                          SizedBox(height: _kDayLabelHeight),
+                          const SizedBox(height: _kCalendarHeaderToDowGap),
+                          SizedBox(
+                            height: totalRows * rowHeight,
+                            child: Stack(
+                              clipBehavior: Clip.none,
                               children: [
-                                KeyedSubtree(
-                                  key: morphListContentKey,
-                                  child: _monthSelectedEventsWidgetFor(
-                                    data: monthListData!,
-                                    selectedDayIndex: selectedListChildIndex,
-                                    height: monthListUsesNaturalHeight
-                                        ? null
-                                        : listContentH,
-                                    emptyStateHeight: selectedListIsEmpty
-                                        ? listContentH
-                                        : availableListEmptyStateH,
-                                    onEditEvent: onEditEvent,
-                                    scrollController: scrollController,
-                                    scrollViewportKey: scrollViewportKey,
-                                    onOrderChanged: onMonthListOrderChanged,
-                                  ),
-                                ),
-                                if (monthListUsesNaturalHeight)
-                                  SizedBox(height: eventContentClearance),
+                                for (int row = 0; row < totalRows; row++)
+                                  if (!hidePinnedDayRow ||
+                                      row != collapseWeekRow)
+                                    _AnimatedWeekRow(
+                                      year: year,
+                                      month: month,
+                                      row: row,
+                                      morphRowKey:
+                                          morphWeekRowKeys != null &&
+                                              row < morphWeekRowKeys!.length
+                                          ? morphWeekRowKeys![row]
+                                          : null,
+                                      morphDayKeys: morphDayKeysForRow(row),
+                                      today: today,
+                                      selectedDate: selectedDate,
+                                      collapseProgress: collapseProgress,
+                                      collapseWeekRow: collapseWeekRow,
+                                      viewModeRowHeight: rowHeight,
+                                      screenHeight: constraints.maxHeight,
+                                      contentInset: monthContentInset,
+                                      scrollOffset: collapseScrollOffset,
+                                      eventsByDay: orderedEventsByDay,
+                                      viewMode: viewMode,
+                                      onDayTap: onDayTap,
+                                      onDayLongPress: onDayLongPress,
+                                      circleSlideX: row == collapseWeekRow
+                                          ? circleSlideX
+                                          : 0.0,
+                                      settleCount: settleCount,
+                                      blobDeltaX: row == collapseWeekRow
+                                          ? blobDeltaX
+                                          : 0.0,
+                                      blobSnapCount: blobSnapCount,
+                                      pendingBloomDate: pendingBloomDate,
+                                      suppressScaleAnimation:
+                                          suppressScaleAnimation,
+                                      daySubMode: daySubMode,
+                                    ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  else if (emptyH > 0)
-                    Transform.translate(
-                      offset: Offset(0, monthListStripOffsetY),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: monthContentInset,
-                        ),
-                        child: SizedBox(
-                          height: emptyH,
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                height: emptyStateH,
-                                child: Opacity(
-                                  opacity:
-                                      collapseProgress <
-                                          _kMonthDayTransitionThreshold
-                                      ? (1.0 - collapseProgress * 4.0).clamp(
-                                          0.0,
-                                          1.0,
-                                        )
-                                      : 0.0,
-                                  child: Center(
-                                      child: Text(
-                                        'No Events',
-                                        style: TextStyle(
-                                          inherit: false,
-                                          fontFamily: kSFProText,
-                                          fontWeight: FontWeight.w400,
-                                          fontStyle: FontStyle.normal,
-                                          letterSpacing: kTracking16,
-                                          height: kLineHeight,
-                                          fontSize: kEmptyStateLabelFontSize,
-                                          color: secondaryC,
-                                        ),
+                          if (showMonthList)
+                            Transform.translate(
+                              offset: Offset(0, monthListStripOffsetY),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: monthContentInset,
                                     ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        KeyedSubtree(
+                                          key: morphListContentKey,
+                                          child: _monthSelectedEventsWidgetFor(
+                                            data: monthListData!,
+                                            selectedDayIndex:
+                                                selectedListChildIndex,
+                                            height: monthListUsesNaturalHeight
+                                                ? null
+                                                : listContentH,
+                                            emptyStateHeight:
+                                                selectedListIsEmpty
+                                                ? listContentH
+                                                : availableListEmptyStateH,
+                                            onEditEvent: onEditEvent,
+                                            scrollController: scrollController,
+                                            scrollViewportKey:
+                                                scrollViewportKey,
+                                            onOrderChanged:
+                                                onMonthListOrderChanged,
+                                          ),
+                                        ),
+                                        if (monthListUsesNaturalHeight)
+                                          SizedBox(
+                                            height: eventContentClearance,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (documentEmptyH > 0)
+                            Transform.translate(
+                              offset: Offset(0, monthListStripOffsetY),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: monthContentInset,
+                                ),
+                                child: SizedBox(
+                                  height: documentEmptyH,
+                                  child: Column(
+                                    children: [
+                                      SizedBox(
+                                        height: documentEmptyStateH,
+                                        child: Opacity(
+                                          opacity:
+                                              collapseProgress <
+                                                  _kMonthDayTransitionThreshold
+                                              ? (1.0 - collapseProgress * 4.0)
+                                                    .clamp(0.0, 1.0)
+                                              : 0.0,
+                                          child: Center(
+                                            child: Text(
+                                              'No Events',
+                                              style: TextStyle(
+                                                inherit: false,
+                                                fontFamily: kSFProText,
+                                                fontWeight: FontWeight.w400,
+                                                fontStyle: FontStyle.normal,
+                                                letterSpacing: kTracking16,
+                                                height: kLineHeight,
+                                                fontSize:
+                                                    kEmptyStateLabelFontSize,
+                                                color: secondaryC,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height:
+                                            documentEmptyH -
+                                            documentEmptyStateH,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              SizedBox(height: emptyH - emptyStateH),
-                            ],
-                          ),
-                        ),
+                            ),
+                        ],
                       ),
-                    ),
-                ],
-              ),
 
-              // ── Day-of-week header overlay ────────────────────────
-              // Painted last = highest z-order, covers rows that overflow
-              // upward during the collapse animation.
-              // 10px right margin mirrors the day-row inset;
-              // week-num column is Expanded (equal to day columns).
-              //
-              // Scroll-offset compensation: when entering Day View from a
-              // scrolled Month View the viewport scroll stays at
-              // capturedOffset during the animation.  The DOW header sits
-              // at content-y=the fixed header gap, so its viewport-y is
-              // fixed relative to the header (minus capturedOffset)
-              // (above the fold, invisible).  Translating it DOWN by
-              // collapseScrollOffset × collapseProgress brings it into
-              // view in lock-step with the week strip arriving after the
-              // DOW baseline and the 12pt indicator allowance.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: _kDayLabelHeight,
-                child: Transform.translate(
-                    offset: Offset(
-                      0,
-                      collapseScrollOffset * collapseProgress,
-                    ),
-                    child: ColoredBox(
-                      key: morphDowHeaderKey,
-                      color: resolveThemeColor(kBackgroundColor, context),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: monthContentInset,
-                        ),
-                        child: Row(
-                          children: [
-                            const Expanded(child: SizedBox.shrink()),
-                            ...List.generate(
-                              7,
-                              (i) => Expanded(
-                                child: Center(
-                                  key: morphDowLabelKeys != null &&
-                                          i < morphDowLabelKeys!.length
-                                      ? morphDowLabelKeys![i]
-                                      : null,
-                                  child: Baseline(
-                                    baseline: _kDayLabelHeight,
-                                    baselineType: TextBaseline.alphabetic,
-                                    child: Text(
-                                      _kDayLetters[i],
-                                      style: TextStyle(
-                                        fontFamily: kSFProText,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: secondaryC,
-                                        letterSpacing: -0.1,
+                      // ── Day-of-week header overlay ────────────────────────
+                      // Painted last = highest z-order, covers rows that overflow
+                      // upward during the collapse animation.
+                      // 10px right margin mirrors the day-row inset;
+                      // week-num column is Expanded (equal to day columns).
+                      //
+                      // Scroll-offset compensation: when entering Day View from a
+                      // scrolled Month View the viewport scroll stays at
+                      // capturedOffset during the animation.  The DOW header sits
+                      // at content-y=the fixed header gap, so its viewport-y is
+                      // fixed relative to the header (minus capturedOffset)
+                      // (above the fold, invisible).  Translating it DOWN by
+                      // collapseScrollOffset × collapseProgress brings it into
+                      // view in lock-step with the week strip arriving after the
+                      // DOW baseline and the 12pt indicator allowance.
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: _kDayLabelHeight,
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            collapseScrollOffset * collapseProgress,
+                          ),
+                          child: ColoredBox(
+                            key: morphDowHeaderKey,
+                            color: resolveThemeColor(kBackgroundColor, context),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: monthContentInset,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Expanded(child: SizedBox.shrink()),
+                                  ...List.generate(
+                                    7,
+                                    (i) => Expanded(
+                                      child: Center(
+                                        key:
+                                            morphDowLabelKeys != null &&
+                                                i < morphDowLabelKeys!.length
+                                            ? morphDowLabelKeys![i]
+                                            : null,
+                                        child: Baseline(
+                                          baseline: _kDayLabelHeight,
+                                          baselineType: TextBaseline.alphabetic,
+                                          child: Text(
+                                            _kDayLetters[i],
+                                            style: TextStyle(
+                                              fontFamily: kSFProText,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: secondaryC,
+                                              letterSpacing: -0.1,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 7),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 7),
-                          ],
+                          ),
                         ),
                       ),
+                    ],
+                  );
+                },
+              ),
+            );
+
+            final monthHeaderTransition =
+                AppHeaderScrollInsetScope.titleTransitionOf(context);
+            final Widget monthDocument;
+            if (isPortrait &&
+                scrollTitleIsActive &&
+                monthHeaderTransition != null) {
+              final compactOffset = -_calendarDowTextTopInset(context);
+              monthDocument = AnimatedBuilder(
+                animation: monthHeaderTransition,
+                builder: (context, _) => Transform.translate(
+                  offset: Offset(
+                    0.0,
+                    compactOffset * monthHeaderTransition.collapseProgress,
+                  ),
+                  child: document,
+                ),
+              );
+            } else {
+              monthDocument = document;
+            }
+
+            return KeyedSubtree(
+              key: scrollViewportKey == null
+                  ? null
+                  : const ValueKey('calendar-month-scroll-viewport'),
+              child: AppHeaderScrollView(
+                key: scrollViewportKey,
+                topExtension: kContentAreaTopRaise,
+                controller: scrollController,
+                mirrorSharedHeaderCollapse: !scrollTitleIsActive,
+                physics: collapseProgress < _kMonthDayTransitionThreshold
+                    ? const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      )
+                    : const NeverScrollableScrollPhysics(),
+                clipBehavior: Clip.none,
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: AppHeaderScrollInset(
+                      enabled: isPortrait,
+                      expandedTitleContentGap:
+                          kAppHeaderExpandedTitleContentGap,
+                      expandedTitleContentGapFromBaseline: true,
+                      expandedTitleContentGapContentInset: isPortrait
+                          ? _calendarDowTextTopInset(context)
+                          : 0.0,
+                      child: stationaryScrollTitleWidget == null
+                          ? null
+                          : Transform.translate(
+                              offset: const Offset(0.0, kContentAreaTopRaise),
+                              child: stationaryScrollTitleWidget,
+                            ),
                     ),
-                ),
-              ),
-            ],
-          ),
-        );
-
-        final monthHeaderTransition =
-            AppHeaderScrollInsetScope.titleTransitionOf(context);
-        final Widget monthDocument;
-        if (isPortrait && scrollTitleIsActive && monthHeaderTransition != null) {
-          final compactOffset = -_calendarDowTextTopInset(context);
-          monthDocument = AnimatedBuilder(
-            animation: monthHeaderTransition,
-            builder: (context, _) => Transform.translate(
-              offset: Offset(
-                0.0,
-                compactOffset * monthHeaderTransition.collapseProgress,
-              ),
-              child: document,
-            ),
-          );
-        } else {
-          monthDocument = document;
-        }
-
-        return KeyedSubtree(
-            key: scrollViewportKey == null
-                ? null
-                : const ValueKey('calendar-month-scroll-viewport'),
-            child: AppHeaderScrollView(
-              key: scrollViewportKey,
-              topExtension: kContentAreaTopRaise,
-              controller: scrollController,
-              mirrorSharedHeaderCollapse: !scrollTitleIsActive,
-              physics: collapseProgress < _kMonthDayTransitionThreshold
-                  ? const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    )
-                  : const NeverScrollableScrollPhysics(),
-              clipBehavior: Clip.none,
-              slivers: [
-                SliverToBoxAdapter(
-                  child: AppHeaderScrollInset(
-                    enabled: isPortrait,
-                    expandedTitleContentGap:
-                        kAppHeaderExpandedTitleContentGap,
-                    expandedTitleContentGapFromBaseline: true,
-                    expandedTitleContentGapContentInset: isPortrait
-                        ? _calendarDowTextTopInset(context)
-                        : 0.0,
-                    child: stationaryScrollTitleWidget == null
-                        ? null
-                        : Transform.translate(
-                            offset: const Offset(0.0, kContentAreaTopRaise),
-                            child: stationaryScrollTitleWidget,
-                          ),
                   ),
-                ),
-                SliverToBoxAdapter(
-                  child: AppHeaderContentSpacing(
-                    visibleContentTopInset: landscapeDowTextTopInset,
+                  SliverToBoxAdapter(
+                    child: AppHeaderContentSpacing(
+                      visibleContentTopInset: landscapeDowTextTopInset,
+                    ),
                   ),
-                ),
-                if (!showMonthList)
-                  SliverLayoutBuilder(
-                    builder: (context, sliverConstraints) {
-                      final availableGridExtent = math.max(
-                        0.0,
-                        sliverConstraints.viewportMainAxisExtent -
-                            sliverConstraints.precedingScrollExtent,
-                      );
-                      final gridOverflows =
-                          gridH > availableGridExtent + 0.5;
-                      final documentHeight = gridOverflows
-                          ? gridH + emptyStateFloatingClearance
-                          : math.max(
-                              availableGridExtent,
-                              expandedViewportHeight,
-                            );
-                      return SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: SizedBox(
-                          height: gridOverflows
-                              ? documentHeight
-                              : availableGridExtent,
-                          child: OverflowBox(
-                            alignment: Alignment.topCenter,
-                            minWidth: sliverConstraints.crossAxisExtent,
-                            maxWidth: sliverConstraints.crossAxisExtent,
-                            minHeight: documentHeight,
-                            maxHeight: documentHeight,
-                            child: SizedBox(
-                              width: sliverConstraints.crossAxisExtent,
-                              height: documentHeight,
-                              child: monthDocument,
+                  if (!showMonthList)
+                    SliverLayoutBuilder(
+                      builder: (context, sliverConstraints) {
+                        final availableGridExtent = math.max(
+                          0.0,
+                          sliverConstraints.viewportMainAxisExtent -
+                              sliverConstraints.precedingScrollExtent,
+                        );
+                        final gridOverflows = gridH > availableGridExtent + 0.5;
+                        final documentHeight = gridOverflows
+                            ? gridH + emptyStateFloatingClearance
+                            : math.max(
+                                availableGridExtent,
+                                expandedViewportHeight,
+                              );
+                        return SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: SizedBox(
+                            height: gridOverflows
+                                ? documentHeight
+                                : availableGridExtent,
+                            child: OverflowBox(
+                              alignment: Alignment.topCenter,
+                              minWidth: sliverConstraints.crossAxisExtent,
+                              maxWidth: sliverConstraints.crossAxisExtent,
+                              minHeight: documentHeight,
+                              maxHeight: documentHeight,
+                              child: SizedBox(
+                                width: sliverConstraints.crossAxisExtent,
+                                height: documentHeight,
+                                child: monthDocument,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  )
-                else if (monthListUsesNaturalHeight)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: monthDocument,
-                  )
-                else
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: contentH, child: monthDocument),
-                  ),
-              ],
-            ),
-        );
+                        );
+                      },
+                    )
+                  else if (selectedListIsEmpty)
+                    SliverLayoutBuilder(
+                      builder: (context, sliverConstraints) {
+                        final availableBodyHeight = math.max(
+                          0.0,
+                          sliverConstraints.viewportMainAxisExtent -
+                              sliverConstraints.precedingScrollExtent,
+                        );
+                      final gridOverflows =
+                          gridH > availableBodyHeight + 0.5;
+                        final minimumEmptyBodyHeight =
+                            gridH +
+                            emptyStateFallbackH +
+                            emptyStateFloatingClearance;
+                      // The empty-state placeholder fills the viewport, but
+                      // must not make an otherwise-fitting month scrollable.
+                      // Only a genuinely overflowing grid needs a larger
+                      // document in this empty List-mode case.
+                      final emptyBodyHeight = gridOverflows
+                          ? minimumEmptyBodyHeight
+                          : availableBodyHeight;
+                        return SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: emptyBodyHeight,
+                            child: monthDocument,
+                          ),
+                        );
+                      },
+                    )
+                  else if (monthListUsesNaturalHeight)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: monthDocument,
+                    )
+                  else
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: contentH, child: monthDocument),
+                    ),
+                ],
+              ),
+            );
           },
         );
       },
@@ -6844,10 +6820,7 @@ class _StaticDayCircle extends StatelessWidget {
       return Container(
         width: circleSize,
         height: circleSize,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       );
     }
 
@@ -6858,8 +6831,7 @@ class _StaticDayCircle extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          if (stationaryCircleColor != null)
-            background(stationaryCircleColor!),
+          if (stationaryCircleColor != null) background(stationaryCircleColor!),
           if (circleColor != null)
             Transform.translate(
               offset: Offset(backgroundOffsetX, 0),
@@ -7174,18 +7146,13 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
         // handoff briefly leaves this renderer mounted.  Selection feedback
         // must never be able to change the selected circle's diameter.
         final double renderedScale =
-            widget.isSel ||
-                widget.fixedSize ||
-                widget.suppressScaleAnimation
+            widget.isSel || widget.fixedSize || widget.suppressScaleAnimation
             ? 1.0
             : scale;
         Widget transformedBackground(Widget background) {
           return Transform.translate(
             offset: Offset(widget.backgroundOffsetX, 0),
-            child: Transform.scale(
-              scale: renderedScale,
-              child: background,
-            ),
+            child: Transform.scale(scale: renderedScale, child: background),
           );
         }
 
@@ -7321,8 +7288,9 @@ class _WeekRowState extends State<_WeekRow> {
         // slot even when the row grows to provide bottom padding. Without
         // this, the in-cell circle is constrained differently from the
         // row-level swipe overlay and visibly grows on first movement.
-        final authoredIndicatorDiameter =
-            _calendarDayCircleDiameterFor(context);
+        final authoredIndicatorDiameter = _calendarDayCircleDiameterFor(
+          context,
+        );
         final indicatorSlotHeight = math.max(
           0.0,
           widget.rowHeight - kFixedTopPadding,
@@ -7344,14 +7312,18 @@ class _WeekRowState extends State<_WeekRow> {
         final circleTranslateX = isSliding
             ? -widget.circleSlideX * cellW / fullWidth
             : 0.0;
-        final selectedWeekdayColumn =
-            calendarWeekdayColumnForDate(widget.selectedDate);
+        final selectedWeekdayColumn = calendarWeekdayColumnForDate(
+          widget.selectedDate,
+        );
         final curCX = (selectedWeekdayColumn + 1.5) * cellW;
         bool selectedDateInRow = false;
         for (int c = 0; c < 7; c++) {
           final selectedRowDay = firstIdx + c - offset + 1;
-          final selectedRowDate =
-              DateTime(widget.year, widget.month, selectedRowDay);
+          final selectedRowDate = DateTime(
+            widget.year,
+            widget.month,
+            selectedRowDay,
+          );
           final selectedRowIsOverflow =
               selectedRowDay < 1 || selectedRowDay > days;
           if (_sameDay(selectedRowDate, widget.selectedDate) &&
@@ -7383,10 +7355,7 @@ class _WeekRowState extends State<_WeekRow> {
             widget.collapseProgress > _kMonthDayTransitionThreshold;
         final multiDayPill = multiDayCirclesActive
             ? Positioned(
-                left:
-                    curCX +
-                    circleTranslateX -
-                    restingIndicatorDiameter / 2,
+                left: curCX + circleTranslateX - restingIndicatorDiameter / 2,
                 top: kFixedTopPadding,
                 width: cellW + restingIndicatorDiameter,
                 height: restingIndicatorDiameter,
@@ -7419,259 +7388,273 @@ class _WeekRowState extends State<_WeekRow> {
                 if (multiDayPill != null) multiDayPill,
                 Row(
                   children: [
-              // Week number — equal-width column (same as day columns)
-              // Top-aligned to match day-circle vertical centre (kDayCircleOffset).
-              Expanded(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: kFixedTopPadding),
-                    child: SizedBox(
-                      height: restingIndicatorDiameter,
-                      child: Center(
-                        child: Text(
-                          '$weekNum',
-                          style: TextStyle(
-                            fontFamily: kSFProText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: secondaryLabel,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Day cells
-              ...List.generate(7, (col) {
-                final idx = firstIdx + col;
-                final day = idx - offset + 1;
-                final date = DateTime(widget.year, widget.month, day);
-                final isOverflow = day < 1 || day > days;
-                final displayDay = date.day;
-                final isToday = _sameDay(date, widget.today);
-                final isSel = _sameDay(date, widget.selectedDate);
-                final isNextDayMulti =
-                    multiDayCirclesActive &&
-                    _sameDay(
-                      date,
-                      widget.selectedDate.add(const Duration(days: 1)),
-                    );
-                // The month-list dot follows the first event in the same
-                // ordering shown below: all-day events first, then timed
-                // sections in time order. Do not use the raw EventStore order
-                // here, or a timed event can incorrectly win over an all-day
-                // event for the dot color.
-                // Event dots are only painted by Month List.  Avoid grouping
-                // and flattening every day's events for all 7 columns when
-                // the grid is in Compact, Stacked, or Details mode (which is
-                // also the hot path during Month↔Day collapse).
-                final dayEvents = widget.viewMode == CalendarViewMode.list &&
-                        widget.collapseProgress <
-                            _kMonthDayTransitionThreshold
-                    ? [
-                        for (final group in _groupMonthEvents(
-                          widget.eventsByDay[_calendarDateKey(date)] ??
-                              const [],
-                        ))
-                          ...group,
-                      ]
-                    : const <ScheduledEvent>[];
-
-                if (isOverflow && !widget.showOverflow) {
-                  return const Expanded(child: SizedBox.shrink());
-                }
-
-                final Widget dayCell;
-                if (isSliding) {
-                  // The selected marker is stateless while dragging. Its
-                  // visible copy is the row-level overlay below; this cell
-                  // keeps only today's stationary marker when selected=today.
-                  if (isSel) {
-                    dayCell = _StaticDayCircle(
-                      circleSize: restingIndicatorDiameter,
-                      stationaryCircleColor: isToday
-                          ? widget.daySubMode == DayViewSubMode.multiDay
-                              ? multiDayMarkerColor
-                              : resolveAccentColor(context).withOpacity(0.40)
-                          : null,
-                      child: const SizedBox.shrink(),
-                    );
-                  } else {
-                    // Adjacent and today markers retain their existing
-                    // renderer, but are also fixed-size during the drag.
-                    dayCell = _BloomDayCircle(
-                      key: ValueKey(date),
-                      isSel: false,
-                      tapCount: _tapCount,
-                      lastTappedDate: _lastTappedDate,
-                      myDate: date,
-                      settleCount: widget.settleCount,
-                      blobSnapCount: widget.blobSnapCount,
-                      pendingBloomDate: widget.pendingBloomDate,
-                      circleColor: isNextDayMulti
-                          ? multiDayMarkerColor
-                          : isToday
-                          ? widget.daySubMode == DayViewSubMode.multiDay
-                              ? multiDayMarkerColor
-                              : resolveAccentColor(context).withOpacity(0.40)
-                          : null,
-                      circleSize: restingIndicatorDiameter,
-                      fixedSize: true,
-                      suppressScaleAnimation: widget.suppressScaleAnimation,
-                      backgroundOffsetX: isNextDayMulti
-                          ? circleTranslateX
-                          : 0.0,
-                      stationaryCircleColor: isToday && isNextDayMulti
-                          ? widget.daySubMode == DayViewSubMode.multiDay
-                              ? multiDayMarkerColor
-                              : resolveAccentColor(context).withOpacity(0.40)
-                          : null,
-                      child: const SizedBox.shrink(),
-                    );
-                  }
-                } else {
-                  // Normal (non-sliding) mode — wrap in gel/bloom animation.
-                  //
-                  // Only the circle background is animated (scales).  The day
-                  // number text is always rendered at scale 1.0 — it's passed
-                  // as _BloomDayCircle.child and never included in the scale.
-                  //
-                  // isPendingBloom: the 55% timer has fired for this cell and
-                  // the settle animation is about to start (or is running).
-                  // Show white text + kAccentColor circle the same instant the
-                  // circle begins growing, before isSel becomes true.
-                  final bool isPendingBloom =
-                      widget.pendingBloomDate != null &&
-                      _sameDay(widget.pendingBloomDate!, date);
-
-                  final Color? circleColor;
-                  final Color textColor;
-                  final FontWeight fontWeight;
-                  if (isSel || isPendingBloom) {
-                    circleColor = resolveAccentColor(context);
-                    textColor = CupertinoColors.white;
-                    fontWeight = FontWeight.w600;
-                  } else if (isNextDayMulti) {
-                    // Multi-Day shows the adjacent date as its own circle,
-                    // using the exact same renderer and full-opacity styling
-                    // as the selected circle.
-                    circleColor = multiDayMarkerColor;
-                    textColor = CupertinoColors.white;
-                    fontWeight = FontWeight.w600;
-                  } else if (isToday) {
-                    // Multi-Day's today marker is rendered exactly like the
-                    // selected circle. Keep the established faded treatment
-                    // for Single Day and Month View.
-                    circleColor = widget.daySubMode == DayViewSubMode.multiDay
-                        ? multiDayMarkerColor
-                        : resolveAccentColor(context).withOpacity(0.40);
-                    textColor = CupertinoColors.white;
-                    fontWeight = FontWeight.w600;
-                  } else {
-                    circleColor = null;
-                    textColor = isOverflow ? secondaryLabel : primaryLabel;
-                    fontWeight = FontWeight.w400;
-                  }
-
-                  if (isSel) {
-                    // The selected marker has no animation controller. It is
-                    // exactly the resolved diameter at rest and in motion.
-                    dayCell = _StaticDayCircle(
-                      circleSize: restingIndicatorDiameter,
-                      circleColor: circleColor,
-                      child: Text(
-                        '$displayDay',
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 17,
-                          fontWeight: fontWeight,
-                          color: textColor,
-                        ),
-                      ),
-                    );
-                  } else {
-                    dayCell = _BloomDayCircle(
-                      key: ValueKey(date),
-                      isSel: false,
-                      tapCount: _tapCount,
-                      lastTappedDate: _lastTappedDate,
-                      myDate: date,
-                      settleCount: widget.settleCount,
-                      blobSnapCount: widget.blobSnapCount,
-                      pendingBloomDate: widget.pendingBloomDate,
-                      circleColor: circleColor,
-                      circleSize: restingIndicatorDiameter,
-                      suppressScaleAnimation:
-                          widget.suppressScaleAnimation,
-                      stationaryCircleColor:
-                          widget.daySubMode == DayViewSubMode.multiDay &&
-                              isNextDayMulti &&
-                              isToday
-                          ? multiDayMarkerColor
-                          : null,
-                      fixedSize: true,
-                      child: Text(
-                        '$displayDay',
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 17,
-                          fontWeight: fontWeight,
-                          color: textColor,
-                        ),
-                      ),
-                    );
-                  }
-                }
-
-                return Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _onDayTap(date),
-                    onLongPress: widget.onDayLongPress != null
-                        ? () => widget.onDayLongPress!(date)
-                        : null,
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: kFixedTopPadding),
-                        child: SizedBox(
-                          height: widget.rowHeight - kFixedTopPadding,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.topCenter,
-                            children: [
-                              if (widget.morphDayKeys != null &&
-                                  col < widget.morphDayKeys!.length &&
-                                  widget.morphDayKeys![col] != null)
-                                KeyedSubtree(
-                                  key: widget.morphDayKeys![col],
-                                  child: dayCell,
-                                )
-                              else
-                                dayCell,
-                              if (widget.viewMode == CalendarViewMode.list &&
-                                  widget.collapseProgress <
-                                      _kMonthDayTransitionThreshold &&
-                                  dayEvents.isNotEmpty &&
-                                  !isOverflow)
-                                Positioned(
-                                  top: _monthListDotTop(widget.rowHeight),
-                                  child: _MonthEventDots(
-                                    events: dayEvents,
-                                  ),
+                    // Week number — equal-width column (same as day columns)
+                    // Top-aligned to match day-circle vertical centre (kDayCircleOffset).
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: kFixedTopPadding),
+                          child: SizedBox(
+                            height: restingIndicatorDiameter,
+                            child: Center(
+                              child: Text(
+                                '$weekNum',
+                                style: TextStyle(
+                                  fontFamily: kSFProText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: secondaryLabel,
                                 ),
-                            ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
-              // 7px right margin — last day column ends 7px from the edge.
-              const SizedBox(width: 7),
+                    // Day cells
+                    ...List.generate(7, (col) {
+                      final idx = firstIdx + col;
+                      final day = idx - offset + 1;
+                      final date = DateTime(widget.year, widget.month, day);
+                      final isOverflow = day < 1 || day > days;
+                      final displayDay = date.day;
+                      final isToday = _sameDay(date, widget.today);
+                      final isSel = _sameDay(date, widget.selectedDate);
+                      final isNextDayMulti =
+                          multiDayCirclesActive &&
+                          _sameDay(
+                            date,
+                            widget.selectedDate.add(const Duration(days: 1)),
+                          );
+                      // The month-list dot follows the first event in the same
+                      // ordering shown below: all-day events first, then timed
+                      // sections in time order. Do not use the raw EventStore order
+                      // here, or a timed event can incorrectly win over an all-day
+                      // event for the dot color.
+                      // Event dots are only painted by Month List.  Avoid grouping
+                      // and flattening every day's events for all 7 columns when
+                      // the grid is in Compact, Stacked, or Details mode (which is
+                      // also the hot path during Month↔Day collapse).
+                      final dayEvents =
+                          widget.viewMode == CalendarViewMode.list &&
+                              widget.collapseProgress <
+                                  _kMonthDayTransitionThreshold
+                          ? [
+                              for (final group in _groupMonthEvents(
+                                widget.eventsByDay[_calendarDateKey(date)] ??
+                                    const [],
+                              ))
+                                ...group,
+                            ]
+                          : const <ScheduledEvent>[];
+
+                      if (isOverflow && !widget.showOverflow) {
+                        return const Expanded(child: SizedBox.shrink());
+                      }
+
+                      final Widget dayCell;
+                      if (isSliding) {
+                        // The selected marker is stateless while dragging. Its
+                        // visible copy is the row-level overlay below; this cell
+                        // keeps only today's stationary marker when selected=today.
+                        if (isSel) {
+                          dayCell = _StaticDayCircle(
+                            circleSize: restingIndicatorDiameter,
+                            stationaryCircleColor: isToday
+                                ? widget.daySubMode == DayViewSubMode.multiDay
+                                      ? multiDayMarkerColor
+                                      : resolveAccentColor(
+                                          context,
+                                        ).withOpacity(0.40)
+                                : null,
+                            child: const SizedBox.shrink(),
+                          );
+                        } else {
+                          // Adjacent and today markers retain their existing
+                          // renderer, but are also fixed-size during the drag.
+                          dayCell = _BloomDayCircle(
+                            key: ValueKey(date),
+                            isSel: false,
+                            tapCount: _tapCount,
+                            lastTappedDate: _lastTappedDate,
+                            myDate: date,
+                            settleCount: widget.settleCount,
+                            blobSnapCount: widget.blobSnapCount,
+                            pendingBloomDate: widget.pendingBloomDate,
+                            circleColor: isNextDayMulti
+                                ? multiDayMarkerColor
+                                : isToday
+                                ? widget.daySubMode == DayViewSubMode.multiDay
+                                      ? multiDayMarkerColor
+                                      : resolveAccentColor(
+                                          context,
+                                        ).withOpacity(0.40)
+                                : null,
+                            circleSize: restingIndicatorDiameter,
+                            fixedSize: true,
+                            suppressScaleAnimation:
+                                widget.suppressScaleAnimation,
+                            backgroundOffsetX: isNextDayMulti
+                                ? circleTranslateX
+                                : 0.0,
+                            stationaryCircleColor: isToday && isNextDayMulti
+                                ? widget.daySubMode == DayViewSubMode.multiDay
+                                      ? multiDayMarkerColor
+                                      : resolveAccentColor(
+                                          context,
+                                        ).withOpacity(0.40)
+                                : null,
+                            child: const SizedBox.shrink(),
+                          );
+                        }
+                      } else {
+                        // Normal (non-sliding) mode — wrap in gel/bloom animation.
+                        //
+                        // Only the circle background is animated (scales).  The day
+                        // number text is always rendered at scale 1.0 — it's passed
+                        // as _BloomDayCircle.child and never included in the scale.
+                        //
+                        // isPendingBloom: the 55% timer has fired for this cell and
+                        // the settle animation is about to start (or is running).
+                        // Show white text + kAccentColor circle the same instant the
+                        // circle begins growing, before isSel becomes true.
+                        final bool isPendingBloom =
+                            widget.pendingBloomDate != null &&
+                            _sameDay(widget.pendingBloomDate!, date);
+
+                        final Color? circleColor;
+                        final Color textColor;
+                        final FontWeight fontWeight;
+                        if (isSel || isPendingBloom) {
+                          circleColor = resolveAccentColor(context);
+                          textColor = CupertinoColors.white;
+                          fontWeight = FontWeight.w600;
+                        } else if (isNextDayMulti) {
+                          // Multi-Day shows the adjacent date as its own circle,
+                          // using the exact same renderer and full-opacity styling
+                          // as the selected circle.
+                          circleColor = multiDayMarkerColor;
+                          textColor = CupertinoColors.white;
+                          fontWeight = FontWeight.w600;
+                        } else if (isToday) {
+                          // Multi-Day's today marker is rendered exactly like the
+                          // selected circle. Keep the established faded treatment
+                          // for Single Day and Month View.
+                          circleColor =
+                              widget.daySubMode == DayViewSubMode.multiDay
+                              ? multiDayMarkerColor
+                              : resolveAccentColor(context).withOpacity(0.40);
+                          textColor = CupertinoColors.white;
+                          fontWeight = FontWeight.w600;
+                        } else {
+                          circleColor = null;
+                          textColor = isOverflow
+                              ? secondaryLabel
+                              : primaryLabel;
+                          fontWeight = FontWeight.w400;
+                        }
+
+                        if (isSel) {
+                          // The selected marker has no animation controller. It is
+                          // exactly the resolved diameter at rest and in motion.
+                          dayCell = _StaticDayCircle(
+                            circleSize: restingIndicatorDiameter,
+                            circleColor: circleColor,
+                            child: Text(
+                              '$displayDay',
+                              style: TextStyle(
+                                fontFamily: kSFProText,
+                                fontSize: 17,
+                                fontWeight: fontWeight,
+                                color: textColor,
+                              ),
+                            ),
+                          );
+                        } else {
+                          dayCell = _BloomDayCircle(
+                            key: ValueKey(date),
+                            isSel: false,
+                            tapCount: _tapCount,
+                            lastTappedDate: _lastTappedDate,
+                            myDate: date,
+                            settleCount: widget.settleCount,
+                            blobSnapCount: widget.blobSnapCount,
+                            pendingBloomDate: widget.pendingBloomDate,
+                            circleColor: circleColor,
+                            circleSize: restingIndicatorDiameter,
+                            suppressScaleAnimation:
+                                widget.suppressScaleAnimation,
+                            stationaryCircleColor:
+                                widget.daySubMode == DayViewSubMode.multiDay &&
+                                    isNextDayMulti &&
+                                    isToday
+                                ? multiDayMarkerColor
+                                : null,
+                            fixedSize: true,
+                            child: Text(
+                              '$displayDay',
+                              style: TextStyle(
+                                fontFamily: kSFProText,
+                                fontSize: 17,
+                                fontWeight: fontWeight,
+                                color: textColor,
+                              ),
+                            ),
+                          );
+                        }
+                      }
+
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _onDayTap(date),
+                          onLongPress: widget.onDayLongPress != null
+                              ? () => widget.onDayLongPress!(date)
+                              : null,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                top: kFixedTopPadding,
+                              ),
+                              child: SizedBox(
+                                height: widget.rowHeight - kFixedTopPadding,
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  alignment: Alignment.topCenter,
+                                  children: [
+                                    if (widget.morphDayKeys != null &&
+                                        col < widget.morphDayKeys!.length &&
+                                        widget.morphDayKeys![col] != null)
+                                      KeyedSubtree(
+                                        key: widget.morphDayKeys![col],
+                                        child: dayCell,
+                                      )
+                                    else
+                                      dayCell,
+                                    if (widget.viewMode ==
+                                            CalendarViewMode.list &&
+                                        widget.collapseProgress <
+                                            _kMonthDayTransitionThreshold &&
+                                        dayEvents.isNotEmpty &&
+                                        !isOverflow)
+                                      Positioned(
+                                        top: _monthListDotTop(widget.rowHeight),
+                                        child: _MonthEventDots(
+                                          events: dayEvents,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    // 7px right margin — last day column ends 7px from the edge.
+                    const SizedBox(width: 7),
                   ],
                 ),
               ],
@@ -7726,65 +7709,66 @@ class _WeekRowState extends State<_WeekRow> {
               height: widget.rowHeight,
               child: Row(
                 children: [
-                const Expanded(child: SizedBox.shrink()), // week-num spacer
-                ...List.generate(7, (col) {
-                  final idx2 = firstIdx + col;
-                  final day2 = idx2 - offset + 1;
-                  final date2 = DateTime(widget.year, widget.month, day2);
-                  final isOverflow2 = day2 < 1 || day2 > days;
-                  final isToday2 = _sameDay(date2, widget.today);
+                  const Expanded(child: SizedBox.shrink()), // week-num spacer
+                  ...List.generate(7, (col) {
+                    final idx2 = firstIdx + col;
+                    final day2 = idx2 - offset + 1;
+                    final date2 = DateTime(widget.year, widget.month, day2);
+                    final isOverflow2 = day2 < 1 || day2 > days;
+                    final isToday2 = _sameDay(date2, widget.today);
 
-                  if (isOverflow2 && !widget.showOverflow) {
-                    return const Expanded(child: SizedBox.shrink());
-                  }
+                    if (isOverflow2 && !widget.showOverflow) {
+                      return const Expanded(child: SizedBox.shrink());
+                    }
 
-                  // White if the sliding circle is currently over this column,
-                  // if today's faded circle sits here, or if this column is
-                  // the adjacent Multi-Day circle.
-                  final double circleCenter = curCX + circleTranslateX;
-                  final double colCenter = (col + 1.5) * cellW;
-                  final bool isUnderCircle =
-                      (circleCenter - colCenter).abs() < cellW * 0.5;
-                  // The adjacent Multi-Day circle stays one cell to the right
-                  // of the selected circle while the selected circle slides.
-                  final bool isUnderAdjacentCircle =
-                      multiDayHasAdjacentDay &&
-                      widget.collapseProgress > _kMonthDayTransitionThreshold &&
-                      (circleCenter + cellW - colCenter).abs() < cellW * 0.5;
+                    // White if the sliding circle is currently over this column,
+                    // if today's faded circle sits here, or if this column is
+                    // the adjacent Multi-Day circle.
+                    final double circleCenter = curCX + circleTranslateX;
+                    final double colCenter = (col + 1.5) * cellW;
+                    final bool isUnderCircle =
+                        (circleCenter - colCenter).abs() < cellW * 0.5;
+                    // The adjacent Multi-Day circle stays one cell to the right
+                    // of the selected circle while the selected circle slides.
+                    final bool isUnderAdjacentCircle =
+                        multiDayHasAdjacentDay &&
+                        widget.collapseProgress >
+                            _kMonthDayTransitionThreshold &&
+                        (circleCenter + cellW - colCenter).abs() < cellW * 0.5;
 
-                  final Color c;
-                  final FontWeight fw;
-                  if (isUnderCircle || isUnderAdjacentCircle || isToday2) {
-                    c = CupertinoColors.white;
-                    fw = FontWeight.w600;
-                  } else {
-                    c = isOverflow2 ? secondaryLabel : primaryLabel;
-                    fw = FontWeight.w400;
-                  }
+                    final Color c;
+                    final FontWeight fw;
+                    if (isUnderCircle || isUnderAdjacentCircle || isToday2) {
+                      c = CupertinoColors.white;
+                      fw = FontWeight.w600;
+                    } else {
+                      c = isOverflow2 ? secondaryLabel : primaryLabel;
+                      fw = FontWeight.w400;
+                    }
 
-                  return Expanded(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: kFixedTopPadding),
-                        child: SizedBox(
-                          height: restingIndicatorDiameter,
-                          child: Center(
-                            child: Text(
-                              '${date2.day}',
-                              style: TextStyle(
-                                fontFamily: kSFProText,
-                                fontSize: 17,
-                                fontWeight: fw,
-                                color: c,
+                    return Expanded(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: kFixedTopPadding),
+                          child: SizedBox(
+                            height: restingIndicatorDiameter,
+                            child: Center(
+                              child: Text(
+                                '${date2.day}',
+                                style: TextStyle(
+                                  fontFamily: kSFProText,
+                                  fontSize: 17,
+                                  fontWeight: fw,
+                                  color: c,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
                   const SizedBox(width: 7),
                 ],
               ),
@@ -7850,7 +7834,7 @@ class _MonthSelectedEvents extends StatelessWidget {
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
   final void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
-      onOrderChanged;
+  onOrderChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -7914,10 +7898,7 @@ class _MonthSelectedEvents extends StatelessWidget {
 }
 
 class _MonthEventGroup extends StatefulWidget {
-  const _MonthEventGroup({
-    required this.events,
-    this.onEditEvent,
-  });
+  const _MonthEventGroup({required this.events, this.onEditEvent});
 
   final List<ScheduledEvent> events;
   final void Function(ScheduledEvent event)? onEditEvent;
@@ -8012,8 +7993,9 @@ class _MonthEventGroupState extends State<_MonthEventGroup> {
     _dragGlobalY = globalPosition.dy;
     _dragOverlay?.markNeedsBuild();
 
-    final currentIndex =
-        _orderedEvents.indexWhere((event) => event.id == _draggingEventId);
+    final currentIndex = _orderedEvents.indexWhere(
+      (event) => event.id == _draggingEventId,
+    );
     if (currentIndex < 0) return;
 
     var targetIndex = _orderedEvents.length;
@@ -8048,74 +8030,71 @@ class _MonthEventGroupState extends State<_MonthEventGroup> {
   Widget build(BuildContext context) {
     final events = _orderedEvents;
     final isAllDay = events.first.isAllDay || events.first.time == null;
-    final header =
-        isAllDay ? 'All-day' : dcvTimeSectionKey(events.first.time!);
+    final header = isAllDay ? 'All-day' : dcvTimeSectionKey(events.first.time!);
     final dotColors = [
       for (final event in events) _monthEventDotColor(context, event),
     ];
     return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            buildDcvSectionLabel(
-              text: header,
-              isFirst: true,
-               isCollapsed: _isCollapsed,
-              accentColor: resolveAccentColor(context),
-               onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOut,
-               child: _isCollapsed
-                  ? const SizedBox.shrink()
-                  : Container(
-                      clipBehavior: Clip.antiAlias,
-                      decoration: ShapeDecoration(
-                        color: resolveThemeColor(kSbSurface, context),
-                        shape: const BoundedSquircleStadiumBorder(
-                          radius: kSbCornerRadius,
-                        ),
-                        shadows: resolveThemeShadows(kCardShadow, context),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var index = 0; index < events.length; index++)
-                            KeyedSubtree(
-                              key: _eventKeys.putIfAbsent(
-                                events[index].id,
-                                GlobalKey.new,
-                              ),
-                              child: Opacity(
-                                opacity: events[index].id == _draggingEventId
-                                    ? 0.0
-                                    : 1.0,
-                                child: buildDcvEventCard(
-                                  event: events[index],
-                                  dotColor: dotColors[index],
-                                  isFirst: index == 0,
-                                  isLast: index == events.length - 1,
-                                  reorderable: true,
-                                  onReorderStart: (position) =>
-                                      _startReorder(events[index], position),
-                                  onReorderUpdate: _updateReorder,
-                                  onReorderEnd: _endReorder,
-                                  onReorderCancel: _endReorder,
-                                  onEdit: widget.onEditEvent == null
-                                      ? null
-                                      : () => widget.onEditEvent!(events[index]),
-                                  onDelete: () => confirmDeleteEvent(
-                                    context,
-                                    events[index],
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        buildDcvSectionLabel(
+          text: header,
+          isFirst: true,
+          isCollapsed: _isCollapsed,
+          accentColor: resolveAccentColor(context),
+          onTap: () => setState(() => _isCollapsed = !_isCollapsed),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          child: _isCollapsed
+              ? const SizedBox.shrink()
+              : Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: ShapeDecoration(
+                    color: resolveThemeColor(kSbSurface, context),
+                    shape: const BoundedSquircleStadiumBorder(
+                      radius: kSbCornerRadius,
                     ),
-            ),
-          ],
-        );
+                    shadows: resolveThemeShadows(kCardShadow, context),
+                  ),
+                  child: Column(
+                    children: [
+                      for (var index = 0; index < events.length; index++)
+                        KeyedSubtree(
+                          key: _eventKeys.putIfAbsent(
+                            events[index].id,
+                            GlobalKey.new,
+                          ),
+                          child: Opacity(
+                            opacity: events[index].id == _draggingEventId
+                                ? 0.0
+                                : 1.0,
+                            child: buildDcvEventCard(
+                              event: events[index],
+                              dotColor: dotColors[index],
+                              isFirst: index == 0,
+                              isLast: index == events.length - 1,
+                              reorderable: true,
+                              onReorderStart: (position) =>
+                                  _startReorder(events[index], position),
+                              onReorderUpdate: _updateReorder,
+                              onReorderEnd: _endReorder,
+                              onReorderCancel: _endReorder,
+                              onEdit: widget.onEditEvent == null
+                                  ? null
+                                  : () => widget.onEditEvent!(events[index]),
+                              onDelete: () =>
+                                  confirmDeleteEvent(context, events[index]),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
+    );
   }
 }
 
@@ -8157,20 +8136,13 @@ class _DayListPlaceholder extends StatelessWidget {
       slivers: [
         SliverToBoxAdapter(
           child: AppHeaderScrollInset(
-            enabled:
-                MediaQuery.orientationOf(context) == Orientation.portrait,
-            expandedTitleContentGap:
-                kAppHeaderExpandedTitleContentGap,
+            enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
+            expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
             expandedTitleContentGapFromBaseline: true,
           ),
         ),
-        const SliverToBoxAdapter(
-          child: AppHeaderContentSpacing(),
-        ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: emptyStateContent,
-        ),
+        const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
+        SliverFillRemaining(hasScrollBody: false, child: emptyStateContent),
       ],
     );
   }
@@ -8326,9 +8298,11 @@ class _BlobCircleState extends State<_BlobCircle>
       // Cache the authored shape — only the bounded clip path rebuilds.
       child: widget.child,
       builder: (context, child) {
-        final deformation = ((_ctrl.isAnimating ? _springAnim.value : _stretch) -
-                1.0)
-            .clamp(0.0, 0.50);
+        final deformation =
+            ((_ctrl.isAnimating ? _springAnim.value : _stretch) - 1.0).clamp(
+              0.0,
+              0.50,
+            );
 
         return ClipPath(
           clipper: _BoundedBlobClipper(
@@ -8600,10 +8574,7 @@ class _DayBannerState extends State<_DayBanner>
     final weekday = short
         ? _kWeekdaysShort[date.weekday - 1]
         : _kWeekdays[date.weekday - 1];
-    final formattedDate = formatAppDateMedium(
-      date,
-      includeYear: !short,
-    );
+    final formattedDate = formatAppDateMedium(date, includeYear: !short);
     final secondLine = formattedDate;
     final singleLine = short
         ? '$weekday, $formattedDate'
@@ -8660,7 +8631,8 @@ class _DayBannerState extends State<_DayBanner>
       duration: const Duration(milliseconds: 320),
       // A newly mounted Multi-Day banner is already settled unless this is an
       // explicit Single↔Multi switch inside Day View.
-      value: widget.daySubMode == DayViewSubMode.multiDay &&
+      value:
+          widget.daySubMode == DayViewSubMode.multiDay &&
               !widget.animateMultiDayTransition
           ? 1.0
           : 0.0,
@@ -8717,10 +8689,7 @@ class _DayBannerState extends State<_DayBanner>
                   mediaSize.width > mediaSize.height &&
                   widget.daySubMode == DayViewSubMode.multiDay;
               final labelColW = _hourLabelColW(MediaQuery.textScalerOf(ctx));
-              final contentW = math.max(
-                0.0,
-                totalW - inset * 2 - labelColW,
-              );
+              final contentW = math.max(0.0, totalW - inset * 2 - labelColW);
               final contentLeft = inset + labelColW;
               final midX = contentLeft + contentW / 2;
 
@@ -8751,9 +8720,9 @@ class _DayBannerState extends State<_DayBanner>
                 widget.date,
                 includeYear: false,
               );
-              final yearSuffix = formatAppDateMedium(widget.date).substring(
-                monthDay.length,
-              );
+              final yearSuffix = formatAppDateMedium(
+                widget.date,
+              ).substring(monthDay.length);
 
               // ── Multi Day sliding layout ─────────────────────────────────
               // When fully morphed into Multi Day mode AND the user is actively
@@ -8813,13 +8782,9 @@ class _DayBannerState extends State<_DayBanner>
                   children: [
                     // Fixed vertical separators at their fully-open positions.
                     Positioned(
-                      key: const Key(
-                        'calendar-multiday-banner-left-separator',
-                      ),
+                      key: const Key('calendar-multiday-banner-left-separator'),
                       left:
-                          contentLeft +
-                          _kMultiDayIndicatorDividerShift -
-                          0.25,
+                          contentLeft + _kMultiDayIndicatorDividerShift - 0.25,
                       top: 0,
                       bottom: 0,
                       width: 0.5,
@@ -8855,8 +8820,7 @@ class _DayBannerState extends State<_DayBanner>
               // At rest, use the responsive two-column version so each
               // Multi-Day label can wrap independently without changing the
               // separator geometry or the swipe transition.
-              if (t >= 0.99 &&
-                  widget.daySubMode == DayViewSubMode.multiDay) {
+              if (t >= 0.99 && widget.daySubMode == DayViewSubMode.multiDay) {
                 final colW = contentW / 2;
                 return Stack(
                   clipBehavior: Clip.hardEdge,
@@ -8900,13 +8864,9 @@ class _DayBannerState extends State<_DayBanner>
                       ),
                     ),
                     Positioned(
-                      key: const Key(
-                        'calendar-multiday-banner-left-separator',
-                      ),
+                      key: const Key('calendar-multiday-banner-left-separator'),
                       left:
-                          contentLeft +
-                          _kMultiDayIndicatorDividerShift -
-                          0.25,
+                          contentLeft + _kMultiDayIndicatorDividerShift - 0.25,
                       top: 0,
                       bottom: 0,
                       width: 0.5,
@@ -9068,9 +9028,7 @@ class _DayBannerState extends State<_DayBanner>
                   ),
                   // Left separator: slides in from beyond the left edge
                   Positioned(
-                    key: const Key(
-                      'calendar-multiday-banner-left-separator',
-                    ),
+                    key: const Key('calendar-multiday-banner-left-separator'),
                     left: sep1X,
                     top: 0,
                     bottom: 0,
@@ -9118,8 +9076,7 @@ class _DayBannerState extends State<_DayBanner>
 const double _kMultiDayIndicatorDividerShift = 5.5;
 // Horizontal hour hairlines begin at the left edge of the shifted divider,
 // rather than underneath the label-column breathing offset.
-const double _kMultiDayHourLineInset =
-    _kMultiDayIndicatorDividerShift - 0.25;
+const double _kMultiDayHourLineInset = _kMultiDayIndicatorDividerShift - 0.25;
 
 class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
@@ -9368,9 +9325,7 @@ class _DayTimelineState extends State<_DayTimeline>
                           clipBehavior: Clip.none,
                           children: [
                             Positioned.fill(
-                              child: RepaintBoundary(
-                                child: staticTimeline!,
-                              ),
+                              child: RepaintBoundary(child: staticTimeline!),
                             ),
 
                             // Left separator — extends far beyond content bounds so
@@ -9404,7 +9359,6 @@ class _DayTimelineState extends State<_DayTimeline>
                                   child: Container(color: separatorColor),
                                 ),
                               ),
-
                           ],
                         );
                       },
@@ -9482,7 +9436,6 @@ class _DayTimelineState extends State<_DayTimeline>
                             width: 0.5,
                             child: Container(color: separatorColor),
                           ),
-
                       ],
                     );
                   },
@@ -9615,9 +9568,7 @@ _HourLabelMetrics _hourLabelMetrics(TextScaler scaler) {
     if (tightWidth > availableTextWidth) {
       expandedWidth = math.max(
         expandedWidth,
-        _kHourLabelLeftPadding +
-            tightWidth +
-            _kHourLabelRightPadding,
+        _kHourLabelLeftPadding + tightWidth + _kHourLabelRightPadding,
       );
     }
   }
@@ -9787,10 +9738,16 @@ class _CurrentTimeIndicator extends StatelessWidget {
     );
     final fullLabel = _fullLabel;
     final compactLabel = _compactLabel;
-    final fullLabelWidth =
-        _measureCurrentTimeLabel(fullLabel, scaler, labelStyle);
-    final compactLabelWidth =
-        _measureCurrentTimeLabel(compactLabel, scaler, labelStyle);
+    final fullLabelWidth = _measureCurrentTimeLabel(
+      fullLabel,
+      scaler,
+      labelStyle,
+    );
+    final compactLabelWidth = _measureCurrentTimeLabel(
+      compactLabel,
+      scaler,
+      labelStyle,
+    );
     final fullFits = fullLabelWidth <= availableTextWidth;
     final compactFits = compactLabelWidth <= availableTextWidth;
     // Keep the period suffix on one line when possible. Once it no longer
@@ -9806,8 +9763,11 @@ class _CurrentTimeIndicator extends StatelessWidget {
     // Keep the capsule wide enough to read as a pill when the suffix is
     // removed. Use the widest normal full label as the visual baseline, but
     // let the available label column win at very large text sizes.
-    final widestFullLabelWidth =
-        _measureCurrentTimeLabel('10:00 pm', scaler, labelStyle);
+    final widestFullLabelWidth = _measureCurrentTimeLabel(
+      '10:00 pm',
+      scaler,
+      labelStyle,
+    );
     final pillTextWidth = math.min(
       availableTextWidth,
       math.max(fullLabelWidth, widestFullLabelWidth),
@@ -9856,11 +9816,7 @@ class _CurrentTimeIndicator extends StatelessWidget {
           // default marker center is labelColW + 5.5.  The caller supplies
           // the additional live swipe translation.
           const SizedBox(width: _kMultiDayIndicatorDividerShift - 3.5),
-          const SizedBox(
-            width: 7,
-            height: 7,
-            child: _CurrentTimeDot(),
-          ),
+          const SizedBox(width: 7, height: 7, child: _CurrentTimeDot()),
           // Keep the marker row full-width for its live translation; the
           // visible line segment below is capped at today's column boundary.
           if (multiDayLineWidth == null)
@@ -9896,9 +9852,7 @@ class _CurrentTimeIndicator extends StatelessWidget {
               child: ClipRect(
                 child: Transform.translate(
                   offset: Offset(
-                    multiDayWholeShiftX == 0.0
-                        ? multiDayMarkerShiftX
-                        : 0.0,
+                    multiDayWholeShiftX == 0.0 ? multiDayMarkerShiftX : 0.0,
                     0,
                   ),
                   child: marker,
@@ -10210,110 +10164,110 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   final double posAplus2 =
                       colW + contentW + slideX * contentW / sw;
 
-                   // The pill/marker exists only while today's actual column
-                   // intersects the visible content area. Checking the
-                   // candidate dates alone is not enough during a swipe:
-                   // Aplus2/Aminus1 is mounted just outside the viewport before
-                   // it enters, and would otherwise leave a time pill behind
-                   // even though today is not on screen.
-                   bool isVisibleColumn(DateTime date, double contentPos) {
-                     if (!_sameDay(date, widget.today)) return false;
-                     final left = contentLeft + contentPos;
-                     final right = left + colW;
-                     return right > contentLeft && left < contentRight;
-                   }
+                  // The pill/marker exists only while today's actual column
+                  // intersects the visible content area. Checking the
+                  // candidate dates alone is not enough during a swipe:
+                  // Aplus2/Aminus1 is mounted just outside the viewport before
+                  // it enters, and would otherwise leave a time pill behind
+                  // even though today is not on screen.
+                  bool isVisibleColumn(DateTime date, double contentPos) {
+                    if (!_sameDay(date, widget.today)) return false;
+                    final left = contentLeft + contentPos;
+                    final right = left + colW;
+                    return right > contentLeft && left < contentRight;
+                  }
 
-                   // Keep the whole indicator mounted for the complete
-                   // Single-Day-style panel travel.  The day column itself
-                   // becomes "invisible" as soon as it reaches the label
-                   // divider, but the pill/circle/line must remain alive
-                   // while its full-width transform carries it to the
-                   // viewport edge.
-                   final bool wholeIndicatorActive =
-                       (goingLeft && _sameDay(A, widget.today)) ||
-                       (!goingLeft && _sameDay(Aminus1, widget.today));
-                    final swipeProgress = (slideX.abs() / sw)
-                        .clamp(0.0, 1.0)
-                        .toDouble();
-                    // A shared day changes sides when the swipe commits.
-                    // Animate the line endpoint with the live drag so that
-                    // resetting to the newly selected date is continuous.
-                    final sharedTodayMovesToRight =
-                        !goingLeft && _sameDay(A, widget.today);
-                    final sharedTodayMovesToLeft =
-                        goingLeft && _sameDay(Aplus1, widget.today);
-                   final bool showIndicator =
-                       wholeIndicatorActive ||
-                       isVisibleColumn(A, posA) ||
-                       isVisibleColumn(Aplus1, posAplus1) ||
-                       (!goingLeft && isVisibleColumn(Aminus1, posAminus1)) ||
-                       (goingLeft && isVisibleColumn(Aplus2, posAplus2));
+                  // Keep the whole indicator mounted for the complete
+                  // Single-Day-style panel travel.  The day column itself
+                  // becomes "invisible" as soon as it reaches the label
+                  // divider, but the pill/circle/line must remain alive
+                  // while its full-width transform carries it to the
+                  // viewport edge.
+                  final bool wholeIndicatorActive =
+                      (goingLeft && _sameDay(A, widget.today)) ||
+                      (!goingLeft && _sameDay(Aminus1, widget.today));
+                  final swipeProgress = (slideX.abs() / sw)
+                      .clamp(0.0, 1.0)
+                      .toDouble();
+                  // A shared day changes sides when the swipe commits.
+                  // Animate the line endpoint with the live drag so that
+                  // resetting to the newly selected date is continuous.
+                  final sharedTodayMovesToRight =
+                      !goingLeft && _sameDay(A, widget.today);
+                  final sharedTodayMovesToLeft =
+                      goingLeft && _sameDay(Aplus1, widget.today);
+                  final bool showIndicator =
+                      wholeIndicatorActive ||
+                      isVisibleColumn(A, posA) ||
+                      isVisibleColumn(Aplus1, posAplus1) ||
+                      (!goingLeft && isVisibleColumn(Aminus1, posAminus1)) ||
+                      (goingLeft && isVisibleColumn(Aplus2, posAplus2));
 
-                    // Indicator slide rules:
-                   //   • The indicator belongs to today's day column, so its
-                   //     dot/line anchor follows that column's left edge.
-                   //   • A shared day moves at half speed with its column.
-                   //   • An entering or exiting day uses the same full-speed
-                   //     column position, which carries the whole indicator
-                   //     cleanly off-screen.
+                  // Indicator slide rules:
+                  //   • The indicator belongs to today's day column, so its
+                  //     dot/line anchor follows that column's left edge.
+                  //   • A shared day moves at half speed with its column.
+                  //   • An entering or exiting day uses the same full-speed
+                  //     column position, which carries the whole indicator
+                  //     cleanly off-screen.
                   //
                   // goingLeft (slideX ≤ 0): final pair = [A+1, A+2]
                   //   A exits left, A+1 stays, A+2 enters right.
                   // goingRight (slideX > 0):  final pair = [A-1, A]
                   //   A+1 exits right, A stays, A-1 enters left.
-                    double markerShiftX = 0.0;
-                    double wholeIndicatorShiftX = 0.0;
-                     double todayColumnPos = 0.0;
-                     bool todayIsRightColumn = false;
+                  double markerShiftX = 0.0;
+                  double wholeIndicatorShiftX = 0.0;
+                  double todayColumnPos = 0.0;
+                  bool todayIsRightColumn = false;
                   if (showIndicator) {
-                     if (goingLeft) {
-                       if (_sameDay(A, widget.today)) {
-                           todayColumnPos = posA;
-                          // Match the Single-Day panel transform exactly:
-                          // the current panel leaves from its resting x=0
-                          // origin at the full screen-width slide offset.
-                          wholeIndicatorShiftX = slideX;
-                       } else if (_sameDay(Aplus1, widget.today)) {
-                          todayColumnPos = posAplus1;
-                          todayIsRightColumn = true;
-                         // Shared right-side today moves toward the left
-                         // divider. Interpolate between the shifted left
-                         // divider and the exact center divider.
-                         markerShiftX =
-                             (posAplus1 / colW) *
-                             (colW - _kMultiDayIndicatorDividerShift);
-                       } else if (_sameDay(Aplus2, widget.today)) {
-                          todayColumnPos = posAplus2;
-                          todayIsRightColumn = true;
-                         // Entering right-side today must arrive centered on
-                         // the center divider, not 5.5 px beyond it.
-                         markerShiftX =
-                             posAplus2 - _kMultiDayIndicatorDividerShift;
-                       }
-                     } else {
-                       if (_sameDay(Aminus1, widget.today)) {
-                           todayColumnPos = posAminus1;
-                          // Match the Single-Day previous-panel transform
-                          // exactly.  The indicator starts one full screen
-                          // width off the left edge and arrives at x=0
-                          // together with that panel.
-                          wholeIndicatorShiftX = slideX - sw;
-                       } else if (_sameDay(A, widget.today)) {
-                          todayColumnPos = posA;
-                         // Shared today moves from the left divider to the
-                         // exact center divider.
-                         markerShiftX =
-                             (posA / colW) *
-                             (colW - _kMultiDayIndicatorDividerShift);
-                       } else if (_sameDay(Aplus1, widget.today)) {
-                          todayColumnPos = posAplus1;
-                          todayIsRightColumn = true;
-                         // Right-side today exits from the exact center line.
-                         markerShiftX =
-                             posAplus1 - _kMultiDayIndicatorDividerShift;
-                       }
-                     }
-                   }
+                    if (goingLeft) {
+                      if (_sameDay(A, widget.today)) {
+                        todayColumnPos = posA;
+                        // Match the Single-Day panel transform exactly:
+                        // the current panel leaves from its resting x=0
+                        // origin at the full screen-width slide offset.
+                        wholeIndicatorShiftX = slideX;
+                      } else if (_sameDay(Aplus1, widget.today)) {
+                        todayColumnPos = posAplus1;
+                        todayIsRightColumn = true;
+                        // Shared right-side today moves toward the left
+                        // divider. Interpolate between the shifted left
+                        // divider and the exact center divider.
+                        markerShiftX =
+                            (posAplus1 / colW) *
+                            (colW - _kMultiDayIndicatorDividerShift);
+                      } else if (_sameDay(Aplus2, widget.today)) {
+                        todayColumnPos = posAplus2;
+                        todayIsRightColumn = true;
+                        // Entering right-side today must arrive centered on
+                        // the center divider, not 5.5 px beyond it.
+                        markerShiftX =
+                            posAplus2 - _kMultiDayIndicatorDividerShift;
+                      }
+                    } else {
+                      if (_sameDay(Aminus1, widget.today)) {
+                        todayColumnPos = posAminus1;
+                        // Match the Single-Day previous-panel transform
+                        // exactly.  The indicator starts one full screen
+                        // width off the left edge and arrives at x=0
+                        // together with that panel.
+                        wholeIndicatorShiftX = slideX - sw;
+                      } else if (_sameDay(A, widget.today)) {
+                        todayColumnPos = posA;
+                        // Shared today moves from the left divider to the
+                        // exact center divider.
+                        markerShiftX =
+                            (posA / colW) *
+                            (colW - _kMultiDayIndicatorDividerShift);
+                      } else if (_sameDay(Aplus1, widget.today)) {
+                        todayColumnPos = posAplus1;
+                        todayIsRightColumn = true;
+                        // Right-side today exits from the exact center line.
+                        markerShiftX =
+                            posAplus1 - _kMultiDayIndicatorDividerShift;
+                      }
+                    }
+                  }
 
                   // Returns a Positioned for a sliding day column.
                   // Columns carry no visible content of their own — all
@@ -10368,15 +10322,12 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                       // At t=0: -0.5 (hidden). At t=1: the shifted label
                       // divider used by the current-time indicator.
                       final sep1Target =
-                          contentLeft +
-                          _kMultiDayIndicatorDividerShift -
-                          0.25;
+                          contentLeft + _kMultiDayIndicatorDividerShift - 0.25;
                       final sep1X = -0.5 + (sep1Target + 0.5) * t;
                       // Centre separator slides in from beyond the right edge.
                       // At t=0: totalW (hidden). At t=1: midpoint.
                       final sep2X =
-                          totalW +
-                          (contentLeft + colW - 0.25 - totalW) * t;
+                          totalW + (contentLeft + colW - 0.25 - totalW) * t;
                       final animateIndicatorWithSeparators =
                           (widget.animateEntrance || widget.animateExit) &&
                           _sepCtrl.isAnimating;
@@ -10392,21 +10343,18 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                       final markerOriginShiftX = wholeIndicatorActive
                           ? wholeIndicatorShiftX
                           : indicatorMarkerShiftX;
-                      final dayRightEdgeX =
-                          contentLeft + todayColumnPos + colW;
+                      final dayRightEdgeX = contentLeft + todayColumnPos + colW;
                       final double indicatorLineEndX;
                       if (animateIndicatorWithSeparators &&
                           !todayIsRightColumn) {
                         indicatorLineEndX = animatedCenterX;
-                      } else if (isLandscape &&
-                          sharedTodayMovesToRight) {
+                      } else if (isLandscape && sharedTodayMovesToRight) {
                         indicatorLineEndX =
                             dayRightEdgeX +
                             (totalW - dayRightEdgeX) * swipeProgress;
                       } else if (isLandscape && sharedTodayMovesToLeft) {
                         indicatorLineEndX =
-                            totalW +
-                            (dayRightEdgeX - totalW) * swipeProgress;
+                            totalW + (dayRightEdgeX - totalW) * swipeProgress;
                       } else if (isLandscape && todayIsRightColumn) {
                         indicatorLineEndX = totalW;
                       } else {
@@ -10443,9 +10391,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                           // ── Animated vertical separators ───────────────
                           // Left sep slides from beyond-left → label-col edge.
                           Positioned(
-                            key: const Key(
-                              'calendar-multiday-left-separator',
-                            ),
+                            key: const Key('calendar-multiday-left-separator'),
                             left: sep1X,
                             top: -9999,
                             bottom: -9999,
@@ -10480,28 +10426,30 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                               ),
                             ),
 
-                            // Current-time marker belongs to the active day
-                            // column. The pill normally remains in the left
-                            // label column; the exception is a left-side
-                            // today entering from off-screen, where the
-                            // entire indicator returns as one element. Paint
-                            // it after the separators so the dot sits visibly
-                            // on top of the vertical divider.
-                           if (showIndicator)
-                             Positioned(
-                               left: horizontalInset,
-                               right: 0,
-                               top: indicatorTop,
-                               child: _CurrentTimeIndicator(
-                                 key: const Key('calendar-current-time-indicator'),
-                                 hour: now.hour,
-                                 minute: now.minute,
-                                 multiDay: true,
-                                  multiDayMarkerShiftX: indicatorMarkerShiftX,
-                                  multiDayLineWidth: multiDayLineWidth,
-                                  multiDayWholeShiftX: wholeIndicatorShiftX,
-                               ),
-                             ),
+                          // Current-time marker belongs to the active day
+                          // column. The pill normally remains in the left
+                          // label column; the exception is a left-side
+                          // today entering from off-screen, where the
+                          // entire indicator returns as one element. Paint
+                          // it after the separators so the dot sits visibly
+                          // on top of the vertical divider.
+                          if (showIndicator)
+                            Positioned(
+                              left: horizontalInset,
+                              right: 0,
+                              top: indicatorTop,
+                              child: _CurrentTimeIndicator(
+                                key: const Key(
+                                  'calendar-current-time-indicator',
+                                ),
+                                hour: now.hour,
+                                minute: now.minute,
+                                multiDay: true,
+                                multiDayMarkerShiftX: indicatorMarkerShiftX,
+                                multiDayLineWidth: multiDayLineWidth,
+                                multiDayWholeShiftX: wholeIndicatorShiftX,
+                              ),
+                            ),
                         ],
                       );
                     },
@@ -10678,7 +10626,7 @@ class _AttachmentFilename extends StatelessWidget {
                 overflow: TextOverflow.visible,
               ),
             ),
-        ),
+          ),
         );
       },
     );
@@ -10740,10 +10688,9 @@ class _NewEventSheet extends StatefulWidget {
   final ScheduledEvent? initial;
   final String? initialCategoryId;
   final Map<String, List<String>>? Function()? dcvSectionNamesProvider;
-  final Map<String, List<List<String>>>? Function()?
-      dcvSectionEventIdsProvider;
+  final Map<String, List<List<String>>>? Function()? dcvSectionEventIdsProvider;
   final void Function(String label, List<List<String>> sectionEventIds)?
-      onDcvSectionEventIdsChanged;
+  onDcvSectionEventIdsChanged;
 
   const _NewEventSheet({
     this.initial,
@@ -11286,10 +11233,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   }
 
   ScrollController _attachmentScrollControllerFor(_AttachmentFile file) {
-    return _attachmentScrollControllers.putIfAbsent(
-      file,
-      ScrollController.new,
-    );
+    return _attachmentScrollControllers.putIfAbsent(file, ScrollController.new);
   }
 
   // ── Formatting ────────────────────────────────────────────────────────────
@@ -11442,9 +11386,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final clearIconSize = scaledSearchIconSize(context, 18);
     final resolvedSurface = resolveThemeColor(kModalCard, context);
     final textField = CupertinoTheme(
-      data: CupertinoTheme.of(context).copyWith(
-        primaryColor: renderCategoryColor(_categoryColor, context),
-      ),
+      data: CupertinoTheme.of(
+        context,
+      ).copyWith(primaryColor: renderCategoryColor(_categoryColor, context)),
       child: DefaultSelectionStyle(
         selectionColor: renderCategoryColor(
           _categoryColor,
@@ -11453,40 +11397,39 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: trackTextFieldPointerDown(
           focusNode: focus,
           child: CupertinoTextField(
-          controller: ctrl,
-          focusNode: focus,
-          scrollController: scrollController,
-          placeholder: '',
-          style: _kLabelStyle,
-          cursorColor: renderCategoryColor(_categoryColor, context),
-          decoration: null,
-          selectionControls: hapticQuietCupertinoTextSelectionControls,
-          contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
-          textCapitalization: TextCapitalization.sentences,
-          maxLines: maxLinesOverride ?? (multiline ? null : 1),
-          minLines: minLinesOverride ?? (multiline ? 3 : 1),
-          onTap: caretToEndOnTap
-              ? () {
-                  if (shouldMoveTextFieldCaretToEnd(focus)) {
-                    scheduleTextFieldCaretToEnd(
-                      ctrl,
-                      scrollController: scrollController,
-                      isMounted: () => mounted,
-                    );
+            controller: ctrl,
+            focusNode: focus,
+            scrollController: scrollController,
+            placeholder: '',
+            style: _kLabelStyle,
+            cursorColor: renderCategoryColor(_categoryColor, context),
+            decoration: null,
+            selectionControls: hapticQuietCupertinoTextSelectionControls,
+            contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
+            textCapitalization: TextCapitalization.sentences,
+            maxLines: maxLinesOverride ?? (multiline ? null : 1),
+            minLines: minLinesOverride ?? (multiline ? 3 : 1),
+            onTap: caretToEndOnTap
+                ? () {
+                    if (shouldMoveTextFieldCaretToEnd(focus)) {
+                      scheduleTextFieldCaretToEnd(
+                        ctrl,
+                        scrollController: scrollController,
+                        isMounted: () => mounted,
+                      );
+                    }
                   }
-                }
-              : null,
-          scrollPhysics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-           padding:
-               multiline
-                   ? EdgeInsets.only(right: math.max(28.0, clearIconSize))
-                   : EdgeInsets.only(
-                       left: 0,
-                       right: clearIconSize + kHorizontalFadeContentGap,
-                     ),
-          onChanged: (_) => setState(() {}),
+                : null,
+            scrollPhysics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            padding: multiline
+                ? EdgeInsets.only(right: math.max(28.0, clearIconSize))
+                : EdgeInsets.only(
+                    left: 0,
+                    right: clearIconSize + kHorizontalFadeContentGap,
+                  ),
+            onChanged: (_) => setState(() {}),
           ),
         ),
       ),
@@ -11516,13 +11459,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   fadeOnRubberbandWhenContentFits: true,
                   // This field is already 16 px inside the card from the
                   // outer row padding, so the card-edge fade begins here.
-                   leadingInset: 0,
-                   trailingInset: clearIconSize + kHorizontalFadeContentGap,
-                   placeholderText: multiline ? null : placeholder,
-                   placeholderTextStyle: multiline
-                       ? null
-                       : _kPlaceholderStyle,
-                   placeholderFocusNode: multiline ? null : focus,
+                  leadingInset: 0,
+                  trailingInset: clearIconSize + kHorizontalFadeContentGap,
+                  placeholderText: multiline ? null : placeholder,
+                  placeholderTextStyle: multiline ? null : _kPlaceholderStyle,
+                  placeholderFocusNode: multiline ? null : focus,
                   controller: ctrl,
                   scrollController: scrollController,
                   child: textField,
@@ -11656,71 +11597,62 @@ class _NewEventSheetState extends State<_NewEventSheet>
     bool value,
     ValueChanged<bool> onChanged, {
     bool reconcilePointerUp = false,
-  }) =>
-      Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onChanged(!value),
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 16,
-                  top: 10,
-                  bottom: 10,
-                ),
-                child: SizedBox(
-                  height: 30,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(label, style: _kLabelStyle),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-              right: 16,
-              top: 10,
-              bottom: 10,
-            ),
-            // height: 30 matches pill height so switch rows == date rows
+  }) => Row(
+    children: [
+      Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onChanged(!value),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, top: 10, bottom: 10),
             child: SizedBox(
-              width: 70 * 0.80,
               height: 30,
-              child: OverflowBox(
-                maxWidth: 70,
-                maxHeight: 31,
-                alignment: Alignment.center,
-                child: Transform.scale(
-                  scale: 0.80,
-                  child: Listener(
-                    onPointerDown: reconcilePointerUp
-                        ? _rememberAllDaySwitchPointer
-                        : null,
-                    onPointerMove: reconcilePointerUp
-                        ? _trackAllDaySwitchPointer
-                        : null,
-                    onPointerUp: reconcilePointerUp
-                        ? _reconcileAllDaySwitchPointer
-                        : null,
-                    onPointerCancel: reconcilePointerUp
-                        ? _clearAllDaySwitchPointer
-                        : null,
-                    child: AppSwitch(
-                      value: value,
-                      onChanged: onChanged,
-                      color: _resolvedCategoryColor,
-                      height: 31,
-                    ),
-                  ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(label, style: _kLabelStyle),
+              ),
+            ),
+          ),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
+        // height: 30 matches pill height so switch rows == date rows
+        child: SizedBox(
+          width: 70 * 0.80,
+          height: 30,
+          child: OverflowBox(
+            maxWidth: 70,
+            maxHeight: 31,
+            alignment: Alignment.center,
+            child: Transform.scale(
+              scale: 0.80,
+              child: Listener(
+                onPointerDown: reconcilePointerUp
+                    ? _rememberAllDaySwitchPointer
+                    : null,
+                onPointerMove: reconcilePointerUp
+                    ? _trackAllDaySwitchPointer
+                    : null,
+                onPointerUp: reconcilePointerUp
+                    ? _reconcileAllDaySwitchPointer
+                    : null,
+                onPointerCancel: reconcilePointerUp
+                    ? _clearAllDaySwitchPointer
+                    : null,
+                child: AppSwitch(
+                  value: value,
+                  onChanged: onChanged,
+                  color: _resolvedCategoryColor,
+                  height: 31,
                 ),
               ),
             ),
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 
   void _rememberAllDaySwitchPointer(PointerDownEvent event) {
     _allDaySwitchPointer = event.pointer;
@@ -11767,10 +11699,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final tapLikeCancel =
         !_allDaySwitchMovedPastSlop &&
         elapsed <= const Duration(milliseconds: 300);
-    _finishAllDaySwitchPointer(
-      event,
-      reconcileIfUnchanged: tapLikeCancel,
-    );
+    _finishAllDaySwitchPointer(event, reconcileIfUnchanged: tapLikeCancel);
   }
 
   // ── Date/time row (Starts / Ends) — date pill opens inline picker ─────────
@@ -12451,10 +12380,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       selectedDates: Set<int>.from(
         (m['selectedDates'] as List?)?.cast<int>() ?? [],
       ),
-      onThePositionIndex: _repeatPositionIndexFromMap(
-        m,
-        'onThePositionIndex',
-      ),
+      onThePositionIndex: _repeatPositionIndexFromMap(m, 'onThePositionIndex'),
       onTheDayIndex: (m['onTheDayIndex'] as int?) ?? 0,
       selectedMonths: Set<int>.from(
         (m['selectedMonths'] as List?)?.cast<int>() ?? [],
@@ -12688,8 +12614,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final raw = storedCategories is List
         ? storedCategories.map((value) => value.toString()).toList()
         : <String>[];
-    final rawDcvSections =
-        values[_kPrefsDcvCustomSections] as String?;
+    final rawDcvSections = values[_kPrefsDcvCustomSections] as String?;
     final rawDcvSectionEventIds =
         values[_kPrefsDcvCustomSectionEventIds] as String?;
     final loadedSectionNames = <String, List<String>>{};
@@ -13335,41 +13260,40 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   child: trackTextFieldPointerDown(
                     focusNode: focusNode,
                     child: CupertinoTextField(
-                    controller: ctrl,
-                    focusNode: focusNode,
-                    scrollController: scrollController,
-                    placeholder: '',
-                    placeholderStyle: _kPlaceholderStyle,
-                    style: _kLabelStyle,
-                    cursorColor: renderCategoryColor(_categoryColor, context),
-                    padding: EdgeInsets.only(
-                      left: kHorizontalFadeEdgeGap,
-                      right: _locationClearFieldGap(),
-                      top: 14,
-                      bottom: 14,
+                      controller: ctrl,
+                      focusNode: focusNode,
+                      scrollController: scrollController,
+                      placeholder: '',
+                      placeholderStyle: _kPlaceholderStyle,
+                      style: _kLabelStyle,
+                      cursorColor: renderCategoryColor(_categoryColor, context),
+                      padding: EdgeInsets.only(
+                        left: kHorizontalFadeEdgeGap,
+                        right: _locationClearFieldGap(),
+                        top: 14,
+                        bottom: 14,
+                      ),
+                      clearButtonMode: OverlayVisibilityMode.never,
+                      scrollPhysics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: null,
+                      selectionControls:
+                          hapticQuietCupertinoTextSelectionControls,
+                      contextMenuBuilder: buildSkeddoTextSelectionContextMenu,
+                      textInputAction: TextInputAction.next,
+                      onTap: () {
+                        if (shouldMoveTextFieldCaretToEnd(focusNode)) {
+                          scheduleTextFieldCaretToEnd(
+                            ctrl,
+                            scrollController: scrollController,
+                            isMounted: () => mounted,
+                          );
+                        }
+                      },
                     ),
-                    clearButtonMode: OverlayVisibilityMode.never,
-                    scrollPhysics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: null,
-                    selectionControls:
-                        hapticQuietCupertinoTextSelectionControls,
-                    contextMenuBuilder:
-                        buildSkeddoTextSelectionContextMenu,
-                    textInputAction: TextInputAction.next,
-                    onTap: () {
-                      if (shouldMoveTextFieldCaretToEnd(focusNode)) {
-                        scheduleTextFieldCaretToEnd(
-                          ctrl,
-                          scrollController: scrollController,
-                          isMounted: () => mounted,
-                        );
-                      }
-                    },
-                  ),
                   ),
                 ),
               ),
@@ -13389,10 +13313,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final clearIconSize = scaledSearchIconSize(context, 17);
     final actionSize = math.max(mapPinSize, clearIconSize);
     final clearIconLeadingInset = (actionSize - clearIconSize) / 2;
-    return math.max(
-      0.0,
-      kHorizontalFadeContentGap - clearIconLeadingInset,
-    );
+    return math.max(0.0, kHorizontalFadeContentGap - clearIconLeadingInset);
   }
 
   Widget _buildLocationTrailingAction(
@@ -13430,11 +13351,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ctrl.clear();
                     setState(() {});
                   },
-                   child: Align(
-                     // Keep the clear icon's right edge on the same trailing
-                     // edge as the map-pin circle. The row's outer 16 px
-                     // padding then applies equally to both actions.
-                     alignment: Alignment.centerRight,
+                  child: Align(
+                    // Keep the clear icon's right edge on the same trailing
+                    // edge as the map-pin circle. The row's outer 16 px
+                    // padding then applies equally to both actions.
+                    alignment: Alignment.centerRight,
                     child: Icon(
                       kSearchClearCircleIcon,
                       color: kEmptyStateIcon,
@@ -14606,14 +14527,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
       return null;
     }
     try {
-      return await _dropMetadataChannel.invokeMapMethod<String, Object?>(
-        'resolveUriMetadata',
-        {
-          'uri': uri?.toString(),
-          if (isIosDrop)
-            'typeIdentifiers': platformFormats.cast<String>(),
-        },
-      );
+      return await _dropMetadataChannel
+          .invokeMapMethod<String, Object?>('resolveUriMetadata', {
+            'uri': uri?.toString(),
+            if (isIosDrop) 'typeIdentifiers': platformFormats.cast<String>(),
+          });
     } catch (_) {
       // Some providers grant access to the dropped bytes but not metadata.
       // Keep the DataReader and filename/format fallbacks working in that case.
@@ -15100,87 +15018,90 @@ class _NewEventSheetState extends State<_NewEventSheet>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                SizedBox(height: 22),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        inherit: false,
-                        color: priColor,
-                        fontSize: 17,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      subtitle,
-                      style: TextStyle(
-                        inherit: false,
-                        color: secColor,
-                        fontSize: 15,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                AnimatedBuilder(
-                  animation: _importProgressCtrl,
-                  builder: (_, __) => CustomPaint(
-                    size: const Size(72, 72),
-                    painter: _ImportProgressPainter(
-                      progress: _importProgressCtrl.value,
-                      trackColor: trackColor,
-                      fillColor: catColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _cancelImport,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-                      decoration: ShapeDecoration(
-                        color: resolveThemeColor(kPillColor, context),
-                        shape: const BoundedSquircleStadiumBorder(
-                          radius: kConfirmationButtonCornerRadius,
-                        ),
-                      ),
-                      alignment: Alignment.center,
+                  SizedBox(height: 22),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
-                        'Cancel',
+                        title,
                         style: TextStyle(
                           inherit: false,
                           color: priColor,
                           fontSize: 17,
                           fontFamily: kSFProText,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: kTracking17,
                           height: kLineHeight,
                         ),
                       ),
                     ),
                   ),
-                ),
+                  SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        subtitle,
+                        style: TextStyle(
+                          inherit: false,
+                          color: secColor,
+                          fontSize: 15,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: kTracking17,
+                          height: kLineHeight,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  AnimatedBuilder(
+                    animation: _importProgressCtrl,
+                    builder: (_, __) => CustomPaint(
+                      size: const Size(72, 72),
+                      painter: _ImportProgressPainter(
+                        progress: _importProgressCtrl.value,
+                        trackColor: trackColor,
+                        fillColor: catColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _cancelImport,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 16,
+                        ),
+                        decoration: ShapeDecoration(
+                          color: resolveThemeColor(kPillColor, context),
+                          shape: const BoundedSquircleStadiumBorder(
+                            radius: kConfirmationButtonCornerRadius,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            inherit: false,
+                            color: priColor,
+                            fontSize: 17,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: kTracking17,
+                            height: kLineHeight,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -15851,29 +15772,29 @@ class _NewEventSheetState extends State<_NewEventSheet>
         _requestDismiss();
       },
       child: Stack(
-      // The rounded sheet route gives this page a finite 92% viewport.
-      // Expand the scaffold to that viewport so its header and Expanded
-      // scroll body receive the same bounded height as the Category sheet.
-      fit: StackFit.expand,
-      children: [
-        CupertinoPageScaffold(
-          backgroundColor: kModalBackground,
-          child: SafeArea(
-            bottom: false,
-            child: ModalSheetScrollUnder(
-              scrollController: _sheetScrollCtrl,
-              showTopEdgeOnShortContentRubberband: true,
-              headerTopInset: _kHeaderEdge,
-              headerHeight: _kHeaderBtnSize,
-              headerGap: 12,
-              baseScrollPadding: EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                modalSheetBottomPadding(context),
-              ),
-              surfaceColor: resolveThemeColor(kModalBackground, context),
-              header: RoundedCupertinoSheetHeader(
+        // The rounded sheet route gives this page a finite 92% viewport.
+        // Expand the scaffold to that viewport so its header and Expanded
+        // scroll body receive the same bounded height as the Category sheet.
+        fit: StackFit.expand,
+        children: [
+          CupertinoPageScaffold(
+            backgroundColor: kModalBackground,
+            child: SafeArea(
+              bottom: false,
+              child: ModalSheetScrollUnder(
+                scrollController: _sheetScrollCtrl,
+                showTopEdgeOnShortContentRubberband: true,
+                headerTopInset: _kHeaderEdge,
+                headerHeight: _kHeaderBtnSize,
+                headerGap: 12,
+                baseScrollPadding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  modalSheetBottomPadding(context),
+                ),
+                surfaceColor: resolveThemeColor(kModalBackground, context),
+                header: RoundedCupertinoSheetHeader(
                   child: SizedBox(
                     height: _kHeaderBtnSize,
                     width: double.infinity,
@@ -15882,7 +15803,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       children: [
                         Positioned.fill(
                           child: ModalSheetTitleScroller(
-                            title: widget.isEditing ? 'Edit Event' : 'New Event',
+                            title: widget.isEditing
+                                ? 'Edit Event'
+                                : 'New Event',
                             style: TextStyle(
                               inherit: false,
                               color: resolveThemeColor(kPrimaryLabel, context),
@@ -15943,256 +15866,256 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ),
                   ),
                 ),
-              scrollBuilder: (context, scrollPadding) => GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _dismissModalSheetFocus,
-                    child: SingleChildScrollView(
-                      controller: _sheetScrollCtrl,
-                      clipBehavior: Clip.none,
-                      // This sheet owns its scroll position. Without this,
-                      // it can inherit the calendar's primary controller and
-                      // open at the calendar's old offset, leaving only the
-                      // fixed header visible.
-                      primary: false,
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
-                      padding: scrollPadding,
-                      child: Column(
-                        children: [
-                          // Card 1 — Title + Subtitle
-                          _card([
-                            _textField(
-                              ctrl: _titleCtrl,
-                              focus: _titleFocus,
-                              placeholder: 'Title',
-                              caretToEndOnTap: true,
-                              scrollController: _titleScrollCtrl,
+                scrollBuilder: (context, scrollPadding) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _dismissModalSheetFocus,
+                  child: SingleChildScrollView(
+                    controller: _sheetScrollCtrl,
+                    clipBehavior: Clip.none,
+                    // This sheet owns its scroll position. Without this,
+                    // it can inherit the calendar's primary controller and
+                    // open at the calendar's old offset, leaving only the
+                    // fixed header visible.
+                    primary: false,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: scrollPadding,
+                    child: Column(
+                      children: [
+                        // Card 1 — Title + Subtitle
+                        _card([
+                          _textField(
+                            ctrl: _titleCtrl,
+                            focus: _titleFocus,
+                            placeholder: 'Title',
+                            caretToEndOnTap: true,
+                            scrollController: _titleScrollCtrl,
+                          ),
+                          _sep(),
+                          _textField(
+                            ctrl: _subtitleCtrl,
+                            focus: _subtitleFocus,
+                            placeholder: 'Subtitle',
+                            caretToEndOnTap: true,
+                            multiline: true,
+                            maxLinesOverride: 10,
+                            scrollController: _subtitleScrollCtrl,
+                          ),
+                        ]),
+                        const SizedBox(height: kModalCardGap),
+                        // Card 2 — All-day / Starts / Ends / Unscheduled.
+                        // Unscheduled is always at the bottom.  When toggled ON,
+                        // the All-day + Starts + Ends block collapses above it via
+                        // SizeTransition; the separator between that block and
+                        // Unscheduled lives inside the transition so it disappears
+                        // with the rows, leaving only Unscheduled in the card.
+                        _card([
+                          // Scheduled rows collapse when Unscheduled is on.
+                          SizeTransition(
+                            sizeFactor: _schedRowsCtrl,
+                            axisAlignment: -1.0,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _switchRow(
+                                  'All-day',
+                                  _allDay,
+                                  _toggleAllDay,
+                                  reconcilePointerUp: true,
+                                ),
+                                _sep(),
+                                _buildDateRow('Starts', _starts, 'starts'),
+                                // Starts picker — slides in below the Starts row.
+                                SizeTransition(
+                                  sizeFactor: _startsPickerCtrl,
+                                  axisAlignment: 1.0,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _sep(),
+                                      _buildInlineDatePicker(),
+                                    ],
+                                  ),
+                                ),
+                                _sep(),
+                                _buildDateRow('Ends', _ends, 'ends'),
+                                // Ends picker — slides in below the Ends row.
+                                SizeTransition(
+                                  sizeFactor: _endsPickerCtrl,
+                                  axisAlignment: 1.0,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _sep(),
+                                      _buildInlineDatePicker(),
+                                    ],
+                                  ),
+                                ),
+                                // Separator between Ends and Unscheduled — collapses
+                                // with the block so no orphan line remains.
+                                _sep(),
+                              ],
                             ),
-                            _sep(),
-                            _textField(
-                              ctrl: _subtitleCtrl,
-                              focus: _subtitleFocus,
-                              placeholder: 'Subtitle',
-                              caretToEndOnTap: true,
-                              multiline: true,
-                              maxLinesOverride: 10,
-                              scrollController: _subtitleScrollCtrl,
-                            ),
-                          ]),
-                          const SizedBox(height: kModalCardGap),
-                          // Card 2 — All-day / Starts / Ends / Unscheduled.
-                          // Unscheduled is always at the bottom.  When toggled ON,
-                          // the All-day + Starts + Ends block collapses above it via
-                          // SizeTransition; the separator between that block and
-                          // Unscheduled lives inside the transition so it disappears
-                          // with the rows, leaving only Unscheduled in the card.
-                          _card([
-                            // Scheduled rows collapse when Unscheduled is on.
+                          ),
+                          _switchRow(
+                            'Unscheduled',
+                            _unscheduled,
+                            _toggleUnscheduled,
+                          ),
+                        ]),
+                        const SizedBox(height: kModalCardGap),
+                        // Card 3 — Starting Location + Destination + Travel Time
+                        // + conditional Travel Mode subcard.
+                        _buildLocationSection(),
+                        // Card 4 — Repeat + conditional End Repeat + End Date
+                        // + inline calendar picker + Custom subsheet.
+                        // Wrapped in SizeTransition so it animates away (rather
+                        // than snapping) when Unscheduled is toggled on.
+                        ModalCardShadowSizeTransition(
+                          sizeFactor: _repeatCardCtrl,
+                          axisAlignment: 1.0,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: kModalCardGap),
+                              _buildRepeatSection(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: kModalCardGap),
+                        // Card 5 — Category + the optional custom-DCV Section
+                        // subrow. The section row stays in the same card so
+                        // its separator and rounded container behave like
+                        // the other dismissible modal-sheet subrows.
+                        AnimatedBuilder(
+                          animation: _sectionRowCtrl,
+                          builder: (_, __) => _card([
+                            _buildCategoryRow(),
                             SizeTransition(
-                              sizeFactor: _schedRowsCtrl,
+                              sizeFactor: _sectionRowCtrl,
                               axisAlignment: -1.0,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _switchRow(
-                                    'All-day',
-                                    _allDay,
-                                    _toggleAllDay,
-                                    reconcilePointerUp: true,
-                                  ),
-                                  _sep(),
-                                  _buildDateRow('Starts', _starts, 'starts'),
-                                  // Starts picker — slides in below the Starts row.
-                                  SizeTransition(
-                                    sizeFactor: _startsPickerCtrl,
-                                    axisAlignment: 1.0,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _sep(),
-                                        _buildInlineDatePicker(),
-                                      ],
-                                    ),
-                                  ),
-                                  _sep(),
-                                  _buildDateRow('Ends', _ends, 'ends'),
-                                  // Ends picker — slides in below the Ends row.
-                                  SizeTransition(
-                                    sizeFactor: _endsPickerCtrl,
-                                    axisAlignment: 1.0,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _sep(),
-                                        _buildInlineDatePicker(),
-                                      ],
-                                    ),
-                                  ),
-                                  // Separator between Ends and Unscheduled — collapses
-                                  // with the block so no orphan line remains.
-                                  _sep(),
-                                ],
+                                children: [_sep(), _buildSectionRow()],
                               ),
                             ),
-                            _switchRow(
-                              'Unscheduled',
-                              _unscheduled,
-                              _toggleUnscheduled,
-                            ),
                           ]),
-                          const SizedBox(height: kModalCardGap),
-                          // Card 3 — Starting Location + Destination + Travel Time
-                          // + conditional Travel Mode subcard.
-                          _buildLocationSection(),
-                          // Card 4 — Repeat + conditional End Repeat + End Date
-                          // + inline calendar picker + Custom subsheet.
-                          // Wrapped in SizeTransition so it animates away (rather
-                          // than snapping) when Unscheduled is toggled on.
-                          ModalCardShadowSizeTransition(
-                            sizeFactor: _repeatCardCtrl,
-                            axisAlignment: 1.0,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: kModalCardGap),
-                                _buildRepeatSection(),
-                              ],
-                            ),
+                        ),
+                        // Card 6 — Alert (normal events) / Reminder (Unscheduled).
+                        // The two sections cross-fade via _alertCardCtrl and
+                        // _reminderCardCtrl; each carries its own top SizedBox
+                        // so the gap disappears when the card collapses.
+                        ModalCardShadowSizeTransition(
+                          sizeFactor: _alertCardCtrl,
+                          axisAlignment: 1.0,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: kModalCardGap),
+                              _buildAlertsSection(),
+                            ],
                           ),
-                          const SizedBox(height: kModalCardGap),
-                          // Card 5 — Category + the optional custom-DCV Section
-                          // subrow. The section row stays in the same card so
-                          // its separator and rounded container behave like
-                          // the other dismissible modal-sheet subrows.
-                          AnimatedBuilder(
-                            animation: _sectionRowCtrl,
-                            builder: (_, __) => _card([
-                              _buildCategoryRow(),
-                              SizeTransition(
-                                sizeFactor: _sectionRowCtrl,
-                                axisAlignment: -1.0,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [_sep(), _buildSectionRow()],
+                        ),
+                        SizeTransition(
+                          sizeFactor: _reminderCardCtrl,
+                          axisAlignment: 1.0,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: kModalCardGap),
+                              _buildReminderSection(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: kModalCardGap),
+                        // Card 7 — attached files + "Add attachment…"
+                        //
+                        // AnimatedList owns the row insertion/removal height
+                        // animation. The outer card deliberately keeps one
+                        // fixed-radius shape in both empty and populated
+                        // states, so its corners do not morph as the list
+                        // grows or shrinks.
+                        _card([
+                          AnimatedList(
+                            key: _attachmentListKey,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            initialItemCount: _attachments.length,
+                            itemBuilder: (context, index, animation) =>
+                                SizeTransition(
+                                  sizeFactor: animation,
+                                  axisAlignment: -1.0,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildAttachmentFileRow(index),
+                                      _sep(),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ]),
                           ),
-                          // Card 6 — Alert (normal events) / Reminder (Unscheduled).
-                          // The two sections cross-fade via _alertCardCtrl and
-                          // _reminderCardCtrl; each carries its own top SizedBox
-                          // so the gap disappears when the card collapses.
-                          ModalCardShadowSizeTransition(
-                            sizeFactor: _alertCardCtrl,
-                            axisAlignment: 1.0,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: kModalCardGap),
-                                _buildAlertsSection(),
-                              ],
-                            ),
-                          ),
-                          SizeTransition(
-                            sizeFactor: _reminderCardCtrl,
-                            axisAlignment: 1.0,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: kModalCardGap),
-                                _buildReminderSection(),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: kModalCardGap),
-                          // Card 7 — attached files + "Add attachment…"
-                          //
-                          // AnimatedList owns the row insertion/removal height
-                          // animation. The outer card deliberately keeps one
-                          // fixed-radius shape in both empty and populated
-                          // states, so its corners do not morph as the list
-                          // grows or shrinks.
-                          _card([
-                            AnimatedList(
-                              key: _attachmentListKey,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              initialItemCount: _attachments.length,
-                              itemBuilder: (context, index, animation) =>
-                                  SizeTransition(
-                                    sizeFactor: animation,
-                                    axisAlignment: -1.0,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _buildAttachmentFileRow(index),
-                                        _sep(),
-                                      ],
+                          _buildAttachmentRow(),
+                        ]),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: _repeat != 'Never'
+                              ? SizedBox(
+                                  width: double.infinity,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 8,
+                                      left:
+                                          kModalSheetContextFooterHorizontalInset,
+                                      right:
+                                          kModalSheetContextFooterHorizontalInset,
+                                    ),
+                                    child: Text(
+                                      _kRecurringAttachmentFooter,
+                                      style: modalSheetContextFooterStyle(
+                                        context,
+                                      ),
+                                      textAlign: TextAlign.left,
                                     ),
                                   ),
-                            ),
-                            _buildAttachmentRow(),
-                          ]),
-                           AnimatedSize(
-                             duration: const Duration(milliseconds: 180),
-                             curve: Curves.easeOutCubic,
-                             alignment: Alignment.topCenter,
-                             child: _repeat != 'Never'
-                                 ? SizedBox(
-                                     width: double.infinity,
-                                     child: Padding(
-                                       padding: const EdgeInsets.only(
-                                         top: 8,
-                                         left:
-                                             kModalSheetContextFooterHorizontalInset,
-                                         right:
-                                             kModalSheetContextFooterHorizontalInset,
-                                       ),
-                                       child: Text(
-                                         _kRecurringAttachmentFooter,
-                                         style: modalSheetContextFooterStyle(
-                                           context,
-                                         ),
-                                         textAlign: TextAlign.left,
-                                       ),
-                                     ),
-                                   )
-                                 : const SizedBox(
-                                     width: double.infinity,
-                                     height: 0,
-                                   ),
-                           ),
-                          const SizedBox(height: kModalCardGap),
-                          // Card 8 — URL + Notes
-                          _card([
-                            _textField(
-                              ctrl: _urlCtrl,
-                              focus: _urlFocus,
-                              placeholder: 'URL',
-                              caretToEndOnTap: true,
-                              scrollController: _urlScrollCtrl,
-                            ),
-                            _sep(),
-                            _textField(
-                              ctrl: _notesCtrl,
-                              focus: _notesFocus,
-                              placeholder: 'Notes',
-                              caretToEndOnTap: true,
-                              multiline: true,
-                              maxLinesOverride: 10,
-                              minLinesOverride: 5,
-                              scrollController: _notesScrollCtrl,
-                            ),
-                          ]),
-                        ],
-                      ),
+                                )
+                              : const SizedBox(
+                                  width: double.infinity,
+                                  height: 0,
+                                ),
+                        ),
+                        const SizedBox(height: kModalCardGap),
+                        // Card 8 — URL + Notes
+                        _card([
+                          _textField(
+                            ctrl: _urlCtrl,
+                            focus: _urlFocus,
+                            placeholder: 'URL',
+                            caretToEndOnTap: true,
+                            scrollController: _urlScrollCtrl,
+                          ),
+                          _sep(),
+                          _textField(
+                            ctrl: _notesCtrl,
+                            focus: _notesFocus,
+                            placeholder: 'Notes',
+                            caretToEndOnTap: true,
+                            multiline: true,
+                            maxLinesOverride: 10,
+                            minLinesOverride: 5,
+                            scrollController: _notesScrollCtrl,
+                          ),
+                        ]),
+                      ],
                     ),
                   ),
                 ),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
@@ -16386,9 +16309,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     _yearlyPositionIndex = available.reduce(
       (nearest, candidate) =>
           (candidate - _yearlyPositionIndex).abs() <
-                  (nearest - _yearlyPositionIndex).abs()
-              ? candidate
-              : nearest,
+              (nearest - _yearlyPositionIndex).abs()
+          ? candidate
+          : nearest,
     );
   }
 
@@ -16493,8 +16416,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             .toList();
         final pos = _kPositions[_yearlyPositionIndex];
         final day = _positionDayLabel(_yearlyDayIndex);
-        final monthPhrase =
-            monthNames.isEmpty ? '' : ' of ${_joinDays(monthNames)}';
+        final monthPhrase = monthNames.isEmpty
+            ? ''
+            : ' of ${_joinDays(monthNames)}';
         return '$subject will occur $every on the $pos $day$monthPhrase.';
       }
       final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
@@ -16741,8 +16665,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       widestLabel = math.max(widestLabel, painter.width);
       painter.dispose();
     }
-    return widestLabel * _kPickerMagnification +
-        WheelOptionText.edgeInset * 2;
+    return widestLabel * _kPickerMagnification + WheelOptionText.edgeInset * 2;
   }
 
   Widget _positionDayPickerWithFullWidthSelectionBar(
@@ -16754,10 +16677,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         final availableWidth = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : preferredWidth;
-        final wheelGroupWidth = math.min(
-          availableWidth * 0.72,
-          preferredWidth,
-        );
+        final wheelGroupWidth = math.min(availableWidth * 0.72, preferredWidth);
         final optionWidth = wheelGroupWidth / 2;
         return SizedBox(
           width: availableWidth,
@@ -16770,11 +16690,10 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   child: SizedBox(
                     width: availableWidth,
                     height: _pickerItemExtent,
-                    child:
-                        const StadiumCupertinoPickerSelectionOverlay(
-                          capStartEdge: true,
-                          capEndEdge: true,
-                        ),
+                    child: const StadiumCupertinoPickerSelectionOverlay(
+                      capStartEdge: true,
+                      capEndEdge: true,
+                    ),
                   ),
                 ),
               ),
@@ -16917,71 +16836,71 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               final optionWidth = math.max(0.0, pickerColumnWidth - 20.0);
               return Row(
                 children: [
-              Expanded(
-                child: _pickerWithoutHorizontalClip(
-                  CupertinoPicker(
-                    scrollController: _everyCountCtrl,
-                    itemExtent: _pickerItemExtent,
-                    backgroundColor: CupertinoColors.transparent,
-                    useMagnifier: true,
-                    magnification: 2.35 / 2.1,
-                    squeeze: 1.25,
-                    offAxisFraction: -0.45,
-                    selectionOverlay:
-                        const StadiumCupertinoPickerSelectionOverlay(
-                          capStartEdge: true,
-                          capEndEdge: false,
-                        ),
-                    onSelectedItemChanged: (i) =>
-                        setState(() => _everyCount = i + 1),
-                    children: List.generate(
-                      999,
-                      (i) => Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 20),
-                          child: _pickerText(
-                            '${i + 1}',
-                            Alignment.centerRight,
-                            fallbackWidth: optionWidth,
+                  Expanded(
+                    child: _pickerWithoutHorizontalClip(
+                      CupertinoPicker(
+                        scrollController: _everyCountCtrl,
+                        itemExtent: _pickerItemExtent,
+                        backgroundColor: CupertinoColors.transparent,
+                        useMagnifier: true,
+                        magnification: 2.35 / 2.1,
+                        squeeze: 1.25,
+                        offAxisFraction: -0.45,
+                        selectionOverlay:
+                            const StadiumCupertinoPickerSelectionOverlay(
+                              capStartEdge: true,
+                              capEndEdge: false,
+                            ),
+                        onSelectedItemChanged: (i) =>
+                            setState(() => _everyCount = i + 1),
+                        children: List.generate(
+                          999,
+                          (i) => Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 20),
+                              child: _pickerText(
+                                '${i + 1}',
+                                Alignment.centerRight,
+                                fallbackWidth: optionWidth,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              Expanded(
-                child: _pickerWithoutHorizontalClip(
-                  CupertinoPicker(
-                    itemExtent: _pickerItemExtent,
-                    backgroundColor: CupertinoColors.transparent,
-                    useMagnifier: true,
-                    magnification: 2.35 / 2.1,
-                    squeeze: 1.25,
-                    offAxisFraction: 0.45,
-                    selectionOverlay:
-                        const StadiumCupertinoPickerSelectionOverlay(
-                          capStartEdge: false,
-                          capEndEdge: true,
-                        ),
-                    onSelectedItemChanged: (_) {},
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 20),
-                          child: _pickerText(
-                            _everyUnit,
-                            Alignment.centerLeft,
-                            fallbackWidth: optionWidth,
+                  Expanded(
+                    child: _pickerWithoutHorizontalClip(
+                      CupertinoPicker(
+                        itemExtent: _pickerItemExtent,
+                        backgroundColor: CupertinoColors.transparent,
+                        useMagnifier: true,
+                        magnification: 2.35 / 2.1,
+                        squeeze: 1.25,
+                        offAxisFraction: 0.45,
+                        selectionOverlay:
+                            const StadiumCupertinoPickerSelectionOverlay(
+                              capStartEdge: false,
+                              capEndEdge: true,
+                            ),
+                        onSelectedItemChanged: (_) {},
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 20),
+                              child: _pickerText(
+                                _everyUnit,
+                                Alignment.centerLeft,
+                                fallbackWidth: optionWidth,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
                 ],
               );
             },
@@ -17065,66 +16984,66 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         height: math.max(216.0, _pickerItemExtent * 5.5),
         child: _positionDayPickerWithFullWidthSelectionBar(
           (optionWidth) => Row(
-          children: [
-            Expanded(
-              child: _pickerWithoutHorizontalClip(
-                CupertinoPicker(
-                  scrollController: _onThePositionCtrl,
-                  itemExtent: _pickerItemExtent,
-                  backgroundColor: CupertinoColors.transparent,
-                  useMagnifier: true,
-                  magnification: 2.35 / 2.1,
-                  squeeze: 1.25,
-                  offAxisFraction: -0.30,
-                  selectionOverlay: const SizedBox.shrink(),
-                  onSelectedItemChanged: (i) =>
-                      setState(() => _onThePositionIndex = i),
-                  children: _kPositions
-                      .map(
-                        (p) => Align(
-                          alignment: Alignment.center,
-                          child: _pickerText(
-                            p,
-                            Alignment.center,
-                            fallbackWidth: optionWidth,
-                            textAlign: TextAlign.center,
+            children: [
+              Expanded(
+                child: _pickerWithoutHorizontalClip(
+                  CupertinoPicker(
+                    scrollController: _onThePositionCtrl,
+                    itemExtent: _pickerItemExtent,
+                    backgroundColor: CupertinoColors.transparent,
+                    useMagnifier: true,
+                    magnification: 2.35 / 2.1,
+                    squeeze: 1.25,
+                    offAxisFraction: -0.30,
+                    selectionOverlay: const SizedBox.shrink(),
+                    onSelectedItemChanged: (i) =>
+                        setState(() => _onThePositionIndex = i),
+                    children: _kPositions
+                        .map(
+                          (p) => Align(
+                            alignment: Alignment.center,
+                            child: _pickerText(
+                              p,
+                              Alignment.center,
+                              fallbackWidth: optionWidth,
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: _pickerWithoutHorizontalClip(
-                CupertinoPicker(
-                  scrollController: _onTheDayCtrl,
-                  itemExtent: _pickerItemExtent,
-                  backgroundColor: CupertinoColors.transparent,
-                  useMagnifier: true,
-                  magnification: 2.35 / 2.1,
-                  squeeze: 1.25,
-                  offAxisFraction: 0.30,
-                  selectionOverlay: const SizedBox.shrink(),
-                  onSelectedItemChanged: (i) =>
-                      setState(() => _onTheDayIndex = i),
-                  children: _kPositionDays
-                      .map(
-                        (d) => Align(
-                          alignment: Alignment.center,
-                          child: _pickerText(
-                            d,
-                            Alignment.center,
-                            fallbackWidth: optionWidth,
-                            textAlign: TextAlign.center,
+              Expanded(
+                child: _pickerWithoutHorizontalClip(
+                  CupertinoPicker(
+                    scrollController: _onTheDayCtrl,
+                    itemExtent: _pickerItemExtent,
+                    backgroundColor: CupertinoColors.transparent,
+                    useMagnifier: true,
+                    magnification: 2.35 / 2.1,
+                    squeeze: 1.25,
+                    offAxisFraction: 0.30,
+                    selectionOverlay: const SizedBox.shrink(),
+                    onSelectedItemChanged: (i) =>
+                        setState(() => _onTheDayIndex = i),
+                    children: _kPositionDays
+                        .map(
+                          (d) => Align(
+                            alignment: Alignment.center,
+                            child: _pickerText(
+                              d,
+                              Alignment.center,
+                              fallbackWidth: optionWidth,
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
       ),
@@ -17296,65 +17215,65 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               height: math.max(216.0, _pickerItemExtent * 5.5),
               child: _positionDayPickerWithFullWidthSelectionBar(
                 (optionWidth) => Row(
-                children: [
-                  Expanded(
-                    child: _pickerWithoutHorizontalClip(
-                      CupertinoPicker(
-                        scrollController: _yearlyPositionCtrl,
-                        itemExtent: _pickerItemExtent,
-                        backgroundColor: CupertinoColors.transparent,
-                        useMagnifier: true,
-                        magnification: 2.35 / 2.1,
-                        squeeze: 1.25,
-                        offAxisFraction: -0.30,
-                        selectionOverlay: const SizedBox.shrink(),
-                        onSelectedItemChanged:
-                            _selectYearlyPositionWheelIndex,
-                        children: _availableYearlyPositionIndices
-                            .map(
-                              (positionIndex) => Align(
-                                alignment: Alignment.center,
-                                child: _pickerText(
-                                  _kPositions[positionIndex],
-                                  Alignment.center,
-                                  fallbackWidth: optionWidth,
-                                  textAlign: TextAlign.center,
+                  children: [
+                    Expanded(
+                      child: _pickerWithoutHorizontalClip(
+                        CupertinoPicker(
+                          scrollController: _yearlyPositionCtrl,
+                          itemExtent: _pickerItemExtent,
+                          backgroundColor: CupertinoColors.transparent,
+                          useMagnifier: true,
+                          magnification: 2.35 / 2.1,
+                          squeeze: 1.25,
+                          offAxisFraction: -0.30,
+                          selectionOverlay: const SizedBox.shrink(),
+                          onSelectedItemChanged:
+                              _selectYearlyPositionWheelIndex,
+                          children: _availableYearlyPositionIndices
+                              .map(
+                                (positionIndex) => Align(
+                                  alignment: Alignment.center,
+                                  child: _pickerText(
+                                    _kPositions[positionIndex],
+                                    Alignment.center,
+                                    fallbackWidth: optionWidth,
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
+                              )
+                              .toList(),
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: _pickerWithoutHorizontalClip(
-                      CupertinoPicker(
-                        scrollController: _yearlyDayCtrl,
-                        itemExtent: _pickerItemExtent,
-                        backgroundColor: CupertinoColors.transparent,
-                        useMagnifier: true,
-                        magnification: 2.35 / 2.1,
-                        squeeze: 1.25,
-                        offAxisFraction: 0.30,
-                        selectionOverlay: const SizedBox.shrink(),
-                        onSelectedItemChanged: _selectYearlyDay,
-                        children: _kPositionDays
-                            .map(
-                              (d) => Align(
-                                alignment: Alignment.center,
-                                child: _pickerText(
-                                  d,
-                                  Alignment.center,
-                                  fallbackWidth: optionWidth,
-                                  textAlign: TextAlign.center,
+                    Expanded(
+                      child: _pickerWithoutHorizontalClip(
+                        CupertinoPicker(
+                          scrollController: _yearlyDayCtrl,
+                          itemExtent: _pickerItemExtent,
+                          backgroundColor: CupertinoColors.transparent,
+                          useMagnifier: true,
+                          magnification: 2.35 / 2.1,
+                          squeeze: 1.25,
+                          offAxisFraction: 0.30,
+                          selectionOverlay: const SizedBox.shrink(),
+                          onSelectedItemChanged: _selectYearlyDay,
+                          children: _kPositionDays
+                              .map(
+                                (d) => Align(
+                                  alignment: Alignment.center,
+                                  child: _pickerText(
+                                    d,
+                                    Alignment.center,
+                                    fallbackWidth: optionWidth,
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
+                              )
+                              .toList(),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
                 ),
               ),
             ),
@@ -17447,22 +17366,22 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         _requestDismiss();
       },
       child: CupertinoPageScaffold(
-      backgroundColor: kModalBackground,
-      child: SafeArea(
-        top: false,
-        child: ModalSheetScrollUnder(
-          showTopEdgeOnShortContentRubberband: true,
-          headerTopInset: kModalSheetButtonEdgeGap,
-          headerHeight: kModalSheetButtonDiameter,
-          headerGap: 12,
-          baseScrollPadding: EdgeInsets.fromLTRB(
-            16,
-            8,
-            16,
-            modalSheetBottomPadding(context),
-          ),
-          surfaceColor: resolveThemeColor(kModalBackground, context),
-          header: RoundedCupertinoSheetHeader(
+        backgroundColor: kModalBackground,
+        child: SafeArea(
+          top: false,
+          child: ModalSheetScrollUnder(
+            showTopEdgeOnShortContentRubberband: true,
+            headerTopInset: kModalSheetButtonEdgeGap,
+            headerHeight: kModalSheetButtonDiameter,
+            headerGap: 12,
+            baseScrollPadding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              modalSheetBottomPadding(context),
+            ),
+            surfaceColor: resolveThemeColor(kModalBackground, context),
+            header: RoundedCupertinoSheetHeader(
               child: SizedBox(
                 height: kModalSheetButtonDiameter,
                 width: double.infinity,
@@ -17512,85 +17431,85 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 ),
               ),
             ),
-          scrollBuilder: (context, scrollPadding) => ListView(
-                clipBehavior: Clip.none,
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                primary: false,
-                padding: scrollPadding,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedBuilder(
-                        animation: _everyPickerCtrl,
-                        builder: (ctx, _) => _card([
-                          _pickerRow(
-                            'Frequency',
+            scrollBuilder: (context, scrollPadding) => ListView(
+              clipBehavior: Clip.none,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              primary: false,
+              padding: scrollPadding,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _everyPickerCtrl,
+                      builder: (ctx, _) => _card([
+                        _pickerRow(
+                          'Frequency',
+                          _frequency,
+                          items: _makeItems(
+                            _kFrequencyOptions,
                             _frequency,
-                            items: _makeItems(
-                              _kFrequencyOptions,
-                              _frequency,
-                              (v) => setState(() => _frequency = v),
-                              checkmarkColor: widget.accentColor,
-                            ),
+                            (v) => setState(() => _frequency = v),
+                            checkmarkColor: widget.accentColor,
                           ),
-                          _sep(),
-                          _pickerRow(
-                            'Every',
-                            _everyCount == 1
-                                ? _everyUnit
-                                : '$_everyCount $_everyUnit',
-                            showChevron: false,
-                            valueColor: widget.accentColor,
-                            onTap: _toggleEveryPicker,
+                        ),
+                        _sep(),
+                        _pickerRow(
+                          'Every',
+                          _everyCount == 1
+                              ? _everyUnit
+                              : '$_everyCount $_everyUnit',
+                          showChevron: false,
+                          valueColor: widget.accentColor,
+                          onTap: _toggleEveryPicker,
+                        ),
+                        _buildEverySubcard(),
+                      ]),
+                    ),
+                    // Context footer — animate its boundary so cards below
+                    // follow multiline growth instead of snapping.
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            top: 8,
+                            left: kModalSheetContextFooterHorizontalInset,
+                            right: kModalSheetContextFooterHorizontalInset,
                           ),
-                          _buildEverySubcard(),
-                        ]),
-                      ),
-                      // Context footer — animate its boundary so cards below
-                      // follow multiline growth instead of snapping.
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOutCubic,
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              top: 8,
-                              left: kModalSheetContextFooterHorizontalInset,
-                              right: kModalSheetContextFooterHorizontalInset,
-                            ),
-                            child: Text(
-                              _footerText,
-                              style: modalSheetContextFooterStyle(context),
-                              textAlign: TextAlign.left,
-                            ),
+                          child: Text(
+                            _footerText,
+                            style: modalSheetContextFooterStyle(context),
+                            textAlign: TextAlign.left,
                           ),
                         ),
                       ),
-                      if (_frequency == 'Weekly') ...[
-                        const SizedBox(height: 18),
-                        _buildWeekDaysCard(),
-                      ],
-                      if (_frequency == 'Monthly') ...[
-                        const SizedBox(height: 18),
-                        _buildMonthlyUnifiedCard(),
-                      ],
-                      if (_frequency == 'Yearly') ...[
-                        const SizedBox(height: 18),
-                        _buildYearlyMonthCard(),
-                        const SizedBox(height: 18),
-                        _buildYearlyDaysCard(),
-                      ],
+                    ),
+                    if (_frequency == 'Weekly') ...[
+                      const SizedBox(height: 18),
+                      _buildWeekDaysCard(),
                     ],
-                  ),
-                ],
-              ),
+                    if (_frequency == 'Monthly') ...[
+                      const SizedBox(height: 18),
+                      _buildMonthlyUnifiedCard(),
+                    ],
+                    if (_frequency == 'Yearly') ...[
+                      const SizedBox(height: 18),
+                      _buildYearlyMonthCard(),
+                      const SizedBox(height: 18),
+                      _buildYearlyDaysCard(),
+                    ],
+                  ],
+                ),
+              ],
             ),
-      ),
+          ),
+        ),
       ),
     );
   }

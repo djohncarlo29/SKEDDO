@@ -8,6 +8,7 @@ description: Focused implementation notes for Calendar interactions, list render
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — cap the line at today's active column boundary.
 - [Multi-Day separator reverse morph](calendar-multiday-reverse-separator.md) — keep the timeline mounted through the reverse divider handoff.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — recreate a controller after keyed remounts to avoid stale initial offsets.
+- [Empty Month List scroll extent](calendar-empty-list-scroll-extent.md) — the empty placeholder fills remaining viewport space; it must not make a fitting month grid scroll.
 - [Live-synced adjacent swipe panels](calendar-adjacent-panel-live-sync.md) — listen to the current panel controller while preview panels are open.
 - [Calendar list icon weights](calendar-list-icon-weights.md) — preserve the distinct Day List icon and clipping rules.
 - [Floating bar clearance math](floating-bar-clearance-math.md) — preserve Android landscape pill clearance without reducing scrollable space.
