@@ -13301,18 +13301,27 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
     for (final item in items) {
       final category = item.category;
       if (category != null) {
-        final matchingChildren = item.childEvents
-            .where((event) => searchMatchIds.contains(event.id))
-            .toList();
-        if (searchMatchIds.contains(category.id) ||
-            matchingChildren.isNotEmpty) {
+        if (searchMatchIds.contains(category.id)) {
           matches.add(
             _DcvUtilityItem(
               date: item.date,
               category: category,
-              childEvents: matchingChildren,
-              onChildEventTap: item.onChildEventTap,
               onTap: item.onTap,
+            ),
+          );
+        }
+        for (final event in item.childEvents) {
+          if (!searchMatchIds.contains(event.id)) continue;
+          matches.add(
+            _DcvUtilityItem(
+              date:
+                  widget.archivedEventDates[event.id] ??
+                  widget.deletedEventDates[event.id] ??
+                  item.date,
+              event: event,
+              onTap: item.onChildEventTap == null
+                  ? null
+                  : () => item.onChildEventTap!(event),
             ),
           );
         }
@@ -13320,6 +13329,12 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
         matches.add(item);
       }
     }
+    matches.sort(
+      (a, b) =>
+          widget.sortNewestFirst
+              ? b.date.compareTo(a.date)
+              : a.date.compareTo(b.date),
+    );
     return matches;
   }
 
@@ -13328,8 +13343,9 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
     _UserCategory category,
     VoidCallback? onTap,
     bool isFirst,
-    bool isLast,
-  ) {
+    bool isLast, {
+    bool standalone = false,
+  }) {
     final liveCount =
         widget.categoryCounts[category.id] ?? category.count;
     final rowHeight = _eventsCategoryListRowHeight(
@@ -13352,6 +13368,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: rowShape,
+        shadows: standalone ? resolveThemeShadows(kCardShadow, context) : null,
       ),
       child: _TilePressScale(
         child: Padding(
@@ -13381,8 +13398,9 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
     _DcvUtilityItem item,
     int index,
     int total,
-    String sectionId,
-  ) {
+    String sectionId, {
+    bool standaloneResult = false,
+  }) {
     final isFirst = index == 0;
     final isLast = index == total - 1;
     final category = item.category;
@@ -13395,8 +13413,9 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
           context,
           category,
           item.onTap,
-          isFirst,
-          isLast && !hasChildren,
+          isFirst || standaloneResult,
+          (isLast && !hasChildren) || standaloneResult,
+          standalone: standaloneResult,
         ),
       );
       final rows = <Widget>[child];
@@ -13459,6 +13478,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
         isLast: isLast,
         indented: false,
         onTap: item.onTap,
+        standalone: standaloneResult,
       ),
     );
   }
@@ -13469,13 +13489,14 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
     required bool isLast,
     required bool indented,
     required VoidCallback? onTap,
+    bool standalone = false,
   }) {
     final card = _ScheduledEventCard(
       event: event,
       dotColor: _resolveUtilityEventColor(context, event),
-      isGrouped: true,
-      isFirst: false,
-      isLast: isLast,
+      isGrouped: !standalone,
+      isFirst: standalone,
+      isLast: standalone || isLast,
       onEdit: null,
       onDelete: null,
       enableContextMenu: false,
@@ -13592,9 +13613,33 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
 
   @override
   Widget build(BuildContext context) {
+    final items = _items();
+    if (widget.searchMatchIds != null) {
+      return Opacity(
+        opacity: _measuringReflow ? 0.0 : 1.0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              _buildItem(
+                context,
+                items[index],
+                index,
+                items.length,
+                'utility-search-results',
+                standaloneResult: true,
+              ),
+              if (index < items.length - 1)
+                const SizedBox(height: kModalCardGap),
+            ],
+          ],
+        ),
+      );
+    }
+
     final grouped = <String, List<_DcvUtilityItem>>{};
     final sections = <String, _DcvUtilitySection>{};
-    for (final item in _items()) {
+    for (final item in items) {
       final section = _utilitySectionForDate(item.date);
       (grouped[section.key] ??= []).add(item);
       sections[section.key] = section;
