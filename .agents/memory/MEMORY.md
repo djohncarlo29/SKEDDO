@@ -7,6 +7,7 @@
 - [Modal keyboard focus behavior](keyboard-focus-modal-interaction.md) — only new Event, Group, and Category sheets autofocus; taps outside editable fields dismiss focus across routes.
 - [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — overlay CustomScrollViews need primary:false or they adopt the tab controller and reset its offset.
 - [Calendar runtime behavior](calendar-runtime-index.md) — focused notes for swipes, list parity, timing, scroll restoration, and landscape layout.
+- [Calendar Day List behavior](calendar-day-list-scroll-ownership.md) — show selected-day DCV events; use the empty state only when that day has none, and keep header scroll ownership on the active list.
 - [Calendar header/DOW spacing](calendar-day-header-expanded-state.md) — align visible DOW text edges to the shared expanded and compact header geometry.
 - [Calendar date display tiers](calendar-date-display-tiers.md) — Medium style for pills, banners, DCV, and Day View; Full Month Name also controls Year View month labels.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search clear icon have dedicated constants.

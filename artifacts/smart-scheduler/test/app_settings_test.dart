@@ -211,7 +211,8 @@ void main() {
     );
   });
 
-  test('Date Format defaults to System on a first install', () async {
+  test('Mirror System Setting is selected on a first install', () async {
+    appDateFormatUsesSystemNotifier.value = false;
     await loadAppSettings();
 
     expect(appDateFormatUsesSystemNotifier.value, isTrue);

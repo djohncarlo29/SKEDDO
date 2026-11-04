@@ -3538,7 +3538,13 @@ class CalendarTabState extends State<CalendarTab>
                       right: 0,
                       top: 0,
                       bottom: 0,
-                      child: const _DayListPlaceholder(),
+                      child: _DayListContent(
+                        selectedDate: _selected,
+                        monthListOrderByDay: _monthListOrderByDay,
+                        monthListOrderRevision: _monthListOrderRevision,
+                        onEditEvent: widget.onEditEvent,
+                        onOrderChanged: _onMonthListOrderChanged,
+                      ),
                     ),
                 ],
               ),
@@ -8238,47 +8244,112 @@ Color _monthEventDotColor(BuildContext context, ScheduledEvent event) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// _DayListPlaceholder — shown in the content area when List sub-mode is active.
-//
-// Mirrors the Events Tab's _CategoryDetailView empty-state exactly:
-//   list_bullet icon (64 px, kSecondaryLabel)
-//   "No Events"  headline  (22 px SFProText w700)
-//   Subtitle     body copy (15 px SFProText   w400)
+// _DayListContent — selected-day events (or the DCV empty state) in List mode.
 // ══════════════════════════════════════════════════════════════════════════════
-class _DayListPlaceholder extends StatelessWidget {
-  const _DayListPlaceholder();
+class _DayListContent extends StatefulWidget {
+  const _DayListContent({
+    required this.selectedDate,
+    required this.monthListOrderByDay,
+    required this.monthListOrderRevision,
+    required this.onOrderChanged,
+    this.onEditEvent,
+  });
+
+  final DateTime selectedDate;
+  final Map<String, List<String>> monthListOrderByDay;
+  final int monthListOrderRevision;
+  final ValueChanged<ScheduledEvent>? onEditEvent;
+  final void Function(String dayKey, List<ScheduledEvent> orderedEvents)
+  onOrderChanged;
+
+  @override
+  State<_DayListContent> createState() => _DayListContentState();
+}
+
+class _DayListContentState extends State<_DayListContent> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _scrollViewportKey = GlobalKey(
+    debugLabel: 'calendar-day-list-scroll-viewport',
+  );
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Keep the exact DCV empty-state widget here so icon geometry, typography,
-    // spacing, and centering cannot drift between the two list surfaces.
-    final emptyStateContent = Padding(
-      padding: EdgeInsets.only(
-        bottom: floatingTabBarContentBottomClearance(context),
-      ),
-      child: buildDcvEmptyState(label: 'Calendar List'),
-    );
+    return ValueListenableBuilder<List<ScheduledEvent>>(
+      valueListenable: EventStore.instance.events,
+      builder: (context, eventsSnapshot, _) {
+        final date = widget.selectedDate;
+        final firstGridDay = DateTime(
+          date.year,
+          date.month,
+          1,
+        ).subtract(Duration(days: _firstWeekday(date.year, date.month)));
+        final data = _monthListDataFor(
+          sourceEvents: eventsSnapshot,
+          year: date.year,
+          month: date.month,
+          firstGridDay: firstGridDay,
+          totalRows: _totalWeekRows(date.year, date.month),
+          savedOrderByDay: widget.monthListOrderByDay,
+          orderRevision: widget.monthListOrderRevision,
+        );
+        final dayKey = _calendarDateKey(date);
+        final dayIndex = data.dayKeys.indexOf(dayKey);
+        final dayGroups = dayIndex < 0
+            ? const <List<ScheduledEvent>>[]
+            : data.dayGroups[dayIndex];
+        final dayEvents = [for (final group in dayGroups) ...group];
+        final Widget content;
+        if (dayEvents.isEmpty) {
+          content = Padding(
+            padding: EdgeInsets.only(
+              bottom: floatingTabBarContentBottomClearance(context),
+            ),
+            child: buildDcvEmptyState(label: 'Calendar List'),
+          );
+        } else {
+          content = buildDcvEventList(
+            events: dayEvents,
+            embeddedTopPadding: 0.0,
+            onEditEvent: widget.onEditEvent,
+            scrollController: _scrollController,
+            scrollViewportKey: _scrollViewportKey,
+            onManualOrderChanged: (orderedEvents) {
+              widget.onOrderChanged(dayKey, orderedEvents);
+            },
+          );
+        }
 
-    // Match the DCV scroll structure: the content is centered in the space
-    // left after the floating-tab-bar clearance, while the scroll view still
-    // provides the same rubber-band overscroll behavior.
-    return AppHeaderScrollView(
-      topExtension: kContentAreaTopRaise,
-      primary: false,
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      slivers: [
-        SliverToBoxAdapter(
-          child: AppHeaderScrollInset(
-            enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
-            expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
-            expandedTitleContentGapFromBaseline: true,
+        return AppHeaderScrollView(
+          key: _scrollViewportKey,
+          topExtension: kContentAreaTopRaise,
+          controller: _scrollController,
+          primary: false,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
           ),
-        ),
-        const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
-        SliverFillRemaining(hasScrollBody: false, child: emptyStateContent),
-      ],
+          slivers: [
+            SliverToBoxAdapter(
+              child: AppHeaderScrollInset(
+                enabled:
+                    MediaQuery.orientationOf(context) == Orientation.portrait,
+                expandedTitleContentGap: kAppHeaderExpandedTitleContentGap,
+                expandedTitleContentGapFromBaseline: true,
+              ),
+            ),
+            const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
+            if (dayEvents.isEmpty)
+              SliverFillRemaining(hasScrollBody: false, child: content)
+            else
+              SliverToBoxAdapter(child: content),
+          ],
+        );
+      },
     );
   }
 }

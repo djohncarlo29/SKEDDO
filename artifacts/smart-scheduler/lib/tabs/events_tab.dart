@@ -19586,6 +19586,7 @@ Color resolveEventCategoryColor(
 Widget buildDcvEventList({
   required List<ScheduledEvent> events,
   double compactHeaderTailCorrection = 0.0,
+  double embeddedTopPadding = 16.0,
   ValueChanged<ScheduledEvent>? onEditEvent,
   ValueChanged<List<ScheduledEvent>>? onManualOrderChanged,
   ScrollController? scrollController,
@@ -19599,6 +19600,7 @@ Widget buildDcvEventList({
     timeGroupedManualEvents: true,
     embedded: true,
     embeddedCompactHeaderTailCorrection: compactHeaderTailCorrection,
+    embeddedTopPadding: embeddedTopPadding,
     externalScrollController: scrollController,
     externalScrollViewportKey: scrollViewportKey,
     onEditEvent: onEditEvent,
@@ -20051,6 +20053,7 @@ class _CategoryDetailView extends StatefulWidget {
   final String label;
   final bool embedded;
   final double embeddedCompactHeaderTailCorrection;
+  final double embeddedTopPadding;
   final bool landscapeMasterDetail;
   final bool timeGroupedManualEvents;
   final ScrollController? externalScrollController;
@@ -20124,6 +20127,7 @@ class _CategoryDetailView extends StatefulWidget {
     required this.label,
     this.embedded = false,
     this.embeddedCompactHeaderTailCorrection = 0.0,
+    this.embeddedTopPadding = 16.0,
     this.landscapeMasterDetail = false,
     this.timeGroupedManualEvents = false,
     this.externalScrollController,
@@ -21710,7 +21714,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         return Opacity(
           opacity: hideForSortMeasurement ? 0.0 : 1.0,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: EdgeInsets.fromLTRB(16, widget.embeddedTopPadding, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

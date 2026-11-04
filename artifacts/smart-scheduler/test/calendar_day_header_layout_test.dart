@@ -1240,6 +1240,78 @@ void main() {
     },
   );
 
+  testWidgets('eventful List Day renders the selected-day DCV events', (
+    tester,
+  ) async {
+    const screenSize = Size(402, 874);
+    const headerInset = 24.0 + kAppHeaderToolbarHeight;
+    final previousEvents = EventStore.instance.events.value;
+    addTearDown(() => EventStore.instance.events.value = previousEvents);
+    final selectedDate = DateTime.now();
+    final selectedDateKey =
+        '${selectedDate.year.toString().padLeft(4, '0')}-'
+        '${selectedDate.month.toString().padLeft(2, '0')}-'
+        '${selectedDate.day.toString().padLeft(2, '0')}';
+    EventStore.instance.events.value = [
+      ScheduledEvent(
+        id: 'day-list-timed-event',
+        title: 'List Day timed event',
+        date: selectedDateKey,
+        time: '9:00 AM',
+      ),
+    ];
+    final titleTransition = AppHeaderTitleTransition();
+    addTearDown(titleTransition.dispose);
+    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = screenSize;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) {
+          final mediaQuery = MediaQuery.of(
+            context,
+          ).copyWith(size: screenSize);
+          return MediaQuery(
+            data: mediaQuery,
+            child: AppHeaderScrollInsetScope(
+              leadingInset: headerInset,
+              titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+              titleTransition: titleTransition,
+              child: AppWindowContentBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: headerInset),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          );
+        },
+        home: CupertinoPageScaffold(
+          child: CalendarTab(
+            daySubMode: DayViewSubMode.list,
+            onViewChanged: (_, _, _, _, _, _) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+    await tester.pumpAndSettle();
+
+    expect(find.text('List Day timed event'), findsOneWidget);
+    expect(find.text('9:00 AM'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_DayListContent',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('empty List Day scrolls like an empty DCV', (tester) async {
     const screenSize = Size(402, 874);
     const headerInset = 24.0 + kAppHeaderToolbarHeight;
@@ -1316,7 +1388,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final emptyListDay = find.byWidgetPredicate(
-      (widget) => widget.runtimeType.toString() == '_DayListPlaceholder',
+      (widget) => widget.runtimeType.toString() == '_DayListContent',
     );
     expect(emptyListDay, findsOneWidget);
     final nestedScrollView = find.descendant(
