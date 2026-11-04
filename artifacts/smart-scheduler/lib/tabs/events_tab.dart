@@ -1782,6 +1782,7 @@ class EventsTabState extends State<EventsTab>
   List<SearchHit> _searchPrimary = [];
   List<SearchHit> _searchOverflow = [];
   List<SearchHit> _searchAll = [];
+  Set<String> _utilitySearchEventMatchIds = {};
   String? _searchSuggestion;
   Timer? _searchDebounce;
 
@@ -2840,6 +2841,83 @@ class EventsTabState extends State<EventsTab>
             ? EventStore.instance.deletedEvents.value
             : EventStore.instance.archivedEvents.value;
     return events.where((event) => event.categoryId == category.id).length;
+  }
+
+  _DcvUtilityContent _buildUtilityContent({
+    required bool archived,
+    required Color categoryColor,
+    required bool sortNewestFirst,
+    Set<String>? searchMatchIds,
+  }) {
+    final archivedEvents = archived
+        ? EventStore.instance.archivedEvents.value
+        : const <ScheduledEvent>[];
+    final deletedEvents = archived
+        ? const <ScheduledEvent>[]
+        : EventStore.instance.deletedEvents.value;
+    final archivedCategories =
+        archived ? _archivedUserCategories : const <_UserCategory>[];
+    final deletedCategories =
+        archived ? const <_UserCategory>[] : _recentlyDeletedCategories;
+    final utilityCategoryCounts = <String, int>{
+      for (final category in archivedCategories)
+        category.id: _utilityCategoryEventCount(category, deleted: false),
+      for (final category in deletedCategories)
+        category.id: _utilityCategoryEventCount(category, deleted: true),
+    };
+
+    return _DcvUtilityContent(
+      categoryColor: categoryColor,
+      smartCategoryColors: _smartCategoryColors,
+      archivedSmartLabels: archived ? _archivedSmartLabels : const [],
+      archivedCategories: archivedCategories,
+      archivedEvents: archivedEvents,
+      deletedEvents: deletedEvents,
+      deletedSmartLabels:
+          archived ? const [] : _recentlyDeletedSmartCategories,
+      deletedCategories: deletedCategories,
+      archivedSmartDates: {
+        if (archived)
+          for (final label in _archivedSmartLabels)
+            label: _utilityDateFor('archived-smart', label),
+      },
+      archivedCategoryDates: {
+        if (archived)
+          for (final category in _archivedUserCategories)
+            category.id: _utilityDateFor('archived-category', category.id),
+      },
+      archivedEventDates: {
+        if (archived)
+          for (final event in archivedEvents)
+            event.id: _utilityDateFor('archived-event', event.id),
+      },
+      deletedEventDates: {
+        if (!archived)
+          for (final event in deletedEvents)
+            event.id: _utilityDateFor('deleted-event', event.id),
+      },
+      deletedSmartDates: {
+        if (!archived)
+          for (final label in _recentlyDeletedSmartCategories)
+            label: _utilityDateFor('deleted-smart', label),
+      },
+      deletedCategoryDates: {
+        if (!archived)
+          for (final category in _recentlyDeletedCategories)
+            category.id: _utilityDateFor('deleted-category', category.id),
+      },
+      categoryCounts: {..._liveEventCounts, ...utilityCategoryCounts},
+      sortNewestFirst: sortNewestFirst,
+      searchMatchIds: searchMatchIds,
+      onArchivedSmartCategoryTap:
+          archived ? _openArchivedSmartCategory : null,
+      onArchivedCategoryTap: archived ? _openArchivedCategory : null,
+      onArchivedEventTap: archived ? _openArchivedEvent : null,
+      onDeletedEventTap: archived ? null : _openDeletedEvent,
+      onDeletedSmartCategoryTap:
+          archived ? null : _openDeletedSmartCategory,
+      onDeletedCategoryTap: archived ? null : _openDeletedCategory,
+    );
   }
 
   int _utilityCategorySectionCount(_UserCategory category) =>
@@ -7304,6 +7382,7 @@ class EventsTabState extends State<EventsTab>
     }
     _syncUtilityVisibilityAndResurface();
     if (mounted) setState(() {});
+    if (mounted && _searchText.trim().isNotEmpty) _scheduleSearch();
     if (addedUtilityDates) _saveCategories();
     _scheduleUtilityExitIfEmpty();
   }
@@ -7317,6 +7396,7 @@ class EventsTabState extends State<EventsTab>
     _scheduleMidnightRefresh();
     EventStore.instance.events.addListener(_onEventsChanged);
     EventStore.instance.archivedEvents.addListener(_onEventsChanged);
+    EventStore.instance.deletedEvents.addListener(_onEventsChanged);
     _scrollController.addListener(_enforceScrollLock);
     // Seed smart category display order from the fixed tile list.
     // _loadCategories() will override this from persisted prefs if they exist.
@@ -7348,6 +7428,14 @@ class EventsTabState extends State<EventsTab>
       if (old.activeDCV != null && widget.activeDCV == null) {
         _masterFocusAnchorContext = null;
         _masterFocusAnchorKey = null;
+      }
+      if (_searchText.trim().isNotEmpty) {
+        _searchPrimary = [];
+        _searchOverflow = [];
+        _searchAll = [];
+        _utilitySearchEventMatchIds = {};
+        _searchSuggestion = null;
+        _scheduleSearch();
       }
     }
     // The active section editor can still have focus when the DCV closes, so
@@ -7381,6 +7469,7 @@ class EventsTabState extends State<EventsTab>
     _gridDragOverlayEntry = null;
     EventStore.instance.events.removeListener(_onEventsChanged);
     EventStore.instance.archivedEvents.removeListener(_onEventsChanged);
+    EventStore.instance.deletedEvents.removeListener(_onEventsChanged);
     WidgetsBinding.instance.removeObserver(this);
     _searchController.removeListener(_onSearchTextChanged);
     _offscreenSearchController.removeListener(_onSearchTextChanged);
@@ -7932,6 +8021,7 @@ class EventsTabState extends State<EventsTab>
       _searchPrimary = [];
       _searchOverflow = [];
       _searchAll = [];
+      _utilitySearchEventMatchIds = {};
       _searchSuggestion = null;
     });
     widget.onSearchOverlayChanged?.call();
@@ -8133,36 +8223,153 @@ class EventsTabState extends State<EventsTab>
   void _scheduleSearch() {
     _searchDebounce?.cancel();
     final q = _searchText.trim();
+    final activeDcv = widget.activeDCV;
+    final archivedUtility = activeDcv == 'Archived Items';
+    final deletedUtility = activeDcv == 'Recently Deleted';
+    final utilitySearch = archivedUtility || deletedUtility;
     if (q.isEmpty) {
-      if (_searchPrimary.isNotEmpty || _searchAll.isNotEmpty) {
+      if (_searchPrimary.isNotEmpty ||
+          _searchOverflow.isNotEmpty ||
+          _searchAll.isNotEmpty ||
+          _utilitySearchEventMatchIds.isNotEmpty ||
+          _searchSuggestion != null) {
         setState(() {
           _searchPrimary = [];
           _searchOverflow = [];
           _searchAll = [];
+          _utilitySearchEventMatchIds = {};
           _searchSuggestion = null;
         });
       }
       return;
     }
     _searchDebounce = Timer(const Duration(milliseconds: 150), () async {
-      // Search is global in every tab and every DCV. Recurring events are
-      // expanded so a query for a concrete occurrence date can find it.
-      final all = _expandedEventsFor(DateTime.now());
-      final scopeIds = _activeDcvScopeIds(all);
+      // Active events remain the fallback corpus in utilities. Search the
+      // selected utility's events in the same query pass, then keep active
+      // matches separate so they can be shown only when the utility is empty.
+      final activeEvents = _expandedEventsFor(DateTime.now());
+      final activeIds = activeEvents.map((event) => event.id).toSet();
+      final utilityEvents = archivedUtility
+          ? EventStore.instance.archivedEvents.value
+          : deletedUtility
+          ? EventStore.instance.deletedEvents.value
+          : const <ScheduledEvent>[];
+      final utilityEventIds = utilityEvents.map((event) => event.id).toSet();
+      final searchEvents = utilitySearch
+          ? [...activeEvents, ...utilityEvents]
+          : activeEvents;
+      final scopeIds = utilitySearch ? null : _activeDcvScopeIds(activeEvents);
       final results = await SearchService().query(
         q,
-        all,
+        searchEvents,
         scopeEventIds: scopeIds,
       );
-      if (!mounted || _searchText.trim() != q) return;
+      if (!mounted ||
+          _searchText.trim() != q ||
+          widget.activeDCV != activeDcv) {
+        return;
+      }
+
+      final utilityMatchIds = <String>{};
+      var activeResults = results.all;
+      if (utilitySearch) {
+        utilityMatchIds.addAll(
+          results.all
+              .where((hit) => utilityEventIds.contains(hit.event.id))
+              .map((hit) => hit.event.id),
+        );
+        activeResults = results.all
+            .where(
+              (hit) =>
+                  activeIds.contains(hit.event.id) &&
+                  !utilityEventIds.contains(hit.event.id),
+            )
+            .toList();
+      }
+
       setState(() {
-        _searchPrimary = results.primary;
-        _searchOverflow = results.overflow;
-        _searchAll = results.all;
+        _searchPrimary = utilitySearch ? [] : results.primary;
+        _searchOverflow = utilitySearch ? [] : results.overflow;
+        _searchAll = activeResults;
+        _utilitySearchEventMatchIds = utilityMatchIds;
         _searchSuggestion = results.suggestedQuery;
       });
       widget.onSearchOverlayChanged?.call();
     });
+  }
+
+  Set<String> _utilityCategorySearchMatchIds(
+    String query, {
+    required bool archived,
+  }) {
+    final categories = archived
+        ? _archivedUserCategories
+        : _recentlyDeletedCategories;
+    final smartLabels = archived
+        ? _archivedSmartLabels
+        : _recentlyDeletedSmartCategories;
+    final matches = <String>{
+      for (final category in categories)
+        if (_utilityCategoryMatches(category, query)) category.id,
+    };
+    final smartPrefix = archived
+        ? 'utility-archived-smart-'
+        : 'utility-deleted-smart-';
+    for (final label in smartLabels) {
+      if (_utilitySearchTextMatches(label, query)) {
+        matches.add('$smartPrefix$label');
+      }
+    }
+    return matches;
+  }
+
+  bool _utilityCategoryMatches(_UserCategory category, String query) =>
+      _utilitySearchTextMatches(
+        '${category.name} ${category.description} ${category.smartDescription}',
+        query,
+      );
+
+  bool _utilitySearchTextMatches(String text, String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) return false;
+    final haystack = text.toLowerCase();
+    if (haystack.contains(normalizedQuery)) return true;
+    final tokens = normalizedQuery
+        .split(RegExp(r'\s+'))
+        .where((token) => token.isNotEmpty);
+    return tokens.isNotEmpty && tokens.every(haystack.contains);
+  }
+
+  bool get _isUtilityDcv =>
+      widget.activeDCV == 'Archived Items' ||
+      widget.activeDCV == 'Recently Deleted';
+
+  Set<String> get _visibleUtilitySearchMatchIds {
+    if (!_isUtilityDcv || _searchText.trim().isEmpty) return {};
+    final archived = widget.activeDCV == 'Archived Items';
+    final utilityEventIds = (archived
+            ? EventStore.instance.archivedEvents.value
+            : EventStore.instance.deletedEvents.value)
+        .map((event) => event.id)
+        .toSet();
+    final categoryIds = _utilityCategorySearchMatchIds(
+      _searchText.trim(),
+      archived: archived,
+    );
+    return {
+      ...categoryIds,
+      ..._utilitySearchEventMatchIds.where(utilityEventIds.contains),
+    };
+  }
+
+  _DcvUtilityContent _buildUtilitySearchContent() {
+    final archived = widget.activeDCV == 'Archived Items';
+    return _buildUtilityContent(
+      archived: archived,
+      categoryColor: _activeDcvColor(context),
+      sortNewestFirst: widget.dcvSortDir != 'Oldest First',
+      searchMatchIds: _visibleUtilitySearchMatchIds,
+    );
   }
 
   void _applySearchSuggestion(String suggestion) {
@@ -8273,6 +8480,7 @@ class EventsTabState extends State<EventsTab>
       _searchPrimary = [];
       _searchOverflow = [];
       _searchAll = [];
+      _utilitySearchEventMatchIds = {};
     });
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
     if (wasSearching && !wasOffScreen) _restoreParentScrollAfterSearch();
@@ -8573,15 +8781,30 @@ class EventsTabState extends State<EventsTab>
 
         // ── Inline search results ─────────────────────────────────────────
         if (showResults && !_activatedFromOffScreen) ...[
-          SmartSearchResultsSliver(
-            hits: _searchAll,
-            suggestedQuery: _searchSuggestion,
-            onSuggestionTap: _applySearchSuggestion,
-            eventTopPadding: 16,
-            eventTileWrapper: _wrapSearchEventTile,
-            eventTilePressWrapper: (child) => _TilePressScale(child: child),
-          ),
-          if (_searchAll.isNotEmpty)
+          if (_isUtilityDcv && _visibleUtilitySearchMatchIds.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _buildUtilitySearchContent(),
+              ),
+            )
+          else
+            SmartSearchResultsSliver(
+              hits: _searchAll,
+              sectionLabel:
+                  _isUtilityDcv && _searchAll.isNotEmpty
+                      ? 'Also found'
+                      : null,
+              suggestedQuery: _searchSuggestion,
+              onSuggestionTap: _applySearchSuggestion,
+              eventTopPadding: 16,
+              eventTileWrapper: _wrapSearchEventTile,
+              eventTilePressWrapper: (child) => _TilePressScale(child: child),
+            ),
+          if (_visibleUtilitySearchMatchIds.isNotEmpty ||
+              (_searchAll.isNotEmpty &&
+                  (!_isUtilityDcv ||
+                      _visibleUtilitySearchMatchIds.isEmpty)))
             SliverToBoxAdapter(
               child: SizedBox(
                 height: floatingTabBarContentBottomClearance(
@@ -8629,9 +8852,9 @@ class EventsTabState extends State<EventsTab>
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
               child: Text(
-                'CATEGORIES',
+                    'Categories',
                 style: TextStyle(
                   inherit: false,
                   color: resolveThemeColor(kPrimaryLabel, context),
@@ -8917,24 +9140,6 @@ class EventsTabState extends State<EventsTab>
                       EventStore.instance.deletedEvents.value.isNotEmpty ||
                       _recentlyDeletedCategories.isNotEmpty ||
                       _recentlyDeletedSmartCategories.isNotEmpty;
-                  final archivedCategoryCounts = <String, int>{
-                    for (final category in _archivedUserCategories)
-                      category.id:
-                          EventStore.instance.archivedEvents.value
-                              .where(
-                                (event) => event.categoryId == category.id,
-                              )
-                              .length,
-                  };
-                  final deletedCategoryCounts = <String, int>{
-                    for (final category in _recentlyDeletedCategories)
-                      category.id:
-                          EventStore.instance.deletedEvents.value
-                              .where(
-                                (event) => event.categoryId == category.id,
-                              )
-                              .length,
-                  };
                   final Widget detailPage = ColoredBox(
                     color: widget.landscapeMasterDetail
                         ? resolveThemeColor(kCardColor, context)
@@ -9006,98 +9211,19 @@ class EventsTabState extends State<EventsTab>
                         color: dcvColor,
                         specialContentBuilder:
                             isArchivedUtility && hasArchivedUtilityItems
-                                ? (_) => _DcvUtilityContent(
+                                ? (_) => _buildUtilityContent(
+                                    archived: true,
                                     categoryColor: dcvColor,
-                                    smartCategoryColors: _smartCategoryColors,
-                                    archivedSmartLabels: _archivedSmartLabels,
-                                    archivedCategories:
-                                        _archivedUserCategories,
-                                    archivedEvents:
-                                        EventStore.instance.archivedEvents.value,
-                                    archivedSmartDates: {
-                                      for (final label
-                                          in _archivedSmartLabels)
-                                        label: _utilityDateFor(
-                                          'archived-smart',
-                                          label,
-                                        ),
-                                    },
-                                    archivedCategoryDates: {
-                                      for (final category
-                                          in _archivedUserCategories)
-                                        category.id: _utilityDateFor(
-                                          'archived-category',
-                                          category.id,
-                                        ),
-                                    },
-                                    archivedEventDates: {
-                                      for (final event
-                                          in EventStore.instance.archivedEvents
-                                              .value)
-                                        event.id: _utilityDateFor(
-                                          'archived-event',
-                                          event.id,
-                                        ),
-                                    },
-                                    categoryCounts: {
-                                      ..._liveEventCounts,
-                                      ...archivedCategoryCounts,
-                                    },
                                     sortNewestFirst:
                                         widget.dcvSortDir != 'Oldest First',
-                                    onArchivedSmartCategoryTap:
-                                        _openArchivedSmartCategory,
-                                    onArchivedCategoryTap:
-                                        _openArchivedCategory,
-                                    onArchivedEventTap: _openArchivedEvent,
                                   )
                                 : isRecentlyDeletedUtility &&
                                       hasRecentlyDeletedUtilityItems
-                                ? (_) => _DcvUtilityContent(
+                                ? (_) => _buildUtilityContent(
+                                    archived: false,
                                     categoryColor: dcvColor,
-                                    smartCategoryColors: _smartCategoryColors,
-                                    deletedEvents:
-                                        EventStore.instance.deletedEvents.value,
-                                    deletedSmartLabels:
-                                        _recentlyDeletedSmartCategories,
-                                    deletedCategories:
-                                        _recentlyDeletedCategories,
-                                    deletedEventDates: {
-                                      for (final event
-                                          in EventStore.instance.deletedEvents
-                                              .value)
-                                        event.id: _utilityDateFor(
-                                          'deleted-event',
-                                          event.id,
-                                        ),
-                                    },
-                                    deletedSmartDates: {
-                                      for (final label
-                                          in _recentlyDeletedSmartCategories)
-                                        label: _utilityDateFor(
-                                          'deleted-smart',
-                                          label,
-                                        ),
-                                    },
-                                    deletedCategoryDates: {
-                                      for (final category
-                                          in _recentlyDeletedCategories)
-                                        category.id: _utilityDateFor(
-                                          'deleted-category',
-                                          category.id,
-                                        ),
-                                    },
-                                    categoryCounts: {
-                                      ..._liveEventCounts,
-                                      ...deletedCategoryCounts,
-                                    },
                                     sortNewestFirst:
                                         widget.dcvSortDir != 'Oldest First',
-                                    onDeletedEventTap: _openDeletedEvent,
-                                    onDeletedSmartCategoryTap:
-                                        _openDeletedSmartCategory,
-                                    onDeletedCategoryTap:
-                                        _openDeletedCategory,
                                   )
                                 : null,
                       ),
@@ -9222,6 +9348,9 @@ class EventsTabState extends State<EventsTab>
 
   Widget _buildDcvSearchOverlay() {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final utilitySearch = _isUtilityDcv;
+    final hasUtilityMatches =
+        utilitySearch && _visibleUtilitySearchMatchIds.isNotEmpty;
     return AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 250),
@@ -9249,9 +9378,18 @@ class EventsTabState extends State<EventsTab>
               Expanded(
                 child: AppWindowContentPadding(
                   child: SmartDcvSearchResults(
-                    primary: _searchText.isEmpty ? const [] : _searchPrimary,
-                    overflow:
-                        _searchText.isEmpty ? const [] : _searchOverflow,
+                    primary: _searchText.isEmpty || utilitySearch
+                        ? const []
+                        : _searchPrimary,
+                    overflow: _searchText.isEmpty
+                        ? const []
+                        : utilitySearch
+                        ? (hasUtilityMatches ? const [] : _searchAll)
+                        : _searchOverflow,
+                    customContent:
+                        _searchText.isNotEmpty && hasUtilityMatches
+                            ? _buildUtilitySearchContent()
+                            : null,
                     emptyStateBottomClearance:
                         floatingTabBarContentBottomClearance(
                           context,
@@ -9264,7 +9402,9 @@ class EventsTabState extends State<EventsTab>
                         ),
                     viewportBottomOffset: 0,
                     suggestedQuery:
-                        _searchText.isEmpty ? null : _searchSuggestion,
+                        _searchText.isEmpty || hasUtilityMatches
+                            ? null
+                            : _searchSuggestion,
                     onSuggestionTap: _applySearchSuggestion,
                     hidePrimaryCategoryName:
                         activeStandardDcvCategoryId != null,
@@ -12811,6 +12951,7 @@ class _DcvUtilityContent extends StatefulWidget {
   final Map<String, DateTime> deletedCategoryDates;
   final Map<String, int> categoryCounts;
   final bool sortNewestFirst;
+  final Set<String>? searchMatchIds;
   final ValueChanged<String>? onArchivedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onArchivedCategoryTap;
   final ValueChanged<ScheduledEvent>? onArchivedEventTap;
@@ -12835,6 +12976,7 @@ class _DcvUtilityContent extends StatefulWidget {
     this.deletedCategoryDates = const {},
     this.categoryCounts = const {},
     this.sortNewestFirst = true,
+    this.searchMatchIds,
     this.onArchivedSmartCategoryTap,
     this.onArchivedCategoryTap,
     this.onArchivedEventTap,
@@ -13152,7 +13294,33 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
               ? b.date.compareTo(a.date)
               : a.date.compareTo(b.date),
     );
-    return items;
+    final searchMatchIds = widget.searchMatchIds;
+    if (searchMatchIds == null) return items;
+
+    final matches = <_DcvUtilityItem>[];
+    for (final item in items) {
+      final category = item.category;
+      if (category != null) {
+        final matchingChildren = item.childEvents
+            .where((event) => searchMatchIds.contains(event.id))
+            .toList();
+        if (searchMatchIds.contains(category.id) ||
+            matchingChildren.isNotEmpty) {
+          matches.add(
+            _DcvUtilityItem(
+              date: item.date,
+              category: category,
+              childEvents: matchingChildren,
+              onChildEventTap: item.onChildEventTap,
+              onTap: item.onTap,
+            ),
+          );
+        }
+      } else if (searchMatchIds.contains(item.event!.id)) {
+        matches.add(item);
+      }
+    }
+    return matches;
   }
 
   Widget _buildCategoryTile(

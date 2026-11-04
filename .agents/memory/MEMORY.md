@@ -77,6 +77,7 @@
 - [AI cold-start embeddings](ai-cold-start-embeddings.md) — never persist placeholder vectors before model initialization; retry event embedding after AI becomes ready.
 - [Categories accordion outer clip](categories-accordion-outer-clip.md) — keep the outer unpinned CATEGORIES surface on one fixed bounded squircle; only rows and height should animate.
 - [Events search overlay rendering](events-search-overlay-rendering.md) — search overlays must render the shared result widgets; DCV scopes ranking only, never visibility.
+- [Utility search scope](utility-search-scope.md) — archived/deleted matches take priority; active events appear under “ALSO FOUND” only when utility search is empty.
 - [DCV offscreen search keyboard viewport](dcv-search-keyboard-viewport.md) — reserve keyboard height around results, remove inner viewInsets, and restore tab-bar clearance after dismissal.
 - [Edge-fade layout bounds](horizontal-fade-layout-bounds.md) — shared horizontal and vertical fade wrappers must use natural-height Stack sizing; StackFit.expand breaks modal Column layouts.
 - [Horizontal fade rendering](horizontal-fade-surface-matching.md) — use exact surface colors for blends; alpha-only fades need Flutter and DOM masks, since web inputs bypass ShaderMask.

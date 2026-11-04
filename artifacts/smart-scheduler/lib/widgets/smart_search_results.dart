@@ -22,6 +22,7 @@ const double _kSuggestionSearchResultTopPadding = 8;
 class SmartSearchResultsSliver extends StatelessWidget {
   final List<SearchHit> hits;
   final String? suggestedQuery;
+  final String? sectionLabel;
   final ValueChanged<String>? onSuggestionTap;
   final double eventTopPadding;
   final double? emptyStateBottomClearance;
@@ -38,6 +39,7 @@ class SmartSearchResultsSliver extends StatelessWidget {
     super.key,
     required this.hits,
     this.suggestedQuery,
+    this.sectionLabel,
     this.onSuggestionTap,
     this.eventTopPadding = _kDirectSearchResultTopPadding,
     this.emptyStateBottomClearance,
@@ -74,6 +76,12 @@ class SmartSearchResultsSliver extends StatelessWidget {
     }
 
     final hasSuggestion = suggestedQuery?.trim().isNotEmpty == true;
+    final hasSectionLabel = sectionLabel?.trim().isNotEmpty == true;
+    final resultTopPadding = hasSuggestion
+        ? _kSuggestionSearchResultTopPadding
+        : hasSectionLabel
+        ? 16.0
+        : eventTopPadding;
     return SliverPadding(
       // The banner has 8 px of its own top/bottom padding. Keep the outer
       // inset at 8 px too, so the visual gap above the suggestion matches the
@@ -81,26 +89,44 @@ class SmartSearchResultsSliver extends StatelessWidget {
       // use the larger post-header inset.
       padding: EdgeInsets.fromLTRB(
         16,
-        hasSuggestion ? _kSuggestionSearchResultTopPadding : eventTopPadding,
+        resultTopPadding,
         16,
         32,
       ),
       sliver: SliverList.separated(
-        itemCount: hits.length + (hasSuggestion ? 1 : 0),
+        itemCount:
+            hits.length +
+            (hasSuggestion ? 1 : 0) +
+            (hasSectionLabel ? 1 : 0),
         separatorBuilder:
-            (_, index) => SizedBox(
-              height: hasSuggestion && index == 0 ? 8 : kModalCardGap,
-            ),
+            (_, index) {
+              if (hasSuggestion && index == 0) {
+                return const SizedBox(height: 8);
+              }
+              if (hasSectionLabel &&
+                  index == (hasSuggestion ? 1 : 0)) {
+                return const SizedBox(height: 8);
+              }
+              return const SizedBox(height: kModalCardGap);
+            },
         itemBuilder: (ctx, i) {
-          if (hasSuggestion && i == 0) {
+          var itemIndex = i;
+          if (hasSuggestion && itemIndex == 0) {
             return _SearchSuggestionBanner(
               suggestion: suggestedQuery!,
               onTap: onSuggestionTap,
             );
           }
-          final hitIndex = hasSuggestion ? i - 1 : i;
+          if (hasSuggestion) itemIndex--;
+          if (hasSectionLabel && itemIndex == 0) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _SearchSectionLabel(text: sectionLabel!),
+            );
+          }
+          if (hasSectionLabel) itemIndex--;
           return _SearchEventTile(
-            hit: hits[hitIndex],
+            hit: hits[itemIndex],
             eventTileWrapper: eventTileWrapper,
             eventTilePressWrapper: eventTilePressWrapper,
           );
@@ -121,6 +147,7 @@ class SmartSearchResultsSliver extends StatelessWidget {
 class SmartDcvSearchResults extends StatelessWidget {
   final List<SearchHit> primary;
   final List<SearchHit> overflow;
+  final Widget? customContent;
   final String? suggestedQuery;
   final ValueChanged<String>? onSuggestionTap;
   final bool hidePrimaryCategoryName;
@@ -140,6 +167,7 @@ class SmartDcvSearchResults extends StatelessWidget {
     super.key,
     required this.primary,
     required this.overflow,
+    this.customContent,
     this.suggestedQuery,
     this.onSuggestionTap,
     this.hidePrimaryCategoryName = false,
@@ -198,7 +226,7 @@ class SmartDcvSearchResults extends StatelessWidget {
     required double emptyStateBottomClearance,
     required double bottomClearance,
   }) {
-    if (primary.isEmpty && overflow.isEmpty) {
+    if (customContent == null && primary.isEmpty && overflow.isEmpty) {
       // Keep the empty state inside the same bouncing scroll surface as
       // populated DCV results. The scroll viewport stays full-height; the
       // placeholder alone reserves the tab-bar clearance for its center.
@@ -249,6 +277,11 @@ class SmartDcvSearchResults extends StatelessWidget {
               ),
             ),
           ),
+        if (customContent != null)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, eventTopPadding, 16, 0),
+            sliver: SliverToBoxAdapter(child: customContent),
+          ),
         if (primary.isNotEmpty) ...[
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
@@ -283,17 +316,7 @@ class SmartDcvSearchResults extends StatelessWidget {
                 32,
                 8,
               ),
-              child: Text(
-                'ALSO FOUND',
-                style: TextStyle(
-                  inherit: false,
-                  fontFamily: kSFProText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: resolveThemeColor(kSecondaryLabel, context),
-                  letterSpacing: 0.5,
-                ),
-              ),
+              child: const _SearchSectionLabel(text: 'Also found'),
             ),
           ),
           SliverPadding(
@@ -312,7 +335,7 @@ class SmartDcvSearchResults extends StatelessWidget {
           ),
         ],
 
-        if (primary.isNotEmpty && overflow.isEmpty)
+        if (customContent != null || (primary.isNotEmpty && overflow.isEmpty))
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         SliverToBoxAdapter(
           child: SizedBox(
@@ -324,6 +347,25 @@ class SmartDcvSearchResults extends StatelessWidget {
       ],
     );
   }
+}
+
+class _SearchSectionLabel extends StatelessWidget {
+  final String text;
+
+  const _SearchSectionLabel({required this.text});
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: TextStyle(
+      inherit: false,
+      fontFamily: kSFProText,
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: resolveThemeColor(kSecondaryLabel, context),
+      letterSpacing: 0,
+    ),
+  );
 }
 
 class _SearchSuggestionBanner extends StatelessWidget {
