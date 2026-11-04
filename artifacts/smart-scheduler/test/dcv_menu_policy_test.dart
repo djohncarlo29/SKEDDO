@@ -8,6 +8,7 @@ void main() {
         isUtilityCategory: true,
         isUserCreatedSmartCategory: false,
         hasSections: true,
+        hasDatedSections: true,
       ),
       isFalse,
     );
@@ -19,6 +20,7 @@ void main() {
         isUtilityCategory: false,
         isUserCreatedSmartCategory: true,
         hasSections: false,
+        hasDatedSections: true,
       ),
       isFalse,
     );
@@ -27,6 +29,7 @@ void main() {
         isUtilityCategory: false,
         isUserCreatedSmartCategory: true,
         hasSections: true,
+        hasDatedSections: true,
       ),
       isFalse,
     );
@@ -38,6 +41,7 @@ void main() {
         isUtilityCategory: false,
         isUserCreatedSmartCategory: false,
         hasSections: false,
+        hasDatedSections: false,
       ),
       isFalse,
     );
@@ -49,6 +53,19 @@ void main() {
         isUtilityCategory: false,
         isUserCreatedSmartCategory: false,
         hasSections: true,
+        hasDatedSections: false,
+      ),
+      isTrue,
+    );
+  });
+
+  test('built-in Smart Categories show view mode for dated sections', () {
+    expect(
+      shouldShowDcvViewModeMenuItem(
+        isUtilityCategory: false,
+        isUserCreatedSmartCategory: false,
+        hasSections: false,
+        hasDatedSections: true,
       ),
       isTrue,
     );

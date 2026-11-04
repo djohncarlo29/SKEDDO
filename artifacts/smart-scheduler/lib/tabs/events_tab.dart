@@ -6782,6 +6782,25 @@ class EventsTabState extends State<EventsTab>
     return _dcvCustomSectionNames[label]?.isNotEmpty ?? false;
   }
 
+  /// Whether a built-in Smart Category currently renders generated section
+  /// headers. Its date/time groups count as sections for the DCV view-mode menu.
+  bool dcvHasGeneratedSections(String? label, {required String sortBy}) {
+    if (label == null || !_kDCVLabels.contains(label)) return false;
+    // Manual Unscheduled is intentionally a flat list; other built-in
+    // categories use date/time groups in Manual mode, and all non-Manual sort
+    // modes build groups from their sort keys.
+    if (sortBy == 'Manual' && label == 'Unscheduled') return false;
+
+    final now = DateTime.now();
+    final matches = AIServices.matcher.match(
+      candidates: _expandedEventsFor(now),
+      rule: label,
+      builtInLabel: label,
+      now: now,
+    );
+    return matches.isNotEmpty;
+  }
+
   /// Live section snapshots shared with the event editor. The Events tab owns
   /// these maps; the event editor must not use an independently stale copy
   /// when a section was just created or renamed in the DCV.

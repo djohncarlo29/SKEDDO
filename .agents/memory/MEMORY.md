@@ -35,6 +35,7 @@
 - [Smart Category rule persistence](smart-category-rule-persistence.md) — keep the matching rule separate from the category subtitle and persist it through category JSON.
 - [Location field fade-through](location-field-fade-through.md) — Starting Location and Destination swap the 30px map-pin circle and clear button with overlapping cross-dissolve.
 - [Category Groups Architecture](category-groups-architecture.md) — group ordering, lifecycle, constraints, persistence, and migration notes.
+- [DCV view-mode menu visibility](dcv-view-mode-menu.md) — generated date/time groups in built-in Smart Categories count as sections for the Columns/List toggle.
 - [Drag-reorder + dwell-to-group architecture](drag-reorder-dwell-architecture.md) — live reorder precedes dwell grouping; physical Y survives swaps and supports member drags.
 - [_FlatItem ValueKey ghost-freeze bug](flat-item-value-key.md) — avoid ValueKey(_FlatItem) in drag stacks; kind changes dispose GestureDetector state.
 - [Flutter web icon tree-shaking](flutter-web-icon-tree-shaking.md) — preview builds must disable icon tree-shaking because persisted category icons use runtime IconData.

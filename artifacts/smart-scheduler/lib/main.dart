@@ -1672,16 +1672,24 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         false;
     final hasAnySections =
         _eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false;
+    final initialSortBy = isUtilityCategory
+        ? 'Creation Date'
+        : (_dcvSortByMap[_dcvCategory] ?? 'Manual');
+    final hasDatedSections =
+        isSmartCategory &&
+        (_eventsTabKey.currentState?.dcvHasGeneratedSections(
+              _dcvCategory,
+              sortBy: initialSortBy,
+            ) ??
+            false);
     final showViewMode = shouldShowDcvViewModeMenuItem(
       isUtilityCategory: isUtilityCategory,
       isUserCreatedSmartCategory: userSmartCategory,
       hasSections: hasAnySections,
+      hasDatedSections: hasDatedSections,
     );
     final sectionsEnabled =
         !userSmartCategory && _dcvSectionsEnabled(_dcvCategory);
-    final initialSortBy = isUtilityCategory
-        ? 'Creation Date'
-        : (_dcvSortByMap[_dcvCategory] ?? 'Manual');
     final storedSortDir = _dcvSortDirMap[_dcvCategory];
     final initialSortDir =
         isUtilityCategory &&
@@ -2203,15 +2211,23 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _eventsTabKey.currentState?.isUserSmartCategoryLabel(category) ?? false;
     final hasAnySections =
         _eventsTabKey.currentState?.dcvHasSections(category) ?? false;
+    final sortBy = isUtilityCategory
+        ? 'Creation Date'
+        : (_dcvSortByMap[category] ?? 'Manual');
+    final hasDatedSections =
+        isSmartCategory &&
+        (_eventsTabKey.currentState?.dcvHasGeneratedSections(
+              category,
+              sortBy: sortBy,
+            ) ??
+            false);
     final showViewMode = shouldShowDcvViewModeMenuItem(
       isUtilityCategory: isUtilityCategory,
       isUserCreatedSmartCategory: userSmartCategory,
       hasSections: hasAnySections,
+      hasDatedSections: hasDatedSections,
     );
     final sectionsEnabled = !userSmartCategory && _dcvSectionsEnabled(category);
-    final sortBy = isUtilityCategory
-        ? 'Creation Date'
-        : (_dcvSortByMap[category] ?? 'Manual');
     final storedSortDir = _dcvSortDirMap[category];
     final directions = <String, List<String>>{
       'Deadline': ['Earliest First', 'Latest First'],
