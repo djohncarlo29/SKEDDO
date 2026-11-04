@@ -13,6 +13,7 @@ description: Focused implementation notes for Calendar interactions, list render
 - [Calendar list icon weights](calendar-list-icon-weights.md) — preserve the distinct Day List icon and clipping rules.
 - [Floating bar clearance math](floating-bar-clearance-math.md) — preserve Android landscape pill clearance without reducing scrollable space.
 - [Calendar List DCV parity](calendar-list-dcv-parity.md) — embed the Events DCV implementation and its exact-time reorder boundaries.
+- [Day List header scroll ownership](calendar-day-list-scroll-ownership.md) — hidden Month/preview panels must not hijack the user-scrolled List Day header position.
 - [Timeline rubberband synchronization](calendar-timeline-rubberband.md) — share only in-range offsets so sync does not cancel bounce.
 - [Calendar month dot ordering](calendar-month-dot-order.md) — order month-grid dots by displayed event order.
 - [Day View week-strip positioning](calendar-day-header-expanded-state.md) — keep settled Single/Multi Day headers mounted without Month panels.

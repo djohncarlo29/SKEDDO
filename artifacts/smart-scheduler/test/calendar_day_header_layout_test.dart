@@ -1239,6 +1239,109 @@ void main() {
       );
     },
   );
+
+  testWidgets('empty List Day scrolls like an empty DCV', (tester) async {
+    const screenSize = Size(402, 874);
+    const headerInset = 24.0 + kAppHeaderToolbarHeight;
+    final titleTransition = AppHeaderTitleTransition();
+    addTearDown(titleTransition.dispose);
+    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = screenSize;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) {
+          final mediaQuery = MediaQuery.of(
+            context,
+          ).copyWith(size: screenSize);
+          return NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              final notificationContext = notification.context;
+              final scrollable = notificationContext == null
+                  ? null
+                  : Scrollable.maybeOf(
+                      notificationContext,
+                      axis: Axis.vertical,
+                    );
+              final hasDirectDrag = switch (notification) {
+                ScrollStartNotification scrollStart =>
+                  scrollStart.dragDetails != null,
+                ScrollUpdateNotification scrollUpdate =>
+                  scrollUpdate.dragDetails != null,
+                OverscrollNotification overscroll =>
+                  overscroll.dragDetails != null,
+                _ => false,
+              };
+              if (hasDirectDrag &&
+                  notification.depth == 0 &&
+                  notification.metrics.axis == Axis.vertical &&
+                  scrollable != null) {
+                titleTransition.bindTo(
+                  scrollable.position,
+                  preserveCollapseProgress: true,
+                );
+              }
+              return false;
+            },
+            child: MediaQuery(
+              data: mediaQuery,
+              child: AppHeaderScrollInsetScope(
+                leadingInset: headerInset,
+                titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+                titleTransition: titleTransition,
+                child: AppWindowContentBoundary(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: headerInset),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        home: CupertinoPageScaffold(
+          child: CalendarTab(
+            daySubMode: DayViewSubMode.list,
+            onViewChanged: (_, _, _, _, _, _) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+    await tester.pumpAndSettle();
+
+    final emptyListDay = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayListPlaceholder',
+    );
+    expect(emptyListDay, findsOneWidget);
+    final nestedScrollView = find.descendant(
+      of: emptyListDay,
+      matching: find.byType(NestedScrollView),
+    );
+    expect(nestedScrollView, findsOneWidget);
+    final outerController = tester
+        .widget<NestedScrollView>(nestedScrollView)
+        .controller!;
+    final scrollSurface = find.descendant(
+      of: emptyListDay,
+      matching: find.byType(Scrollable),
+    ).first;
+
+    await tester.drag(scrollSurface, const Offset(0, -180));
+    await tester.pumpAndSettle();
+    expect(outerController.offset, greaterThan(0.5));
+    expect(titleTransition.collapseProgress, greaterThan(0.5));
+
+    await tester.drag(scrollSurface, const Offset(0, 180));
+    await tester.pumpAndSettle();
+    expect(outerController.offset, closeTo(0.0, 0.5));
+    expect(titleTransition.collapseProgress, lessThan(0.1));
+  });
 }
 
 Finder _selectedWeekRow(DateTime date) {

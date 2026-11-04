@@ -1025,6 +1025,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       AppShellNavigationObserver(_appShellRouteRevision);
   final AppHeaderTitleTransition _headerTitleTransition =
       AppHeaderTitleTransition();
+  ScrollPosition? _calendarListDayHeaderScrollPosition;
   ScrollDirection _calendarDayHeaderUserScrollDirection =
       ScrollDirection.idle;
   ScrollPosition? _calendarDayHeaderUserScrollPosition;
@@ -1109,6 +1110,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         (_calendarView == CalendarView.year ||
             _calendarView == CalendarView.month)) {
       final activePosition = _calendarTabKey.currentState?.headerScrollPosition;
+      final sourcePosition = notificationContext == null
+          ? null
+          : Scrollable.maybeOf(
+              notificationContext,
+              axis: Axis.vertical,
+            )?.position;
+      if (activePosition == null ||
+          !identical(sourcePosition, activePosition)) {
+        return false;
+      }
+    }
+
+    // Day List keeps several calendar panels mounted during its view handoff.
+    // Only the position that received the user's drag may own the shared title;
+    // hidden month/preview panels must not rebind it from their metrics.
+    if (_selectedIndex == 1 &&
+        _calendarView == CalendarView.day &&
+        _activeDaySubMode == DayViewSubMode.list) {
+      final activePosition = _calendarListDayHeaderScrollPosition;
       final sourcePosition = notificationContext == null
           ? null
           : Scrollable.maybeOf(
@@ -1225,6 +1245,34 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _calendarDayHeaderUserScrollPosition = null;
       _headerTitleTransition.suspend();
       return false;
+    }
+    if (_selectedIndex == 1 &&
+        _calendarView == CalendarView.day &&
+        _activeDaySubMode == DayViewSubMode.list &&
+        notification.depth == 0 &&
+        notification.metrics.axis == Axis.vertical &&
+        notification.metrics.viewportDimension >=
+            max(240, MediaQuery.sizeOf(context).height * 0.35) &&
+        notification.context?.findAncestorStateOfType<CalendarTabState>() !=
+            null) {
+      final hasDirectDrag = switch (notification) {
+        ScrollStartNotification scrollStart => scrollStart.dragDetails != null,
+        ScrollUpdateNotification scrollUpdate =>
+          scrollUpdate.dragDetails != null,
+        OverscrollNotification overscroll => overscroll.dragDetails != null,
+        UserScrollNotification userScroll =>
+          userScroll.direction != ScrollDirection.idle,
+        _ => false,
+      };
+      if (hasDirectDrag) {
+        final sourcePosition = Scrollable.maybeOf(
+          notification.context!,
+          axis: Axis.vertical,
+        )?.position;
+        if (sourcePosition != null) {
+          _calendarListDayHeaderScrollPosition = sourcePosition;
+        }
+      }
     }
     if (_isDirectionalCalendarDayScroll(notification)) {
       if (notification is UserScrollNotification &&
@@ -2075,6 +2123,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final current = _activeDaySubMode;
     final labelColor = _toolbarMenuDefaultLabelColor();
     void select(DayViewSubMode mode) {
+      _calendarListDayHeaderScrollPosition = null;
       setState(() => _activeDaySubMode = mode);
       _toolbarMenuRevision.value++;
       if (_selectedIndex == 1) {
@@ -2548,6 +2597,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final current = _activeDaySubMode;
     void doSelect(DayViewSubMode mode) {
       _hideDayViewModeMenu();
+      _calendarListDayHeaderScrollPosition = null;
       setState(() => _activeDaySubMode = mode);
       if (_selectedIndex == 1) _syncToolbarDestination();
       if (_selectedIndex == 1) _restoreHeaderScrollOffset();
@@ -4161,6 +4211,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             onViewChanged:
                 (view, displayYear, prev, curr, next, titleInScrollContent) {
                   final viewChanged = _calendarView != view;
+                  if (viewChanged) {
+                    _calendarListDayHeaderScrollPosition = null;
+                  }
                   final keepHeaderScrollPosition =
                       viewChanged &&
                       _selectedIndex == 1 &&
