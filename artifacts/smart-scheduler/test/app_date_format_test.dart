@@ -4,74 +4,52 @@ import 'package:smart_scheduler/app_settings.dart';
 void main() {
   final sampleDate = DateTime(2026, 8, 19);
 
-  test('date format options produce the requested exact samples', () {
+  test('date formats produce the requested exact samples', () {
     final expected = <String>[
       '19/08/2026',
-      '08/19/26',
       '19/08/26',
-      '08/19/2026',
       '19.08.2026',
+      '19.08.26',
       '19-08-2026',
+      '19-08-26',
+      '08/19/2026',
+      '08/19/26',
+      '08.19.2026',
+      '08.19.26',
+      '08-19-2026',
+      '08-19-26',
       '2026/08/19',
       '2026.08.19',
       '2026-08-19',
     ];
 
     expect(
-      AppDateFormat.values.map((format) => format.sample).toList(),
-      expected,
-    );
-    expect(
       AppDateFormat.values.map((format) => format.format(sampleDate)).toList(),
       expected,
     );
+    final today = DateTime.now();
+    expect(
+      AppDateFormat.values.map((format) => format.sample).toList(),
+      AppDateFormat.values.map((format) => format.format(today)).toList(),
+    );
   });
 
-  test('each date format has its requested context footer examples', () {
-    final short = AppDateFormat.values.map((format) => format.sample).toList();
-    final medium = [
-      '19 Aug 2026',
-      'Aug 19, 2026',
-      '19 Aug 2026',
-      'Aug 19, 2026',
-      '19 Aug 2026',
-      '19 Aug 2026',
-      'Aug 19, 2026',
-      'Aug 19, 2026',
-      'Aug 19, 2026',
-    ];
-    final long = [
-      '19 August 2026',
-      'August 19, 2026',
-      '19 August 2026',
-      'August 19, 2026',
-      '19 August 2026',
-      '19 August 2026',
-      'August 19, 2026',
-      'August 19, 2026',
-      'August 19, 2026',
-    ];
-    final full = [
-      'Wednesday, 19 August 2026',
-      'Wednesday, August 19, 2026',
-      'Wednesday, 19 August 2026',
-      'Wednesday, August 19, 2026',
-      'Wednesday, 19 August 2026',
-      'Wednesday, 19 August 2026',
-      'Wednesday, August 19, 2026',
-      'Wednesday, August 19, 2026',
-      'Wednesday, August 19, 2026',
-    ];
-
-    for (var i = 0; i < AppDateFormat.values.length; i++) {
+  test('date format examples use the date they are built with', () {
+    for (final format in AppDateFormat.values) {
       expect(
-        AppDateFormat.values[i].contextFooter,
+        format.contextFooterFor(sampleDate),
         'Format Example:\n'
-        '• Short: ${short[i]}\n'
-        '• Medium: ${medium[i]}\n'
-        '• Long: ${long[i]}\n'
-        '• Full: ${full[i]}',
+        '• Short: ${format.format(sampleDate)}\n'
+        '• Medium: ${format.formatMedium(sampleDate)}\n'
+        '• Long: ${format.formatLong(sampleDate)}\n'
+        '• Full: ${format.formatFull(sampleDate)}',
       );
+    }
+
+    final today = DateTime.now();
+    for (final format in AppDateFormat.values) {
+      expect(format.sample, format.format(today));
+      expect(format.contextFooter, format.contextFooterFor(today));
     }
   });
 
@@ -81,7 +59,9 @@ void main() {
       AppDateFormat.dayMonthYearSlash,
       AppDateFormat.dayMonthYearShortSlash,
       AppDateFormat.dayMonthYearDot,
+      AppDateFormat.dayMonthYearShortDot,
       AppDateFormat.dayMonthYearDash,
+      AppDateFormat.dayMonthYearShortDash,
     ];
 
     for (final format in AppDateFormat.values) {
@@ -94,7 +74,7 @@ void main() {
     }
   });
 
-  test('the test default is 08/19/2026', () {
+  test('the test default is month/day/year', () {
     expect(appDateFormatNotifier.value, AppDateFormat.monthDayYearSlash);
     expect(formatAppDate(sampleDate), '08/19/2026');
   });

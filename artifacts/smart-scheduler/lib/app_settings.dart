@@ -243,7 +243,7 @@ Future<void> refreshSystemDateFormat() async {
     if (pattern == null || pattern.isEmpty) return;
     appSystemDateFormatPatternNotifier.value = pattern;
     appSystemDateFormatSampleNotifier.value = _formatSystemDatePattern(
-      DateTime(2026, 8, 19),
+      DateTime.now(),
       pattern,
     );
 
@@ -606,19 +606,26 @@ final ValueNotifier<DateLocalePreference> appDateLocaleNotifier =
 /// Date formats shown throughout the app. The sample values are also the
 /// visible labels in Settings, so the selected format is always unambiguous.
 enum AppDateFormat {
-  dayMonthYearSlash('19/08/2026'),
-  monthDayYearShortSlash('08/19/26'),
-  dayMonthYearShortSlash('19/08/26'),
-  monthDayYearSlash('08/19/2026'),
-  dayMonthYearDot('19.08.2026'),
-  dayMonthYearDash('19-08-2026'),
-  yearMonthDaySlash('2026/08/19'),
-  yearMonthDayDot('2026.08.19'),
-  yearMonthDayDash('2026-08-19');
+  dayMonthYearSlash,
+  dayMonthYearShortSlash,
+  dayMonthYearDot,
+  dayMonthYearShortDot,
+  dayMonthYearDash,
+  dayMonthYearShortDash,
+  monthDayYearSlash,
+  monthDayYearShortSlash,
+  monthDayYearDot,
+  monthDayYearShortDot,
+  monthDayYearDash,
+  monthDayYearShortDash,
+  yearMonthDaySlash,
+  yearMonthDayDot,
+  yearMonthDayDash;
 
-  const AppDateFormat(this.sample);
+  const AppDateFormat();
 
-  final String sample;
+  /// Use the device's current local date for the Settings example label.
+  String get sample => format(DateTime.now());
 
   String format(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
@@ -627,11 +634,17 @@ enum AppDateFormat {
     final shortYear = year.substring(year.length - 2);
     return switch (this) {
       AppDateFormat.dayMonthYearSlash => '$day/$month/$year',
-      AppDateFormat.monthDayYearShortSlash => '$month/$day/$shortYear',
       AppDateFormat.dayMonthYearShortSlash => '$day/$month/$shortYear',
-      AppDateFormat.monthDayYearSlash => '$month/$day/$year',
       AppDateFormat.dayMonthYearDot => '$day.$month.$year',
+      AppDateFormat.dayMonthYearShortDot => '$day.$month.$shortYear',
       AppDateFormat.dayMonthYearDash => '$day-$month-$year',
+      AppDateFormat.dayMonthYearShortDash => '$day-$month-$shortYear',
+      AppDateFormat.monthDayYearSlash => '$month/$day/$year',
+      AppDateFormat.monthDayYearShortSlash => '$month/$day/$shortYear',
+      AppDateFormat.monthDayYearDot => '$month.$day.$year',
+      AppDateFormat.monthDayYearShortDot => '$month.$day.$shortYear',
+      AppDateFormat.monthDayYearDash => '$month-$day-$year',
+      AppDateFormat.monthDayYearShortDash => '$month-$day-$shortYear',
       AppDateFormat.yearMonthDaySlash => '$year/$month/$day',
       AppDateFormat.yearMonthDayDot => '$year.$month.$day',
       AppDateFormat.yearMonthDayDash => '$year-$month-$day',
@@ -663,10 +676,11 @@ enum AppDateFormat {
     return '$weekday, ${formatLong(date)}';
   }
 
-  String get contextFooter {
-    final exampleDate = DateTime(2026, 8, 19);
+  String get contextFooter => contextFooterFor(DateTime.now());
+
+  String contextFooterFor(DateTime exampleDate) {
     return 'Format Example:\n'
-        '• Short: $sample\n'
+        '• Short: ${format(exampleDate)}\n'
         '• Medium: ${formatMedium(exampleDate)}\n'
         '• Long: ${formatLong(exampleDate)}\n'
         '• Full: ${formatFull(exampleDate)}';
@@ -679,7 +693,9 @@ enum AppDateFormat {
     AppDateFormat.dayMonthYearSlash ||
     AppDateFormat.dayMonthYearShortSlash ||
     AppDateFormat.dayMonthYearDot ||
+    AppDateFormat.dayMonthYearShortDot ||
     AppDateFormat.dayMonthYearDash => DateLocalePreference.dayFirst,
+    AppDateFormat.dayMonthYearShortDash => DateLocalePreference.dayFirst,
     _ => DateLocalePreference.monthFirst,
   };
 
@@ -732,13 +748,22 @@ enum AppDateFormat {
       'dMy' => switch (separator) {
         '/' when shortYear => AppDateFormat.dayMonthYearShortSlash,
         '/' => AppDateFormat.dayMonthYearSlash,
+        '.' when shortYear => AppDateFormat.dayMonthYearShortDot,
         '.' when !shortYear => AppDateFormat.dayMonthYearDot,
+        '-' when shortYear => AppDateFormat.dayMonthYearShortDash,
         '-' when !shortYear => AppDateFormat.dayMonthYearDash,
         _ => AppDateFormat.dayMonthYearSlash,
       },
-      'Mdy' => shortYear
-          ? AppDateFormat.monthDayYearShortSlash
-          : AppDateFormat.monthDayYearSlash,
+      'Mdy' => switch (separator) {
+        '/' when shortYear => AppDateFormat.monthDayYearShortSlash,
+        '/' => AppDateFormat.monthDayYearSlash,
+        '.' when shortYear => AppDateFormat.monthDayYearShortDot,
+        '.' => AppDateFormat.monthDayYearDot,
+        '-' when shortYear => AppDateFormat.monthDayYearShortDash,
+        '-' => AppDateFormat.monthDayYearDash,
+        _ when shortYear => AppDateFormat.monthDayYearShortSlash,
+        _ => AppDateFormat.monthDayYearSlash,
+      },
       'yMd' => switch (separator) {
         '.' => AppDateFormat.yearMonthDayDot,
         '-' => AppDateFormat.yearMonthDayDash,
@@ -801,7 +826,7 @@ final ValueNotifier<AppDateFormat> appSystemDateFormatNotifier =
 final ValueNotifier<String?> appSystemDateFormatPatternNotifier =
     ValueNotifier<String?>(null);
 final ValueNotifier<String?> appSystemDateFormatSampleNotifier =
-    ValueNotifier<String?>(null);
+    ValueNotifier<String?>(appSystemDateFormatNotifier.value.sample);
 final ValueNotifier<bool> appDateFormatUsesSystemNotifier =
     ValueNotifier<bool>(true);
 

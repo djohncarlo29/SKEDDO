@@ -216,7 +216,10 @@ void main() {
 
     expect(appDateFormatUsesSystemNotifier.value, isTrue);
     expect(appDateFormatNotifier.value, AppDateFormat.monthDayYearSlash);
-    expect(appDateFormatNotifier.value.sample, '08/19/2026');
+    expect(
+      appDateFormatNotifier.value.sample,
+      appDateFormatNotifier.value.format(DateTime.now()),
+    );
   });
 
   test('legacy saved Date Format remains an App Only choice', () async {
@@ -258,6 +261,18 @@ void main() {
       AppDateFormat.dayMonthYearDot,
     );
     expect(
+      AppDateFormat.fromSystemPattern('dd.MM.yy'),
+      AppDateFormat.dayMonthYearShortDot,
+    );
+    expect(
+      AppDateFormat.fromSystemPattern('MM.dd.yy'),
+      AppDateFormat.monthDayYearShortDot,
+    );
+    expect(
+      AppDateFormat.fromSystemPattern('MM-dd-yyyy'),
+      AppDateFormat.monthDayYearDash,
+    );
+    expect(
       AppDateFormat.fromSystemPattern('yyyy-MM-dd'),
       AppDateFormat.yearMonthDayDash,
     );
@@ -283,6 +298,10 @@ void main() {
       '8/19/2026',
       reason: 'System mode should use the native pattern, not its mapped preset.',
     );
-    expect(appSystemDateFormatSampleNotifier.value, '8/19/2026');
+    expect(
+      appSystemDateFormatSampleNotifier.value,
+      formatAppDate(DateTime.now()),
+      reason: 'System Setting should show today in the native date format.',
+    );
   });
 }

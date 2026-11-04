@@ -157,18 +157,8 @@ const _kRoutes = <String, _SettingsRoute>{
   ),
   'Date Format': _SettingsRoute(
     title: 'Date Format',
-    options: [
-      '19/08/2026',
-      '08/19/26',
-      '19/08/26',
-      '08/19/2026',
-      '19.08.2026',
-      '19-08-2026',
-      '2026/08/19',
-      '2026.08.19',
-      '2026-08-19',
-    ],
-    defaultValue: '08/19/2026',
+    options: const [],
+    defaultValue: 'System',
   ),
   'Privacy': _SettingsRoute(
     title: 'Privacy',
@@ -1238,7 +1228,9 @@ class _SubScreenState extends State<_SubScreen> {
         appDateFormatUsesSystemNotifier.value = useSystem;
         final format = useSystem
             ? appSystemDateFormatNotifier.value
-            : AppDateFormat.fromSample(opt) ?? AppDateFormat.monthDayYearSlash;
+            : AppDateFormat.fromName(opt) ??
+                  AppDateFormat.fromSample(opt) ??
+                  AppDateFormat.monthDayYearSlash;
         if (!useSystem) appCustomDateFormatNotifier.value = format;
         appDateFormatNotifier.value = format;
         final preference = format.parserLocalePreference;
@@ -2203,6 +2195,7 @@ class _DateFormatSettingsSection extends StatelessWidget {
       builder: (context, _) {
         final usesSystem = appDateFormatUsesSystemNotifier.value;
         final appOnlyFormat = appCustomDateFormatNotifier.value;
+        final sampleDate = DateTime.now();
         final settingsScreenName = switch (defaultTargetPlatform) {
           TargetPlatform.android => 'Regional preferences',
           TargetPlatform.iOS => 'Language & Region',
@@ -2211,10 +2204,10 @@ class _DateFormatSettingsSection extends StatelessWidget {
         final optionRows = AppDateFormat.values
             .map(
               (format) => _OptionRow(
-                title: format.sample,
+                title: format.format(sampleDate),
                 selected: !usesSystem && format == appOnlyFormat,
                 accentColor: accentColor,
-                onTap: () => onSelect(format.sample),
+                onTap: () => onSelect(format.name),
               ),
             )
             .toList();
@@ -2241,7 +2234,7 @@ class _DateFormatSettingsSection extends StatelessWidget {
                   rows: optionRows,
                   additionalFooter: usesSystem
                       ? null
-                      : appOnlyFormat.contextFooter,
+                      : appOnlyFormat.contextFooterFor(sampleDate),
                 ),
               ],
             ),
