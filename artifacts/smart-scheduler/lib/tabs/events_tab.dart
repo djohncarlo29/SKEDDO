@@ -3034,8 +3034,7 @@ class EventsTabState extends State<EventsTab>
               : _archivedCategorySubtitle(category),
       actionLabel: 'Recover',
       onAction: () => _unarchiveCategory(category),
-      destructiveActionLabel:
-          isSmart ? 'Delete' : 'Delete Category',
+      destructiveActionLabel: 'Delete Category',
       onDestructiveAction: () => _requestDeleteArchivedCategory(category),
     );
   }

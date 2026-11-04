@@ -9,9 +9,10 @@ the saved rule, while matching events remain in their storage categories.
 
 Their active archive and delete confirmations use destructive-red actions,
 including archive. In Archived Items and Recently Deleted, the first utility
-sheet labels the action itself ("Delete" or "Permanently Delete"), not the
-entity type; the follow-up confirmation remains Smart-Category-specific and
-does not add a duplicate generic category confirmation.
+sheet uses the standard entity action ("Delete Category" or "Permanently
+Delete") rather than adding "Smart" to the button; the follow-up confirmation
+remains Smart-Category-specific and does not add a duplicate generic category
+confirmation.
 
 **Why:** Smart Categories organize a rule over existing events rather than
 holding events themselves, so category-with-contents and section language is
@@ -20,5 +21,6 @@ product flow.
 
 **How to apply:** Keep Smart Category lifecycle copy separate from standard
 category copy, suppress section controls for user-created Smart Category DCVs,
-and keep first-sheet utility buttons action-focused; confirmation details may
-identify the Smart Category.
+and keep first-sheet utility buttons on the standard Delete Category /
+Permanently Delete wording; confirmation details may identify the Smart
+Category.
