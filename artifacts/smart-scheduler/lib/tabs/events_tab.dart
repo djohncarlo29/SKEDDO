@@ -3035,7 +3035,7 @@ class EventsTabState extends State<EventsTab>
       actionLabel: 'Recover',
       onAction: () => _unarchiveCategory(category),
       destructiveActionLabel:
-          isSmart ? 'Delete Smart Category' : 'Delete Category',
+          isSmart ? 'Delete' : 'Delete Category',
       onDestructiveAction: () => _requestDeleteArchivedCategory(category),
     );
   }
@@ -3130,8 +3130,7 @@ class EventsTabState extends State<EventsTab>
               : _deletedCategorySubtitle(category),
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
-      destructiveActionLabel:
-          isSmart ? 'Permanently Delete Smart Category' : 'Permanently Delete',
+      destructiveActionLabel: 'Permanently Delete',
       onDestructiveAction: () => _requestPermanentlyDeleteCategory(category),
     );
   }
