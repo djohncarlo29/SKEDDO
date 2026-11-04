@@ -9,6 +9,7 @@ description: Focused implementation notes for Calendar interactions, list render
 - [Multi-Day separator reverse morph](calendar-multiday-reverse-separator.md) — keep the timeline mounted through the reverse divider handoff.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — recreate a controller after keyed remounts to avoid stale initial offsets.
 - [Month List fit and overflow](calendar-empty-list-scroll-extent.md) — fitting content has no scroll range; natural Month List overflow remains scrollable.
+- [Year View fit spacing](calendar-year-view-fit-spacing.md) — keep 16pt title/tab-bar anchors and split spare portrait height evenly across month-group gaps; overflow keeps 16pt gaps.
 - [Live-synced adjacent swipe panels](calendar-adjacent-panel-live-sync.md) — listen to the current panel controller while preview panels are open.
 - [Calendar list icon weights](calendar-list-icon-weights.md) — preserve the distinct Day List icon and clipping rules.
 - [Floating bar clearance math](floating-bar-clearance-math.md) — preserve Android landscape pill clearance without reducing scrollable space.

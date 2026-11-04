@@ -74,6 +74,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Jan'), findsWidgets);
       expect(find.text('January'), findsNothing);
+      final fallbackGaps = _yearGroupGaps(tester, DateTime.now().year);
+      for (final gap in fallbackGaps) {
+        expect(gap, closeTo(16.0, 0.1));
+      }
       appFullMonthNameNotifier.value = true;
       await tester.pump();
       expect(find.text('January'), findsWidgets);
@@ -150,6 +154,46 @@ void main() {
   );
 
   testWidgets(
+    'Portrait Year View shares fitting spare space across month groups',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      appFullMonthNameNotifier.value = false;
+      addTearDown(() => appFullMonthNameNotifier.value = false);
+      tester.view.physicalSize = const Size(393, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      final calendarTabLabel = find.text('Calendar');
+      expect(calendarTabLabel, findsNWidgets(2));
+      await tester.tapAt(tester.getCenter(calendarTabLabel.last));
+      await tester.pumpAndSettle();
+      final calendar = tester.state<CalendarTabState>(
+        find.byType(CalendarTab),
+      );
+      calendar.navigateDown();
+      await tester.pumpAndSettle();
+
+      final gaps = _yearGroupGaps(tester, DateTime.now().year);
+      expect(gaps, hasLength(3));
+      expect(gaps.first, greaterThan(16.0));
+      for (final gap in gaps.skip(1)) {
+        expect(gap, closeTo(gaps.first, 0.1));
+      }
+
+      final transition = calendar.advanceCurrentHeader();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      await transition;
+      expect(calendar.calendarYearMonthMorphActive, isFalse);
+    },
+  );
+
+  testWidgets(
     'Year↔Month weight blend completes below default text size',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
@@ -183,6 +227,21 @@ void main() {
       await transition;
       expect(calendar.calendarYearMonthMorphActive, isFalse);
     },
+  );
+}
+
+List<double> _yearGroupGaps(WidgetTester tester, int year) {
+  final rows = List<Rect>.generate(
+    4,
+    (row) => tester.getRect(
+      find.byKey(ValueKey('calendar-year-month-group-$year-$row')),
+    ),
+    growable: false,
+  );
+  return List<double>.generate(
+    rows.length - 1,
+    (index) => rows[index + 1].top - rows[index].bottom,
+    growable: false,
   );
 }
 

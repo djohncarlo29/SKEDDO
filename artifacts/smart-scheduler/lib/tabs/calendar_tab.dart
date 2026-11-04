@@ -153,6 +153,7 @@ const double _kDayLabelHeight = 28.0;
 const double _kWeekNumWidth = 28.0;
 const double _kYearOuterPad = 16.0;
 const double _kYearColGap = 12.0;
+// Minimum/fallback distance between portrait Year View month groups.
 const double _kYearRowGap = 16.0;
 const double _kHourHeight = 64.0;
 const double _kTimelinePad =
@@ -300,6 +301,17 @@ class _YearGridGeometry {
 
   double get cellSize => monthWidth / 7.0;
   int get rowCount => (12 + columnCount - 1) ~/ columnCount;
+}
+
+double _yearMonthGroupHeight(int year, int row, _YearGridGeometry grid) {
+  var maxWeeks = 0;
+  for (var col = 0; col < grid.columnCount; col++) {
+    final monthIndex = row * grid.columnCount + col;
+    if (monthIndex >= 12) break;
+    maxWeeks = math.max(maxWeeks, _totalWeekRows(year, monthIndex + 1));
+  }
+  // Month title + 5pt gap + DOW row + 2pt gap + maximum week rows.
+  return grid.cellSize * (2.35 + maxWeeks) + 7.0;
 }
 
 /// Derives Year View geometry from the portrait phone width, even when the
@@ -4096,53 +4108,65 @@ class _YearView extends StatelessWidget {
         final stationaryScrollTitle = scrollTitle == null
             ? null
             : AppHeaderScrollTitle(controller: controller, child: scrollTitle);
-        final monthGrid = Padding(
+        final groupHeights = List<double>.generate(
+          grid.rowCount,
+          (row) => _yearMonthGroupHeight(year, row, grid),
+          growable: false,
+        );
+        final groupsHeight = groupHeights.fold<double>(
+          0.0,
+          (total, height) => total + height,
+        );
+        Widget monthGrid(double groupGap) => Padding(
           padding: EdgeInsets.symmetric(
             horizontal: _kYearOuterPad + horizontalInset,
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               for (int row = 0; row < grid.rowCount; row++) ...[
-                // KeyedSubtree lets CalendarTabState measure exact row positions
-                // via GlobalKey before zooming, so _MorphOverlay can use actual
-                // Flutter-layout y coordinates instead of a formula.
                 KeyedSubtree(
-                  key: rowKeys?[row],
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (
-                        int col = 0;
-                        col < grid.columnCount &&
-                            row * grid.columnCount + col < 12;
-                        col++
-                      ) ...[
-                        if (col > 0) SizedBox(width: grid.columnGap),
-                        SizedBox(
-                          width: grid.monthWidth,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () =>
-                                onMonthTap(row * grid.columnCount + col),
-                            child: _MiniMonthGrid(
-                              year: year,
-                              month: row * grid.columnCount + col + 1,
-                              today: today,
-                              selectedDate: selectedDate,
-                              width: grid.monthWidth,
-                              morphWeekRowKeys: morphWeekRowKeys == null
-                                  ? null
-                                  : morphWeekRowKeys![row * grid.columnCount +
-                                        col],
+                  key: ValueKey('calendar-year-month-group-$year-$row'),
+                  child: KeyedSubtree(
+                    // Keep measured morph endpoints tied to the actual group.
+                    key: rowKeys?[row],
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (
+                          int col = 0;
+                          col < grid.columnCount &&
+                              row * grid.columnCount + col < 12;
+                          col++
+                        ) ...[
+                          if (col > 0) SizedBox(width: grid.columnGap),
+                          SizedBox(
+                            width: grid.monthWidth,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () =>
+                                  onMonthTap(row * grid.columnCount + col),
+                              child: _MiniMonthGrid(
+                                year: year,
+                                month: row * grid.columnCount + col + 1,
+                                today: today,
+                                selectedDate: selectedDate,
+                                width: grid.monthWidth,
+                                morphWeekRowKeys: morphWeekRowKeys == null
+                                    ? null
+                                    : morphWeekRowKeys![
+                                          row * grid.columnCount + col
+                                        ],
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 if (row < grid.rowCount - 1)
-                  const SizedBox(height: _kYearRowGap),
+                  SizedBox(height: groupGap),
               ],
             ],
           ),
@@ -4176,15 +4200,61 @@ class _YearView extends StatelessWidget {
                 ),
               ),
               const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom:
-                        14.5 + floatingTabBarContentBottomClearance(context),
+              if (isPortrait)
+                SliverLayoutBuilder(
+                  builder: (context, sliverConstraints) {
+                    final bottomClearance =
+                        floatingTabBarContentBottomClearance(
+                          context,
+                          finalContentGap: 16,
+                        );
+                    final gapCount = grid.rowCount > 1
+                        ? grid.rowCount - 1
+                        : 0;
+                    final minimumContentHeight =
+                        groupsHeight +
+                        gapCount * _kYearRowGap +
+                        bottomClearance;
+                    // Use the unscrolled prefix extent rather than the local
+                    // scroll offset, so gaps stay stable while overflow scrolls.
+                    final availableHeight =
+                        math
+                            .max(
+                              0.0,
+                              sliverConstraints.viewportMainAxisExtent -
+                                  sliverConstraints.precedingScrollExtent,
+                            )
+                            .toDouble();
+                    final groupGap = gapCount == 0 ||
+                            availableHeight < minimumContentHeight
+                        ? _kYearRowGap
+                        : _kYearRowGap +
+                              (availableHeight - minimumContentHeight) /
+                                  gapCount;
+                    final childHeight = math
+                        .max(availableHeight, minimumContentHeight)
+                        .toDouble();
+                    return SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: childHeight,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: bottomClearance),
+                          child: monthGrid(groupGap),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              else
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom:
+                          14.5 + floatingTabBarContentBottomClearance(context),
+                    ),
+                    child: monthGrid(_kYearRowGap),
                   ),
-                  child: monthGrid,
                 ),
-              ),
             ],
           ),
         );
