@@ -863,6 +863,9 @@ class CalendarTabState extends State<CalendarTab>
   // Keep outgoing Day View chrome mounted until the shared List-mode
   // transition has completed, so the DOW row and banner leave with the strip.
   bool _dayChromeModeTransitionActive = false;
+  // Retain the Day timeline as the lower half of the opening/closing veil
+  // while switching between Day and List modes.
+  bool _retainDayTimelineForListTransition = false;
   DayViewSubMode? _dayChromeSubMode;
   // Multi-Day separator morphs are reserved for an explicit Single↔Multi
   // switch while already in Day View. Mounting Multi Day for List or
@@ -2490,9 +2493,13 @@ class CalendarTabState extends State<CalendarTab>
           status == AnimationStatus.dismissed &&
           widget.daySubMode != DayViewSubMode.list;
       if ((finishedLeavingChrome || finishedRestoringChrome) &&
-          _dayChromeModeTransitionActive &&
+          (_dayChromeModeTransitionActive ||
+              _retainDayTimelineForListTransition) &&
           mounted) {
-        setState(() => _dayChromeModeTransitionActive = false);
+        setState(() {
+          _dayChromeModeTransitionActive = false;
+          _retainDayTimelineForListTransition = false;
+        });
       }
     });
     // View-mode transition controller (200 ms, ease-in-out).
@@ -2682,6 +2689,10 @@ class CalendarTabState extends State<CalendarTab>
     if (oldWidget.daySubMode != widget.daySubMode) {
       final inDayView = _collapseAnim.value > 0.1;
       _dayChromeModeTransitionActive = inDayView;
+      _retainDayTimelineForListTransition =
+          inDayView &&
+          (oldWidget.daySubMode == DayViewSubMode.list ||
+              widget.daySubMode == DayViewSubMode.list);
       _animateMultiDayTransition =
           inDayView &&
           oldWidget.daySubMode != DayViewSubMode.list &&
@@ -3174,6 +3185,11 @@ class CalendarTabState extends State<CalendarTab>
                 kContentAreaTopRaise +
                 contentTopSpacing +
                 titleToContentGap;
+            final dayTimelineTop = dayContentTop + dayBannerHeight;
+            final dayTimelineHeight = math
+                .max(0.0, sh - dayTimelineTop)
+                .toDouble();
+            final dayTimelineSlideY = listModeT * dayTimelineHeight;
             final showDayHeaderChrome =
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
@@ -3271,6 +3287,8 @@ class CalendarTabState extends State<CalendarTab>
                 : slideX;
             final retainMultiDayTimeline =
                 widget.daySubMode == DayViewSubMode.multiDay ||
+                (_dayChromeModeTransitionActive &&
+                    _dayChromeSubMode == DayViewSubMode.multiDay) ||
                 _retainMultiDayTimelineForExit;
 
             // Swipe gesture is enabled only when fully settled in one view.
@@ -3287,6 +3305,25 @@ class CalendarTabState extends State<CalendarTab>
             Widget buildDayViewUnderlay() => Positioned.fill(
               child: AppHeaderScrollStack(
                 children: [
+                  // List content is the surface beneath the Day View veil.
+                  // Keep it mounted during either direction of the mode
+                  // transition, whether it shows events or an empty state.
+                  if (widget.daySubMode == DayViewSubMode.list ||
+                      _retainDayTimelineForListTransition)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: _DayListContent(
+                        selectedDate: _selected,
+                        monthListOrderByDay: _monthListOrderByDay,
+                        monthListOrderRevision: _monthListOrderRevision,
+                        onEditEvent: widget.onEditEvent,
+                        onOrderChanged: _onMonthListOrderChanged,
+                      ),
+                    ),
+
                   // Once Day View settles, the Month row is replaced by a
                   // copy anchored to the shared Day-header coordinates. This
                   // keeps the strip out of the Month scroll viewport and its
@@ -3440,21 +3477,28 @@ class CalendarTabState extends State<CalendarTab>
                     ),
 
                   // ── Day timeline — three horizontal panels ───────────
-                  if (colT > 0.01 && widget.daySubMode != DayViewSubMode.list)
+                  if (colT > 0.01 &&
+                      (widget.daySubMode != DayViewSubMode.list ||
+                          _retainDayTimelineForListTransition))
                     Positioned(
                       left: 0,
                       right: 0,
-                      top: dayContentTop + dayBannerHeight,
+                      top: dayTimelineTop,
                       bottom: 0,
                       // The timeline scroll viewport extends upward behind the
                       // app header. Keep that overflow inside the timeline's
                       // own slot so its labels and rules cannot paint over the
-                      // opaque week strip or day banner above it.
+                      // opaque week strip or day banner above it. Move this
+                      // viewport inside its fixed clip to reveal List content
+                      // underneath during Day↔List mode changes.
                       child: ClipRect(
-                        child: IgnorePointer(
-                          ignoring: colT < 0.85,
-                          child: RepaintBoundary(
-                            child: retainMultiDayTimeline
+                        child: Transform.translate(
+                          offset: Offset(0, dayTimelineSlideY),
+                          child: IgnorePointer(
+                            ignoring: colT < 0.85,
+                            child: RepaintBoundary(
+                              key: const Key('day-timeline-layer'),
+                              child: retainMultiDayTimeline
                                 ? _DayTimelineMulti(
                                     key: const Key('multi-timeline'),
                                     selectedDate: _selected,
@@ -3528,24 +3572,8 @@ class CalendarTabState extends State<CalendarTab>
                         ),
                       ),
                     ),
-
-                  // Keep the list content mounted underneath the week veils
-                  // from the first Month View frame. It is revealed only
-                  // where a veil has moved away.
-                  if (widget.daySubMode == DayViewSubMode.list)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: _DayListContent(
-                        selectedDate: _selected,
-                        monthListOrderByDay: _monthListOrderByDay,
-                        monthListOrderRevision: _monthListOrderRevision,
-                        onEditEvent: widget.onEditEvent,
-                        onOrderChanged: _onMonthListOrderChanged,
-                      ),
                     ),
+
                 ],
               ),
             );

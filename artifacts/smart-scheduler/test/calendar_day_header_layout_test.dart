@@ -1169,6 +1169,155 @@ void main() {
     },
   );
 
+  for (final dayMode in [
+    DayViewSubMode.singleDay,
+    DayViewSubMode.multiDay,
+  ]) {
+    testWidgets(
+      '${dayMode.name} timeline opens downward under Day List mode',
+      (tester) async {
+        const screenSize = Size(402, 874);
+        SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+        final previousEvents = EventStore.instance.events.value;
+        addTearDown(() => EventStore.instance.events.value = previousEvents);
+        EventStore.instance.events.value = [];
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = screenSize;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        var daySubMode = dayMode;
+        late StateSetter setParentState;
+        final calendarKey = GlobalKey<CalendarTabState>();
+
+        await tester.pumpWidget(
+          CupertinoApp(
+            builder: (context, child) {
+              final mediaQuery = MediaQuery.of(
+                context,
+              ).copyWith(size: screenSize);
+              return MediaQuery(
+                data: mediaQuery,
+                child: AppWindowContentBoundary(
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              );
+            },
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                setParentState = setState;
+                return CupertinoPageScaffold(
+                  child: CalendarTab(
+                    key: calendarKey,
+                    daySubMode: daySubMode,
+                    onViewChanged: (_, _, _, _, _, _) {},
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        calendarKey.currentState!.jumpToTodayDay();
+        await tester.pumpAndSettle();
+
+        final timeline = find.byKey(const Key('day-timeline-layer'));
+        final listContent = find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_DayListContent',
+        );
+        final dow = find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+        );
+        expect(timeline, findsOneWidget);
+        expect(dow, findsOneWidget);
+        final settledTimelineTop = tester.getRect(timeline).top;
+        final settledDowTop = tester.getRect(dow).top;
+
+        setParentState(() {
+          daySubMode = DayViewSubMode.list;
+        });
+        await tester.pump();
+        expect(timeline, findsOneWidget);
+        expect(listContent, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 140));
+        final enteringTimelineTop = tester.getRect(timeline).top;
+        expect(enteringTimelineTop, greaterThan(settledTimelineTop));
+        expect(tester.getRect(dow).top, lessThan(settledDowTop));
+
+        await tester.pumpAndSettle();
+        expect(timeline, findsNothing);
+        expect(listContent, findsOneWidget);
+        expect(dow, findsNothing);
+
+        setParentState(() {
+          daySubMode = dayMode;
+        });
+        await tester.pump();
+        expect(timeline, findsOneWidget);
+        expect(listContent, findsOneWidget);
+        expect(dow, findsOneWidget);
+        final leavingTimelineTop = tester.getRect(timeline).top;
+        final leavingDowTop = tester.getRect(dow).top;
+        expect(leavingTimelineTop, greaterThan(settledTimelineTop));
+        expect(leavingDowTop, lessThan(settledDowTop));
+
+        await tester.pump(const Duration(milliseconds: 140));
+        expect(tester.getRect(timeline).top, lessThan(leavingTimelineTop));
+        expect(tester.getRect(dow).top, greaterThan(leavingDowTop));
+        await tester.pumpAndSettle();
+        expect(listContent, findsNothing);
+        expect(dow, findsOneWidget);
+        expect(tester.getRect(timeline).top, closeTo(settledTimelineTop, 0.5));
+
+        final selectedDate = DateTime.now();
+        final selectedDateKey =
+            '${selectedDate.year.toString().padLeft(4, '0')}-'
+            '${selectedDate.month.toString().padLeft(2, '0')}-'
+            '${selectedDate.day.toString().padLeft(2, '0')}';
+        EventStore.instance.events.value = [
+          ScheduledEvent(
+            id: 'day-list-transition-event-${dayMode.name}',
+            title: 'Day List transition event',
+            date: selectedDateKey,
+            time: '9:00 AM',
+          ),
+        ];
+        await tester.pump();
+        setParentState(() {
+          daySubMode = DayViewSubMode.list;
+        });
+        await tester.pump();
+        expect(timeline, findsOneWidget);
+        expect(listContent, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 140));
+        expect(tester.getRect(timeline).top, greaterThan(settledTimelineTop));
+        await tester.pumpAndSettle();
+        expect(timeline, findsNothing);
+        expect(listContent, findsOneWidget);
+        expect(find.text('Day List transition event'), findsOneWidget);
+
+        setParentState(() {
+          daySubMode = dayMode;
+        });
+        await tester.pump();
+        expect(timeline, findsOneWidget);
+        expect(listContent, findsOneWidget);
+        final eventfulLeavingTimelineTop = tester.getRect(timeline).top;
+        expect(eventfulLeavingTimelineTop, greaterThan(settledTimelineTop));
+        await tester.pump(const Duration(milliseconds: 140));
+        expect(
+          tester.getRect(timeline).top,
+          lessThan(eventfulLeavingTimelineTop),
+        );
+        await tester.pumpAndSettle();
+        expect(listContent, findsNothing);
+        expect(tester.getRect(timeline).top, closeTo(settledTimelineTop, 0.5));
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'List Day View moves the selected week strip above the physical viewport',
     (tester) async {
