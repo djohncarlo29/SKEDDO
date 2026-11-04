@@ -13419,7 +13419,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
         ),
       );
       final rows = <Widget>[child];
-      if (hasChildren) {
+      if (hasChildren && !standaloneResult) {
         rows.add(
           Container(
             height: 0.5,
@@ -13445,7 +13445,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
           ),
         );
         final isLastChild = childIndex == item.childEvents.length - 1;
-        if (!isLastChild || !isLast) {
+        if (!standaloneResult && (!isLastChild || !isLast)) {
           rows.add(
             Container(
               height: 0.5,
@@ -13457,7 +13457,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent>
       // When children exist, the final child separator above owns the
       // category-block boundary. The category wrapper must not add another
       // hairline on top of it.
-      if (!isLast && !hasChildren) {
+      if (!standaloneResult && !isLast && !hasChildren) {
         rows.add(
           Container(
             height: 0.5,
