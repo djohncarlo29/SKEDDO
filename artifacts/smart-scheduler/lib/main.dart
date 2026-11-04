@@ -27,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import 'ai/ai_services.dart';
 import 'ai/event_pipeline.dart';
 import 'app_theme.dart';
+import 'dcv_menu_policy.dart';
 import 'services/event_store.dart';
 import 'services/local_storage.dart';
 import 'services/system_accent_color.dart';
@@ -76,6 +77,7 @@ class _DcvMenuContent extends StatefulWidget {
   final VoidCallback onDismiss;
   final bool isSmartCategory;
   final bool isUtilityCategory;
+  final bool showViewMode;
   final bool sectionsEnabled;
   final bool initialManageSections;
   final String initialSortBy;
@@ -102,6 +104,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.onDismiss,
     required this.isSmartCategory,
     required this.isUtilityCategory,
+    required this.showViewMode,
     required this.sectionsEnabled,
     required this.initialManageSections,
     required this.initialSortBy,
@@ -275,26 +278,27 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     void Function(String triggerId) onTriggerTap,
   ) => [
     // ── View as Columns / List toggle ────────────────────────────────────────
-    ActionItem.toggle(
-      value: _viewAsList,
-      labelWhenTrue: 'View as List',
-      labelWhenFalse: 'View as Columns',
-      iconWhenTrue: SFIcons.sf_list_bullet,
-      iconWhenFalse: SFIcons.sf_list_bullet,
-      iconSize: 21,
-      iconBuilderWhenFalse: (c) => Transform.translate(
-        offset: const Offset(-2.0, 0),
-        child: ColumnsViewIcon(color: c, size: 24),
+    if (widget.showViewMode)
+      ActionItem.toggle(
+        value: _viewAsList,
+        labelWhenTrue: 'View as List',
+        labelWhenFalse: 'View as Columns',
+        iconWhenTrue: SFIcons.sf_list_bullet,
+        iconWhenFalse: SFIcons.sf_list_bullet,
+        iconSize: 21,
+        iconBuilderWhenFalse: (c) => Transform.translate(
+          offset: const Offset(-2.0, 0),
+          child: ColumnsViewIcon(color: c, size: 24),
+        ),
+        onChanged: widget.onViewAsListChanged,
+        onDismiss: widget.onDismiss,
       ),
-      onChanged: widget.onViewAsListChanged,
-      onDismiss: widget.onDismiss,
-    ),
     ActionItem(
       label: 'Edit Category Info',
       icon: SFIcons.sf_pencil,
       iconSize: 22,
       iconWeight: FontWeight.w500,
-      groupBreakAbove: true,
+      groupBreakAbove: widget.showViewMode,
       onTap: _onEditCategoryTap,
     ),
     ActionItem(
@@ -1666,6 +1670,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final userSmartCategory =
         _eventsTabKey.currentState?.isUserSmartCategoryLabel(_dcvCategory) ??
         false;
+    final hasAnySections =
+        _eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false;
+    final showViewMode = shouldShowDcvViewModeMenuItem(
+      isUtilityCategory: isUtilityCategory,
+      isUserCreatedSmartCategory: userSmartCategory,
+      hasSections: hasAnySections,
+    );
     final sectionsEnabled =
         !userSmartCategory && _dcvSectionsEnabled(_dcvCategory);
     final initialSortBy = isUtilityCategory
@@ -1678,9 +1689,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             storedSortDir != 'Newest First'
         ? 'Newest First'
         : (storedSortDir ?? '');
-    final manageSections =
-        initialSortBy == 'Manual' &&
-        (_eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false);
+    final manageSections = initialSortBy == 'Manual' && hasAnySections;
     final showSectionAction = sectionsEnabled && initialSortBy == 'Manual';
 
     // Pre-compute panel origin based on the FULL item set so the position
@@ -1692,13 +1701,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final safeBtm = mq.padding.bottom + 16.0;
     const basePanelW = ExpandableActionMenu.panelW;
     final fullItems = <ActionItem>[
-      const ActionItem(label: 'View as List', icon: SFIcons.sf_list_bullet),
-      const ActionItem(
+      if (showViewMode)
+        const ActionItem(label: 'View as List', icon: SFIcons.sf_list_bullet),
+      ActionItem(
         label: 'Edit Category Info',
         icon: SFIcons.sf_pencil,
         iconSize: 22,
         iconWeight: FontWeight.w500,
-        groupBreakAbove: true,
+        groupBreakAbove: showViewMode,
       ),
       const ActionItem(
         label: 'Select Events',
@@ -1774,6 +1784,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ),
         isSmartCategory: isSmartCategory,
         isUtilityCategory: isUtilityCategory,
+        showViewMode: showViewMode,
         sectionsEnabled: sectionsEnabled,
         initialManageSections: manageSections,
         initialSortBy: initialSortBy,
@@ -2190,6 +2201,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final isUtilityCategory = _kUtilityDcvLabels.contains(category);
     final userSmartCategory =
         _eventsTabKey.currentState?.isUserSmartCategoryLabel(category) ?? false;
+    final hasAnySections =
+        _eventsTabKey.currentState?.dcvHasSections(category) ?? false;
+    final showViewMode = shouldShowDcvViewModeMenuItem(
+      isUtilityCategory: isUtilityCategory,
+      isUserCreatedSmartCategory: userSmartCategory,
+      hasSections: hasAnySections,
+    );
     final sectionsEnabled = !userSmartCategory && _dcvSectionsEnabled(category);
     final sortBy = isUtilityCategory
         ? 'Creation Date'
@@ -2208,9 +2226,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ? 'Newest First'
         : (storedSortDir ?? directions[sortBy]?.first ?? '');
     final hasSections =
-        sectionsEnabled &&
-        sortBy == 'Manual' &&
-        (_eventsTabKey.currentState?.dcvHasSections(category) ?? false);
+        sectionsEnabled && sortBy == 'Manual' && hasAnySections;
 
     void saveSort(String mode, {String? direction}) {
       if (mode != sortBy && direction == null) {
@@ -2322,18 +2338,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     return [
-      _toolbarMenuItem(
-        title: _dcvViewAsList ? 'View as List' : 'View as Columns',
-        icon: _dcvViewAsList
-            ? sf(SFIcons.sf_list_bullet)
-            : ColumnsViewIcon(color: labelColor, size: 24),
-        labelColor: labelColor,
-        onTap: () {
-          setState(() => _dcvViewAsList = !_dcvViewAsList);
-          _toolbarMenuRevision.value++;
-        },
-      ),
-      const GlassMenuDivider(height: 8),
+      if (showViewMode)
+        _toolbarMenuItem(
+          title: _dcvViewAsList ? 'View as List' : 'View as Columns',
+          icon: _dcvViewAsList
+              ? sf(SFIcons.sf_list_bullet)
+              : ColumnsViewIcon(color: labelColor, size: 24),
+          labelColor: labelColor,
+          onTap: () {
+            setState(() => _dcvViewAsList = !_dcvViewAsList);
+            _toolbarMenuRevision.value++;
+          },
+        ),
+      if (showViewMode) const GlassMenuDivider(height: 8),
       _toolbarMenuItem(
         title: 'Edit Category Info',
         icon: sf(SFIcons.sf_pencil),
