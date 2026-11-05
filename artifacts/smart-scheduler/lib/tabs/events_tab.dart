@@ -529,8 +529,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       _glassMenuRouteActive = true;
       await route;
       _glassMenuRouteActive = false;
-      // The route future resolves when dismissal starts. Keep the source tile
-      // hidden until its 170ms reverse morph has finished.
+      // The route future resolves when dismissal starts. Keep the source
+      // non-interactive until its 170ms reverse morph has finished.
       await Future<void>.delayed(const Duration(milliseconds: 170));
     } finally {
       _glassMenuRouteActive = false;
@@ -728,9 +728,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   @override
   Widget build(BuildContext context) {
-    // Tree-side card stays at natural scale — the overlay copy handles all
-    // the spring/bloom animation so there is no discontinuity when the
-    // overlay fades out and the tree card is revealed.
+    // Keep the tree-side card at natural scale. The package route draws its
+    // lifted preview over the still-painted source, matching the prior overlay.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPressStart: _onLongPressStart,
@@ -742,43 +741,42 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       onTap: widget.onTap != null ? _onTap : null,
       child: IgnorePointer(
         ignoring: _glassMenuOpen,
-        child: AnimatedOpacity(
-          opacity: _glassMenuOpen ? 0.0 : 1.0,
-          duration: Duration.zero,
-          child: AnimatedBuilder(
-            // Listen to lift only — press feedback is broadcast via _TilePress
-            // so inner elements scale independently while the card stays still.
-            animation: _liftCtrl,
-            builder: (context, child) {
-              final scale = 1.0 + 0.05 * _liftCtrl.value;
-              final shadowOpacity = _liftCtrl.value * 0.28;
-              final shadowBlur = _liftCtrl.value * 18.0;
-              final shadowOffset = Offset(0, _liftCtrl.value * 6.0);
+        // Keep the source tile painted below the package route's scrim. The
+        // package draws its lifted preview above it; hiding this layer caused
+        // the pressed tile to disappear when that preview was not painted.
+        child: AnimatedBuilder(
+          // Listen to lift only — press feedback is broadcast via _TilePress
+          // so inner elements scale independently while the card stays still.
+          animation: _liftCtrl,
+          builder: (context, child) {
+            final scale = 1.0 + 0.05 * _liftCtrl.value;
+            final shadowOpacity = _liftCtrl.value * 0.28;
+            final shadowBlur = _liftCtrl.value * 18.0;
+            final shadowOffset = Offset(0, _liftCtrl.value * 6.0);
 
-              return Transform.scale(
-                scale: scale,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    boxShadow:
-                        _liftCtrl.value > 0.0
-                            ? resolveThemeShadows([
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF000000,
-                                ).withValues(alpha: shadowOpacity),
-                                blurRadius: shadowBlur,
-                                offset: shadowOffset,
-                              ),
-                            ], context)
-                            : const [],
-                  ),
-                  child: child,
+            return Transform.scale(
+              scale: scale,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  boxShadow:
+                      _liftCtrl.value > 0.0
+                          ? resolveThemeShadows([
+                            BoxShadow(
+                              color: const Color(
+                                0xFF000000,
+                              ).withValues(alpha: shadowOpacity),
+                              blurRadius: shadowBlur,
+                              offset: shadowOffset,
+                            ),
+                          ], context)
+                          : const [],
                 ),
-              );
-            },
-            // _TilePress broadcasts _pressCtrl into category/group row content.
-            child: _TilePress(press: _pressCtrl, child: widget.child),
-          ),
+                child: child,
+              ),
+            );
+          },
+          // _TilePress broadcasts _pressCtrl into category/group row content.
+          child: _TilePress(press: _pressCtrl, child: widget.child),
         ),
       ),
     );

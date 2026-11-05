@@ -1112,9 +1112,19 @@ class _GlassContextMenuRouteStaticState
       previewHeight,
     );
 
-    final double restingPlatterTop = placeBelow
+    final double desiredPlatterTop = placeBelow
         ? restingPreviewTop + previewHeight + gap
         : restingPreviewTop - gap - platterHeight;
+    // When neither side can fit the full platter, keep it inside the usable
+    // viewport instead of letting a negative/out-of-range Positioned rect
+    // collapse it toward the overlay origin.
+    final double lastSafePlatterTop = bottomSafe - platterHeight;
+    final double restingPlatterTop = desiredPlatterTop
+        .clamp(
+          topSafe,
+          lastSafePlatterTop >= topSafe ? lastSafePlatterTop : topSafe,
+        )
+        .toDouble();
     final double idealPlatterLeft = widget.centerPlatterHorizontally
         ? (screenSize.width - platterWidth) / 2.0
         : widget.targetRect.center.dx - (platterWidth / 2.0);
