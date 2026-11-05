@@ -4,8 +4,8 @@ description: Preserve close-animation timing and source-preview geometry when co
 ---
 
 ## Rule
-The All Events tile uses SKEDDO's shared custom category context menu, not the package `GlassContextMenu` proof of concept. Defer menu actions until the custom overlay's closing animation completes.
+Main Events Tab category tiles (built-in and user-created, pinned and unpinned) use the package context-menu route with the tile itself as the in-place preview; do not pass `previewBuilder`. Preserve the existing long-press/reorder arbitration. Group headers and event tiles remain on their separate custom menus unless explicitly migrated.
 
-**Why:** SKEDDO's custom overlay keeps an opaque preview over the real row through its close animation. The package `showGlassContextMenu` route future completes as the pop starts, before its reverse morph finishes, and its action callback runs after `Navigator.pop()`. In the package layout, `previewBuilder` marks the preview as custom and centers it apart from the target; without it, the package uses the target rectangle and keeps the source visually anchored. A positioned-only `Stack` can also measure at zero when the package builds a custom preview offstage without the grid's constraints.
+**Why:** The package route supplies the requested lifted source and Liquid Glass platter, while using its wrapper recognizer directly would compete with SKEDDO's existing category reorder gesture. Its route future resolves as dismissal starts, so the source must remain hidden and action callbacks pending through the 170ms reverse morph.
 
-**How to apply:** For custom overlays, defer callbacks until the overlay is removed. For package menus, keep the source hidden and pending action through the reverse transition duration before restoring it or invoking the callback. Use no `previewBuilder` for in-place previews; when a relocated custom preview is intended and the source is constraint-dependent, wrap it in a `SizedBox` using the source tile's measured size.
+**How to apply:** Keep custom press/tap/drag handling and invoke the package's imperative context-menu API only after the existing menu-versus-reorder delay. Hide the source until route dismissal finishes, then run any selected action. Do not replace group or event menus as part of this category-only behavior.
