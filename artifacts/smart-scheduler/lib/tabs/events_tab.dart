@@ -451,9 +451,25 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   Future<void> _showGlassContextMenu() async {
     if (_glassMenuOpen || sbContextMenuActive.value) return;
     final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    final overlayBox =
+        rootNavigator.overlay?.context.findRenderObject() as RenderBox?;
+    if (box == null ||
+        !box.hasSize ||
+        box.size.isEmpty ||
+        overlayBox == null ||
+        !overlayBox.hasSize) {
+      return;
+    }
 
-    final targetRect = box.localToGlobal(Offset.zero) & box.size;
+    // showGlassContextMenu pushes onto the root navigator. Convert the tile's
+    // bounds into that overlay's coordinates so the preview and platter stay
+    // attached to the actual pressed row, even under nested app overlays.
+    final targetOrigin = box.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    final targetRect = targetOrigin & box.size;
     final actionItems = _buildCategoryContextMenuActions(
       isSmartCategory: widget.isSmartCategory,
       isPinned: widget.isPinned,
@@ -485,7 +501,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
     final dismissCallback = _dismissGlassContextMenu;
     _glassDismissCallback = dismissCallback;
-    _glassNavigator = Navigator.of(context, rootNavigator: true);
+    _glassNavigator = rootNavigator;
     _pendingGlassAction = null;
     sbContextMenuActive.value = true;
     sbContextMenuDismiss.value = dismissCallback;
@@ -499,6 +515,11 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
         previewChild: widget.child,
         rowBorderRadius: widget.glassRowBorderRadius,
         rowCorners: widget.glassRowCorners,
+        // Match the previous category menu's centered platter and placement
+        // on whichever side of the tile has more room.
+        platterGap: 12.0,
+        centerPlatterHorizontally: true,
+        preferSideWithMoreSpace: true,
         // Deliberately omit previewBuilder so the actual category tile stays
         // the in-place source/preview while the platter opens around it.
         routeStaticKey: _glassRouteStaticKey,

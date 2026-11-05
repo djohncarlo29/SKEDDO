@@ -374,9 +374,22 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
     if (!widget.enabled || widget.actions.isEmpty || _isRouteOpen) return;
 
     final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null || !renderBox.hasSize) return;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final overlayBox =
+        navigator.overlay?.context.findRenderObject() as RenderBox?;
+    if (renderBox == null ||
+        !renderBox.hasSize ||
+        renderBox.size.isEmpty ||
+        overlayBox == null ||
+        !overlayBox.hasSize) {
+      return;
+    }
 
-    final targetRect = renderBox.localToGlobal(Offset.zero) & renderBox.size;
+    final targetOrigin = renderBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    final targetRect = targetOrigin & renderBox.size;
 
     setState(() {
       _isRouteOpen = true;
@@ -489,6 +502,7 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
 
 /// Displays an iOS-style liquid glass context menu attached to a target rectangle.
 ///
+/// [targetRect] must use the root navigator overlay's coordinate space.
 /// Returns a [Future] that resolves when the context menu is dismissed.
 Future<T?> showGlassContextMenu<T>({
   required BuildContext context,
@@ -511,6 +525,9 @@ Future<T?> showGlassContextMenu<T>({
   GlobalKey? routeStaticKey,
   bool isInteractive = false,
   Duration commitDuration = const Duration(milliseconds: 520),
+  double platterGap = 16.0,
+  bool centerPlatterHorizontally = false,
+  bool preferSideWithMoreSpace = false,
 }) {
   assert(actions.isNotEmpty, 'Context menu actions must not be empty.');
   final capturedGlassTheme = GlassTheme.maybeOf(context)?.data;
@@ -536,6 +553,9 @@ Future<T?> showGlassContextMenu<T>({
       routeStaticKey: routeStaticKey,
       isInteractive: isInteractive,
       commitDuration: commitDuration,
+      platterGap: platterGap,
+      centerPlatterHorizontally: centerPlatterHorizontally,
+      preferSideWithMoreSpace: preferSideWithMoreSpace,
       capturedGlassTheme: capturedGlassTheme,
       capturedCupertinoTheme: capturedCupertinoTheme,
     ),
@@ -573,6 +593,9 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
     this.routeStaticKey,
     this.isInteractive = false,
     this.commitDuration = const Duration(milliseconds: 520),
+    this.platterGap = 16.0,
+    this.centerPlatterHorizontally = false,
+    this.preferSideWithMoreSpace = false,
     this.capturedGlassTheme,
     this.capturedCupertinoTheme,
   });
@@ -607,6 +630,9 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   final GlobalKey? routeStaticKey;
   final bool isInteractive;
   final Duration commitDuration;
+  final double platterGap;
+  final bool centerPlatterHorizontally;
+  final bool preferSideWithMoreSpace;
 
   // Non-interactive presentations (secondary click) play the lift and morph
   // back to back: the lift occupies the first `_kLiftSplit` of the timeline
@@ -714,6 +740,9 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
       scrimColor: scrimColor,
       menuWidth: menuWidth,
       enableHaptics: enableHaptics,
+      platterGap: platterGap,
+      centerPlatterHorizontally: centerPlatterHorizontally,
+      preferSideWithMoreSpace: preferSideWithMoreSpace,
       animation: animation,
     );
     if (capturedCupertinoTheme != null) {
@@ -746,6 +775,9 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
     this.scrimColor,
     required this.menuWidth,
     required this.enableHaptics,
+    required this.platterGap,
+    required this.centerPlatterHorizontally,
+    required this.preferSideWithMoreSpace,
     required this.animation,
   });
 
@@ -766,6 +798,9 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
   final Color? scrimColor;
   final double menuWidth;
   final bool enableHaptics;
+  final double platterGap;
+  final bool centerPlatterHorizontally;
+  final bool preferSideWithMoreSpace;
   final Animation<double> animation;
 
   @override
@@ -1019,7 +1054,7 @@ class _GlassContextMenuRouteStaticState
 
     final double topSafe = padding.top + 16.0;
     final double bottomSafe = screenSize.height - padding.bottom - 16.0;
-    const double gap = 16.0;
+    final double gap = widget.platterGap;
 
     final Size effectivePreviewSize = _measuredPreviewSize ??
         (hasCustomPreview ? const Size(240.0, 201.0) : widget.targetRect.size);
@@ -1040,8 +1075,9 @@ class _GlassContextMenuRouteStaticState
 
     final double spaceBelow = bottomSafe - widget.targetRect.bottom;
     final double spaceAbove = widget.targetRect.top - topSafe;
-    bool placeBelow =
-        (spaceBelow >= platterHeight + gap) || (spaceBelow >= spaceAbove);
+    bool placeBelow = widget.preferSideWithMoreSpace
+        ? spaceBelow >= spaceAbove
+        : (spaceBelow >= platterHeight + gap) || (spaceBelow >= spaceAbove);
 
     double restingPreviewTop;
     if (hasCustomPreview) {
@@ -1079,8 +1115,9 @@ class _GlassContextMenuRouteStaticState
     final double restingPlatterTop = placeBelow
         ? restingPreviewTop + previewHeight + gap
         : restingPreviewTop - gap - platterHeight;
-    final double idealPlatterLeft =
-        widget.targetRect.center.dx - (platterWidth / 2.0);
+    final double idealPlatterLeft = widget.centerPlatterHorizontally
+        ? (screenSize.width - platterWidth) / 2.0
+        : widget.targetRect.center.dx - (platterWidth / 2.0);
     final double restingPlatterLeft = hasCustomPreview
         ? ((screenSize.width - platterWidth) / 2.0)
             .clamp(16.0, screenSize.width - platterWidth - 16.0)
