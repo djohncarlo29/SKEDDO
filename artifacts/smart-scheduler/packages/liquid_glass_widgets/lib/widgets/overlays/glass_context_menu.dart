@@ -369,11 +369,13 @@ class _ContextMenuLongPressRecognizer extends LongPressGestureRecognizer {
 class _GlassContextMenuState extends State<GlassContextMenu> {
   bool _isRouteOpen = false;
   GlobalKey<_GlassContextMenuRouteStaticState>? _routeStaticKey;
+  final GlobalKey _sourceRenderKey = GlobalKey();
 
   void _openContextMenu({bool isInteractive = false}) {
     if (!widget.enabled || widget.actions.isEmpty || _isRouteOpen) return;
 
-    final renderBox = context.findRenderObject() as RenderBox?;
+    final renderBox =
+        _sourceRenderKey.currentContext?.findRenderObject() as RenderBox?;
     final navigator = Navigator.of(context, rootNavigator: true);
     final overlayBox =
         navigator.overlay?.context.findRenderObject() as RenderBox?;
@@ -493,9 +495,12 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
       },
       // While the menu is open the row is lifted out of the page: it is hidden
       // here and drawn by the route overlay, leaving an empty slot behind.
-      child: Opacity(
-        opacity: _isRouteOpen ? 0.0 : 1.0,
-        child: widget.child,
+      child: SizedBox(
+        key: _sourceRenderKey,
+        child: Opacity(
+          opacity: _isRouteOpen ? 0.0 : 1.0,
+          child: widget.child,
+        ),
       ),
     );
   }

@@ -265,6 +265,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   bool _glassMenuOpen = false;
   bool _glassMenuRouteActive = false;
   final GlobalKey _glassRouteStaticKey = GlobalKey();
+  final GlobalKey _glassSourceRenderKey = GlobalKey();
   VoidCallback? _glassDismissCallback;
   VoidCallback? _pendingGlassAction;
   NavigatorState? _glassNavigator;
@@ -450,7 +451,12 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   Future<void> _showGlassContextMenu() async {
     if (_glassMenuOpen || sbContextMenuActive.value) return;
-    final box = context.findRenderObject() as RenderBox?;
+    // This State's BuildContext is not itself a RenderObjectElement; using
+    // context.findRenderObject() can return an ancestor (often the whole grid
+    // or list) rather than the pressed category tile. Anchor to the keyed
+    // render box that wraps the actual tile.
+    final box =
+        _glassSourceRenderKey.currentContext?.findRenderObject() as RenderBox?;
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     final overlayBox =
         rootNavigator.overlay?.context.findRenderObject() as RenderBox?;
@@ -740,44 +746,46 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       onTapDown: widget.onTap != null ? _onTapDown : null,
       onTapCancel: widget.onTap != null ? _onTapCancel : null,
       onTap: widget.onTap != null ? _onTap : null,
-      child: IgnorePointer(
-        ignoring: _glassMenuOpen,
-        // Keep the source tile painted below the package route's scrim. The
-        // package draws its lifted preview above it; hiding this layer caused
-        // the pressed tile to disappear when that preview was not painted.
-        child: AnimatedBuilder(
-          // Listen to lift only — press feedback is broadcast via _TilePress
-          // so inner elements scale independently while the card stays still.
-          animation: _liftCtrl,
-          builder: (context, child) {
-            final scale = 1.0 + 0.05 * _liftCtrl.value;
-            final shadowOpacity = _liftCtrl.value * 0.28;
-            final shadowBlur = _liftCtrl.value * 18.0;
-            final shadowOffset = Offset(0, _liftCtrl.value * 6.0);
+      child: SizedBox(
+        key: _glassSourceRenderKey,
+        child: IgnorePointer(
+          ignoring: _glassMenuOpen,
+          // Keep the source tile painted below the package route's scrim. The
+          // package draws its lifted preview above it.
+          child: AnimatedBuilder(
+            // Listen to lift only — press feedback is broadcast via _TilePress
+            // so inner elements scale independently while the card stays still.
+            animation: _liftCtrl,
+            builder: (context, child) {
+              final scale = 1.0 + 0.05 * _liftCtrl.value;
+              final shadowOpacity = _liftCtrl.value * 0.28;
+              final shadowBlur = _liftCtrl.value * 18.0;
+              final shadowOffset = Offset(0, _liftCtrl.value * 6.0);
 
-            return Transform.scale(
-              scale: scale,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  boxShadow:
-                      _liftCtrl.value > 0.0
-                          ? resolveThemeShadows([
-                            BoxShadow(
-                              color: const Color(
-                                0xFF000000,
-                              ).withValues(alpha: shadowOpacity),
-                              blurRadius: shadowBlur,
-                              offset: shadowOffset,
-                            ),
-                          ], context)
-                          : const [],
+              return Transform.scale(
+                scale: scale,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    boxShadow:
+                        _liftCtrl.value > 0.0
+                            ? resolveThemeShadows([
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF000000,
+                                ).withValues(alpha: shadowOpacity),
+                                blurRadius: shadowBlur,
+                                offset: shadowOffset,
+                              ),
+                            ], context)
+                            : const [],
+                  ),
+                  child: child,
                 ),
-                child: child,
-              ),
-            );
-          },
-          // _TilePress broadcasts _pressCtrl into category/group row content.
-          child: _TilePress(press: _pressCtrl, child: widget.child),
+              );
+            },
+            // _TilePress broadcasts _pressCtrl into category/group row content.
+            child: _TilePress(press: _pressCtrl, child: widget.child),
+          ),
         ),
       ),
     );

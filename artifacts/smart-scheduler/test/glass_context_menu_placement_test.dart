@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassContextMenuAction, showGlassContextMenu;
+    show GlassContextMenu, GlassContextMenuAction, showGlassContextMenu;
 
 void main() {
   testWidgets('context platter opens below a source near the top', (
@@ -126,4 +126,56 @@ void main() {
     expect(actionRect.top, greaterThanOrEqualTo(0));
     expect(lastActionRect.bottom, lessThanOrEqualTo(800));
   });
+
+  testWidgets('widget API anchors to the actual source tile render box', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const tileKey = ValueKey('actual-source-tile');
+    const tile = SizedBox(
+      width: 180,
+      height: 60,
+      child: Center(child: Text('Anchored tile')),
+    );
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: const CupertinoPageScaffold(
+          child: Stack(
+            children: [
+              Positioned(
+                left: 100,
+                top: 690,
+                child: GlassContextMenu(
+                  actions: [
+                    GlassContextMenuAction(
+                      child: Text('Anchored action'),
+                      onPressed: _noop,
+                    ),
+                  ],
+                  menuWidth: 250,
+                  child: SizedBox(key: tileKey, child: tile),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final tileRect = tester.getRect(find.byKey(tileKey));
+    await tester.longPress(find.text('Anchored tile'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    final actionRect = tester.getRect(find.text('Anchored action'));
+    expect(actionRect.bottom, lessThan(tileRect.top));
+    expect(find.text('Anchored tile'), findsNWidgets(2));
+  });
 }
+
+void _noop() {}
