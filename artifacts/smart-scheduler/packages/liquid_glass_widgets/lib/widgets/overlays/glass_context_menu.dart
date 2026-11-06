@@ -369,29 +369,14 @@ class _ContextMenuLongPressRecognizer extends LongPressGestureRecognizer {
 class _GlassContextMenuState extends State<GlassContextMenu> {
   bool _isRouteOpen = false;
   GlobalKey<_GlassContextMenuRouteStaticState>? _routeStaticKey;
-  final GlobalKey _sourceRenderKey = GlobalKey();
 
   void _openContextMenu({bool isInteractive = false}) {
     if (!widget.enabled || widget.actions.isEmpty || _isRouteOpen) return;
 
-    final renderBox =
-        _sourceRenderKey.currentContext?.findRenderObject() as RenderBox?;
-    final navigator = Navigator.of(context, rootNavigator: true);
-    final overlayBox =
-        navigator.overlay?.context.findRenderObject() as RenderBox?;
-    if (renderBox == null ||
-        !renderBox.hasSize ||
-        renderBox.size.isEmpty ||
-        overlayBox == null ||
-        !overlayBox.hasSize) {
-      return;
-    }
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return;
 
-    final targetOrigin = renderBox.localToGlobal(
-      Offset.zero,
-      ancestor: overlayBox,
-    );
-    final targetRect = targetOrigin & renderBox.size;
+    final targetRect = renderBox.localToGlobal(Offset.zero) & renderBox.size;
 
     setState(() {
       _isRouteOpen = true;
@@ -412,7 +397,6 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
     showGlassContextMenu<void>(
       context: context,
       targetRect: targetRect,
-      overlaySize: overlayBox.size,
       actions: widget.actions,
       previewBuilder: widget.previewBuilder,
       previewChild: widget.child,
@@ -495,12 +479,9 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
       },
       // While the menu is open the row is lifted out of the page: it is hidden
       // here and drawn by the route overlay, leaving an empty slot behind.
-      child: SizedBox(
-        key: _sourceRenderKey,
-        child: Opacity(
-          opacity: _isRouteOpen ? 0.0 : 1.0,
-          child: widget.child,
-        ),
+      child: Opacity(
+        opacity: _isRouteOpen ? 0.0 : 1.0,
+        child: widget.child,
       ),
     );
   }
@@ -508,17 +489,13 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
 
 /// Displays an iOS-style liquid glass context menu attached to a target rectangle.
 ///
-/// [targetRect] must use the root navigator overlay's coordinate space.
 /// Returns a [Future] that resolves when the context menu is dismissed.
 Future<T?> showGlassContextMenu<T>({
   required BuildContext context,
   required Rect targetRect,
-  Size? overlaySize,
   required List<Widget> actions,
   WidgetBuilder? previewBuilder,
   Widget? previewChild,
-  double liftScale = _kLiftScale,
-  bool keepTargetUndimmed = false,
   double borderRadius = 32.0,
   double? previewBorderRadius,
   double rowBorderRadius = 16.0,
@@ -534,9 +511,6 @@ Future<T?> showGlassContextMenu<T>({
   GlobalKey? routeStaticKey,
   bool isInteractive = false,
   Duration commitDuration = const Duration(milliseconds: 520),
-  double platterGap = 16.0,
-  bool centerPlatterHorizontally = false,
-  bool preferSideWithMoreSpace = false,
 }) {
   assert(actions.isNotEmpty, 'Context menu actions must not be empty.');
   final capturedGlassTheme = GlassTheme.maybeOf(context)?.data;
@@ -544,12 +518,9 @@ Future<T?> showGlassContextMenu<T>({
   return Navigator.of(context, rootNavigator: true).push<T>(
     _GlassContextMenuRoute<T>(
       targetRect: targetRect,
-      overlaySize: overlaySize,
       actions: actions,
       previewBuilder: previewBuilder,
       previewChild: previewChild,
-      liftScale: liftScale,
-      keepTargetUndimmed: keepTargetUndimmed,
       borderRadius: borderRadius,
       previewBorderRadius: previewBorderRadius,
       rowBorderRadius: rowBorderRadius,
@@ -565,9 +536,6 @@ Future<T?> showGlassContextMenu<T>({
       routeStaticKey: routeStaticKey,
       isInteractive: isInteractive,
       commitDuration: commitDuration,
-      platterGap: platterGap,
-      centerPlatterHorizontally: centerPlatterHorizontally,
-      preferSideWithMoreSpace: preferSideWithMoreSpace,
       capturedGlassTheme: capturedGlassTheme,
       capturedCupertinoTheme: capturedCupertinoTheme,
     ),
@@ -587,12 +555,9 @@ const double _kPlatterInset = 10.0;
 class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   _GlassContextMenuRoute({
     required this.targetRect,
-    this.overlaySize,
     required this.actions,
     this.previewBuilder,
     this.previewChild,
-    required this.liftScale,
-    required this.keepTargetUndimmed,
     required this.borderRadius,
     this.previewBorderRadius,
     this.rowBorderRadius = 16.0,
@@ -608,20 +573,14 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
     this.routeStaticKey,
     this.isInteractive = false,
     this.commitDuration = const Duration(milliseconds: 520),
-    this.platterGap = 16.0,
-    this.centerPlatterHorizontally = false,
-    this.preferSideWithMoreSpace = false,
     this.capturedGlassTheme,
     this.capturedCupertinoTheme,
   });
 
   final Rect targetRect;
-  final Size? overlaySize;
   final List<Widget> actions;
   final WidgetBuilder? previewBuilder;
   final Widget? previewChild;
-  final double liftScale;
-  final bool keepTargetUndimmed;
   final double borderRadius;
   final double? previewBorderRadius;
   final double rowBorderRadius;
@@ -648,9 +607,6 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   final GlobalKey? routeStaticKey;
   final bool isInteractive;
   final Duration commitDuration;
-  final double platterGap;
-  final bool centerPlatterHorizontally;
-  final bool preferSideWithMoreSpace;
 
   // Non-interactive presentations (secondary click) play the lift and morph
   // back to back: the lift occupies the first `_kLiftSplit` of the timeline
@@ -743,12 +699,9 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
       key: routeStaticKey,
       route: this,
       targetRect: targetRect,
-      overlaySize: overlaySize,
       actions: actions,
       previewBuilder: previewBuilder,
       previewChild: previewChild,
-      liftScale: liftScale,
-      keepTargetUndimmed: keepTargetUndimmed,
       borderRadius: borderRadius,
       previewBorderRadius: previewBorderRadius,
       rowBorderRadius: rowBorderRadius,
@@ -761,9 +714,6 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
       scrimColor: scrimColor,
       menuWidth: menuWidth,
       enableHaptics: enableHaptics,
-      platterGap: platterGap,
-      centerPlatterHorizontally: centerPlatterHorizontally,
-      preferSideWithMoreSpace: preferSideWithMoreSpace,
       animation: animation,
     );
     if (capturedCupertinoTheme != null) {
@@ -776,42 +726,14 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   }
 }
 
-class _GlassContextMenuScrimHoleClipper extends CustomClipper<Path> {
-  const _GlassContextMenuScrimHoleClipper({
-    required this.targetRect,
-    required this.borderRadius,
-  });
-
-  final Rect targetRect;
-  final BorderRadius borderRadius;
-
-  @override
-  Path getClip(Size size) {
-    final Rect screenRect = Offset.zero & size;
-    final Rect holeRect = targetRect.inflate(1.0);
-    return Path()
-      ..fillType = PathFillType.evenOdd
-      ..addRect(screenRect)
-      ..addRRect(borderRadius.toRRect(holeRect));
-  }
-
-  @override
-  bool shouldReclip(_GlassContextMenuScrimHoleClipper oldClipper) =>
-      oldClipper.targetRect != targetRect ||
-      oldClipper.borderRadius != borderRadius;
-}
-
 class _GlassContextMenuRouteStatic extends StatefulWidget {
   const _GlassContextMenuRouteStatic({
     super.key,
     this.route,
     required this.targetRect,
-    this.overlaySize,
     required this.actions,
     this.previewBuilder,
     this.previewChild,
-    required this.liftScale,
-    required this.keepTargetUndimmed,
     required this.borderRadius,
     this.previewBorderRadius,
     this.rowBorderRadius = 16.0,
@@ -824,20 +746,14 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
     this.scrimColor,
     required this.menuWidth,
     required this.enableHaptics,
-    required this.platterGap,
-    required this.centerPlatterHorizontally,
-    required this.preferSideWithMoreSpace,
     required this.animation,
   });
 
   final _GlassContextMenuRoute? route;
   final Rect targetRect;
-  final Size? overlaySize;
   final List<Widget> actions;
   final WidgetBuilder? previewBuilder;
   final Widget? previewChild;
-  final double liftScale;
-  final bool keepTargetUndimmed;
   final double borderRadius;
   final double? previewBorderRadius;
   final double rowBorderRadius;
@@ -850,9 +766,6 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
   final Color? scrimColor;
   final double menuWidth;
   final bool enableHaptics;
-  final double platterGap;
-  final bool centerPlatterHorizontally;
-  final bool preferSideWithMoreSpace;
   final Animation<double> animation;
 
   @override
@@ -993,9 +906,7 @@ class _GlassContextMenuRouteStaticState
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    // targetRect uses Navigator-overlay coordinates. Use the overlay's size
-    // when available instead of assuming the inherited MediaQuery matches it.
-    final screenSize = widget.overlaySize ?? mediaQuery.size;
+    final screenSize = mediaQuery.size;
     final padding = mediaQuery.padding;
 
     final bool isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
@@ -1108,7 +1019,7 @@ class _GlassContextMenuRouteStaticState
 
     final double topSafe = padding.top + 16.0;
     final double bottomSafe = screenSize.height - padding.bottom - 16.0;
-    final double gap = widget.platterGap;
+    const double gap = 16.0;
 
     final Size effectivePreviewSize = _measuredPreviewSize ??
         (hasCustomPreview ? const Size(240.0, 201.0) : widget.targetRect.size);
@@ -1125,36 +1036,12 @@ class _GlassContextMenuRouteStaticState
         effectivePlatterSize.width.clamp(100.0, screenSize.width - 32.0);
     final double platterHeight = effectivePlatterSize.height;
 
+    final double totalHeight = previewHeight + gap + platterHeight;
+
     final double spaceBelow = bottomSafe - widget.targetRect.bottom;
     final double spaceAbove = widget.targetRect.top - topSafe;
-    final double totalHeight = previewHeight + gap + platterHeight;
-    final double restingSourceWidth =
-        hasCustomPreview ? previewWidth : widget.targetRect.width * widget.liftScale;
-    final double restingSourceHeight =
-        hasCustomPreview ? previewHeight : widget.targetRect.height * widget.liftScale;
-    final double sourceTop =
-        widget.targetRect.center.dy - restingSourceHeight / 2.0;
-    final double sourceBottom =
-        widget.targetRect.center.dy + restingSourceHeight / 2.0;
-    final double sourceSpaceAbove = sourceTop - topSafe;
-    final double sourceSpaceBelow = bottomSafe - sourceBottom;
-    final bool canFitAbove = sourceSpaceAbove >= platterHeight + gap;
-    final bool canFitBelow = sourceSpaceBelow >= platterHeight + gap;
-    bool placeBelow;
-    if (canFitBelow && canFitAbove) {
-      // Prefer the native row-under-platter layout unless callers explicitly
-      // request the side with more room.
-      placeBelow = !widget.preferSideWithMoreSpace ||
-          sourceSpaceBelow >= sourceSpaceAbove;
-    } else if (canFitBelow) {
-      placeBelow = true;
-    } else if (canFitAbove) {
-      placeBelow = false;
-    } else {
-      // If neither side fully fits, choose the larger adjacent side. Do not
-      // clamp the platter to a screen edge; it must remain attached to the row.
-      placeBelow = sourceSpaceBelow >= sourceSpaceAbove;
-    }
+    bool placeBelow =
+        (spaceBelow >= platterHeight + gap) || (spaceBelow >= spaceAbove);
 
     double restingPreviewTop;
     if (hasCustomPreview) {
@@ -1174,39 +1061,26 @@ class _GlassContextMenuRouteStaticState
             .clamp(minTop, bottomSafe - previewHeight);
       }
     } else {
-      restingPreviewTop = sourceTop;
+      restingPreviewTop = widget.targetRect.top;
     }
 
     final double restingPreviewLeft = hasCustomPreview
         ? ((screenSize.width - previewWidth) / 2.0)
             .clamp(16.0, screenSize.width - previewWidth - 16.0)
-        : widget.targetRect.center.dx - restingSourceWidth / 2.0;
+        : widget.targetRect.left;
 
     final Rect restingPreviewRect = Rect.fromLTWH(
       restingPreviewLeft,
       restingPreviewTop,
-      restingSourceWidth,
-      restingSourceHeight,
+      previewWidth,
+      previewHeight,
     );
 
-    final double desiredPlatterTop = placeBelow
+    final double restingPlatterTop = placeBelow
         ? restingPreviewTop + previewHeight + gap
         : restingPreviewTop - gap - platterHeight;
-    // The no-previewBuilder path keeps the original tile as the preview source,
-    // so the platter is positioned directly beside that (slightly enlarged)
-    // tile. Screen-edge clamping here would detach the platter from its source.
-    final double lastSafePlatterTop = bottomSafe - platterHeight;
-    final double restingPlatterTop = hasCustomPreview
-        ? desiredPlatterTop
-            .clamp(
-              topSafe,
-              lastSafePlatterTop >= topSafe ? lastSafePlatterTop : topSafe,
-            )
-            .toDouble()
-        : desiredPlatterTop;
-    final double idealPlatterLeft = widget.centerPlatterHorizontally
-        ? (screenSize.width - platterWidth) / 2.0
-        : widget.targetRect.center.dx - (platterWidth / 2.0);
+    final double idealPlatterLeft =
+        widget.targetRect.center.dx - (platterWidth / 2.0);
     final double restingPlatterLeft = hasCustomPreview
         ? ((screenSize.width - platterWidth) / 2.0)
             .clamp(16.0, screenSize.width - platterWidth - 16.0)
@@ -1233,8 +1107,8 @@ class _GlassContextMenuRouteStaticState
 
         final Rect liftedRowRect = Rect.fromCenter(
           center: widget.targetRect.center,
-          width: widget.targetRect.width * widget.liftScale,
-          height: widget.targetRect.height * widget.liftScale,
+          width: widget.targetRect.width * _kLiftScale,
+          height: widget.targetRect.height * _kLiftScale,
         );
 
         Rect cardRect;
@@ -1263,9 +1137,7 @@ class _GlassContextMenuRouteStaticState
           shadowFactor = (1.0 - u) * (1.0 - u);
           rowAlpha = hasCustomPreview ? cf : 1.0;
           previewAlpha = hasCustomPreview ? 1.0 - cf : 0.0;
-          rowScale = hasCustomPreview
-              ? 1.0
-              : lerpDouble(widget.liftScale, 1.0, u)!;
+          rowScale = 1.0;
           previewScale = lerpDouble(
             1.0,
             widget.targetRect.width / previewWidth,
@@ -1279,7 +1151,7 @@ class _GlassContextMenuRouteStaticState
           final double raw = (v / _kLiftSplit).clamp(0.0, 1.0);
           final double p =
               interactive ? raw : Curves.easeOutCubic.transform(raw);
-          final double scale = 1.0 + (widget.liftScale - 1.0) * p;
+          final double scale = 1.0 + (_kLiftScale - 1.0) * p;
           cardRect = Rect.fromCenter(
             center: widget.targetRect.center,
             width: widget.targetRect.width * scale,
@@ -1308,7 +1180,8 @@ class _GlassContextMenuRouteStaticState
           shadowFactor = 1.0;
           rowAlpha = hasCustomPreview ? 1.0 - c : 1.0;
           previewAlpha = hasCustomPreview ? c : 0.0;
-          rowScale = widget.liftScale;
+          rowScale =
+              hasCustomPreview ? _kLiftScale : lerpDouble(_kLiftScale, 1.0, m)!;
           previewScale = lerpDouble(
             liftedRowRect.width / previewWidth,
             1.0,
@@ -1321,32 +1194,22 @@ class _GlassContextMenuRouteStaticState
           scrimAmount = Curves.easeOut.transform((t / 0.25).clamp(0.0, 1.0));
         }
 
-        Widget scrimPaint = widget.backdropBlur > 0.0
-            ? BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: widget.backdropBlur * scrimAmount,
-                  sigmaY: widget.backdropBlur * scrimAmount,
-                ),
-                child: Container(
-                  color: scrim.withValues(alpha: scrim.a * scrimAmount),
-                ),
-              )
-            : Container(
-                color: scrim.withValues(alpha: scrim.a * scrimAmount),
-              );
-        if (widget.keepTargetUndimmed) {
-          scrimPaint = ClipPath(
-            clipper: _GlassContextMenuScrimHoleClipper(
-              targetRect: widget.targetRect,
-              borderRadius: rowRadii,
-            ),
-            child: scrimPaint,
-          );
-        }
         final Widget scrimLayer = GestureDetector(
           onTap: () => Navigator.of(context, rootNavigator: true).pop(),
           behavior: HitTestBehavior.opaque,
-          child: scrimPaint,
+          child: widget.backdropBlur > 0.0
+              ? BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: widget.backdropBlur * scrimAmount,
+                    sigmaY: widget.backdropBlur * scrimAmount,
+                  ),
+                  child: Container(
+                    color: scrim.withValues(alpha: scrim.a * scrimAmount),
+                  ),
+                )
+              : Container(
+                  color: scrim.withValues(alpha: scrim.a * scrimAmount),
+                ),
         );
 
         final Alignment platterAnchor =

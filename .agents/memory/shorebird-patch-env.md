@@ -15,4 +15,4 @@ Two things must be in place before every `shorebird patch` run:
 
 **Why:** Both failure modes are environment-level, not code-level. They produce confusing error messages that look like Gradle or Dart failures.
 
-**How to apply:** The temp-directory, cache-link, and Java safeguards are shared by the patch and APK build scripts. Keep the generated lock file committed and valid; if it is ever corrupted again, regenerate it with the Shorebird-bundled Flutter SDK before rerunning the patch script. Run the patch command in the background and monitor it: the Android `bundleRelease` stage can exceed a five-minute shell timeout, which terminates the build and leaves temporary staging files for the script to clear on retry.
+**How to apply:** The temp-directory, cache-link, and Java safeguards are shared by the patch and APK build scripts. Keep the generated lock file committed and valid; if it is ever corrupted again, regenerate it with the Shorebird-bundled Flutter SDK before rerunning the patch script.
