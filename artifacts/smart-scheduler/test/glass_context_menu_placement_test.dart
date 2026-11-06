@@ -57,17 +57,25 @@ void main() {
       menuWidth: 250,
       platterGap: 12,
       centerPlatterHorizontally: true,
-      preferSideWithMoreSpace: true,
+      preferSideWithMoreSpace: false,
+      liftScale: 1.07,
+      keepTargetUndimmed: true,
     );
     await tester.pumpAndSettle();
 
     // The source remains in the page under the scrim while the route paints
     // the lifted preview above it.
     expect(find.text('Top preview'), findsNWidgets(2));
+    final previewRect = tester.getRect(find.byKey(previewKey));
+    expect(previewRect.width, closeTo(targetRect.width * 1.07, 1.0));
+    expect(previewRect.center.dx, closeTo(targetRect.center.dx, 0.01));
+    expect(previewRect.center.dy, closeTo(targetRect.center.dy, 0.01));
     final actionRect = tester.getRect(find.text('Top action'));
     expect(actionRect.top, greaterThan(targetRect.bottom));
+    expect(actionRect.top - targetRect.bottom, lessThan(100));
     expect(actionRect.left, greaterThan(0));
     expect(actionRect.right, lessThan(400));
+    expect(find.byType(ClipPath), findsWidgets);
   });
 
   testWidgets('context platter opens above a source near the bottom', (
@@ -115,7 +123,7 @@ void main() {
       menuWidth: 250,
       platterGap: 12,
       centerPlatterHorizontally: true,
-      preferSideWithMoreSpace: true,
+      preferSideWithMoreSpace: false,
     );
     await tester.pumpAndSettle();
 
@@ -125,6 +133,97 @@ void main() {
     expect(actionRect.bottom, lessThan(targetRect.top));
     expect(actionRect.top, greaterThanOrEqualTo(0));
     expect(lastActionRect.bottom, lessThanOrEqualTo(800));
+    expect(targetRect.top - lastActionRect.bottom, lessThan(100));
+  });
+
+  testWidgets('tapping outside the platter dismisses the context menu', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    late BuildContext context;
+    const targetRect = Rect.fromLTWH(100, 300, 180, 60);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Builder(
+          builder: (builderContext) {
+            context = builderContext;
+            return const CupertinoPageScaffold(
+              child: Center(child: Text('Underlying screen')),
+            );
+          },
+        ),
+      ),
+    );
+
+    showGlassContextMenu<void>(
+      context: context,
+      targetRect: targetRect,
+      overlaySize: const Size(400, 800),
+      actions: [
+        GlassContextMenuAction(
+          child: const Text('Dismiss action'),
+          onPressed: () {},
+        ),
+      ],
+      previewChild: const SizedBox(width: 180, height: 60),
+      menuWidth: 250,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Dismiss action'), findsOneWidget);
+
+    await tester.tapAt(const Offset(12, 12));
+    await tester.pumpAndSettle();
+    expect(find.text('Dismiss action'), findsNothing);
+  });
+
+  testWidgets('tapping the lifted source tile dismisses the menu', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    late BuildContext context;
+    const targetRect = Rect.fromLTWH(100, 300, 180, 60);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Builder(
+          builder: (builderContext) {
+            context = builderContext;
+            return const CupertinoPageScaffold(
+              child: Center(child: Text('Underlying screen')),
+            );
+          },
+        ),
+      ),
+    );
+
+    showGlassContextMenu<void>(
+      context: context,
+      targetRect: targetRect,
+      overlaySize: const Size(400, 800),
+      actions: [
+        GlassContextMenuAction(
+          child: const Text('Tile dismiss action'),
+          onPressed: () {},
+        ),
+      ],
+      previewChild: const SizedBox(width: 180, height: 60),
+      menuWidth: 250,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Tile dismiss action'), findsOneWidget);
+
+    await tester.tapAt(targetRect.center);
+    await tester.pumpAndSettle();
+    expect(find.text('Tile dismiss action'), findsNothing);
   });
 
   testWidgets('widget API anchors to the actual source tile render box', (

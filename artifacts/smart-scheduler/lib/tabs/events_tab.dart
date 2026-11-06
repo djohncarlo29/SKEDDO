@@ -520,13 +520,15 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
         overlaySize: overlayBox.size,
         actions: actions,
         previewChild: widget.child,
+        liftScale: 1.07,
+        keepTargetUndimmed: true,
         rowBorderRadius: widget.glassRowBorderRadius,
         rowCorners: widget.glassRowCorners,
-        // Match the previous category menu's centered platter and placement
-        // on whichever side of the tile has more room.
+        // Keep the same centered platter, preferring the space just below the
+        // pressed tile; flip above it only when the platter cannot fit below.
         platterGap: 12.0,
         centerPlatterHorizontally: true,
-        preferSideWithMoreSpace: true,
+        preferSideWithMoreSpace: false,
         // Deliberately omit previewBuilder so the actual category tile stays
         // the in-place source/preview while the platter opens around it.
         routeStaticKey: _glassRouteStaticKey,
