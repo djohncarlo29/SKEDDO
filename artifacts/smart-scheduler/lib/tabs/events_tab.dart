@@ -511,6 +511,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       final route = showGlassContextMenu<void>(
         context: context,
         targetRect: targetRect,
+        overlaySize: overlayBox.size,
         actions: actions,
         previewChild: widget.child,
         rowBorderRadius: widget.glassRowBorderRadius,

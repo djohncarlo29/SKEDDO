@@ -410,6 +410,7 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
     showGlassContextMenu<void>(
       context: context,
       targetRect: targetRect,
+      overlaySize: overlayBox.size,
       actions: widget.actions,
       previewBuilder: widget.previewBuilder,
       previewChild: widget.child,
@@ -507,6 +508,7 @@ class _GlassContextMenuState extends State<GlassContextMenu> {
 Future<T?> showGlassContextMenu<T>({
   required BuildContext context,
   required Rect targetRect,
+  Size? overlaySize,
   required List<Widget> actions,
   WidgetBuilder? previewBuilder,
   Widget? previewChild,
@@ -535,6 +537,7 @@ Future<T?> showGlassContextMenu<T>({
   return Navigator.of(context, rootNavigator: true).push<T>(
     _GlassContextMenuRoute<T>(
       targetRect: targetRect,
+      overlaySize: overlaySize,
       actions: actions,
       previewBuilder: previewBuilder,
       previewChild: previewChild,
@@ -575,6 +578,7 @@ const double _kPlatterInset = 10.0;
 class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   _GlassContextMenuRoute({
     required this.targetRect,
+    this.overlaySize,
     required this.actions,
     this.previewBuilder,
     this.previewChild,
@@ -601,6 +605,7 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
   });
 
   final Rect targetRect;
+  final Size? overlaySize;
   final List<Widget> actions;
   final WidgetBuilder? previewBuilder;
   final Widget? previewChild;
@@ -725,6 +730,7 @@ class _GlassContextMenuRoute<T> extends PopupRoute<T> {
       key: routeStaticKey,
       route: this,
       targetRect: targetRect,
+      overlaySize: overlaySize,
       actions: actions,
       previewBuilder: previewBuilder,
       previewChild: previewChild,
@@ -760,6 +766,7 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
     super.key,
     this.route,
     required this.targetRect,
+    this.overlaySize,
     required this.actions,
     this.previewBuilder,
     this.previewChild,
@@ -783,6 +790,7 @@ class _GlassContextMenuRouteStatic extends StatefulWidget {
 
   final _GlassContextMenuRoute? route;
   final Rect targetRect;
+  final Size? overlaySize;
   final List<Widget> actions;
   final WidgetBuilder? previewBuilder;
   final Widget? previewChild;
@@ -941,7 +949,9 @@ class _GlassContextMenuRouteStaticState
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final screenSize = mediaQuery.size;
+    // targetRect uses Navigator-overlay coordinates. Use the overlay's size
+    // when available instead of assuming the inherited MediaQuery matches it.
+    final screenSize = widget.overlaySize ?? mediaQuery.size;
     final padding = mediaQuery.padding;
 
     final bool isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
