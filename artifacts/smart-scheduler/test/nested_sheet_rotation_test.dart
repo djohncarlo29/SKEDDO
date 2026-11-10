@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart'
+    show kRoundedSheetSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/live_rotation_geometry.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
@@ -114,7 +116,13 @@ void main() {
       final portraitViewport = tester.getRect(find.byKey(nestedViewportKey));
       expect(portraitViewport.left, 0);
       expect(portraitViewport.right, portrait.width);
-      expect(tester.getRect(find.byKey(nestedRootKey)).top, 35);
+      final portraitStackGap =
+          (30.0 + kRoundedSheetSafeAreaGap) * 0.0835 +
+          portrait.height * 0.005;
+      expect(
+        tester.getRect(find.byKey(nestedRootKey)).top,
+        closeTo(30.0 + portraitStackGap, 1e-9),
+      );
 
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();

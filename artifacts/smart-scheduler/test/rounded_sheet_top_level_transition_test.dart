@@ -10,7 +10,7 @@ import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
-    'portrait nested sheet keeps the rear sheet at the safe-area threshold',
+    'portrait sheets move together and preserve their previous stack spacing',
     (tester) async {
       const surfaceSize = Size(400, 700);
       const topInset = 30.0;
@@ -55,6 +55,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
       final movingSheetTop = tester.getRect(find.byKey(sheetKey)).top;
       await tester.pumpAndSettle();
+      final preservedStackGap =
+          (topInset + kRoundedSheetSafeAreaGap) * 0.0835 +
+          surfaceSize.height * 0.005;
 
       final rootRect = tester.getRect(find.byKey(rootKey));
       expect(rootRect.topLeft, Offset.zero);
@@ -68,7 +71,8 @@ void main() {
       );
       expect(
         sheetTop,
-        topInset + kRoundedSheetSafeAreaGap,
+        topInset + preservedStackGap,
+        reason: 'A single portrait sheet must use the adjusted resting position.',
       );
       final appShellFilter = tester
           .widget<ColorFiltered>(
@@ -109,11 +113,11 @@ void main() {
         topInset,
         reason: 'The sheet peeking behind must not enter the status safe area.',
       );
-      expect(frontSheetTop, topInset + kRoundedSheetSafeAreaGap);
+      expect(frontSheetTop, topInset + preservedStackGap);
       expect(
         frontSheetTop - rearSheetTop,
-        kRoundedSheetSafeAreaGap,
-        reason: 'Moving the rear sheet must preserve the front-to-rear gap.',
+        closeTo(preservedStackGap, 1e-9),
+        reason: 'The active sheet must move with the rear-sheet adjustment.',
       );
 
       navigatorKey.currentState!.pop();

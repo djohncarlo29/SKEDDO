@@ -30,9 +30,10 @@ import 'app_window_content_boundary.dart';
 // reimplemented here using only public ModalRoute/PageRoute API.
 // ══════════════════════════════════════════════════════════════════════════════
 
+const double _kPortraitStackLiftFraction = 0.005;
 final Animatable<Offset> _kMidUpTween = Tween<Offset>(
   begin: Offset.zero,
-  end: const Offset(0.0, -0.005),
+  end: const Offset(0.0, -_kPortraitStackLiftFraction),
 );
 Animatable<double> _sheetOpacityTween(BuildContext context) => Tween<double>(
   begin: 0.0,
@@ -120,13 +121,19 @@ double _roundedSheetTopGapRatio(
   final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
   if (height <= 0.0) return 0.0;
   final size = MediaQuery.sizeOf(context);
+  final topSafeArea = MediaQuery.viewPaddingOf(context).top;
   final safeAreaGap = size.width > size.height
       ? kRoundedSheetLandscapeSafeAreaGap
       : kRoundedSheetSafeAreaGap;
-  // Parent sheets and nested subsheets share the same orientation-specific
-  // gap below the top safe area, independent of device height.
+  // Keep the former portrait peek distance between the active sheet and the
+  // sheet behind it. The active sheet uses that same resting position even
+  // when it is the only sheet; a covered sheet is corrected to the safe-area
+  // threshold by the secondary transition below.
+  final portraitStackGap =
+      (topSafeArea + kRoundedSheetSafeAreaGap) * _kSheetScaleFactor +
+      height * _kPortraitStackLiftFraction;
   final requiredGap =
-      MediaQuery.viewPaddingOf(context).top + safeAreaGap;
+      topSafeArea + (size.width > size.height ? safeAreaGap : portraitStackGap);
   return (requiredGap / height).clamp(0.0, 1.0).toDouble();
 }
 
