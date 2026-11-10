@@ -409,44 +409,53 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
           // Paint the modal surface through the physical bottom independently
           // from the page viewport. This layer is translated with the route,
           // so it covers the bottom without exposing a strip from the route
-          // underneath.
-          child: ColoredBox(
-            color: resolveThemeColor(kModalBackground, context),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Keep the authored page at the visible height below the
-                // shared safe-area gap so scrollable content ends at the
-                // physical bottom instead of extending below the clip.
-                final topGapRatio = _roundedSheetTopGapRatio(
-                  context,
-                  viewportHeight: constraints.maxHeight,
-                );
-                final double visiblePageHeight =
-                    constraints.maxHeight * (1.0 - topGapRatio);
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: visiblePageHeight,
-                    child: MediaQuery(
-                      data: mqData,
-                      child: CupertinoUserInterfaceLevel(
-                        data: CupertinoUserInterfaceLevelData.elevated,
-                        // Build the page under the cleaned MediaQuery above.
-                        // Calling builder(context) here would pass the route's
-                        // original context and restore SafeArea padding.
-                        child: _RoundedSheetScope(
-                          child: hasLandscapeInset
-                              ? Builder(builder: builder)
-                              : AppWindowContentPadding(
-                                  child: Builder(builder: builder),
-                                ),
+          // underneath. Keep its top corners clipped at the local sheet bounds
+          // so landscape full-bleed effects cannot square them off.
+          child: ClipPath(
+            clipper: ShapeBorderClipper(
+              shape: const BoundedSquircleStadiumBorder(
+                radius: kModalSheetCornerRadius,
+                topOnly: true,
+              ),
+            ),
+            child: ColoredBox(
+              color: resolveThemeColor(kModalBackground, context),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Keep the authored page at the visible height below the
+                  // shared safe-area gap so scrollable content ends at the
+                  // physical bottom instead of extending below the clip.
+                  final topGapRatio = _roundedSheetTopGapRatio(
+                    context,
+                    viewportHeight: constraints.maxHeight,
+                  );
+                  final double visiblePageHeight =
+                      constraints.maxHeight * (1.0 - topGapRatio);
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: visiblePageHeight,
+                      child: MediaQuery(
+                        data: mqData,
+                        child: CupertinoUserInterfaceLevel(
+                          data: CupertinoUserInterfaceLevelData.elevated,
+                          // Build the page under the cleaned MediaQuery above.
+                          // Calling builder(context) here would pass the route's
+                          // original context and restore SafeArea padding.
+                          child: _RoundedSheetScope(
+                            child: hasLandscapeInset
+                                ? Builder(builder: builder)
+                                : AppWindowContentPadding(
+                                    child: Builder(builder: builder),
+                                  ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),

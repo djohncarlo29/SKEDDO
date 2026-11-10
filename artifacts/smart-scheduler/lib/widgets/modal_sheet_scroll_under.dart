@@ -6,7 +6,6 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 import '../app_theme.dart'
     show BoundedSquircleStadiumBorder, kModalSheetCornerRadius;
-import 'app_window_content_boundary.dart' show AppWindowFullBleedWidth;
 import 'live_rotation_geometry.dart';
 
 /// The top scroll-edge effect is anchored to the modal sheet's top edge,
@@ -419,51 +418,50 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
               scrollable,
             Positioned.fill(
               // Keep the overlay's position fixed so progress updates never
-              // relayout the ScrollView while it is being rubberbanded.
-              child: AppWindowFullBleedWidth(
-                child: IgnorePointer(
-                  child: ValueListenableBuilder<_ModalSheetEdgeProgress>(
-                    valueListenable: _edgeProgress,
-                    builder: (context, progress, _) => ClipPath(
-                      // Clip only the effect layer. Keeping the scroller
-                      // outside this clip preserves the backdrop content for
-                      // Android's BackdropFilter while masking transparent
-                      // corners. Its full-bleed width matches the sheet,
-                      // not the safe-area-inset content viewport.
-                      clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        clipBehavior: Clip.none,
-                        children: [
+              // relayout the ScrollView while it is being rubberbanded. Its
+              // local width is the sheet width, including landscape insets.
+              child: IgnorePointer(
+                child: ValueListenableBuilder<_ModalSheetEdgeProgress>(
+                  valueListenable: _edgeProgress,
+                  builder: (context, progress, _) => ClipPath(
+                    key: const ValueKey('modal-sheet-scroll-edge-clip'),
+                    // Clip only the effect layer. Keeping the scroller
+                    // outside this clip preserves the backdrop content for
+                    // Android's BackdropFilter while masking transparent
+                    // corners to the actual sheet bounds.
+                    clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          top: kModalSheetScrollEdgeTopOffset,
+                          left: 0,
+                          right: 0,
+                          height: _topFadeExtent,
+                          child: Offstage(
+                            offstage: progress.top <= 0.01,
+                            child: _buildEdgeEffect(
+                              atTop: true,
+                              progress: progress.top,
+                            ),
+                          ),
+                        ),
+                        if (hasFooter)
                           Positioned(
-                            top: kModalSheetScrollEdgeTopOffset,
+                            bottom: widget.footerBottomInset,
                             left: 0,
                             right: 0,
-                            height: _topFadeExtent,
+                            height: widget.footerHeight + widget.edgeExtent,
                             child: Offstage(
-                              offstage: progress.top <= 0.01,
+                              offstage: progress.bottom <= 0.01,
                               child: _buildEdgeEffect(
-                                atTop: true,
-                                progress: progress.top,
+                                atTop: false,
+                                progress: progress.bottom,
                               ),
                             ),
                           ),
-                          if (hasFooter)
-                            Positioned(
-                              bottom: widget.footerBottomInset,
-                              left: 0,
-                              right: 0,
-                              height: widget.footerHeight + widget.edgeExtent,
-                              child: Offstage(
-                                offstage: progress.bottom <= 0.01,
-                                child: _buildEdgeEffect(
-                                  atTop: false,
-                                  progress: progress.bottom,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
