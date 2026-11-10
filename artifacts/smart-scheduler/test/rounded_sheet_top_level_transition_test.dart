@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_theme.dart'
-    show kLightModeSheetAppShellDimColor, kRoundedSheetSafeAreaGap;
+    show
+        kLightModeSheetAppShellDimColor,
+        kRoundedSheetLandscapeSafeAreaGap,
+        kRoundedSheetSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
@@ -177,7 +180,7 @@ void main() {
   );
 
   testWidgets(
-    'landscape parent and nested sheets use the full side safe-area inset',
+    'landscape parent and nested sheets use the inset and lower top offset',
     (tester) async {
       const surfaceSize = Size(1024, 600);
       const sideInset = 48.0;
@@ -241,7 +244,7 @@ void main() {
       final parentRect = tester.getRect(find.byKey(sheetKey));
       expect(parentRect.left, sideInset);
       expect(parentRect.right, surfaceSize.width - sideInset);
-      expect(parentRect.top, topInset + kRoundedSheetSafeAreaGap);
+      expect(parentRect.top, topInset + kRoundedSheetLandscapeSafeAreaGap);
 
       const nestedSheetKey = ValueKey('landscape-nested-sheet-content');
       final nestedFuture = showRoundedCupertinoSheet<void>(
@@ -256,7 +259,7 @@ void main() {
       final nestedRect = tester.getRect(find.byKey(nestedSheetKey));
       expect(nestedRect.left, sideInset);
       expect(nestedRect.right, surfaceSize.width - sideInset);
-      expect(nestedRect.top, topInset + kRoundedSheetSafeAreaGap);
+      expect(nestedRect.top, topInset + kRoundedSheetLandscapeSafeAreaGap);
 
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();

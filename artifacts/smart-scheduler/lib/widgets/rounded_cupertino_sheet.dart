@@ -10,6 +10,7 @@ import '../app_theme.dart'
         kLightModeSheetAppShellDimColor,
         kModalSheetCornerRadius,
         kRoundedSheetSafeAreaGap,
+        kRoundedSheetLandscapeSafeAreaGap,
         resolveThemeColor,
         systemSafeAreaBottomInset;
 import 'app_shell_navigation_scope.dart';
@@ -118,10 +119,14 @@ double _roundedSheetTopGapRatio(
 }) {
   final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
   if (height <= 0.0) return 0.0;
-  // Both parent sheets and nested subsheets rest at the same physical gap
-  // below the top safe area, independent of device height.
+  final size = MediaQuery.sizeOf(context);
+  final safeAreaGap = size.width > size.height
+      ? kRoundedSheetLandscapeSafeAreaGap
+      : kRoundedSheetSafeAreaGap;
+  // Parent sheets and nested subsheets share the same orientation-specific
+  // gap below the top safe area, independent of device height.
   final requiredGap =
-      MediaQuery.viewPaddingOf(context).top + kRoundedSheetSafeAreaGap;
+      MediaQuery.viewPaddingOf(context).top + safeAreaGap;
   return (requiredGap / height).clamp(0.0, 1.0).toDouble();
 }
 
@@ -444,11 +449,11 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
                           // Calling builder(context) here would pass the route's
                           // original context and restore SafeArea padding.
                           child: _RoundedSheetScope(
-                            child: hasLandscapeInset
-                                ? Builder(builder: builder)
-                                : AppWindowContentPadding(
-                                    child: Builder(builder: builder),
-                                  ),
+                            child: AppWindowContentPadding(
+                              includeLeft: !hasLandscapeInset,
+                              includeRight: !hasLandscapeInset,
+                              child: Builder(builder: builder),
+                            ),
                           ),
                         ),
                       ),
@@ -833,17 +838,13 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
       ),
     );
     return SizedBox.expand(
-      child: widget.horizontalInset > 0
-          ? Padding(
-              // Constrain the complete sheet route—not just its page contents—
-              // to the landscape safe-area rectangle. The AppShell remains
-              // full-width behind the transparent side gutters.
-              padding: EdgeInsets.symmetric(
-                horizontal: widget.horizontalInset,
-              ),
-              child: sheetTransition,
-            )
-          : sheetTransition,
+      child: Padding(
+        // Keep this wrapper present in both orientations so rotating changes
+        // only its inset, not the element ancestry of a nested sheet's page.
+        // The AppShell remains full-width behind transparent landscape gutters.
+        padding: EdgeInsets.symmetric(horizontal: widget.horizontalInset),
+        child: sheetTransition,
+      ),
     );
   }
 }

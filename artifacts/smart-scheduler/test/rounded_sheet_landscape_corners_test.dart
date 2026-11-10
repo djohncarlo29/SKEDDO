@@ -4,7 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smart_scheduler/app_theme.dart' show kRoundedSheetSafeAreaGap;
+import 'package:smart_scheduler/app_theme.dart'
+    show kRoundedSheetLandscapeSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
@@ -110,16 +111,14 @@ void main() {
       void expectScrollEdgeClipWithinSheet(Key sheetKey) {
         final clip = find.descendant(
           of: find.byKey(sheetKey),
-          matching: find.byKey(
-            const ValueKey('modal-sheet-scroll-edge-clip'),
-          ),
+          matching: find.byKey(const ValueKey('modal-sheet-scroll-edge-clip')),
         );
         final clipRect = tester.getRect(clip);
         expect(clipRect.left, sideInset);
         expect(clipRect.right, surfaceSize.width - sideInset);
       }
 
-      final top = (topInset + kRoundedSheetSafeAreaGap).round();
+      final top = (topInset + kRoundedSheetLandscapeSafeAreaGap).round();
       final cornerX = sideInset.round() + 2;
       final cornerY = top + 2;
       final centerX = surfaceSize.width ~/ 2;
