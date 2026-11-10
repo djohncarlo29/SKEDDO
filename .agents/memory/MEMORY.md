@@ -107,7 +107,7 @@
 - [Offline file analysis route](offline-file-analysis-route.md) — Notes attachments use local extraction/OCR and deterministic analysis only; Gemini is not a fallback for this flow.
 - [Platform text scaling profile](platform-text-scaling-profile.md) — source text-size positions from the OS profile and preserve nonlinear curves through System↔Custom transitions.
 - [Flutter System scaler diagnostics](flutter-system-scaler-diagnostics.md) — compare native profile and Flutter nonlinear scaling on-device.
-- [Shared modal safe-area handling](shared-modal-safe-area.md) — persistent bottom system insets are applied once at shared sheet boundaries; Floating Tab Bar's design offset remains separate.
+- [Shared modal safe-area handling](shared-modal-safe-area.md) — apply bottom insets once; landscape sheet bounds follow horizontal safe areas while the AppShell stays full-width.
 - [Modal scroll-edge clipping and dimming](modal-scroll-edge-extent-clipping.md) — preserve compositing and rounded clipping; zero-range short pulls include positive overscroll without layout changes.
 - [SliverFillRemaining intrinsic boundaries](sliver-fill-remaining-layoutbuilder.md) — bound responsive LayoutBuilder descendants inside non-scroll-body remaining slivers.
 - [Sheet scroll indicator anchoring](sheet-scroll-indicator-anchoring.md) — overlay-sheet scroll pills must anchor to the sheet surface, outside the padded content viewport.

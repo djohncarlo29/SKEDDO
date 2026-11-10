@@ -175,6 +175,97 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'landscape parent and nested sheets use the full side safe-area inset',
+    (tester) async {
+      const surfaceSize = Size(1024, 600);
+      const sideInset = 48.0;
+      const topInset = 24.0;
+      await tester.binding.setSurfaceSize(surfaceSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final rootKey = GlobalKey();
+      const sheetKey = ValueKey('landscape-sheet-content');
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context);
+            return AppWindowContentScope(
+              horizontalInset: sideInset,
+              physicalWidth: surfaceSize.width,
+              child: MediaQuery(
+                data: mediaQuery.copyWith(
+                  size: Size(
+                    surfaceSize.width - sideInset * 2,
+                    surfaceSize.height,
+                  ),
+                  padding: mediaQuery.padding.copyWith(
+                    left: 0,
+                    top: topInset,
+                    right: 0,
+                    bottom: 0,
+                  ),
+                  viewPadding: mediaQuery.viewPadding.copyWith(
+                    left: 0,
+                    top: topInset,
+                    right: 0,
+                  ),
+                ),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+          home: ColoredBox(
+            key: rootKey,
+            color: const Color(0xFF1F4D72),
+          ),
+        ),
+      );
+
+      final parentFuture = navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) =>
+              const ColoredBox(key: sheetKey, color: Color(0xFFFFFFFF)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rootRect = tester.getRect(find.byKey(rootKey));
+      expect(rootRect.left, 0);
+      expect(rootRect.width, surfaceSize.width);
+
+      final parentRect = tester.getRect(find.byKey(sheetKey));
+      expect(parentRect.left, sideInset);
+      expect(parentRect.right, surfaceSize.width - sideInset);
+      expect(parentRect.top, topInset + kRoundedSheetSafeAreaGap);
+
+      const nestedSheetKey = ValueKey('landscape-nested-sheet-content');
+      final nestedFuture = showRoundedCupertinoSheet<void>(
+        context: tester.element(find.byKey(sheetKey)),
+        pageBuilder: (_) => const ColoredBox(
+          key: nestedSheetKey,
+          color: Color(0xFFEFEFEF),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final nestedRect = tester.getRect(find.byKey(nestedSheetKey));
+      expect(nestedRect.left, sideInset);
+      expect(nestedRect.right, surfaceSize.width - sideInset);
+      expect(nestedRect.top, topInset + kRoundedSheetSafeAreaGap);
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      await nestedFuture;
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      await parentFuture;
+    },
+  );
 }
 
 class _ScrollableShell extends StatefulWidget {

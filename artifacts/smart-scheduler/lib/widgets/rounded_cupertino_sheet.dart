@@ -436,9 +436,11 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
                         // Calling builder(context) here would pass the route's
                         // original context and restore SafeArea padding.
                         child: _RoundedSheetScope(
-                          child: AppWindowContentPadding(
-                            child: Builder(builder: builder),
-                          ),
+                          child: hasLandscapeInset
+                              ? Builder(builder: builder)
+                              : AppWindowContentPadding(
+                                  child: Builder(builder: builder),
+                                ),
                         ),
                       ),
                     ),
@@ -570,6 +572,7 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
       dimsAppShell: dimsAppShell,
       dimOwner: dimOwner,
       topGapRatio: topGapRatio,
+      horizontalInset: AppWindowContentScope.of(context).horizontalInset,
       child: _RoundedDownGestureDetector<T>(
         enabledCallback: () => enableDrag,
         onStartPopGesture: () => _startPopGesture<T>(route),
@@ -615,6 +618,7 @@ class _RoundedSheetTransition extends StatefulWidget {
     required this.dimsAppShell,
     required this.dimOwner,
     required this.topGapRatio,
+    required this.horizontalInset,
   });
 
   final Animation<double> primaryRouteAnimation;
@@ -624,6 +628,7 @@ class _RoundedSheetTransition extends StatefulWidget {
   final bool dimsAppShell;
   final Object dimOwner;
   final double topGapRatio;
+  final double horizontalInset;
 
   @override
   State<_RoundedSheetTransition> createState() =>
@@ -811,14 +816,25 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: _coverSheetSecondaryTransition(
-        _coverSheetPrimaryTransition(
-          widget.primaryRouteAnimation,
-          widget.linearTransition,
-          widget.child,
-        ),
+    final sheetTransition = _coverSheetSecondaryTransition(
+      _coverSheetPrimaryTransition(
+        widget.primaryRouteAnimation,
+        widget.linearTransition,
+        widget.child,
       ),
+    );
+    return SizedBox.expand(
+      child: widget.horizontalInset > 0
+          ? Padding(
+              // Constrain the complete sheet route—not just its page contents—
+              // to the landscape safe-area rectangle. The AppShell remains
+              // full-width behind the transparent side gutters.
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.horizontalInset,
+              ),
+              child: sheetTransition,
+            )
+          : sheetTransition,
     );
   }
 }
