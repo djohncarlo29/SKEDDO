@@ -10,7 +10,7 @@ import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
-    'parent and nested sheets rest exactly 10pt below the top safe area',
+    'portrait nested sheet keeps the rear sheet at the safe-area threshold',
     (tester) async {
       const surfaceSize = Size(400, 700);
       const topInset = 30.0;
@@ -102,9 +102,18 @@ void main() {
             const ColoredBox(key: nestedSheetKey, color: Color(0xFFEFEFEF)),
       );
       await tester.pumpAndSettle();
+      final rearSheetTop = tester.getRect(find.byKey(sheetKey)).top;
+      final frontSheetTop = tester.getRect(find.byKey(nestedSheetKey)).top;
       expect(
-        tester.getRect(find.byKey(nestedSheetKey)).top,
-        topInset + kRoundedSheetSafeAreaGap,
+        rearSheetTop,
+        topInset,
+        reason: 'The sheet peeking behind must not enter the status safe area.',
+      );
+      expect(frontSheetTop, topInset + kRoundedSheetSafeAreaGap);
+      expect(
+        frontSheetTop - rearSheetTop,
+        kRoundedSheetSafeAreaGap,
+        reason: 'Moving the rear sheet must preserve the front-to-rear gap.',
       );
 
       navigatorKey.currentState!.pop();

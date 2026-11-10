@@ -746,7 +746,13 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
       reverseCurve: Curves.easeInToLinear,
       parent: widget.secondaryRouteAnimation,
     );
-    _secondaryPositionAnimation = _secondaryPositionCurve!.drive(_kMidUpTween);
+    final size = MediaQuery.sizeOf(context);
+    final secondaryPositionTween = size.width > size.height
+        ? _kMidUpTween
+        : Tween<Offset>(begin: Offset.zero, end: Offset.zero);
+    _secondaryPositionAnimation = _secondaryPositionCurve!.drive(
+      secondaryPositionTween,
+    );
     _secondaryScaleAnimation = _secondaryPositionCurve!.drive(_kScaleTween);
     _secondaryOpacityAnimation = _secondaryPositionCurve!.drive(
       _sheetOpacityTween(context),
@@ -806,24 +812,50 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
 
   Widget _coverSheetSecondaryTransition(Widget? child) {
     return ClipRect(
-      child: SlideTransition(
-        position: _secondaryPositionAnimation,
-        transformHitTests: false,
-        child: ScaleTransition(
-          // This subtree contains the scroll-edge BackdropFilter and must not
-          // be flattened into a filtered transform texture.
-          scale: _secondaryScaleAnimation,
-          alignment: Alignment.topCenter,
-          child: ClipPath(
-            clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isLandscape = constraints.maxWidth > constraints.maxHeight;
+          return AnimatedBuilder(
+            animation: Listenable.merge([
+              _secondaryPositionAnimation,
+              _primaryPositionCurve!,
+            ]),
+            child: ScaleTransition(
+              // This subtree contains the scroll-edge BackdropFilter and must
+              // not be flattened into a filtered transform texture.
+              scale: _secondaryScaleAnimation,
+              alignment: Alignment.topCenter,
+              child: ClipPath(
+                clipper: ShapeBorderClipper(
+                  shape: const BoundedSquircleStadiumBorder(
+                    radius: kModalSheetCornerRadius,
+                    topOnly: true,
+                  ),
+                ),
+                child: child,
               ),
             ),
-            child: child,
-          ),
-        ),
+            builder: (context, child) {
+              final dy = isLandscape
+                  ? _secondaryPositionAnimation.value.dy *
+                        constraints.maxHeight
+                  // The primary top offset is scaled with the underlying
+                  // sheet. Compensate that transformed position so its top
+                  // edge settles on the status safe-area threshold.
+                  : (MediaQuery.viewPaddingOf(context).top -
+                            widget.topGapRatio *
+                                constraints.maxHeight *
+                                _primaryPositionCurve!.value *
+                                _secondaryScaleAnimation.value) *
+                        _secondaryPositionCurve!.value;
+              return Transform.translate(
+                offset: Offset(0.0, dy),
+                transformHitTests: false,
+                child: child,
+              );
+            },
+          );
+        },
       ),
     );
   }
