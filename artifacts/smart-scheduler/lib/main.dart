@@ -47,6 +47,7 @@ import 'widgets/interactive_tap_focus_dismissal.dart';
 import 'widgets/live_rotation_geometry.dart';
 import 'widgets/app_shell_toolbar.dart';
 import 'widgets/app_shell_navigation_scope.dart';
+import 'widgets/app_text_scale_scope.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/rounded_cupertino_sheet.dart'
@@ -748,11 +749,6 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
           listenable: Listenable.merge([
             appBrightnessNotifier,
             appSystemBrightnessNotifier,
-            appTextSizeUsesSystemNotifier,
-            appTextSizeIndexNotifier,
-            appSystemTextScaleNotifier,
-            appSkeddoTextScaleMappingNotifier,
-            appCustomTextScalerNotifier,
             appAccentNotifier,
             appAccentUsesSystemNotifier,
             appSystemAccentColorNotifier,
@@ -764,8 +760,6 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
           ]),
           builder: (context, _) {
             final brightness = appBrightnessNotifier.value;
-            final followsSystemTextSize = appTextSizeUsesSystemNotifier.value;
-            final customTextSizeIndex = appTextSizeIndexNotifier.value;
             final systemTextScale =
                 MediaQuery.textScalerOf(context).scale(16) / 16;
             // Native Android/iOS profiles are authoritative. MediaQuery is only
@@ -859,28 +853,10 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                       ).copyWith(applyTextScaling: false),
                       child: result,
                     );
-                    // System mode intentionally leaves Flutter's ambient
-                    // MediaQuery.textScaler untouched. Only Custom mode receives
-                    // SKEDDO's frozen selected scaler.
-                    if (!followsSystemTextSize &&
-                        appCustomTextScalerNotifier.value != null) {
-                      result = MediaQuery(
-                        data: MediaQuery.of(context).copyWith(
-                          textScaler: appCustomTextScalerNotifier.value,
-                        ),
-                        child: result,
-                      );
-                    } else if (!followsSystemTextSize) {
-                      final mapping = appSkeddoTextScaleMappingNotifier.value;
-                      final mappedScale = customTextSizeIndex < mapping.length
-                          ? mapping[customTextSizeIndex].scale
-                          : skeddoTextScaleForIndex(customTextSizeIndex);
-                      result = MediaQuery.withClampedTextScaling(
-                        minScaleFactor: mappedScale,
-                        maxScaleFactor: mappedScale,
-                        child: result,
-                      );
-                    }
+                    // Keep text-size changes live inside a content-only scope:
+                    // its MediaQuery updates dependent text/layouts without
+                    // rebuilding the CupertinoApp configuration.
+                    result = AppTextScaleScope(child: result);
                     // Keep MediaQuery-based dynamic colors on the same effective
                     // brightness as CupertinoTheme in System and app-only modes.
                     result = MediaQuery(

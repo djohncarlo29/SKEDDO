@@ -25,3 +25,17 @@ by changing System, while still leaving exact engine equivalence unproven.
 **How to apply:** Build per-stop configuration metrics for Custom, preserve the
 complete native profile and seven-position mapping rules, and validate each
 native stop against Flutter's live scaler while that OS stop is active.
+
+Keep live Custom text-scale updates inside a content-level MediaQuery scope,
+not in the listener that rebuilds the root CupertinoApp configuration. This
+still updates all text and layouts that depend on MediaQuery while avoiding an
+app-configuration rebuild for each slider stop.
+
+**Why:** The app should preview all seven Custom sizes live, but the app shell,
+Navigator configuration, and unrelated root settings do not need to rebuild
+for each text-only update.
+
+**How to apply:** Keep mode/index/mapping/custom-scaler listeners in the scoped
+MediaQuery widget under CupertinoApp.builder; leave them out of the root
+configuration listenable. Continue to listen to ambient MediaQuery changes for
+System mode.
