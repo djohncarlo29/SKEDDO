@@ -139,6 +139,7 @@
 - [Date-picker weekday headers](date-picker-weekday-headers.md) — calendar and month-grid pickers follow First Day of Week; wheel barrels stay unchanged.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — keep semantic matching conservative; shared date/time text weakens low cosine floors.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
+- [Tab-bar tint follows pill bounds](tab-bar-tint-mask-geometry.md) — preserve pill expansion; selected-color masking must track the actual moving bounds through edge overdrag.
 - [Calendar morph transition notes](calendar-morph-transition-index.md) — use the grouped index for hierarchy, panel handoff, clipping, swipe, and content-bound notes.
 - [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher revisions must invalidate derived counts even when events are unchanged.
