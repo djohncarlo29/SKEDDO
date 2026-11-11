@@ -1494,7 +1494,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _openSettings() {
     if (_settingsOpen) return;
     setState(() => _settingsOpen = true);
-    final topInset = MediaQuery.paddingOf(context).top;
+    final topInset = appShellMediaQueryWithLandscapeToolbarInset(
+      MediaQuery.of(context),
+    ).padding.top;
     final bottomInset = systemSafeAreaBottomInset(context);
     final navigator = _appShellNavigatorKey.currentState;
     if (navigator == null) return;
@@ -4375,9 +4377,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final shellMediaQuery =
+        appShellMediaQueryWithLandscapeToolbarInset(mediaQuery);
+    return MediaQuery(
+      data: shellMediaQuery,
+      child: Builder(builder: _buildAppShellBody),
+    );
+  }
+
+  Widget _buildAppShellBody(BuildContext context) {
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
-    final topInset = MediaQuery.of(context).padding.top;
+    final topInset = MediaQuery.paddingOf(context).top;
     final headerContentHeight = isLandscape
         ? kAppHeaderLandscapeToolbarHeight
         : 101.0;

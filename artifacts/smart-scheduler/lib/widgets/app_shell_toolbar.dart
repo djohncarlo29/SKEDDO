@@ -22,9 +22,37 @@ const double kAppShellPinnedToolbarOuterInset = 16.0;
 const double kAppShellCompactTitleToolbarGap = 16.0;
 const double kAppShellCompactTitleScreenEdgeInset = 16.0;
 const double kAppShellPinnedToolbarButtonSize = 40.0;
+const double kAppShellPinnedToolbarDefaultHeight = 60.0;
+const double kAppShellLandscapeToolbarTopEdgeGap = 16.0;
+const double kAppShellLandscapeToolbarMinimumTopInset =
+    kAppShellLandscapeToolbarTopEdgeGap -
+    (kAppShellPinnedToolbarDefaultHeight - kAppShellPinnedToolbarButtonSize) /
+        2;
 // Shared pinned capsules use buttonSize + 2pt per icon slot in the package.
 const double kAppShellPinnedToolbarSharedItemExtent =
     kAppShellPinnedToolbarButtonSize + 2.0;
+
+/// Adds only the top inset needed to keep the pinned landscape toolbar's
+/// 40pt circle 16pt below the screen edge.
+///
+/// The app's landscape system bars are immersive, so the platform top padding
+/// is normally zero. Preserve any larger platform-provided inset (for example,
+/// a window that still has a visible system bar) rather than moving chrome
+/// into it. Only [MediaQueryData.padding] is adjusted: viewPadding continues
+/// to describe the actual physical safe area for sheets and other overlays.
+MediaQueryData appShellMediaQueryWithLandscapeToolbarInset(
+  MediaQueryData mediaQuery,
+) {
+  if (mediaQuery.orientation != Orientation.landscape ||
+      mediaQuery.padding.top >= kAppShellLandscapeToolbarMinimumTopInset) {
+    return mediaQuery;
+  }
+  return mediaQuery.copyWith(
+    padding: mediaQuery.padding.copyWith(
+      top: kAppShellLandscapeToolbarMinimumTopInset,
+    ),
+  );
+}
 
 double appShellCompactTitleInsetForToolbar({
   required bool hasToolbar,
@@ -94,7 +122,7 @@ String appShellToolbarConfigurationKey({
 /// glyph inside a permanently matched item.
 class AppShellPinnedToolbar extends StatelessWidget {
   static const defaultButtonSize = kAppShellPinnedToolbarButtonSize;
-  static const defaultToolbarHeight = 60.0;
+  static const defaultToolbarHeight = kAppShellPinnedToolbarDefaultHeight;
 
   const AppShellPinnedToolbar({
     super.key,

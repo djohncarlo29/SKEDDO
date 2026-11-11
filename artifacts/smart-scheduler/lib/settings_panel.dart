@@ -587,7 +587,15 @@ class _SettingsPanelState extends State<SettingsPanel>
     // Bar bottom rule for the content edge: 16 pt minimum, or the actual
     // persistent system navigation inset when it is larger. Do not round or
     // add another 16 pt here.
-    final topInset = _settingsGridInset(widget.topInset);
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final mediaQueryTopInset = MediaQuery.paddingOf(context).top;
+    final rawTopInset = isLandscape || mediaQueryTopInset > 0
+        ? mediaQueryTopInset
+        : widget.topInset;
+    final topInset = isLandscape
+        ? rawTopInset
+        : _settingsGridInset(rawTopInset);
     final bottomInset = unifiedBottomPaddingForInset(widget.bottomInset);
 
     return ListenableBuilder(

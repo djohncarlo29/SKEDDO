@@ -17,6 +17,10 @@ import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/tabs/events_tab.dart';
 import 'package:smart_scheduler/tabs/notes_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/app_shell_toolbar.dart'
+    show
+        kAppShellLandscapeToolbarTopEdgeGap,
+        kAppShellPinnedToolbarButtonSize;
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 import 'package:smart_scheduler/widgets/header_title_scroller.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
@@ -141,7 +145,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       tester.view.physicalSize = const Size(874, 402);
       tester.view.devicePixelRatio = 1;
-      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      tester.view.padding = const FakeViewPadding(bottom: 24);
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPadding);
@@ -151,6 +155,12 @@ void main() {
 
       await tester.pumpWidget(const SKEDDOApp());
       await tester.pumpAndSettle();
+      final toolbarButton = find.bySemanticsLabel('Open settings').last;
+      expect(
+        tester.getCenter(toolbarButton).dy -
+            kAppShellPinnedToolbarButtonSize / 2,
+        closeTo(kAppShellLandscapeToolbarTopEdgeGap, 0.5),
+      );
       await tester.tapAt(tester.getCenter(find.text('Calendar').last));
       await tester.pumpAndSettle();
 
@@ -444,6 +454,7 @@ void main() {
       expectSettingsHeaderAligned('Theme', 'Back from Theme');
 
       tester.view.physicalSize = const Size(874, 402);
+      tester.view.padding = const FakeViewPadding(bottom: 24);
       await tester.pumpAndSettle();
       expectSettingsHeaderAligned('Theme', 'Back from Theme');
       await tester.tap(find.bySemanticsLabel('Back from Theme').last);
