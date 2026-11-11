@@ -22,6 +22,9 @@ import 'skeddo_glass_settings.dart';
 /// Geometry shared by the Liquid Glass settings preview card and its
 /// shape-aware movement boundary.
 const double kLiquidGlassPreviewHeight = 154.0;
+const double _kLandscapeTabSlotWidth = 88.0;
+const double _kLandscapeTabIconSize = 18.0;
+const double _kLandscapeTabLabelFontSize = 14.0;
 const RoundedRectangleBorder kLiquidGlassPreviewCardShape =
     RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(kSquircleStadiumRadius)),
@@ -128,8 +131,6 @@ class FloatingTabPill extends StatefulWidget {
 }
 
 class _FloatingTabPillState extends State<FloatingTabPill> {
-  double? _portraitBarWidth;
-
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: appLiquidGlassOpacityNotifier,
@@ -150,6 +151,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       MediaQuery.textScalerOf(context),
     );
     final tabIconSize = tabTextScaler.scale(20);
+    final landscapeIconSize = tabTextScaler.scale(_kLandscapeTabIconSize);
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barGlassSettings = skeddoNavigationTabBarGlassSettingsFor(
       isDark ? Brightness.dark : Brightness.light,
@@ -170,7 +172,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FixedSFIcon(iconData, fontSize: tabIconSize),
+            FixedSFIcon(iconData, fontSize: landscapeIconSize),
             const SizedBox(width: 6),
             Text(
               label,
@@ -178,7 +180,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               softWrap: false,
               style: TextStyle(
                 color: labelColor,
-                fontSize: 9,
+                fontSize: _kLandscapeTabLabelFontSize,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
@@ -238,6 +240,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       tabs: tabs,
       selectedIndex: selectedIndex,
       onTabSelected: widget.onTabSelected,
+      tabWidth: isLandscape ? _kLandscapeTabSlotWidth : null,
       extraButton: navigation_glass.GlassTabBarExtraButton(
         icon: const FixedSFIcon(SFIcons.sf_plus),
         onTap: widget.onCreateEvent,
@@ -248,7 +251,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       ),
       barHeight: kFloatingTabBarHeight,
       verticalPadding: 0,
-      iconSize: 20,
+      iconSize: isLandscape ? landscapeIconSize : 20,
       labelFontSize: 9,
       iconLabelSpacing: 1.5,
       magnification: 1,
@@ -279,17 +282,15 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
           final isPortrait = layoutSize.width <= layoutSize.height;
           final availableBarWidth =
               constraints.maxWidth - (kFloatingTabBarHorizontalMargin * 2);
-          final portraitWidth =
-              _portraitBarWidth ??
-              (math.min(layoutSize.width, layoutSize.height) -
-                  (kFloatingTabBarHorizontalMargin * 2));
-          final barWidth = (isPortrait ? availableBarWidth : portraitWidth)
-              .clamp(0.0, double.infinity)
-              .toDouble();
-          if (isPortrait) _portraitBarWidth = barWidth;
-          final frameWidth = (barWidth + tabBar.horizontalPadding * 2)
-              .clamp(0.0, constraints.maxWidth)
-              .toDouble();
+          final landscapeContentWidth =
+              (_kLandscapeTabSlotWidth * tabs.length) +
+              (tabBar.extraButton?.size ?? 0) +
+              (tabBar.extraButton == null ? 0 : tabBar.spacing);
+          final frameWidth =
+              ((isPortrait ? availableBarWidth : landscapeContentWidth) +
+                      tabBar.horizontalPadding * 2)
+                  .clamp(0.0, constraints.maxWidth)
+                  .toDouble();
           final barSideInset = (constraints.maxWidth - frameWidth) / 2;
           return Stack(
             clipBehavior: Clip.none,

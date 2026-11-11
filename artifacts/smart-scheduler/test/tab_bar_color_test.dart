@@ -170,7 +170,7 @@ void main() {
   );
 
   testWidgets(
-    'floating tab bar keeps its width through orientation changes',
+    'landscape tab bar is wider and portrait width is restored',
     (tester) async {
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = const Size(402, 874);
@@ -201,10 +201,10 @@ void main() {
 
       tester.view.physicalSize = const Size(874, 402);
       await tester.pump();
-      expect(tester.getSize(tabBar).width, portraitSize.width);
+      final landscapeSize = tester.getSize(tabBar);
+      expect(landscapeSize.width, greaterThan(portraitSize.width));
+      expect(landscapeSize.width, closeTo(449.0, 0.01));
       expect(tester.getSize(tabBar).height, 49.0);
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(tester.getSize(tabBar).width, portraitSize.width);
 
       tester.view.physicalSize = const Size(402, 874);
       await tester.pump();
@@ -250,8 +250,14 @@ void main() {
       'Events',
       'You',
     ]);
+    expect(tabBar.tabWidth, 88.0);
     expect(tabBar.tabs.every((tab) => tab.icon is Row), isTrue);
     expect(tabBar.tabs[0].activeIcon, isA<Row>());
+    final homeItem = tabBar.tabs[0].icon as Row;
+    final homeIcon = homeItem.children[0] as FixedSFIcon;
+    final homeLabel = homeItem.children[2] as Text;
+    expect(homeIcon.fontSize, 18.0);
+    expect(homeLabel.style!.fontSize, 14.0);
     expect(find.text('Home'), findsWidgets);
     expect(find.text('Calendar'), findsWidgets);
 

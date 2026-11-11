@@ -21,14 +21,14 @@ On web and Android, use `flutter_liquid_glass_widgets`' `GlassTabBar.bottom` for
 
 **How to apply:** Keep the UIKit overlay on native iOS. For web/Android, preserve AppShell positioning and navigation state around `GlassTabBar.bottom`, keep the pill and `extraButton` at 49 logical pixels, and size custom SF glyphs directly without changing the separate plus action. Merge only the package dark variant's tint and lighting into the bottom-bar preset; preserve its optical thickness, refraction, dispersion, saturation, and blur.
 
-On Flutter-rendered Android/web, keep the navigation pill at its portrait width when rotating to landscape. Reposition it for the new viewport without resizing it; animate explicit horizontal pane offsets separately.
+On Flutter-rendered Android/web, landscape navigation is intentionally wider than portrait. Give landscape tabs equal fixed-width slots sized for inline icon-and-label content, clamp the pill to available space, and keep portrait sizing unchanged.
 
-**Why:** Clamping the pill to landscape constraints and animating both left and right edges makes the whole control visibly shrink and expand during rotation, unlike the steady-width navigation the user expects.
+**Why:** The user clarified that landscape should be a longer horizontal version of the portrait bar, not the same-width portrait control with the labels rearranged.
 
-**How to apply:** Use the cached portrait width (or the short screen edge minus the standard margins when launched in landscape) as the bar width in both orientations. Give the positioned bar an explicit fixed width and animate only `horizontalOffset`, never its width.
+**How to apply:** Keep the four landscape tab slots equal in width even when labels have different lengths. Use the fixed landscape width where it fits; allow the package bar to clamp all slots equally on narrow screens.
 
-On the Flutter-rendered bar, landscape destinations use an inline icon-left/label-right layout; portrait keeps the existing icon-over-label layout. Preserve `GlassTabBar.bottom`, the selected indicator, selection routing, and the separate create button.
+On the Flutter-rendered bar, landscape destinations use similar-sized inline icons and labels; portrait keeps the existing larger-icon/smaller-label stack. Preserve `GlassTabBar.bottom`, the selected indicator, selection routing, and the separate create button.
 
-**Why:** The user requested the landscape arrangement to match the supplied reference without changing the portrait design or navigation behavior.
+**Why:** The reference uses balanced icon and label sizes and equal-width destinations rather than carrying portrait proportions into landscape.
 
-**How to apply:** Compose the horizontal item content inside the package tab configuration rather than replacing the glass bar or moving its actions.
+**How to apply:** Compose horizontal item content inside the package tab configuration, with equal tab slots and a wider landscape pill; do not replace the glass bar or move its actions.
