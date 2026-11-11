@@ -256,9 +256,9 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       iconLabelSpacing: 1.5,
       magnification: 1,
       settings: barGlassSettings,
-      indicatorSettings: isDark
-          ? null
-          : skeddoNavigationTabIndicatorGlassSettings(),
+      indicatorSettings: skeddoNavigationTabIndicatorGlassSettings(
+        isDark ? Brightness.dark : Brightness.light,
+      ),
       innerBlur: skeddoActiveTabIndicatorBlurForPosition(
         liquidGlassSliderPositionForOpacity(
           appLiquidGlassOpacityNotifier.value,

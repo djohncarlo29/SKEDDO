@@ -151,8 +151,13 @@ void main() {
       );
       expect(
         tabBar.indicatorSettings,
-        skeddoNavigationTabIndicatorGlassSettings(),
+        skeddoNavigationTabIndicatorGlassSettings(Brightness.light),
       );
+      expect(
+        tabBar.indicatorSettings!.chromaticAberration,
+        kSkeddoActiveTabIndicatorChromaticAberration,
+      );
+      expect(tabBar.settings!.chromaticAberration, 0.3);
       expect(
         tabBar.indicatorSettings!.glassColor,
         const Color.fromRGBO(0, 0, 0, 0.04),
@@ -198,6 +203,13 @@ void main() {
       final tabBar = find.byType(navigation_glass.GlassTabBar);
       final portraitSize = tester.getSize(tabBar);
       expect(portraitSize.height, 49.0);
+      expect(
+        tester
+            .widget<navigation_glass.GlassTabBar>(tabBar)
+            .indicatorSettings!
+            .chromaticAberration,
+        kSkeddoActiveTabIndicatorChromaticAberration,
+      );
 
       tester.view.physicalSize = const Size(874, 402);
       await tester.pump();
@@ -205,6 +217,13 @@ void main() {
       expect(landscapeSize.width, greaterThan(portraitSize.width));
       expect(landscapeSize.width, closeTo(449.0, 0.01));
       expect(tester.getSize(tabBar).height, 49.0);
+      expect(
+        tester
+            .widget<navigation_glass.GlassTabBar>(tabBar)
+            .indicatorSettings!
+            .chromaticAberration,
+        kSkeddoActiveTabIndicatorChromaticAberration,
+      );
 
       tester.view.physicalSize = const Size(402, 874);
       await tester.pump();
@@ -337,7 +356,15 @@ void main() {
     expect(tabBar.settings!.chromaticAberration, 0.3);
     expect(tabBar.settings!.refractiveIndex, 1.59);
     expect(tabBar.settings!.saturation, 0.7);
-    expect(tabBar.indicatorSettings, isNull);
+    expect(
+      tabBar.indicatorSettings,
+      skeddoNavigationTabIndicatorGlassSettings(Brightness.dark),
+    );
+    expect(tabBar.indicatorSettings, isNotNull);
+    expect(
+      tabBar.indicatorSettings!.chromaticAberration,
+      kSkeddoActiveTabIndicatorChromaticAberration,
+    );
     expect(tabBar.iconSize, 20.0);
     expect(tabBar.tabs.map((tab) => (tab.icon! as FixedSFIcon).fontSize), [
       20.0,

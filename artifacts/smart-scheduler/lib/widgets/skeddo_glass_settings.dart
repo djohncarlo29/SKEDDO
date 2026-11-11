@@ -30,6 +30,7 @@ const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 const double kSkeddoDarkGlassEdgeIntensityMultiplier = 0.5;
+const double kSkeddoActiveTabIndicatorChromaticAberration = 0.15;
 const double _kActiveCheckmarkGlassSliderReference = 0.5;
 const double _kOldSliderPositionForNewMidpoint = 0.57;
 
@@ -346,13 +347,24 @@ navigation_glass.LiquidGlassSettings skeddoNavigationTabBarGlassSettingsFor(
   skeddoTabBarGlassSettingsFor(brightness),
 );
 
-/// The light-mode active-tab lens uses the app's existing tint and elevation,
-/// translated to the navigation package's settings type.
-navigation_glass.LiquidGlassSettings
-skeddoNavigationTabIndicatorGlassSettings() =>
-    skeddoNavigationGlassSettingsFromShared(
-      kSkeddoLightLiftedTabIndicatorSettings,
+/// Active-tab lens settings use the package-default chromatic aberration.
+/// Light Mode retains SKEDDO's tint and elevation; Dark Mode overrides only
+/// chromatic aberration so the package's dark indicator optics remain intact.
+navigation_glass.LiquidGlassSettings skeddoNavigationTabIndicatorGlassSettings(
+  Brightness brightness,
+) {
+  if (brightness == Brightness.dark) {
+    return navigation_glass.LiquidGlassSettings(
+      chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
     );
+  }
+
+  return skeddoNavigationGlassSettingsFromShared(
+    kSkeddoLightLiftedTabIndicatorSettings.copyWith(
+      chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+    ),
+  );
+}
 
 /// The floating tab-bar shell defines the blur value shared by SKEDDO's
 /// flutter_liquid_glass_widgets surfaces. The settled active-tab lens remains

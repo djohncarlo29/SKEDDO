@@ -76,3 +76,15 @@ size, so they diverged from the main search control at larger OS text sizes.
 
 **How to apply:** scale the glyph from its authored size at build time, remove
 const wrappers that prevent that, and preserve the existing row-edge padding.
+
+The selected tab's moving indicator pill uses the package-documented default
+chromatic aberration (0.15) in both appearances. Keep this effect scoped to the
+indicator; the tab-bar shell remains on its separate slider-driven glass value.
+Light Mode also retains SKEDDO's indicator tint and elevation.
+
+**Why:** the user requested the original default chromatic edge only on the
+active tab pill, without changing the surrounding bar or other glass controls.
+
+**How to apply:** pass an explicit indicator-only setting from the tab-bar
+caller in both Light and Dark Modes. Do not alter the package-wide indicator
+base, which would change segmented controls and other consumers.
