@@ -803,7 +803,7 @@ const double kModalSheetButtonDiameter = 40.0;
 const double kModalSheetButtonEdgeGap = 16.0;
 const double kModalSheetCornerRadius =
     (kModalSheetButtonDiameter / 2) + kModalSheetButtonEdgeGap;
-const double kRoundedSheetSafeAreaGap = 5.0;
+const double kRoundedSheetSafeAreaGap = 8.0;
 // Landscape modal sheets sit slightly lower, matching the supplied reference.
 const double kRoundedSheetLandscapeSafeAreaGap = 8.0;
 

@@ -3,14 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_theme.dart'
     show
         kLightModeSheetAppShellDimColor,
-        kRoundedSheetLandscapeSafeAreaGap,
-        kRoundedSheetSafeAreaGap;
+        kRoundedSheetLandscapeSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
-    'portrait sheets move together and preserve their previous stack spacing',
+    'portrait sheets keep a fixed safe-area gap',
     (tester) async {
       const surfaceSize = Size(400, 700);
       const topInset = 30.0;
@@ -55,9 +54,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
       final movingSheetTop = tester.getRect(find.byKey(sheetKey)).top;
       await tester.pumpAndSettle();
-      final preservedStackGap =
-          (topInset + kRoundedSheetSafeAreaGap) * 0.0835 +
-          surfaceSize.height * 0.005;
+      const portraitSheetGap = 8.0;
 
       final rootRect = tester.getRect(find.byKey(rootKey));
       expect(rootRect.topLeft, Offset.zero);
@@ -71,8 +68,8 @@ void main() {
       );
       expect(
         sheetTop,
-        topInset + preservedStackGap,
-        reason: 'A single portrait sheet must use the adjusted resting position.',
+        topInset + portraitSheetGap,
+        reason: 'A single portrait sheet must use the fixed 8pt gap.',
       );
       final appShellFilter = tester
           .widget<ColorFiltered>(
@@ -113,11 +110,11 @@ void main() {
         topInset,
         reason: 'The sheet peeking behind must not enter the status safe area.',
       );
-      expect(frontSheetTop, topInset + preservedStackGap);
+      expect(frontSheetTop, topInset + portraitSheetGap);
       expect(
         frontSheetTop - rearSheetTop,
-        closeTo(preservedStackGap, 1e-9),
-        reason: 'The active sheet must move with the rear-sheet adjustment.',
+        closeTo(portraitSheetGap, 1e-9),
+        reason: 'The active sheet must keep the same fixed 8pt gap.',
       );
 
       navigatorKey.currentState!.pop();

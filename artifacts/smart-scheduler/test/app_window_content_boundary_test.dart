@@ -491,6 +491,76 @@ void main() {
     expect(nestedGestureInsets!.right, 0);
   });
 
+  testWidgets(
+    'forwards landscape side-gutter drags into padded scrollables',
+    (tester) async {
+      const surfaceSize = Size(420, 600);
+      const inset = 28.0;
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = surfaceSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+      final mediaQuery = MediaQueryData(
+        size: surfaceSize,
+        viewPadding: const EdgeInsets.symmetric(horizontal: inset),
+        padding: const EdgeInsets.symmetric(horizontal: inset),
+      );
+
+      Widget buildScrollable({required bool pane}) {
+        final scrollable = ListView(
+          controller: scrollController,
+          physics: const ClampingScrollPhysics(),
+          children: List<Widget>.generate(
+            30,
+            (index) => SizedBox(
+              height: 60,
+              child: Text('Row $index'),
+            ),
+          ),
+        );
+        final content = pane
+            ? AppWindowPaneContent(child: scrollable)
+            : AppWindowContentPadding(child: scrollable);
+
+        return SizedBox.expand(
+          child: MediaQuery(
+            data: mediaQuery,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: AppWindowContentScope(
+                horizontalInset: inset,
+                physicalWidth: surfaceSize.width,
+                child: content,
+              ),
+            ),
+          ),
+        );
+      }
+
+      for (final pane in [false, true]) {
+        await tester.pumpWidget(buildScrollable(pane: pane));
+        for (final startX in [10.0, surfaceSize.width - 10.0]) {
+          scrollController.jumpTo(0);
+          await tester.pump();
+          await tester.dragFrom(
+            Offset(startX, 300),
+            const Offset(0, -120),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            scrollController.offset,
+            greaterThan(0),
+            reason: 'A drag beginning at x=$startX should scroll '
+                '${pane ? 'pane' : 'screen'} content.',
+          );
+        }
+      }
+    },
+  );
+
   testWidgets('content padding preserves portrait safe areas', (tester) async {
     EdgeInsets? nestedPadding;
     EdgeInsets? nestedViewPadding;

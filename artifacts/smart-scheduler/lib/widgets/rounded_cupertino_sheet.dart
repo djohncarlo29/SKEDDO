@@ -125,15 +125,7 @@ double _roundedSheetTopGapRatio(
   final safeAreaGap = size.width > size.height
       ? kRoundedSheetLandscapeSafeAreaGap
       : kRoundedSheetSafeAreaGap;
-  // Keep the former portrait peek distance between the active sheet and the
-  // sheet behind it. The active sheet uses that same resting position even
-  // when it is the only sheet; a covered sheet is corrected to the safe-area
-  // threshold by the secondary transition below.
-  final portraitStackGap =
-      (topSafeArea + kRoundedSheetSafeAreaGap) * _kSheetScaleFactor +
-      height * _kPortraitStackLiftFraction;
-  final requiredGap =
-      topSafeArea + (size.width > size.height ? safeAreaGap : portraitStackGap);
+  final requiredGap = topSafeArea + safeAreaGap;
   return (requiredGap / height).clamp(0.0, 1.0).toDouble();
 }
 

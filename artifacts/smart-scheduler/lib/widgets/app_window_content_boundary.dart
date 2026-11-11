@@ -111,12 +111,16 @@ class AppWindowContentPadding extends StatelessWidget {
     // Keep the child in the same position in the element tree as the inset
     // changes. In particular, modal form state must survive portrait/landscape
     // transitions even when the platform reports a landscape safe-area inset.
-    return Padding(
-      padding: EdgeInsets.only(
-        left: includeLeft ? inset : 0.0,
-        right: includeRight ? inset : 0.0,
+    return _LandscapeInsetHitTest(
+      leftInset: includeLeft ? inset : 0.0,
+      rightInset: includeRight ? inset : 0.0,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: includeLeft ? inset : 0.0,
+          right: includeRight ? inset : 0.0,
+        ),
+        child: MediaQuery(data: contentMediaQuery, child: child),
       ),
-      child: MediaQuery(data: contentMediaQuery, child: child),
     );
   }
 }
@@ -182,14 +186,102 @@ class AppWindowPaneContent extends StatelessWidget {
                 ),
               );
 
-        return Padding(
-          padding: EdgeInsets.only(
-            left: leftInset,
-            right: rightInset,
+        return _LandscapeInsetHitTest(
+          leftInset: leftInset,
+          rightInset: rightInset,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: leftInset,
+              right: rightInset,
+            ),
+            child: MediaQuery(data: paneMediaQuery, child: child),
           ),
-          child: MediaQuery(data: paneMediaQuery, child: child),
         );
       },
+    );
+  }
+}
+
+/// Extends the padded content's hit-test region into landscape system gutters.
+///
+/// A vertical drag that starts in a reserved side inset is mapped to the
+/// corresponding scrollable edge, preserving the normal Flutter gesture arena
+/// and scroll physics. Layout and paint remain unchanged.
+class _LandscapeInsetHitTest extends SingleChildRenderObjectWidget {
+  const _LandscapeInsetHitTest({
+    required this.leftInset,
+    required this.rightInset,
+    required super.child,
+  });
+
+  final double leftInset;
+  final double rightInset;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderLandscapeInsetHitTest(
+      leftInset: leftInset,
+      rightInset: rightInset,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderLandscapeInsetHitTest renderObject,
+  ) {
+    renderObject
+      ..leftInset = leftInset
+      ..rightInset = rightInset;
+  }
+}
+
+class _RenderLandscapeInsetHitTest extends RenderProxyBox {
+  _RenderLandscapeInsetHitTest({
+    required this._leftInset,
+    required this._rightInset,
+  });
+
+  double _leftInset;
+  double _rightInset;
+
+  double get leftInset => _leftInset;
+  set leftInset(double value) {
+    if (_leftInset == value) return;
+    _leftInset = value;
+    markNeedsPaint();
+  }
+
+  double get rightInset => _rightInset;
+  set rightInset(double value) {
+    if (_rightInset == value) return;
+    _rightInset = value;
+    markNeedsPaint();
+  }
+
+  @override
+  bool hitTestChildren(
+    BoxHitTestResult result, {
+    required Offset position,
+  }) {
+    if (child == null || size.width <= 0.0) return false;
+
+    final bool startsInLeftGutter =
+        _leftInset > 0.0 && position.dx < _leftInset;
+    final bool startsInRightGutter =
+        _rightInset > 0.0 && position.dx >= size.width - _rightInset;
+    if (!startsInLeftGutter && !startsInRightGutter) {
+      return super.hitTestChildren(result, position: position);
+    }
+
+    final targetX = startsInLeftGutter
+        ? math.min(size.width, _leftInset + 0.5)
+        : math.max(0.0, size.width - _rightInset - 0.5);
+    return result.addWithPaintOffset(
+      offset: Offset(position.dx - targetX, 0.0),
+      position: position,
+      hitTest: (result, transformed) =>
+          child!.hitTest(result, position: transformed),
     );
   }
 }
