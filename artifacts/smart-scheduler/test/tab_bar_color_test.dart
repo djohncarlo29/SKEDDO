@@ -271,14 +271,28 @@ void main() {
     ]);
     expect(tabBar.tabWidth, 88.0);
     expect(tabBar.tabs.every((tab) => tab.icon is Row), isTrue);
-    expect(tabBar.tabs[0].activeIcon, isA<Row>());
+    expect(tabBar.tabs.every((tab) => tab.activeIcon is Row), isTrue);
     final homeItem = tabBar.tabs[0].icon as Row;
     final homeIcon = homeItem.children[0] as FixedSFIcon;
     final homeLabel = homeItem.children[2] as Text;
     expect(homeIcon.fontSize, 16.0);
     expect(homeLabel.style!.fontSize, 12.0);
+    expect(homeLabel.style!.color, isNull);
+    expect(homeLabel.style!.fontWeight, FontWeight.w500);
+    final activeHomeItem = tabBar.tabs[0].activeIcon as Row;
+    final activeHomeLabel = activeHomeItem.children[2] as Text;
+    expect(activeHomeLabel.style!.color, isNull);
+    expect(activeHomeLabel.style!.fontWeight, FontWeight.w600);
     expect(find.text('Home'), findsWidgets);
     expect(find.text('Calendar'), findsWidgets);
+
+    final calendarLabelColors = tester
+        .widgetList<RichText>(find.byType(RichText))
+        .where((text) => text.text.toPlainText() == 'Calendar')
+        .map((text) => text.text.style?.color)
+        .toSet();
+    expect(calendarLabelColors, contains(tabBar.selectedLabelColor));
+    expect(calendarLabelColors, contains(tabBar.unselectedLabelColor));
 
     await tester.tap(find.text('Calendar').first);
     await tester.pump(const Duration(milliseconds: 350));

@@ -160,15 +160,11 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     final isLandscape = screenSize.width > screenSize.height;
 
     navigation_glass.GlassTab landscapeTab(
-      int index,
       String label,
       IconData icon,
       IconData? activeIcon,
     ) {
-      final selected = selectedIndex == index;
-      final labelColor = selected ? selectedColor : unselectedColor;
-
-      Widget content(IconData iconData) {
+      Widget content(IconData iconData, {required bool active}) {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -179,9 +175,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               maxLines: 1,
               softWrap: false,
               style: TextStyle(
-                color: labelColor,
                 fontSize: _kLandscapeTabLabelFontSize,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                // Let GlassTabBar's selected/unselected layers supply the
+                // color. The active layer is clipped to the moving indicator,
+                // so color follows the pill during its transition instead of
+                // staying attached to the destination index.
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ],
@@ -189,19 +188,20 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       }
 
       return navigation_glass.GlassTab(
-        icon: content(icon),
-        activeIcon: activeIcon == null ? null : content(activeIcon),
+        icon: content(icon, active: false),
+        // Supply an active variant even when its glyph is unchanged so the
+        // label weight follows the same moving selected layer as its color.
+        activeIcon: content(activeIcon ?? icon, active: true),
         semanticLabel: label,
       );
     }
 
     final tabs = isLandscape
         ? [
-            landscapeTab(0, 'Home', SFIcons.sf_house, SFIcons.sf_house_fill),
-            landscapeTab(1, 'Calendar', SFIcons.sf_calendar, null),
-            landscapeTab(2, 'Events', SFIcons.sf_list_bullet, null),
+            landscapeTab('Home', SFIcons.sf_house, SFIcons.sf_house_fill),
+            landscapeTab('Calendar', SFIcons.sf_calendar, null),
+            landscapeTab('Events', SFIcons.sf_list_bullet, null),
             landscapeTab(
-              3,
               'You',
               SFIcons.sf_person_crop_circle,
               SFIcons.sf_person_crop_circle_fill,
