@@ -18,6 +18,8 @@ import io.flutter.plugin.platform.PlatformPlugin
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.SelectionQuietPlatformPlugin
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.text.util.LocalePreferences
 
 class MainActivity : FlutterActivity() {
@@ -43,6 +45,19 @@ class MainActivity : FlutterActivity() {
         // attached so the DecorView remains full-window on older Android
         // versions as well as Android 15+.
         configureEdgeToEdgeWindow()
+        applyLandscapeSystemBars()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyLandscapeSystemBars()
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        // Reapply after returning from an external activity or dialog. Android
+        // still controls the transient swipe reveal and its automatic timeout.
+        applyLandscapeSystemBars()
     }
 
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
@@ -53,6 +68,7 @@ class MainActivity : FlutterActivity() {
             // insets as part of that transition.
             configureEdgeToEdgeWindow(captionBarLightSurface)
         }
+        applyLandscapeSystemBars()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -361,6 +377,26 @@ class MainActivity : FlutterActivity() {
                 Configuration.UI_MODE_NIGHT_YES
             )
         applyCaptionBarAppearance(isLightSurface)
+    }
+
+    private fun applyLandscapeSystemBars() {
+        val immersiveLandscape =
+            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+                !isInMultiWindowMode
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        val bars = WindowInsetsCompat.Type.statusBars() or
+            WindowInsetsCompat.Type.navigationBars()
+
+        if (immersiveLandscape) {
+            // Keep SKEDDO edge-to-edge while the bars are hidden. Android
+            // temporarily overlays them after an edge swipe, then hides them
+            // again without changing the app's layout bounds.
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(bars)
+        } else {
+            controller.show(bars)
+        }
     }
 
     private fun applyCaptionBarAppearance(lightSurface: Boolean) {

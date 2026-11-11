@@ -29,6 +29,7 @@ import 'ai/event_pipeline.dart';
 import 'app_theme.dart';
 import 'dcv_menu_policy.dart';
 import 'services/event_store.dart';
+import 'services/landscape_system_ui_policy.dart';
 import 'services/local_storage.dart';
 import 'services/system_accent_color.dart';
 import 'services/window_caption_appearance.dart';
@@ -535,11 +536,20 @@ Future<void> main() async {
     await LiquidGlassWidgets.initialize();
   }
   await navigation_glass.LiquidGlassWidgets.initialize();
-  // Set the system-bar layout before startup awaits so Android can draw the
-  // first frame edge-to-edge, including when the app launches in a freeform
-  // window. The header separately uses MediaQuery.padding.top for safe layout.
+  // Android configures edge-to-edge and landscape immersive bars at the native
+  // window level. On iOS, select status-bar visibility before the first frame
+  // when the app is launched in landscape; the home indicator remains visible.
   if (!kIsWeb) {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final views = WidgetsBinding.instance.platformDispatcher.views;
+      final initialSize = views.isEmpty ? Size.zero : views.first.physicalSize;
+      final startsLandscape =
+          initialSize.width > 0 && initialSize.width > initialSize.height;
+      await SystemChrome.setEnabledSystemUIMode(
+        startsLandscape ? SystemUiMode.manual : SystemUiMode.edgeToEdge,
+        overlays: startsLandscape ? const [SystemUiOverlay.bottom] : null,
+      );
+    }
     SystemChrome.setSystemUIOverlayStyle(_overlayStyle);
   }
   await initializeDeviceTextScaleProfile();
@@ -887,6 +897,10 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                     // This sits above the root Navigator so taps in AppShell screens
                     // and root-level sheets both dismiss stale text focus.
                     result = InteractiveTapFocusDismissal(child: result);
+                    // iOS has no transient edge-swipe system-bar mode. Hide only
+                    // its status bar in landscape; Android's native window
+                    // controller owns immersive swipe-to-reveal behavior.
+                    result = LandscapeSystemUiPolicy(child: result);
                     return result;
                   },
                   home: const AppShell(),
