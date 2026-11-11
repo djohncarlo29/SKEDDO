@@ -270,6 +270,10 @@ void main() {
       'You',
     ]);
     expect(tabBar.tabWidth, 88.0);
+    expect(
+      tabBar.indicatorExpansion.resolve(TextDirection.ltr),
+      const EdgeInsets.symmetric(vertical: 8),
+    );
     expect(tabBar.tabs.every((tab) => tab.icon is Row), isTrue);
     expect(tabBar.tabs.every((tab) => tab.activeIcon is Row), isTrue);
     final homeItem = tabBar.tabs[0].icon as Row;
@@ -310,6 +314,10 @@ void main() {
       'You',
     ]);
     expect(tabBar.tabs.first.icon, isA<FixedSFIcon>());
+    expect(
+      tabBar.indicatorExpansion.resolve(TextDirection.ltr),
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    );
   });
 
   testWidgets('dark tab keeps package optics with SKEDDO charcoal tint', (

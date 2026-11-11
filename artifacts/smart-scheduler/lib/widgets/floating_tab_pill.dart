@@ -271,6 +271,14 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       unselectedIconColor: unselectedColor,
       selectedLabelColor: selectedColor,
       unselectedLabelColor: unselectedColor,
+      // The landscape row nearly fills its equal-width slot. Keep the
+      // selected-color mask inside the moving pill at horizontal edges, rather
+      // than letting the default 12pt horizontal jelly bloom tint the leading
+      // pixels of the neighboring tab's icon. Preserve the vertical lift, and
+      // leave portrait on the package's normal expansion.
+      indicatorExpansion: isLandscape
+          ? const EdgeInsets.symmetric(vertical: 8)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
 
     return Semantics(
