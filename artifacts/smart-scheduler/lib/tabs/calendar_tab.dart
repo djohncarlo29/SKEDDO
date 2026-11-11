@@ -13179,38 +13179,43 @@ class _NewEventSheetState extends State<_NewEventSheet>
           )
         : _kRowValueStyle;
     return Builder(
-      builder: (ctx) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: items != null
+      builder: (ctx) {
+        final pickerTap = items != null
             ? () => _showPickerOverlay(ctx, label, items)
-            : onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: kModalSheetPickerRowHorizontalInset,
-            vertical: 14,
-          ),
-          child: MinGapLabelValueRow(
-            label: label,
-            labelStyle: _kLabelStyle,
-            value: value,
-            valueStyle: valueStyle,
-            trailing: AnimatedOpacity(
-              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-              duration: const Duration(milliseconds: 150),
-              child: ModalSheetPickerTrailing(
-                value: value,
-                style: valueStyle,
-                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+            : onTap;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: pickerTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: kModalSheetPickerRowHorizontalInset,
+              vertical: 14,
+            ),
+            child: MinGapLabelValueRow(
+              label: label,
+              labelStyle: _kLabelStyle,
+              value: value,
+              valueStyle: valueStyle,
+              trailing: AnimatedOpacity(
+                opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+                duration: const Duration(milliseconds: 150),
+                child: ModalSheetPickerTrailing(
+                  value: value,
+                  style: valueStyle,
+                  chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                  semanticLabel: label,
+                  onTap: pickerTap,
+                  showChevron: showChevron,
+                ),
+              ),
+              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+                ctx,
                 showChevron: showChevron,
               ),
             ),
-            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-              ctx,
-              showChevron: showChevron,
-            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -13220,45 +13225,51 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   Widget _buildCategoryRow() {
     final isOpen = _openPickerLabel == 'Category';
-    final valueWidget = AnimatedOpacity(
-      opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-      duration: const Duration(milliseconds: 150),
-      child: ModalSheetPickerTrailing(
-        value: _categoryName,
-        style: _kRowValueStyle,
-        chevronColor: resolveThemeColor(kSecondaryLabel, context),
-        valuePrefix: Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: renderCategoryColor(_categoryColor, context),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
     return Builder(
-      builder: (ctx) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _showPickerOverlay(ctx, 'Category', _categoryItems()),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: kModalSheetPickerRowHorizontalInset,
-            vertical: 14,
-          ),
-          child: MinGapLabelValueRow(
-            label: 'Category',
-            labelStyle: _kLabelStyle,
+      builder: (ctx) {
+        final pickerTap = () =>
+            _showPickerOverlay(ctx, 'Category', _categoryItems());
+        final valueWidget = AnimatedOpacity(
+          opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+          duration: const Duration(milliseconds: 150),
+          child: ModalSheetPickerTrailing(
             value: _categoryName,
-            valueStyle: _kRowValueStyle,
-            trailing: valueWidget,
-            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-              ctx,
-              hasValuePrefix: true,
+            style: _kRowValueStyle,
+            chevronColor: resolveThemeColor(kSecondaryLabel, context),
+            semanticLabel: 'Category',
+            onTap: pickerTap,
+            valuePrefix: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: renderCategoryColor(_categoryColor, context),
+                shape: BoxShape.circle,
+              ),
             ),
           ),
-        ),
-      ),
+        );
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: pickerTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: kModalSheetPickerRowHorizontalInset,
+              vertical: 14,
+            ),
+            child: MinGapLabelValueRow(
+              label: 'Category',
+              labelStyle: _kLabelStyle,
+              value: _categoryName,
+              valueStyle: _kRowValueStyle,
+              trailing: valueWidget,
+              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+                ctx,
+                hasValuePrefix: true,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -17086,38 +17097,43 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         ? modalSheetAccentValueStyle(context, valueColor)
         : _kRowValueStyle;
     return Builder(
-      builder: (ctx) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: items != null
+      builder: (ctx) {
+        final pickerTap = items != null
             ? () => _showPickerOverlay(ctx, label, items)
-            : onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: kModalSheetPickerRowHorizontalInset,
-            vertical: 14,
-          ),
-          child: MinGapLabelValueRow(
-            label: label,
-            labelStyle: _kRowLabelStyle,
-            value: value,
-            valueStyle: valueStyle,
-            trailing: AnimatedOpacity(
-              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-              duration: const Duration(milliseconds: 150),
-              child: ModalSheetPickerTrailing(
-                value: value,
-                style: valueStyle,
-                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+            : onTap;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: pickerTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: kModalSheetPickerRowHorizontalInset,
+              vertical: 14,
+            ),
+            child: MinGapLabelValueRow(
+              label: label,
+              labelStyle: _kRowLabelStyle,
+              value: value,
+              valueStyle: valueStyle,
+              trailing: AnimatedOpacity(
+                opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+                duration: const Duration(milliseconds: 150),
+                child: ModalSheetPickerTrailing(
+                  value: value,
+                  style: valueStyle,
+                  chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                  semanticLabel: label,
+                  onTap: pickerTap,
+                  showChevron: showChevron,
+                ),
+              ),
+              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+                ctx,
                 showChevron: showChevron,
               ),
             ),
-            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-              ctx,
-              showChevron: showChevron,
-            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

@@ -6,8 +6,9 @@ import '../../theme/glass_theme_helpers.dart';
 
 /// A glass picker widget following iOS design patterns.
 ///
-/// [GlassPicker] displays a selected value in a glass container. Tapping it
-/// opens a standard Cupertino picker in a modal bottom sheet.
+/// [GlassPicker] displays a selected value in a glass container and delegates
+/// taps to [onTap]. The caller owns the selection state and the picker or menu
+/// presented in response.
 class GlassPicker extends StatelessWidget {
   /// Creates a glass picker.
   const GlassPicker({
@@ -16,11 +17,17 @@ class GlassPicker extends StatelessWidget {
     super.key,
     this.placeholder = 'Select',
     this.icon,
+    this.iconGap = 8.0,
     this.height = 48.0,
     this.width,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
     this.textStyle,
     this.placeholderStyle,
+    this.maxLines = 1,
+    this.softWrap,
+    this.textAlign = TextAlign.start,
+    this.textWidthBasis = TextWidthBasis.parent,
+    this.overflow = TextOverflow.ellipsis,
     this.settings,
     this.useOwnLayer = false,
     this.quality,
@@ -36,6 +43,9 @@ class GlassPicker extends StatelessWidget {
 
   /// Icon widget to display at the end (defaults to chevron down).
   final Widget? icon;
+
+  /// Gap between the value and trailing [icon].
+  final double iconGap;
 
   /// Called when tapped.
   final VoidCallback? onTap;
@@ -57,6 +67,21 @@ class GlassPicker extends StatelessWidget {
 
   /// Style for the placeholder text.
   final TextStyle? placeholderStyle;
+
+  /// Maximum number of value lines. Set to `null` to allow wrapping.
+  final int? maxLines;
+
+  /// Whether the value may wrap at line breaks. Defaults to Flutter's behavior.
+  final bool? softWrap;
+
+  /// Alignment of the displayed value inside the field.
+  final TextAlign textAlign;
+
+  /// Width basis used when laying out a wrapping value.
+  final TextWidthBasis textWidthBasis;
+
+  /// How to handle any text that overflows the field.
+  final TextOverflow overflow;
 
   /// Glass settings.
   final LiquidGlassSettings? settings;
@@ -107,11 +132,14 @@ class GlassPicker extends StatelessWidget {
               style: value != null
                   ? effectiveTextStyle
                   : effectivePlaceholderStyle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: maxLines,
+              softWrap: softWrap,
+              textAlign: textAlign,
+              textWidthBasis: textWidthBasis,
+              overflow: overflow,
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: iconGap),
           IconTheme(
             data: IconThemeData(size: 16, color: secondaryColor),
             child: icon ?? const Icon(CupertinoIcons.chevron_up_chevron_down),

@@ -14504,6 +14504,9 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                         builder:
                                             (_, __) => ModalSheetPickerTrailing(
                                               value: includeValue,
+                                              semanticLabel: 'Include',
+                                              onTap: () =>
+                                                  _showIncludePicker(rowCtx),
                                               style: TextStyle(
                                                 inherit: false,
                                                 color: resolveThemeColor(
@@ -15611,42 +15614,42 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   }) {
     // Whether THIS row's panel is currently open (or closing).
     final isOpen = items != null && _openPickerLabel == label;
-    // Keep the value/chevron in a fixed trailing slot so every modal-sheet
-    // picker row shares the same right edge.
-    final dimmedValue = AnimatedOpacity(
-      opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-      duration: const Duration(milliseconds: 150),
-      child: ModalSheetPickerTrailing(
-        value: value,
-        style: _kRowValueStyle,
-        chevronColor: resolveThemeColor(kSecondaryLabel, context),
-      ),
-    );
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap:
-                items != null
-                    ? () => _showPickerOverlay(ctx, label, items)
-                    : null,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: kModalSheetPickerRowHorizontalInset,
-                vertical: verticalPadding,
+      builder: (ctx) {
+        final pickerTap = items != null
+            ? () => _showPickerOverlay(ctx, label, items)
+            : null;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: pickerTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: kModalSheetPickerRowHorizontalInset,
+              vertical: verticalPadding,
+            ),
+            child: MinGapLabelValueRow(
+              label: label,
+              labelStyle: _kRowLabelStyle,
+              value: value,
+              valueStyle: _kRowValueStyle,
+              trailing: AnimatedOpacity(
+                opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+                duration: const Duration(milliseconds: 150),
+                child: ModalSheetPickerTrailing(
+                  value: value,
+                  style: _kRowValueStyle,
+                  chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                  semanticLabel: label,
+                  onTap: pickerTap,
+                ),
               ),
-              child: MinGapLabelValueRow(
-                label: label,
-                labelStyle: _kRowLabelStyle,
-                value: value,
-                valueStyle: _kRowValueStyle,
-                trailing: dimmedValue,
-                leading: leading,
-                leadingWidth: leading == null ? 0 : leadingSize,
-                trailingExtraWidth: modalSheetPickerTrailingExtraWidth(ctx),
-              ),
+              leading: leading,
+              leadingWidth: leading == null ? 0 : leadingSize,
+              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(ctx),
             ),
           ),
+        );
+      },
     );
   }
 
@@ -23480,43 +23483,44 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
         valueColor != null
             ? modalSheetAccentValueStyle(context, valueColor)
             : _kRowValueStyle;
-    // Keep the value/chevron in the same fixed trailing slot as the parent
-    // event sheet and every other modal-sheet picker row.
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap:
-                items != null
-                    ? () => _showPickerOverlay(ctx, label, items)
-                    : onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: kModalSheetPickerRowHorizontalInset,
-                vertical: 14,
-              ),
-              child: MinGapLabelValueRow(
-                label: label,
-                labelStyle: _kRowLabelStyle,
-                value: value,
-                valueStyle: valueStyle,
-                trailing: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
-                trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-                  ctx,
+      builder: (ctx) {
+        final pickerTap = items != null
+            ? () => _showPickerOverlay(ctx, label, items)
+            : onTap;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: pickerTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: kModalSheetPickerRowHorizontalInset,
+              vertical: 14,
+            ),
+            child: MinGapLabelValueRow(
+              label: label,
+              labelStyle: _kRowLabelStyle,
+              value: value,
+              valueStyle: valueStyle,
+              trailing: AnimatedOpacity(
+                opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+                duration: const Duration(milliseconds: 150),
+                child: ModalSheetPickerTrailing(
+                  value: value,
+                  style: valueStyle,
+                  chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                  semanticLabel: label,
+                  onTap: pickerTap,
                   showChevron: showChevron,
                 ),
               ),
+              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+                ctx,
+                showChevron: showChevron,
+              ),
             ),
           ),
+        );
+      },
     );
   }
 
