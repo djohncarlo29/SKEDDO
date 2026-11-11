@@ -393,12 +393,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final inheritedSettings = InheritedLiquidGlass.of(context);
     final effectiveSettings = widget.settings ??
         inheritedSettings ??
-        const LiquidGlassSettings(
+        LiquidGlassSettings(
           blur: 10,
           thickness: 10,
           glassColor: Color.fromRGBO(255, 255, 255, 0.12),
           lightAngle: GlassDefaults.lightAngle,
-          lightIntensity: 0.7,
+          lightIntensity:
+              GlassTheme.brightnessOf(context) == Brightness.dark ? 0.35 : 0.7,
           ambientStrength: 0.4,
           saturation: 1.2,
           refractiveIndex: 0.7,
@@ -609,12 +610,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final inheritedSettings = InheritedLiquidGlass.of(context);
     final effectiveSettings = widget.settings ??
         inheritedSettings ??
-        const LiquidGlassSettings(
+        LiquidGlassSettings(
           blur: 10,
           thickness: 10,
           glassColor: Color.fromRGBO(255, 255, 255, 0.12),
           lightAngle: GlassDefaults.lightAngle, // Apple iOS 26 standard
-          lightIntensity: 0.7,
+          lightIntensity:
+              GlassTheme.brightnessOf(context) == Brightness.dark ? 0.35 : 0.7,
           ambientStrength: 0.4,
           saturation: 1.2,
           refractiveIndex: 0.7, // Thin rim - iOS 26 delicate aesthetic

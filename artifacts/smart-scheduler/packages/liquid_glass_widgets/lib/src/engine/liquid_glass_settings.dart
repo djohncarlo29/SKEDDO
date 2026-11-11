@@ -285,7 +285,7 @@ class LiquidGlassSettings {
     edgeAbsorption: 0.035,
     rimShade: 1,
     rimShadeEnds: 0,
-    rimLight: 1.15,
+    rimLight: 0.575,
     bodyShade: 0.28,
     shadowElevation: 0,
   );

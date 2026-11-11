@@ -128,7 +128,13 @@ class GlassToolbar extends StatelessWidget {
     );
 
     // Standard iOS toolbar glass settings with high blur
-    final effectiveSettings = settings ?? _defaultSettings;
+    final isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
+    final effectiveSettings = settings ??
+        (isDark
+            ? _defaultSettings.copyWith(
+                lightIntensity: _defaultSettings.lightIntensity * 0.5,
+              )
+            : _defaultSettings);
 
     // Background color blending
     // iOS toolbars often have a very subtle tint

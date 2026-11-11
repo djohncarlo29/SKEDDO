@@ -920,7 +920,7 @@ class _GlassContextMenuRouteStaticState
                 thickness: 16,
                 blur: 22,
                 saturation: 1.2,
-                lightIntensity: 0.28,
+                lightIntensity: 0.14,
               )
             : const LiquidGlassSettings(
                 glassColor: Color(0xCCF5F5F7),

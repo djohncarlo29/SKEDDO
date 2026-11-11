@@ -7,6 +7,7 @@ import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
+import 'skeddo_glass_settings.dart';
 
 // SF Symbols are variable-font glyphs, so their weight is rendered by the
 // symbol font itself instead of by a blurred shadow.  Keeping this wrapper
@@ -2438,12 +2439,15 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
       // Use the resolved card surface, matching the tab bar, rather than a
       // separate glass tint.  The 80% alpha is the tab bar's settled density.
       color: resolveThemeColor(kCardColor, context).withValues(alpha: fill),
-      specular: const LiquidGlassLight.specular(
-        thickness: 2.43,
-        sharpness: 0.5,
-        angle: 62,
-        spread: 0.12,
-        intensity: 0.46,
+      specular: skeddoGlassEdgeLightForBrightness(
+        isDark ? Brightness.dark : Brightness.light,
+        const LiquidGlassLight.specular(
+          thickness: 2.43,
+          sharpness: 0.5,
+          angle: 62,
+          spread: 0.12,
+          intensity: 0.46,
+        ),
       ),
       // 0.0002 in the 4.x chromaticAberration unit is 0.132 px in 5.x.
       dispersion: 0.132,

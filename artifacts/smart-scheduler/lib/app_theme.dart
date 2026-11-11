@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform, ValueNotifier;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'widgets/skeddo_glass_settings.dart';
 
 /// Updated by AppShell after the native iOS tab-bar bridge reports its style.
 /// Flutter tab content uses this to reserve the correct bottom clearance.
@@ -212,9 +213,9 @@ const kLightModeSheetAppShellDimColor = Color(0x80A8A8A3);
 // This is the established weight used by the search cancel button.
 const double kGelBloomIconWeight = 0.4;
 
-// Shared 0.5 px white hairline used by liquid-glass action controls.
-// 0x26 is 38/255, or approximately 15% opacity.
-const kLiquidGlassHairlineColor = Color(0x26FFFFFF);
+// Dark-mode 0.5 px white hairline used by liquid-glass action controls.
+// 0x13 is 19/255, half the previous ~15% opacity.
+const kLiquidGlassHairlineColor = Color(0x13FFFFFF);
 // Light-mode non-checkmark action buttons use their own soft fill and bright
 // inner rim; keep these separate from the package's existing glass hairline.
 const kLiquidGlassButtonLightSurface = Color(0xFFFDFDFD);
@@ -2914,6 +2915,7 @@ LiquidGlassShape _staticLiquidGlassShape({
 LiquidGlassStyle _staticLiquidGlassStyle({
   required Color glassColor,
   required double cornerRadius,
+  required Brightness brightness,
   bool showOpticalBorder = true,
 }) {
   // Build the shared optical style directly instead of copying
@@ -2933,12 +2935,15 @@ LiquidGlassStyle _staticLiquidGlassStyle({
     dispersion: 0,
     shape: _staticLiquidGlassShape(cornerRadius: cornerRadius),
     specular: showOpticalBorder
-        ? const LiquidGlassLight.specular(
-            thickness: 2.7,
-            sharpness: 0.5,
-            angle: 62,
-            spread: 0.14,
-            intensity: 0.38,
+        ? skeddoGlassEdgeLightForBrightness(
+            brightness,
+            const LiquidGlassLight.specular(
+              thickness: 2.7,
+              sharpness: 0.5,
+              angle: 62,
+              spread: 0.14,
+              intensity: 0.38,
+            ),
           )
         : const LiquidGlassLight.specular(thickness: 0),
   );
@@ -3068,6 +3073,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                   style: _staticLiquidGlassStyle(
                     glassColor: glassColor,
                     cornerRadius: lensCornerRadius,
+                    brightness: CupertinoTheme.brightnessOf(context),
                     // The cancel-search control opts into the package's
                     // directional optical rim. The surrounding ClipPath keeps
                     // that highlight inside the exact surface silhouette.
@@ -3696,6 +3702,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
     final style = _staticLiquidGlassStyle(
       glassColor: glassColor,
       cornerRadius: circle.size / 2,
+      brightness: CupertinoTheme.brightnessOf(context),
     );
     final keepExistingRim = !isLightMode;
 

@@ -22,6 +22,7 @@ import 'widgets/app_window_content_boundary.dart';
 import 'widgets/app_header_scroll_edge.dart';
 import 'widgets/app_shell_navigation_scope.dart';
 import 'widgets/app_shell_toolbar.dart';
+import 'widgets/skeddo_glass_settings.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen settings content with route-based sub-screen nav.
@@ -2516,6 +2517,10 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                           // Paint the marks first so the resting thumb covers
                           // the selected mark instead of drawing it on top.
                           glass_slider.LiquidGlassSlider(
+                            style: skeddoGlassEdgeStyleForBrightness(
+                              CupertinoTheme.brightnessOf(context),
+                              glass_slider.LiquidGlassSlider.defaultStyle,
+                            ),
                             value: _dragValue ?? _indexAnimation.value / 6,
                             minimumValue: 0,
                             maximumValue: 1,
@@ -2821,6 +2826,10 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return glass_slider.LiquidGlassSlider(
+                style: skeddoGlassEdgeStyleForBrightness(
+                  CupertinoTheme.brightnessOf(context),
+                  glass_slider.LiquidGlassSlider.defaultStyle,
+                ),
                 value: _dragValue ?? widget.value,
                 minimumValue: 0,
                 maximumValue: 1,

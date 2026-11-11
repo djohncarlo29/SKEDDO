@@ -30,7 +30,7 @@ abstract final class GlassThemePresets {
       blur: 10.0,
       glassColor: Color.fromRGBO(20, 20, 30, 0.35),
       lightAngle: 2.356, // 0.75 * pi — matches the library's default 135°
-      lightIntensity: 0.55,
+      lightIntensity: 0.275,
       ambientStrength: 0.0,
       refractiveIndex: 1.25,
       saturation: 1.15,

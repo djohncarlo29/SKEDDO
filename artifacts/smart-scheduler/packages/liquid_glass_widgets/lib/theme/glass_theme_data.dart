@@ -309,7 +309,8 @@ class GlassThemeVariant {
       blur: 4.0,
       glassColor: Color.fromRGBO(255, 255, 255, 0.08),
       lightAngle: 2.356, // 0.75 * pi ≈ 135° — upper-left, matches iOS 26
-      lightIntensity: 0.7,
+      // SKEDDO uses half-strength bright edge highlights in Dark Mode.
+      lightIntensity: 0.35,
       ambientStrength: 0.0,
       refractiveIndex: 1.2,
       saturation: 1.2,

@@ -3,8 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassThemeVariant, LiquidGlassSettings;
-import 'package:liquid_glass_easy/liquid_glass_easy.dart' as slider_glass
-    show LiquidGlassShape, LiquidGlassSlider, LiquidGlassStyle;
+import 'package:liquid_glass_easy/liquid_glass_easy.dart'
+    as slider_glass
+    show
+        LiquidGlassLight,
+        LiquidGlassShape,
+        LiquidGlassSlider,
+        LiquidGlassStyle;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass;
 
@@ -24,8 +29,35 @@ const double kSkeddoPopoverGlassOpacity = 0.907;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
+const double kSkeddoDarkGlassEdgeIntensityMultiplier = 0.5;
 const double _kActiveCheckmarkGlassSliderReference = 0.5;
 const double _kOldSliderPositionForNewMidpoint = 0.57;
+
+slider_glass.LiquidGlassLight skeddoGlassEdgeLightForBrightness(
+  Brightness brightness,
+  slider_glass.LiquidGlassLight light,
+) => brightness == Brightness.dark
+    ? light.copyWith(
+        intensity: light.intensity * kSkeddoDarkGlassEdgeIntensityMultiplier,
+      )
+    : light;
+
+slider_glass.LiquidGlassStyle skeddoGlassEdgeStyleForBrightness(
+  Brightness brightness,
+  slider_glass.LiquidGlassStyle style,
+) {
+  if (brightness != Brightness.dark) return style;
+  final specular = style.specular;
+  final glow = style.glow;
+  return style.copyWith(
+    specular: specular == null
+        ? null
+        : skeddoGlassEdgeLightForBrightness(brightness, specular),
+    glow: glow == null
+        ? null
+        : skeddoGlassEdgeLightForBrightness(brightness, glow),
+  );
+}
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
   thickness: 30,

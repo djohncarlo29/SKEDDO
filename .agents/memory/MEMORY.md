@@ -57,7 +57,7 @@
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — claim Android blur only after physical-device verification.
 - [Android Freeform/Recents window band](android-recents-preview-theme.md) — distinguish system caption and Recents layers before changing inset behavior; preserve floating-window controls.
 - [Replit temporary storage limits](replit-home-quota.md) — keep caches and Flutter temp files on the workspace partition, not quota-limited home or the 4GB /tmp tmpfs.
-- [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — keep 5.0.0 switch geometry and optics; active/inactive track colors follow app accent/category and tertiary-label colors.
+- [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — retain package geometry; dark-mode bright rims and white hairlines use half strength.
 - [Liquid Glass slider v5 edge motion](liquid-glass-slider-version-split.md) — keep slider 5.0.0; add live thumb-envelope callbacks for edge-icon push and bounce.
 - [Fixed Liquid Glass midpoint marker](liquid-glass-fixed-midpoint-marker.md) — pin the 50% tick to the row card; let the rubberbanded track move beneath it.
 - [Text Size slider step alignment](text-size-slider-step-alignment.md) — align seven markers with settled thumb centers; allow continuous dragging and snap on release.
