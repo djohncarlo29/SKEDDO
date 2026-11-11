@@ -42,6 +42,10 @@ void main() {
   testWidgets(
     'navigation package tab bar preserves dimensions, colors, and routing',
     (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(402, 874);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       const eventsAccent = Color(0xFFDB5500);
       var createEventCalls = 0;
       int? selectedTab;
@@ -209,9 +213,73 @@ void main() {
     },
   );
 
+  testWidgets('landscape tab labels sit beside icons; portrait stays stacked', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(874, 402);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    int? selectedTab;
+
+    Widget buildBar() => CupertinoApp(
+      home: Stack(
+        children: [
+          Positioned.fill(
+            child: FloatingTabPill(
+              selectedIndex: 0,
+              eventsAccent: const Color(0xFF007AFF),
+              onTabSelected: (index) => selectedTab = index,
+              onCreateEvent: () {},
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(buildBar());
+    await tester.pumpAndSettle();
+
+    var tabBar = tester.widget<navigation_glass.GlassTabBar>(
+      find.byType(navigation_glass.GlassTabBar),
+    );
+    expect(tabBar.tabs.map((tab) => tab.label), everyElement(isNull));
+    expect(tabBar.tabs.map((tab) => tab.semanticLabel), [
+      'Home',
+      'Calendar',
+      'Events',
+      'You',
+    ]);
+    expect(tabBar.tabs.every((tab) => tab.icon is Row), isTrue);
+    expect(tabBar.tabs[0].activeIcon, isA<Row>());
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Calendar'), findsWidgets);
+
+    await tester.tap(find.text('Calendar').first);
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(selectedTab, 1);
+
+    tester.view.physicalSize = const Size(402, 874);
+    await tester.pumpWidget(buildBar());
+    tabBar = tester.widget<navigation_glass.GlassTabBar>(
+      find.byType(navigation_glass.GlassTabBar),
+    );
+    expect(tabBar.tabs.map((tab) => tab.label), [
+      'Home',
+      'Calendar',
+      'Events',
+      'You',
+    ]);
+    expect(tabBar.tabs.first.icon, isA<FixedSFIcon>());
+  });
+
   testWidgets('dark tab keeps package optics with SKEDDO charcoal tint', (
     tester,
   ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(402, 874);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       CupertinoApp(
         theme: const CupertinoThemeData(brightness: Brightness.dark),

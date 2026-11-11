@@ -154,33 +154,88 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     final barGlassSettings = skeddoNavigationTabBarGlassSettingsFor(
       isDark ? Brightness.dark : Brightness.light,
     );
+    final screenSize = MediaQuery.sizeOf(context);
+    final isLandscape = screenSize.width > screenSize.height;
+
+    navigation_glass.GlassTab landscapeTab(
+      int index,
+      String label,
+      IconData icon,
+      IconData? activeIcon,
+    ) {
+      final selected = selectedIndex == index;
+      final labelColor = selected ? selectedColor : unselectedColor;
+
+      Widget content(IconData iconData) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FixedSFIcon(iconData, fontSize: tabIconSize),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: labelColor,
+                fontSize: 9,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        );
+      }
+
+      return navigation_glass.GlassTab(
+        icon: content(icon),
+        activeIcon: activeIcon == null ? null : content(activeIcon),
+        semanticLabel: label,
+      );
+    }
+
+    final tabs = isLandscape
+        ? [
+            landscapeTab(0, 'Home', SFIcons.sf_house, SFIcons.sf_house_fill),
+            landscapeTab(1, 'Calendar', SFIcons.sf_calendar, null),
+            landscapeTab(2, 'Events', SFIcons.sf_list_bullet, null),
+            landscapeTab(
+              3,
+              'You',
+              SFIcons.sf_person_crop_circle,
+              SFIcons.sf_person_crop_circle_fill,
+            ),
+          ]
+        : [
+            navigation_glass.GlassTab(
+              icon: FixedSFIcon(SFIcons.sf_house, fontSize: tabIconSize),
+              activeIcon: FixedSFIcon(
+                SFIcons.sf_house_fill,
+                fontSize: tabIconSize,
+              ),
+              label: 'Home',
+            ),
+            navigation_glass.GlassTab(
+              icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: tabIconSize),
+              label: 'Calendar',
+            ),
+            navigation_glass.GlassTab(
+              icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: tabIconSize),
+              label: 'Events',
+            ),
+            navigation_glass.GlassTab(
+              icon: FixedSFIcon(
+                SFIcons.sf_person_crop_circle,
+                fontSize: tabIconSize,
+              ),
+              activeIcon: FixedSFIcon(
+                SFIcons.sf_person_crop_circle_fill,
+                fontSize: tabIconSize,
+              ),
+              label: 'You',
+            ),
+          ];
     final tabBar = navigation_glass.GlassTabBar.bottom(
-      tabs: [
-        navigation_glass.GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_house, fontSize: tabIconSize),
-          activeIcon: FixedSFIcon(SFIcons.sf_house_fill, fontSize: tabIconSize),
-          label: 'Home',
-        ),
-        navigation_glass.GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: tabIconSize),
-          label: 'Calendar',
-        ),
-        navigation_glass.GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: tabIconSize),
-          label: 'Events',
-        ),
-        navigation_glass.GlassTab(
-          icon: FixedSFIcon(
-            SFIcons.sf_person_crop_circle,
-            fontSize: tabIconSize,
-          ),
-          activeIcon: FixedSFIcon(
-            SFIcons.sf_person_crop_circle_fill,
-            fontSize: tabIconSize,
-          ),
-          label: 'You',
-        ),
-      ],
+      tabs: tabs,
       selectedIndex: selectedIndex,
       onTabSelected: widget.onTabSelected,
       extraButton: navigation_glass.GlassTabBarExtraButton(
@@ -220,13 +275,13 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       label: 'Main navigation',
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final screenSize = MediaQuery.sizeOf(context);
-          final isPortrait = screenSize.width <= screenSize.height;
+          final layoutSize = MediaQuery.sizeOf(context);
+          final isPortrait = layoutSize.width <= layoutSize.height;
           final availableBarWidth =
               constraints.maxWidth - (kFloatingTabBarHorizontalMargin * 2);
           final portraitWidth =
               _portraitBarWidth ??
-              (math.min(screenSize.width, screenSize.height) -
+              (math.min(layoutSize.width, layoutSize.height) -
                   (kFloatingTabBarHorizontalMargin * 2));
           final barWidth = (isPortrait ? availableBarWidth : portraitWidth)
               .clamp(0.0, double.infinity)

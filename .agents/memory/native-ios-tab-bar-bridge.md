@@ -26,3 +26,9 @@ On Flutter-rendered Android/web, keep the navigation pill at its portrait width 
 **Why:** Clamping the pill to landscape constraints and animating both left and right edges makes the whole control visibly shrink and expand during rotation, unlike the steady-width navigation the user expects.
 
 **How to apply:** Use the cached portrait width (or the short screen edge minus the standard margins when launched in landscape) as the bar width in both orientations. Give the positioned bar an explicit fixed width and animate only `horizontalOffset`, never its width.
+
+On the Flutter-rendered bar, landscape destinations use an inline icon-left/label-right layout; portrait keeps the existing icon-over-label layout. Preserve `GlassTabBar.bottom`, the selected indicator, selection routing, and the separate create button.
+
+**Why:** The user requested the landscape arrangement to match the supplied reference without changing the portrait design or navigation behavior.
+
+**How to apply:** Compose the horizontal item content inside the package tab configuration rather than replacing the glass bar or moving its actions.
