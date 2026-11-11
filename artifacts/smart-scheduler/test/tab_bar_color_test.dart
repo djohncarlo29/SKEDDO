@@ -4,7 +4,11 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassThemeVariant;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
-    show DefaultButtonSettings, GlassExtraButtonPlacement, GlassTabBar;
+    show
+        DefaultButtonSettings,
+        GlassExtraButtonPlacement,
+        GlassTabBar,
+        JellyClipper;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/fixed_size_icon.dart';
@@ -37,6 +41,33 @@ void main() {
       expect(resolvedColor!.toARGB32(), entry.$2.toARGB32());
       expect(resolvedColor!.a, closeTo(0.75, 0.01));
     }
+  });
+
+  test('selected-color mask follows the pill beyond both tab-bar edges', () {
+    const size = Size(400, 49);
+    const expansion = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+
+    final leftOverdrag = navigation_glass.JellyClipper(
+      itemCount: 4,
+      alignment: const Alignment(-1.2, 0),
+      thickness: 1,
+      expansion: expansion,
+      transform: Matrix4.identity(),
+      borderRadius: 32,
+    ).getClip(size).getBounds();
+    expect(leftOverdrag.left, closeTo(-37.4, 0.001));
+    expect(leftOverdrag.right, closeTo(84.6, 0.001));
+
+    final rightOverdrag = navigation_glass.JellyClipper(
+      itemCount: 4,
+      alignment: const Alignment(1.2, 0),
+      thickness: 1,
+      expansion: expansion,
+      transform: Matrix4.identity(),
+      borderRadius: 32,
+    ).getClip(size).getBounds();
+    expect(rightOverdrag.left, closeTo(315.4, 0.001));
+    expect(rightOverdrag.right, closeTo(437.4, 0.001));
   });
 
   testWidgets(
@@ -272,7 +303,7 @@ void main() {
     expect(tabBar.tabWidth, 88.0);
     expect(
       tabBar.indicatorExpansion.resolve(TextDirection.ltr),
-      const EdgeInsets.symmetric(vertical: 8),
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
     expect(tabBar.tabs.every((tab) => tab.icon is Row), isTrue);
     expect(tabBar.tabs.every((tab) => tab.activeIcon is Row), isTrue);

@@ -117,21 +117,13 @@ class JellyClipper extends CustomClipper<Path> {
     final tabWidth = trackWidth / itemCount;
     final availableWidth = trackWidth - tabWidth;
     final rawLeft = indicatorInset + (alignment.x + 1) / 2 * availableWidth;
-
-    // Keep the edge tab covered during rubber-band overdrag (#328). Only
-    // extend the outward edge; normal positions still match the optical lens.
-    final left = rawLeft.clamp(
-      double.negativeInfinity,
-      indicatorInset + availableWidth,
-    );
-    final right = (rawLeft + tabWidth).clamp(
-      indicatorInset + tabWidth,
-      double.infinity,
-    );
+    // Match the indicator's FractionallySizedBox position exactly, including
+    // rubber-band overdrag. Clamping either edge back to the first/last resting
+    // tab slot leaves selected color behind after the glass pill moves away.
     final paddedRect = Rect.fromLTRB(
-      left,
+      rawLeft,
       indicatorInset,
-      right,
+      rawLeft + tabWidth,
       size.height - indicatorInset,
     );
 
