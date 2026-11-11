@@ -14504,9 +14504,6 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                         builder:
                                             (_, __) => ModalSheetPickerTrailing(
                                               value: includeValue,
-                                              semanticLabel: 'Include',
-                                              onTap: () =>
-                                                  _showIncludePicker(rowCtx),
                                               style: TextStyle(
                                                 inherit: false,
                                                 color: resolveThemeColor(
@@ -15639,8 +15636,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   value: value,
                   style: _kRowValueStyle,
                   chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                  semanticLabel: label,
-                  onTap: pickerTap,
                 ),
               ),
               leading: leading,
@@ -23508,8 +23503,6 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   value: value,
                   style: valueStyle,
                   chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                  semanticLabel: label,
-                  onTap: pickerTap,
                   showChevron: showChevron,
                 ),
               ),

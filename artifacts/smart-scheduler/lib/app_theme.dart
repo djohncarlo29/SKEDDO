@@ -4,8 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform, ValueNotifier;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassPicker;
 import 'widgets/skeddo_glass_settings.dart';
 
 /// Updated by AppShell after the native iOS tab-bar bridge reports its style.
@@ -2349,20 +2347,14 @@ class SplitChevronUpDown extends StatelessWidget {
   }
 }
 
-/// GlassPicker presentation for a modal-sheet row's existing selection.
-///
-/// The row keeps ownership of its option menu and selection logic; [onTap]
-/// forwards to that existing handler. The value prefix (for example, a
-/// category swatch) stays beside the picker while the value and chevron use
-/// GlassPicker's shared surface.
+/// Keeps a modal-sheet picker value and its chevron in the same right-anchored
+/// trailing group used by the Settings Panel.
 class ModalSheetPickerTrailing extends StatelessWidget {
   const ModalSheetPickerTrailing({
     super.key,
     required this.value,
     required this.style,
     required this.chevronColor,
-    this.onTap,
-    this.semanticLabel,
     this.showChevron = true,
     this.valuePrefix,
   });
@@ -2370,61 +2362,46 @@ class ModalSheetPickerTrailing extends StatelessWidget {
   final String value;
   final TextStyle style;
   final Color chevronColor;
-  final VoidCallback? onTap;
-  final String? semanticLabel;
   final bool showChevron;
   final Widget? valuePrefix;
 
   @override
   Widget build(BuildContext context) {
-    final textScaler = MediaQuery.textScalerOf(context);
-    final chevronWidth = textScaler.scale(kModalSheetPickerChevronSize);
-    final iconGap = showChevron ? kModalSheetPickerChevronGap : 0.0;
-    const prefixGap = 6.0;
-    const prefixSlotWidth = 16.0;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final prefixWidth =
-            valuePrefix == null ? 0.0 : prefixSlotWidth + prefixGap;
-        final iconWidth = showChevron ? chevronWidth + iconGap : 0.0;
-        final textWidth = math.max(
-          0.0,
-          constraints.maxWidth - prefixWidth - iconWidth,
-        );
-        final picker = GlassPicker(
-          value: chevronValueTextForWidth(context, value, style, textWidth),
-          onTap: onTap,
-          semanticLabel: semanticLabel,
-          height: 0,
-          padding: EdgeInsets.zero,
-          textStyle: style,
-          textAlign: TextAlign.right,
-          textWidthBasis: TextWidthBasis.longestLine,
-          maxLines: null,
-          softWrap: true,
-          overflow: TextOverflow.clip,
-          iconGap: iconGap,
-          icon:
-              showChevron
-                  ? SizedBox(
-                    width: chevronWidth,
-                    child: SplitChevronUpDown(color: chevronColor),
-                  )
-                  : const SizedBox.shrink(),
-        );
-
-        if (valuePrefix == null) return picker;
-        return Row(
-          mainAxisSize: MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            valuePrefix!,
-            const SizedBox(width: prefixGap),
-            Expanded(child: picker),
-          ],
-        );
-      },
+    final scaledChevronWidth = MediaQuery.textScalerOf(
+      context,
+    ).scale(kModalSheetPickerChevronSize);
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (valuePrefix != null) ...[valuePrefix!, const SizedBox(width: 6)],
+        Flexible(
+          child: LayoutBuilder(
+            builder: (context, constraints) => Text(
+              chevronValueTextForWidth(
+                context,
+                value,
+                style,
+                constraints.maxWidth,
+              ),
+              style: style,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              // Let the prefix sit beside the painted text block instead of
+              // beside the full flexible slot when the value wraps.
+              textWidthBasis: TextWidthBasis.longestLine,
+            ),
+          ),
+        ),
+        if (showChevron) ...[
+          const SizedBox(width: kModalSheetPickerChevronGap),
+          SizedBox(
+            width: scaledChevronWidth,
+            child: SplitChevronUpDown(color: chevronColor),
+          ),
+        ],
+      ],
     );
   }
 }
