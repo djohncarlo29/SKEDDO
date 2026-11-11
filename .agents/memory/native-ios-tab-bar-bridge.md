@@ -32,3 +32,12 @@ On the Flutter-rendered bar, landscape destinations use similar-sized inline ico
 **Why:** The reference uses balanced icon and label sizes and equal-width destinations rather than carrying portrait proportions into landscape.
 
 **How to apply:** Compose horizontal item content inside the package tab configuration, with equal tab slots and a wider landscape pill; do not replace the glass bar or move its actions.
+
+Landscape inline item typography uses a 16pt SF icon beside a 12pt label.
+
+**Why:** The user clarified that the icon and text should have balanced visual
+weight, rather than simply inheriting the larger icon and tiny caption used by
+the portrait stacked layout.
+
+**How to apply:** Keep these base sizes specific to the landscape inline item;
+portrait icon and label sizing remains unchanged.

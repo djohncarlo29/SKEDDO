@@ -162,6 +162,8 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   double _lastNotifiedContentOffset = 0.0;
   double _lastNotifiedCollapseProgress = 0.0;
   double? _lastPreparedCollapseProgress;
+  double? _portraitCollapseProgressBeforeLandscape;
+  double? _portraitSearchProgressBeforeLandscape;
   bool _isBinding = false;
   bool _isSuspended = false;
   bool _compactOnly = false;
@@ -218,6 +220,17 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     bool compactOnly = false,
   }) {
     _isSuspended = false;
+    final enteringLandscape = compactOnly && !_compactOnly;
+    final returningToPortrait = !compactOnly && _compactOnly;
+    if (enteringLandscape) {
+      // Landscape displays only the compact header, but it must not replace
+      // the portrait header state that was visible before rotation.
+      _portraitCollapseProgressBeforeLandscape = collapseProgress;
+      _portraitSearchProgressBeforeLandscape = searchBarCollapseProgress;
+    }
+    final restorePortraitHeaderState =
+        returningToPortrait &&
+        _portraitCollapseProgressBeforeLandscape != null;
     if (identical(position, _position) && compactOnly == _compactOnly) {
       _syncNestedBodyPosition();
       if (_pendingHandoffCollapseProgress == null &&
@@ -236,10 +249,14 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       return;
     }
 
-    final inheritedProgress = !compactOnly && preserveCollapseProgress
+    final inheritedProgress = restorePortraitHeaderState
+        ? _portraitCollapseProgressBeforeLandscape
+        : !compactOnly && preserveCollapseProgress
         ? collapseProgress
         : _pendingHandoffCollapseProgress;
-    final inheritedSearchProgress = !compactOnly && preserveCollapseProgress
+    final inheritedSearchProgress = restorePortraitHeaderState
+        ? _portraitSearchProgressBeforeLandscape
+        : !compactOnly && preserveCollapseProgress
         ? searchBarCollapseProgress
         : _pendingHandoffSearchProgress;
     if (_position != null) {
@@ -249,6 +266,11 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     if (compactOnly) {
       _pendingHandoffCollapseProgress = null;
       _pendingHandoffSearchProgress = null;
+    } else if (restorePortraitHeaderState) {
+      _pendingHandoffCollapseProgress = inheritedProgress;
+      _pendingHandoffSearchProgress = inheritedSearchProgress;
+      _portraitCollapseProgressBeforeLandscape = null;
+      _portraitSearchProgressBeforeLandscape = null;
     } else if (preserveCollapseProgress) {
       _pendingHandoffCollapseProgress = inheritedProgress;
       _pendingHandoffSearchProgress = inheritedSearchProgress;
@@ -268,7 +290,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _position = position;
     _compactOnly = compactOnly;
     _syncNestedBodyPosition();
-    if (position != null && preserveCollapseProgress && !compactOnly) {
+    final shouldPreserveHeaderState =
+        preserveCollapseProgress || restorePortraitHeaderState;
+    if (position != null && shouldPreserveHeaderState && !compactOnly) {
       // Keep the destination's former scrolled position as its non-expanded
       // backup before aligning it with the active screen's header state.
       AppHeaderScrollView._rememberPositionBackup(position);
@@ -291,7 +315,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       _controller.reportMeasuredHeight(kAppHeaderTitleCollapseDistance);
       if (!compactOnly) _applyPendingHandoff();
       if (!compactOnly &&
-          preserveCollapseProgress &&
+          shouldPreserveHeaderState &&
           inheritedProgress != null) {
         _restoreBodyPositionForHandoff(position, inheritedProgress);
       }

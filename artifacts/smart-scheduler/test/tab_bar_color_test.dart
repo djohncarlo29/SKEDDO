@@ -256,8 +256,8 @@ void main() {
     final homeItem = tabBar.tabs[0].icon as Row;
     final homeIcon = homeItem.children[0] as FixedSFIcon;
     final homeLabel = homeItem.children[2] as Text;
-    expect(homeIcon.fontSize, 18.0);
-    expect(homeLabel.style!.fontSize, 14.0);
+    expect(homeIcon.fontSize, 16.0);
+    expect(homeLabel.style!.fontSize, 12.0);
     expect(find.text('Home'), findsWidgets);
     expect(find.text('Calendar'), findsWidgets);
 

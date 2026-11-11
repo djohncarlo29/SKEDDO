@@ -23,8 +23,8 @@ import 'skeddo_glass_settings.dart';
 /// shape-aware movement boundary.
 const double kLiquidGlassPreviewHeight = 154.0;
 const double _kLandscapeTabSlotWidth = 88.0;
-const double _kLandscapeTabIconSize = 18.0;
-const double _kLandscapeTabLabelFontSize = 14.0;
+const double _kLandscapeTabIconSize = 16.0;
+const double _kLandscapeTabLabelFontSize = 12.0;
 const RoundedRectangleBorder kLiquidGlassPreviewCardShape =
     RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(kSquircleStadiumRadius)),

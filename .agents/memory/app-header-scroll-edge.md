@@ -214,6 +214,19 @@ In landscape, the app header has no expanded/collapsing state. Keep it compact a
 
 **How to apply:** Bind landscape scroll positions through a compact-only tracking path that skips collapse handoffs and inactive-destination preparation. Retain route-specific scroll storage where a screen is disposed and recreated, such as pushed Settings subscreens. Match AppShell stacking: scrolling content, edge blur/gradient, compact title, then pinned controls.
 
+Landscape's compact-only presentation must not discard the portrait header
+progress that was active at rotation time. Keep a separate snapshot of the
+portrait title and search collapse progress while landscape is active, and
+restore it when portrait returns, regardless of landscape scroll activity.
+
+**Why:** Landscape has no expanded header state, but changing orientation must
+not permanently replace the portrait state the user left, even after time or
+scrolling in landscape.
+
+**How to apply:** Capture portrait progress at the transition into compact-only
+landscape mode, do not update that snapshot from landscape scroll events, then
+use it for the portrait handoff and clear it after restoration.
+
 During the landscape Events↔DCV slide, blend the scroll-edge offset between the active DCV body and the underlying Events grid using the same eased pane progress. This preserves the outgoing surface's edge and transfers it continuously to the incoming surface instead of waiting for a post-transition scroll notification.
 
 **Why:** Binding to the detail scrollable can replace a scrolled grid source with a zero-offset DCV position. Restoring the grid only after the slide completes makes its edge disappear during the handoff and reappear after settling.

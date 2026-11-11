@@ -322,6 +322,65 @@ void main() {
   );
 
   testWidgets(
+    'expanded and partial portrait header states survive landscape rotation',
+    (tester) async {
+      tester.view.physicalSize = _viewportSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controller = ScrollController();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(() {
+        transition.dispose();
+        controller.dispose();
+      });
+
+      await tester.pumpWidget(
+        _buildHeaderHarness(
+          controller: controller,
+          bodyHeight: 1200,
+          titleTransition: transition,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final position = AppHeaderScrollView.headerPositionFor(controller)!;
+      transition.bindTo(position);
+      await tester.pump();
+
+      for (final portraitProgress in [0.0, 0.4]) {
+        final portraitOffset =
+            kAppHeaderTitleCollapseDistance * portraitProgress;
+        position.jumpTo(portraitOffset);
+        await tester.pump();
+        expect(
+          transition.collapseProgress,
+          closeTo(portraitProgress, 0.001),
+        );
+
+        // Landscape remains visually compact regardless of its scroll
+        // position or how long the device stays in that orientation.
+        transition.bindTo(position, compactOnly: true);
+        expect(transition.collapseProgress, 1);
+        position.jumpTo(kAppHeaderTitleCollapseDistance);
+        await tester.pump(const Duration(seconds: 5));
+        expect(transition.collapseProgress, 1);
+
+        // Returning to portrait restores the state from before rotation.
+        transition.bindTo(
+          position,
+          preserveCollapseProgress: true,
+          compactOnly: false,
+        );
+        await tester.pump();
+        expect(transition.collapseProgress, closeTo(portraitProgress, 0.001));
+        expect(position.pixels, closeTo(portraitOffset, 1));
+      }
+    },
+  );
+
+  testWidgets(
     'expanded handoff resets body immediately but keeps its scrolled backup',
     (tester) async {
       tester.view.physicalSize = _viewportSize;
