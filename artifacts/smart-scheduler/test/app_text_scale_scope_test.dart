@@ -48,11 +48,58 @@ void main() {
 
     selectCustomTextScaleIndex(0);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 75));
+    expect(_readScale(tester), greaterThan(20));
+    expect(_readScale(tester), lessThan(22));
+    await tester.pumpAndSettle();
     expect(find.text('22.0'), findsOneWidget);
 
     selectCustomTextScaleIndex(1);
     await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('34.0'), findsOneWidget);
+
+    appTextSizeUsesSystemNotifier.value = true;
+    await tester.pump();
+    expect(find.text('20.0'), findsOneWidget);
+  });
+
+  testWidgets('interpolates nonlinear curves and retargets without a jump', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildCurveHarness(TextScaler.linear(1.0)));
+
+    appTextSizeUsesSystemNotifier.value = false;
+    appCustomTextScalerNotifier.value = const _NonlinearTextScaler();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 75));
+
+    expect(_readScale(tester, const ValueKey('small')), closeTo(10.875, 0.001));
+    expect(_readScale(tester, const ValueKey('large')), closeTo(37.875, 0.001));
+
+    final currentScale = _readScale(tester);
+    selectCustomTextScaleIndex(1);
+    await tester.pump();
+    expect(_readScale(tester), closeTo(currentScale, 0.000001));
+
+    await tester.pump(const Duration(milliseconds: 75));
+    expect(_readScale(tester), greaterThan(currentScale));
+    expect(_readScale(tester), lessThan(34));
+    await tester.pumpAndSettle();
+    expect(find.text('34.0'), findsOneWidget);
+  });
+
+  testWidgets('disabled animations apply the selected scale immediately', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _buildScaleHarness(TextScaler.linear(1.0), disableAnimations: true),
+    );
+
+    selectCustomTextScaleIndex(0);
+    await tester.pump();
+
+    expect(find.text('22.0'), findsOneWidget);
   });
 
   testWidgets(
@@ -66,8 +113,10 @@ void main() {
             return AppTextScaleScope(child: child ?? const SizedBox.shrink());
           },
           home: Builder(
-            builder: (context) =>
-                Text('${MediaQuery.textScalerOf(context).scale(20)}'),
+            builder: (context) => Text(
+              '${MediaQuery.textScalerOf(context).scale(20)}',
+              key: const ValueKey('scaled-text'),
+            ),
           ),
         ),
       );
@@ -77,7 +126,13 @@ void main() {
 
       selectCustomTextScaleIndex(0);
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 75));
 
+      expect(_readScale(tester), greaterThan(20));
+      expect(_readScale(tester), lessThan(22));
+      expect(appBuilderCalls, initialBuilderCalls);
+
+      await tester.pumpAndSettle();
       expect(find.text('22.0'), findsOneWidget);
       expect(appBuilderCalls, initialBuilderCalls);
     },
@@ -103,14 +158,63 @@ SkeddoTextScaleMapping _mapping(double scale, int index) =>
       scaler: TextScaler.linear(scale),
     );
 
-Widget _buildScaleHarness(TextScaler ambientScaler) => CupertinoApp(
+Widget _buildScaleHarness(
+  TextScaler ambientScaler, {
+  bool disableAnimations = false,
+}) => CupertinoApp(
   home: MediaQuery(
-    data: MediaQueryData(textScaler: ambientScaler),
+    data: MediaQueryData(
+      textScaler: ambientScaler,
+      disableAnimations: disableAnimations,
+    ),
     child: AppTextScaleScope(
       child: Builder(
-        builder: (context) =>
-            Text('${MediaQuery.textScalerOf(context).scale(20)}'),
+        builder: (context) => Text(
+          '${MediaQuery.textScalerOf(context).scale(20)}',
+          key: const ValueKey('scaled-text'),
+        ),
       ),
     ),
   ),
 );
+
+Widget _buildCurveHarness(TextScaler ambientScaler) => CupertinoApp(
+  home: MediaQuery(
+    data: MediaQueryData(textScaler: ambientScaler),
+    child: AppTextScaleScope(
+      child: Builder(
+        builder: (context) {
+          final scaler = MediaQuery.textScalerOf(context);
+          return Column(
+            children: [
+              Text(
+                scaler.scale(10).toStringAsFixed(3),
+                key: const ValueKey('small'),
+              ),
+              Text(
+                scaler.scale(30).toStringAsFixed(3),
+                key: const ValueKey('large'),
+              ),
+              Text('${scaler.scale(20)}', key: const ValueKey('scaled-text')),
+            ],
+          );
+        },
+      ),
+    ),
+  ),
+);
+
+double _readScale(
+  WidgetTester tester, [
+  Key key = const ValueKey('scaled-text'),
+]) => double.parse(tester.widget<Text>(find.byKey(key)).data!);
+
+class _NonlinearTextScaler extends TextScaler {
+  const _NonlinearTextScaler();
+
+  @override
+  double scale(double fontSize) => fontSize * (1 + fontSize / 100);
+
+  @override
+  double get textScaleFactor => scale(16) / 16;
+}

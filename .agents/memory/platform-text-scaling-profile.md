@@ -39,3 +39,15 @@ for each text-only update.
 MediaQuery widget under CupertinoApp.builder; leave them out of the root
 configuration listenable. Continue to listen to ambient MediaQuery changes for
 System mode.
+
+Animate Custom changes by interpolating the output of the current and target
+TextScaler curves at each font size, rather than interpolating only the
+deprecated scalar factor. Keep System changes immediate and disable the
+transition when MediaQuery reports reduced motion.
+
+**Why:** Native profiles can be nonlinear, and a single interpolated multiplier
+would discard their size-dependent behavior during the transition.
+
+**How to apply:** Retarget from the currently rendered scaler when a new Custom
+stop is selected, then interpolate the two scale(fontSize) results through the
+existing content-level MediaQuery scope.
