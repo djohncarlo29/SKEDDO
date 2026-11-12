@@ -2046,13 +2046,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final double radiusT =
         Curves.easeInExpo.transform(state.sizeT.clamp(0.0, 1.0));
     final currentRadius = _morphController.isClosing
-        ? (isPremium
-            ? maxRadius
-            : lerpDouble(
-                _triggerBorderRadius ?? (_triggerSize!.shortestSide / 2.0),
-                widget.menuBorderRadius,
-                radiusT,
-              )!)
+        // Keep the fully-open menu radius through the reverse morph. Only
+        // reduce it once the shrinking bounds cannot contain it; from there
+        // the radius follows half of the short side, forming a stadium.
+        ? math.min(widget.menuBorderRadius, maxRadius)
         : lerpDouble(maxRadius, widget.menuBorderRadius, radiusT)!;
 
     final double effectiveDx;

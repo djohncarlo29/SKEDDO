@@ -45,6 +45,7 @@ import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 import '../widgets/app_window_content_boundary.dart';
+import '../widgets/trailing_checkmark_slot.dart';
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -23520,13 +23521,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           children: [
             Text(day, style: _kRowLabelStyle),
             const Spacer(),
-            if (selected)
-              FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: MediaQuery.textScalerOf(context).scale(17),
-                color: widget.accentColor,
-                fontWeight: FontWeight.w500,
-              ),
+            TrailingCheckmarkSlot(
+              selected: selected,
+              color: widget.accentColor,
+            ),
           ],
         ),
       ),
@@ -23655,13 +23653,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           children: [
             Text(label, style: _kRowLabelStyle),
             const Spacer(),
-            if (selected)
-              FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: MediaQuery.textScalerOf(context).scale(17),
-                color: widget.accentColor,
-                fontWeight: FontWeight.w500,
-              ),
+            TrailingCheckmarkSlot(
+              selected: selected,
+              color: widget.accentColor,
+            ),
           ],
         ),
       ),

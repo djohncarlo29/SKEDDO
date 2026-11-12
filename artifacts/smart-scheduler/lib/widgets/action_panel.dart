@@ -973,14 +973,15 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
           keepTriggerAnchorOnOverflow: true,
           // Match the Calendar toolbar menu and GlassPopover slider curve.
           settings: skeddoNavigationGlassSettingsFromShared(
-            skeddoPopoverGlassSettingsFor(
+            skeddoModalSheetPickerGlassSettingsFor(
               CupertinoTheme.brightnessOf(context),
-              resolveThemeColor(kCardColor, context),
               sliderPosition: sliderPosition,
             ),
           ),
-          // Picker menus retain standard quality and half-strength dark edges.
-          quality: GlassQuality.standard,
+          // Match the full captured-glass renderer used by GlassPopover and
+          // Calendar's GlassBarItem.menu. The package falls back adaptively
+          // where its premium shader is unavailable.
+          quality: GlassQuality.premium,
           // Normalize the trigger's return travel to the available menu height,
           // so the trailing value's spring does not depend on option count.
           normalizeTriggerReturnOvershoot: true,

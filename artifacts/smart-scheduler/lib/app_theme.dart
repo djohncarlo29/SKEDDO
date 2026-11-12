@@ -214,8 +214,14 @@ const kLightModeSheetAppShellDimColor = Color(0x80A8A8A3);
 const double kGelBloomIconWeight = 0.4;
 
 // Dark-mode 0.5 px white hairline used by liquid-glass action controls.
-// 0x13 is 19/255, half the previous ~15% opacity.
-const kLiquidGlassHairlineColor = Color(0x13FFFFFF);
+// Its authored 15% opacity is scaled by the same shared rim-strength target
+// as package-rendered glass edges.
+const kLiquidGlassHairlineColor = Color.fromRGBO(
+  255,
+  255,
+  255,
+  0.15 * kSkeddoSharedGlassRimStrength,
+);
 // Light-mode non-checkmark action buttons use their own soft fill and bright
 // inner rim; keep these separate from the package's existing glass hairline.
 const kLiquidGlassButtonLightSurface = Color(0xFFFDFDFD);

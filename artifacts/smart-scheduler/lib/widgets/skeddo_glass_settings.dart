@@ -29,7 +29,14 @@ const double kSkeddoPopoverGlassOpacity = 0.8546;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
-const double kSkeddoDarkGlassEdgeIntensityMultiplier = 0.5;
+
+/// Shared rim/specular strength used by SKEDDO's glass renderers.
+///
+/// `1.0` matches the brighter package-default rim used by the toolbar and
+/// floating tab bar. Keep per-surface tint, blur, and key-light settings
+/// independent from this rim-only value.
+const double kSkeddoSharedGlassRimStrength = 1.0;
+const double kSkeddoDarkGlassInteractionGlowMultiplier = 0.5;
 const double kSkeddoActiveTabIndicatorChromaticAberration = 0.15;
 const double _kActiveCheckmarkGlassSliderReference = 0.5;
 const double _kOldSliderPositionForNewMidpoint = 0.57;
@@ -38,9 +45,7 @@ slider_glass.LiquidGlassLight skeddoGlassEdgeLightForBrightness(
   Brightness brightness,
   slider_glass.LiquidGlassLight light,
 ) => brightness == Brightness.dark
-    ? light.copyWith(
-        intensity: light.intensity * kSkeddoDarkGlassEdgeIntensityMultiplier,
-      )
+    ? light.copyWith(intensity: light.intensity * kSkeddoSharedGlassRimStrength)
     : light;
 
 slider_glass.LiquidGlassStyle skeddoGlassEdgeStyleForBrightness(
@@ -51,30 +56,24 @@ slider_glass.LiquidGlassStyle skeddoGlassEdgeStyleForBrightness(
   final specular = style.specular;
   final glow = style.glow;
   return style.copyWith(
-    specular: specular == null
-        ? null
-        : skeddoGlassEdgeLightForBrightness(brightness, specular),
-    glow: glow == null
-        ? null
-        : skeddoGlassEdgeLightForBrightness(brightness, glow),
+    specular: specular?.copyWith(
+      intensity: specular.intensity * kSkeddoSharedGlassRimStrength,
+    ),
+    glow: glow?.copyWith(
+      intensity: glow.intensity * kSkeddoDarkGlassInteractionGlowMultiplier,
+    ),
   );
 }
 
-LiquidGlassSettings _reduceBrightDarkGlassEdges(
+LiquidGlassSettings _withSharedGlassRimStrength(
   Brightness brightness,
   LiquidGlassSettings settings,
-) {
-  if (brightness != Brightness.dark) return settings;
-  return settings.copyWith(
-    lightIntensity:
-        settings.lightIntensity * kSkeddoDarkGlassEdgeIntensityMultiplier,
-    ambientRim: settings.ambientRim * kSkeddoDarkGlassEdgeIntensityMultiplier,
-    fresnelStrength:
-        settings.fresnelStrength * kSkeddoDarkGlassEdgeIntensityMultiplier,
-    glowIntensity:
-        settings.glowIntensity * kSkeddoDarkGlassEdgeIntensityMultiplier,
-  );
-}
+) => settings.copyWith(
+  fresnelStrength: kSkeddoSharedGlassRimStrength,
+  glowIntensity: brightness == Brightness.dark
+      ? settings.glowIntensity * kSkeddoDarkGlassInteractionGlowMultiplier
+      : settings.glowIntensity,
+);
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
   thickness: 30,
@@ -109,6 +108,7 @@ final LiquidGlassSettings kSkeddoDarkBottomBarGlassSettings =
       lightAngle: GlassThemeVariant.dark.settings!.lightAngle,
       lightIntensity: GlassThemeVariant.dark.settings!.lightIntensity,
       ambientStrength: GlassThemeVariant.dark.settings!.ambientStrength,
+      fresnelStrength: kSkeddoSharedGlassRimStrength,
     );
 
 /// A reduced, deliberately subtle tint for the lifted selected-tab lens in
@@ -279,6 +279,7 @@ LiquidGlassSettings _settingsForSharedGlassPosition(
       : kSkeddoBottomBarGlassSettings;
   return base.copyWith(
     blur: skeddoSharedGlassBlurForPosition(position),
+    fresnelStrength: kSkeddoSharedGlassRimStrength,
     glassColor: base.glassColor.withValues(
       alpha: skeddoSharedGlassOpacityForPosition(position, brightness),
     ),
@@ -403,11 +404,13 @@ navigation_glass.LiquidGlassSettings skeddoNavigationTabIndicatorGlassSettings(
   if (brightness == Brightness.dark) {
     base = navigation_glass.LiquidGlassSettings(
       chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+      fresnelStrength: kSkeddoSharedGlassRimStrength,
     );
   } else {
     base = skeddoNavigationGlassSettingsFromShared(
       kSkeddoLightLiftedTabIndicatorSettings.copyWith(
         chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+        fresnelStrength: kSkeddoSharedGlassRimStrength,
       ),
     );
   }
@@ -424,8 +427,8 @@ navigation_glass.LiquidGlassSettings skeddoNavigationTabIndicatorGlassSettings(
 LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
     skeddoBottomBarGlassSettingsFor(brightness);
 
-/// Popover and menu surfaces share their slider-driven opacity and blur.
-/// Dark Mode reduces the bright rim channels to match SKEDDO's other glass.
+/// Popover and menu surfaces share their slider-driven opacity, blur, and rim
+/// strength with the toolbar and floating tab bar.
 LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
   Color cardTint, {
@@ -438,7 +441,7 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
     brightness,
     sliderPosition: position,
   );
-  return _reduceBrightDarkGlassEdges(
+  return _withSharedGlassRimStrength(
     brightness,
     shared.copyWith(
       blur: skeddoPopoverBlurForPosition(position),
@@ -446,6 +449,23 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
         alpha: skeddoPopoverOpacityForPosition(position),
       ),
     ),
+  );
+}
+
+/// Modal picker menus use the toolbar's Light/Dark surface tint while
+/// retaining the shared popover/menu opacity, blur, and rim behavior.
+LiquidGlassSettings skeddoModalSheetPickerGlassSettingsFor(
+  Brightness brightness, {
+  double? sliderPosition,
+}) {
+  final toolbarSurfaceTint = skeddoBottomBarGlassSettingsFor(
+    brightness,
+    sliderPosition: sliderPosition,
+  ).glassColor;
+  return skeddoPopoverGlassSettingsFor(
+    brightness,
+    toolbarSurfaceTint,
+    sliderPosition: sliderPosition,
   );
 }
 

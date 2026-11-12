@@ -209,7 +209,7 @@ void main() {
       find.byType(navigation_glass.GlassButton),
     );
     expect(button.settings!.blur, closeTo(0.57, 0.000001));
-    expect(button.settings!.glassColor.a, closeTo(0.371, 0.001));
+    expect(button.settings!.glassColor.a, closeTo(0.5166, 0.001));
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       0.75,

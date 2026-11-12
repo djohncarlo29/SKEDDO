@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
@@ -7,7 +9,8 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMenuController,
         GlassMenuItem,
         GlassQuality,
-        LightweightLiquidGlass;
+        AdaptiveLiquidGlassLayer,
+        LiquidRoundedRectangle;
 
 import 'package:smart_scheduler/app_settings.dart'
     show
@@ -21,10 +24,12 @@ import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart'
         skeddoNavigationGlassSettingsFromShared,
         skeddoPopoverBlurForPosition,
         skeddoPopoverGlassSettingsFor,
-        skeddoPopoverOpacityForPosition;
+        skeddoPopoverOpacityForPosition,
+        skeddoBottomBarGlassSettingsFor,
+        skeddoModalSheetPickerGlassSettingsFor;
 
 void main() {
-  test('popover menus use SKEDDO dark-mode rim intensity', () {
+  test('popover menus use the shared rim strength in both themes', () {
     const tint = Color(0xff202024);
     for (final position in [0.0, 0.25, 0.5, 0.75, 1.0]) {
       final dark = skeddoPopoverGlassSettingsFor(
@@ -32,9 +37,9 @@ void main() {
         tint,
         sliderPosition: position,
       );
-      expect(dark.lightIntensity, 0.175);
+      expect(dark.lightIntensity, 0.35);
       expect(dark.glowIntensity, 0.375);
-      expect(dark.fresnelStrength, 0.5);
+      expect(dark.fresnelStrength, 1.0);
       expect(dark.ambientRim, 0);
       expect(
         dark.glassColor.a,
@@ -43,7 +48,7 @@ void main() {
       expect(dark.blur, closeTo(skeddoPopoverBlurForPosition(position), 0.001));
 
       final navigationSettings = skeddoNavigationGlassSettingsFromShared(dark);
-      expect(navigationSettings.lightIntensity, 0.175);
+      expect(navigationSettings.lightIntensity, 0.35);
       expect(navigationSettings.glowIntensity, dark.glowIntensity);
       expect(navigationSettings.fresnelStrength, dark.fresnelStrength);
       expect(navigationSettings.ambientRim, dark.ambientRim);
@@ -56,6 +61,32 @@ void main() {
     );
     expect(light.glowIntensity, 0.75);
     expect(light.fresnelStrength, 1.0);
+  });
+
+  test('modal picker menus use the toolbar surface tint in both themes', () {
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      for (final position in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+        final toolbar = skeddoBottomBarGlassSettingsFor(
+          brightness,
+          sliderPosition: position,
+        );
+        final picker = skeddoModalSheetPickerGlassSettingsFor(
+          brightness,
+          sliderPosition: position,
+        );
+
+        expect(
+          picker.glassColor,
+          toolbar.glassColor.withValues(
+            alpha: skeddoPopoverOpacityForPosition(position),
+          ),
+        );
+        expect(
+          picker.blur,
+          closeTo(skeddoPopoverBlurForPosition(position), 0.001),
+        );
+      }
+    }
   });
 
   testWidgets('modal picker menu keeps its text trigger free of a glass blob', (
@@ -109,7 +140,7 @@ void main() {
     expect(menu.triggerEntryImpactStrength, 0.35);
     expect(menu.triggerImpactStrength, 1.15);
     expect(menu.normalizeTriggerReturnOvershoot, isTrue);
-    expect(menu.quality, GlassQuality.standard);
+    expect(menu.quality, GlassQuality.premium);
     expect(menu.keepTriggerAnchorOnOverflow, isTrue);
     expect(menu.showItemInteractionHighlight, isFalse);
     expect(menu.menuContentHorizontalInset, 12);
@@ -143,9 +174,9 @@ void main() {
       menu.settings!.glassColor.a,
       closeTo(skeddoPopoverOpacityForPosition(initialPosition), 0.001),
     );
-    expect(menu.settings!.lightIntensity, 0.175);
+    expect(menu.settings!.lightIntensity, 0.35);
     expect(menu.settings!.glowIntensity, 0.375);
-    expect(menu.settings!.fresnelStrength, 0.5);
+    expect(menu.settings!.fresnelStrength, 1.0);
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       1.0,
@@ -172,16 +203,20 @@ void main() {
     final menuBody = tester.widget<GlassContainer>(
       find.byType(GlassContainer).last,
     );
+    expect(menuBody.quality, GlassQuality.premium);
     expect(menuBody.settings!.visibility, lessThan(1));
-    expect(menuBody.settings!.lightIntensity, 0.175);
-    expect(menuBody.settings!.fresnelStrength, 0.5);
-    final renderer = tester
-        .widgetList<LightweightLiquidGlass>(
-          find.byType(LightweightLiquidGlass),
+    expect(menuBody.settings!.lightIntensity, 0.35);
+    expect(menuBody.settings!.fresnelStrength, 1.0);
+    final capturedGlassLayers = tester
+        .widgetList<AdaptiveLiquidGlassLayer>(
+          find.byType(AdaptiveLiquidGlassLayer),
         )
-        .last;
-    expect(renderer.settings!.lightIntensity, 0.175);
-    expect(renderer.settings!.fresnelStrength, 0.5);
+        .where((layer) => layer.quality == GlassQuality.premium);
+    expect(capturedGlassLayers, isNotEmpty);
+    for (final layer in capturedGlassLayers) {
+      expect(layer.settings!.lightIntensity, 0.35);
+      expect(layer.settings!.fresnelStrength, 1.0);
+    }
     final triggerOpacity = tester
         .widgetList<Opacity>(
           find.ancestor(
@@ -194,6 +229,66 @@ void main() {
         .first;
     expect(triggerOpacity, greaterThan(0));
   });
+
+  testWidgets(
+    'picker menu keeps its open radius until the shrinking bounds require a stadium',
+    (tester) async {
+      GlassMenuController? controller;
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: ModalSheetGlassMenu(
+              trigger: const Text('Radius trigger'),
+              actions: [
+                for (var index = 0; index < 6; index++)
+                  ActionItem(
+                    label: 'Option $index',
+                    icon: CupertinoIcons.circle,
+                    onTap: () {},
+                  ),
+              ],
+              semanticLabel: 'Radius test',
+              onOpened: (value) => controller = value,
+              builder: (context, menuTrigger, openMenu) => menuTrigger,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Radius trigger'));
+      await tester.pumpAndSettle();
+      expect(controller!.isOpen, isTrue);
+
+      GlassContainer menuBody() =>
+          tester.widget<GlassContainer>(find.byType(GlassContainer).last);
+      double menuRadius() =>
+          (menuBody().shape as LiquidRoundedRectangle).borderRadius;
+
+      expect(menuRadius(), 32);
+      controller!.close();
+
+      var sawStadiumPhase = false;
+      for (var frame = 0; frame < 100 && controller!.isOpen; frame++) {
+        await tester.pump(const Duration(milliseconds: 8));
+        final glassContainers = find.byType(GlassContainer);
+        if (glassContainers.evaluate().isEmpty) break;
+        final body = tester.widget<GlassContainer>(glassContainers.first);
+        final shortSide = math.min(body.width!, body.height!);
+        final radius = (body.shape as LiquidRoundedRectangle).borderRadius;
+        if (shortSide >= 64) {
+          expect(radius, 32);
+        } else {
+          expect(radius, closeTo(shortSide / 2, 0.01));
+          sawStadiumPhase = true;
+        }
+      }
+
+      await tester.pumpAndSettle();
+      expect(controller!.isOpen, isFalse);
+      expect(sawStadiumPhase, isTrue);
+    },
+  );
 
   testWidgets(
     'picker dismissal keeps the trigger mounted through the reverse morph',

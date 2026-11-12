@@ -9,12 +9,13 @@ Keep `liquid_glass_easy` at 5.0.0. The app carries a local copy of that release 
 
 **How to apply:** Keep the switch color mapping in `AppSwitch`, without changing switch geometry or interaction. Check [native switch routing](cupertino-native-switch-package.md) and [Flutter/package version compatibility](liquid-glass-widgets-compatibility.md) before changing dependencies or platform branches.
 
-In Dark Mode, keep bright Liquid Glass rim/specular highlights and matching thin
-white edge lines at half their prior strength. Do not dim Light Mode or the
-separate darker edge contour.
+All Liquid Glass surfaces use the shared rim-strength target in
+`skeddo_glass_settings.dart`, matching the brighter toolbar/tab-bar rim. Keep
+interaction glow and theme-specific key lighting separate from that rim value.
 
-**Why:** The user wants the bright glass edge treatment less prominent in dark
-surfaces without changing the material fill, blur, geometry, or dark outline.
+**Why:** A separate 0.5 multiplier on menus made their edge look weaker than
+the toolbar and tab bar.
 
-**How to apply:** Scale only the bright rim/highlight intensity and white
-hairline alpha in Dark Mode across package and app-owned glass renderers.
+**How to apply:** Use the shared rim-strength constant once for package
+Fresnel and app-owned specular edges. Avoid applying a second Dark Mode
+reduction; preserve independent glow, fill, blur, geometry, and dark contours.

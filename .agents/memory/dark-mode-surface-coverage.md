@@ -20,14 +20,15 @@ passing styles to platform-backed inputs, picker text, SF Symbols, or other
 widgets that may not resolve CupertinoDynamicColor themselves. Keep intentional
 white-on-accent icons/text and image/export colors unchanged.
 
-For `liquid_glass_widgets`' lightweight shader, Dark Mode's structural rim has
-a fixed base opacity independent of `lightIntensity`, `glowIntensity`, and
-Fresnel. Halve it through `fresnelStrength` on the dark shader path as well as
-reducing the other bright-edge inputs.
+All app glass renderers share `kSkeddoSharedGlassRimStrength = 1.0`, matching
+the brighter toolbar/tab-bar edge. Apply it to package `fresnelStrength` and
+app-owned specular edges once; keep per-theme key lighting, tint, and blur
+separate. Dark interaction glow remains an independent setting.
 
-**Why:** Dark menus kept their full white perimeter even after the settings
-values were halved because the shader intentionally preserved its base rim.
+**Why:** Applying a 0.5 reduction through several renderer-specific inputs
+made the Calendar menu rim noticeably weaker than the toolbar and tab bar.
 
-**How to apply:** When the active `GlassTheme` is dark, set `fresnelStrength`
-to the desired rim opacity multiplier; the shader applies it to the structural
-rim only on its dark-appearance path. Light Mode retains the standard rim.
+**How to apply:** When adding an app glass surface, use the shared rim-strength
+constant for its rim control and do not apply another Dark Mode multiplier.
+The lightweight shader also uses `fresnelStrength` to scale its fixed
+structural rim in Dark Mode.

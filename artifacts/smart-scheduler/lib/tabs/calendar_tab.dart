@@ -74,6 +74,7 @@ import 'events_tab.dart'
         wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
+import '../widgets/trailing_checkmark_slot.dart';
 
 const MethodChannel _dropMetadataChannel = MethodChannel(
   'com.smartscheduler/drop_metadata',
@@ -17154,13 +17155,10 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           children: [
             Text(day, style: _kRowLabelStyle),
             const Spacer(),
-            if (selected)
-              FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: MediaQuery.textScalerOf(context).scale(17),
-                color: widget.accentColor,
-                fontWeight: FontWeight.w500,
-              ),
+            TrailingCheckmarkSlot(
+              selected: selected,
+              color: widget.accentColor,
+            ),
           ],
         ),
       ),
@@ -17287,13 +17285,10 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           children: [
             Text(label, style: _kRowLabelStyle),
             const Spacer(),
-            if (selected)
-              FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: MediaQuery.textScalerOf(context).scale(17),
-                color: widget.accentColor,
-                fontWeight: FontWeight.w500,
-              ),
+            TrailingCheckmarkSlot(
+              selected: selected,
+              color: widget.accentColor,
+            ),
           ],
         ),
       ),

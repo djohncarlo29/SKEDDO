@@ -14,7 +14,7 @@
 - [App-header scroll-edge behavior](app-header-scroll-edge.md) — keep the 50pt settled-circle boundary, 16pt compact content gap, and expanded-title rhythm distinct.
 - [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep insets and wrapper ancestry stable; capture keyed scroll anchors after layout, not during mount.
 - [Landscape single-pane rule](landscape-events-master-detail.md) — Settings subscreens and Events DCV remain full-screen in landscape; do not restore side-by-side panes.
-- [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
+- [Dark-mode surface coverage](dark-mode-surface-coverage.md) — Liquid Glass rims share one strength target; keep interaction glow and tint/blur separate.
 - [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
 - [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer; don't prefilter hits with a render-tree Listener.
 - [Overlay dismissal confirmation ownership](overlay-dismissal-confirmation-ownership.md) — an OverlayEntry confirmation must consume Back and guard the parent PopScope to prevent stacked copies.
@@ -48,7 +48,7 @@
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.
 - [Separate glass control blending](shared-glass-control-blending.md) — neighboring controls need one AdaptiveLiquidGlassLayer to blend only when their shapes overlap.
-- [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
+- [Shared trailing checkmarks](subscreen-checkmark-layout.md) — Settings and modal picker rows share one OS-scaled checkmark slot with fixed 16pt gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — keep DEFAULT_JVM_OPTS in gradlew; daemon=false ignores org.gradle.jvmargs.
 - [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — package menus own capsule morphing; selection-surface visibility is separate from press feedback and route-owned content refresh.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
@@ -57,7 +57,7 @@
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — claim Android blur only after physical-device verification.
 - [Android Freeform/Recents window band](android-recents-preview-theme.md) — distinguish system caption and Recents layers before changing inset behavior; preserve floating-window controls.
 - [Replit temporary storage limits](replit-home-quota.md) — keep caches and Flutter temp files on the workspace partition, not quota-limited home or the 4GB /tmp tmpfs.
-- [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — retain package geometry; dark-mode bright rims and white hairlines use half strength.
+- [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — retain package geometry and use one shared rim-strength target across renderers.
 - [Liquid Glass slider v5 edge motion](liquid-glass-slider-version-split.md) — keep slider 5.0.0; add live thumb-envelope callbacks for edge-icon push and bounce.
 - [Fixed Liquid Glass midpoint marker](liquid-glass-fixed-midpoint-marker.md) — pin the 50% tick to the row card; let the rubberbanded track move beneath it.
 - [Text Size slider step alignment](text-size-slider-step-alignment.md) — align seven markers with settled thumb centers; allow continuous dragging and snap on release.

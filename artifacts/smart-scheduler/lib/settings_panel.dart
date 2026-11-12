@@ -23,6 +23,7 @@ import 'widgets/app_header_scroll_edge.dart';
 import 'widgets/app_shell_navigation_scope.dart';
 import 'widgets/app_shell_toolbar.dart';
 import 'widgets/skeddo_glass_settings.dart';
+import 'widgets/trailing_checkmark_slot.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen settings content with route-based sub-screen nav.
@@ -1525,9 +1526,9 @@ class _DefaultCategoryRowState extends State<_DefaultCategoryRow> {
                 ),
               ),
             ),
-            _SettingsCheckmarkSlot(
+            TrailingCheckmarkSlot(
               selected: widget.selected,
-              accentColor: widget.accentColor,
+              color: widget.accentColor,
             ),
           ],
         ),
@@ -3353,9 +3354,9 @@ class _OptionRowState extends State<_OptionRow> {
                 ),
               ),
             ),
-            _SettingsCheckmarkSlot(
+            TrailingCheckmarkSlot(
               selected: widget.selected,
-              accentColor: widget.accentColor,
+              color: widget.accentColor,
             ),
           ],
         ),
@@ -3509,9 +3510,9 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
                 ),
               ),
             ),
-            _SettingsCheckmarkSlot(
+            TrailingCheckmarkSlot(
               selected: widget.selected,
-              accentColor: widget.accentColor,
+              color: widget.accentColor,
             ),
           ],
         ),
@@ -3523,46 +3524,6 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
 // ── Trailing widgets ──────────────────────────────────────────────────────────
 double _settingsScaledFontSize(BuildContext context, double baseSize) {
   return MediaQuery.textScalerOf(context).scale(baseSize);
-}
-
-const double _kSettingsCheckmarkGap = 16.0;
-const double _kSettingsCheckmarkBaseSize = 17.0;
-
-/// Reserves the trailing checkmark column for every selectable subscreen row.
-///
-/// The slot includes the fixed 16 pt label-to-checkmark gap and the scaled
-/// checkmark width. The row's own 16 pt horizontal padding supplies the fixed
-/// checkmark-to-edge inset. Keeping the slot present for unselected rows also
-/// prevents labels from changing width as selection moves.
-class _SettingsCheckmarkSlot extends StatelessWidget {
-  final bool selected;
-  final Color accentColor;
-
-  const _SettingsCheckmarkSlot({
-    required this.selected,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final checkmarkSize = _settingsScaledFontSize(
-      context,
-      _kSettingsCheckmarkBaseSize,
-    );
-    return SizedBox(
-      width: _kSettingsCheckmarkGap + checkmarkSize,
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: selected
-            ? Icon(
-                CupertinoIcons.checkmark,
-                size: checkmarkSize,
-                color: accentColor,
-              )
-            : SizedBox(width: checkmarkSize, height: checkmarkSize),
-      ),
-    );
-  }
 }
 
 double _settingsChevronFontSize(BuildContext context) {
