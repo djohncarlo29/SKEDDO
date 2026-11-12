@@ -1128,6 +1128,9 @@ class ActionPanel extends StatefulWidget {
   // Uses the liquid-glass lens surface for this panel only. The default stays
   // on FrostedGlassCard because the shared action-panel API serves other menus.
   final bool useLiquidGlass;
+  // Uses the package GlassMenu platter and row geometry without attaching a
+  // morphing trigger. Intended for long-press context-menu overlays.
+  final bool useGlassMenuStyle;
   // Standard action panels keep a fixed 16 px label-to-trailing-icon gap.
   // Modal picker mini-panels opt out to preserve their compact legacy layout.
   final bool enforceTrailingIconSpacing;
@@ -1148,6 +1151,7 @@ class ActionPanel extends StatefulWidget {
     this.pinnedTopItemCount = 0,
     this.pinSeparatorAfterTop = false,
     this.useLiquidGlass = false,
+    this.useGlassMenuStyle = false,
     this.enforceTrailingIconSpacing = true,
   });
 
@@ -1911,7 +1915,9 @@ class _ActionPanelState extends State<ActionPanel>
         // keep the panel visible there with the proven frosted surface.
         // Native iOS/Android renderers continue through the real Liquid Glass
         // composition below.
-        final panelCard = widget.useLiquidGlass && !kIsWeb
+        final panelCard = widget.useGlassMenuStyle
+            ? _GlassMenuStyleActionPanelCard(progress: gt, child: panelContent)
+            : widget.useLiquidGlass && !kIsWeb
             ? _LiquidGlassActionPanelCard(
                 progress: gt,
                 fillOpacity: fillOpacity,
@@ -1959,6 +1965,7 @@ class _ActionPanelState extends State<ActionPanel>
           chevronColumn: widget.chevronColumn,
           labelFontSize: widget.labelFontSize,
           enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
+          useGlassMenuStyle: widget.useGlassMenuStyle,
         ),
       ),
     );
@@ -1967,6 +1974,12 @@ class _ActionPanelState extends State<ActionPanel>
   Widget _buildSeparator(int i) {
     final item = widget.items[i];
     final isGroupBreak = item.groupBreakAbove;
+    if (widget.useGlassMenuStyle && !isGroupBreak) {
+      return const SizedBox.shrink();
+    }
+    if (widget.useGlassMenuStyle && isGroupBreak) {
+      return const GlassMenuDivider(height: ActionItem.groupBreakH + 4);
+    }
     final isStrong = item.strongSeparatorAbove;
     final separatorColor = resolveThemeColor(
       isGroupBreak
@@ -1994,11 +2007,13 @@ class _ActionRow extends StatefulWidget {
   final bool chevronColumn;
   final double labelFontSize;
   final bool enforceTrailingIconSpacing;
+  final bool useGlassMenuStyle;
   const _ActionRow({
     required this.item,
     required this.chevronColumn,
     this.labelFontSize = 16,
     this.enforceTrailingIconSpacing = true,
+    this.useGlassMenuStyle = false,
   });
 
   @override
@@ -2018,6 +2033,9 @@ class _ActionRowState extends State<_ActionRow> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    if (widget.useGlassMenuStyle) {
+      return _buildGlassMenuStyleRow(context, item);
+    }
     final dest = item.isDestructive;
     // Checked items: primary colour when primaryCheckmark, accent otherwise.
     final checkColor = item.primaryCheckmark
@@ -2202,6 +2220,59 @@ class _ActionRowState extends State<_ActionRow> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGlassMenuStyleRow(BuildContext context, ActionItem item) {
+    final textColor = item.labelColor != null
+        ? CupertinoDynamicColor.resolve(item.labelColor!, context)
+        : item.isDestructive
+        ? CupertinoColors.destructiveRed
+        : CupertinoDynamicColor.resolve(kPrimaryLabel, context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final iconSize = textScaler.scale(item.iconSize);
+    final Widget iconContent;
+    if (item.iconBuilder != null) {
+      iconContent = Transform.scale(
+        scale: iconSize / item.iconSize,
+        child: item.iconBuilder!(textColor),
+      );
+    } else {
+      iconContent = _ActionPanelSFIcon(
+        item.icon,
+        size: iconSize,
+        color: textColor,
+        weight: item.iconWeight,
+      );
+    }
+    final icon = SizedBox(
+      width: iconSize,
+      height: iconSize,
+      child: Center(
+        child: Transform.translate(offset: item.iconOffset, child: iconContent),
+      ),
+    );
+
+    return GlassMenuItem(
+      title: item.label,
+      subtitle: item.subtitle,
+      icon: icon,
+      isDestructive: item.isDestructive,
+      iconSize: iconSize,
+      iconLabelGap: 12,
+      height: item.subtitle == null
+          ? ActionItem.rowHeight
+          : ActionItem.rowHeightWithSubtitle,
+      allowTextWrapping: true,
+      showInteractionHighlight: true,
+      titleStyle: item.labelColor == null
+          ? null
+          : TextStyle(
+              color: textColor,
+              fontSize: 17,
+              fontWeight: FontWeight.w400,
+            ),
+      onTap: item.onTap ?? () {},
     );
   }
 }
@@ -2643,6 +2714,48 @@ class _ExpandableRowSharedContentState
         onTap: widget.onTap,
       ),
       chevronColumn: true,
+    );
+  }
+}
+
+/// GlassMenu-matched platter for an independently animated context overlay.
+///
+/// This uses a standalone package GlassContainer rather than a GlassMenu, so
+/// context actions do not morph from the lifted tile.
+class _GlassMenuStyleActionPanelCard extends StatelessWidget {
+  const _GlassMenuStyleActionPanelCard({
+    required this.progress,
+    required this.child,
+  });
+
+  final double progress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: appLiquidGlassOpacityNotifier,
+      builder: (context, opacity, _) {
+        final sliderPosition = liquidGlassSliderPositionForOpacity(opacity);
+        final sharedSettings = skeddoPopoverGlassSettingsFor(
+          CupertinoTheme.brightnessOf(context),
+          resolveThemeColor(kCardColor, context),
+          sliderPosition: sliderPosition,
+        ).copyWith(visibility: progress.clamp(0.0, 1.0).toDouble());
+        final settings = skeddoNavigationGlassSettingsFromShared(
+          sharedSettings,
+        );
+
+        return GlassContainer(
+          useOwnLayer: true,
+          settings: settings,
+          quality: GlassQuality.premium,
+          allowElevation: false,
+          shape: const LiquidRoundedRectangle(borderRadius: 32),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(padding: const EdgeInsets.all(12), child: child),
+        );
+      },
     );
   }
 }

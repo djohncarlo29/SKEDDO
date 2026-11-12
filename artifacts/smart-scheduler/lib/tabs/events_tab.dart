@@ -962,6 +962,7 @@ class _ContextMenuOverlay extends StatelessWidget {
                 isClosing: isClosing,
                 maxHeight: panelH > availableRoom ? availableRoom : null,
                 bouncingScroll: true,
+                useGlassMenuStyle: true,
               ),
             ),
           ],
