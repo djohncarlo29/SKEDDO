@@ -24,8 +24,8 @@ import '../app_settings.dart';
 const double kSkeddoLightBottomBarOpacity = 0.528;
 const double kSkeddoDarkBottomBarOpacity = 0.628;
 
-/// GlassPopover card and button opacity at the remapped 50% slider mark.
-const double kSkeddoPopoverGlassOpacity = 0.907;
+/// GlassPopover card and button opacity at the new 50% slider mark.
+const double kSkeddoPopoverGlassOpacity = 0.85;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -219,11 +219,26 @@ double skeddoSharedGlassOpacityForPosition(
 );
 
 /// Independent opacity curve used by GlassPopover and pinned GlassMenu surfaces.
-double skeddoPopoverOpacityForPosition(double position) =>
-    _interpolateSliderAnchors(
-      skeddoLiquidGlassEffectPositionForSliderPosition(position),
+///
+/// The existing opacity curve now occupies the upper half of the slider.
+/// The lower half ramps linearly from transparent to the existing 0% opacity.
+/// Blur keeps its existing full-range curve.
+double skeddoPopoverOpacityForPosition(double position) {
+  final normalized = position.clamp(0.0, 1.0).toDouble();
+  if (normalized <= 0.5) {
+    final formerMinimum = _interpolateSliderAnchors(
+      skeddoLiquidGlassEffectPositionForSliderPosition(0),
       _kPopoverOpacityAnchors,
     );
+    return formerMinimum * (normalized * 2);
+  }
+
+  final formerPosition = (normalized - 0.5) * 2;
+  return _interpolateSliderAnchors(
+    skeddoLiquidGlassEffectPositionForSliderPosition(formerPosition),
+    _kPopoverOpacityAnchors,
+  );
+}
 
 /// Independent blur curve used by GlassPopover and pinned GlassMenu surfaces.
 double skeddoPopoverBlurForPosition(double position) =>

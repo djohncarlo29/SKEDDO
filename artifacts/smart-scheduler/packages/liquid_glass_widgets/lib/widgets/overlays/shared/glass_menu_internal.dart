@@ -509,8 +509,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         // Include the offsets so the trajectory is mathematically perfect.
         final double pushDx =
             isHandoff ? (finalDx + _horizontalOffset) * rawValue : 0.0;
-        final double pushDy =
-            isHandoff ? (finalDy + _verticalOffset) * rawValue : 0.0;
+        final double pushDy = isHandoff
+            ? (finalDy + _verticalOffset) *
+                rawValue *
+                _triggerReturnOvershootScale(menuHeight, th)
+            : 0.0;
 
         // Underdamped bounce impact squash: as the droplet slams into the trigger,
         // the button compresses slightly and rebounds to rest, giving a visceral
@@ -2241,6 +2244,55 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     return math.min(itemHeights + 24.0 + gaps, _maximumStackHeight);
   }
 
+  double _maximumBodyHeightFromAnchor() {
+    final mediaQuery = MediaQuery.maybeOf(context);
+    if (!widget.autoAdjustToScreen || mediaQuery == null) {
+      return _maximumStackHeight;
+    }
+
+    final flutterView = View.of(context);
+    final mqPadding = EdgeInsets.fromViewPadding(
+      flutterView.padding,
+      flutterView.devicePixelRatio,
+    );
+
+    // Clamp to screen height minus safe areas and the usual safety buffer.
+    final safetyBuffer = widget.keepTriggerAnchorOnOverflow ? 0.0 : 20.0;
+    var maxHeight = mediaQuery.size.height -
+        mqPadding.vertical -
+        widget.menuPadding.vertical -
+        safetyBuffer;
+    // From the vertical bar strip, to the room below its status cluster.
+    final stripTop = _triggerSize == null
+        ? null
+        : verticalBarPresentationTop(
+            context,
+            _triggerGlobalPosition & _triggerSize!,
+          );
+    if (stripTop != null) {
+      maxHeight = math.min(
+        maxHeight,
+        mediaQuery.size.height -
+            stripTop -
+            mqPadding.bottom -
+            widget.menuPadding.bottom,
+      );
+    }
+    if (widget.keepTriggerAnchorOnOverflow && _triggerSize != null) {
+      final safeBounds = _verticalMenuSafeBounds(
+        _triggerGlobalPosition,
+        _triggerSize!,
+      );
+      final availableFromAnchor = _morphAlignment.y > 0
+          ? _triggerGlobalPosition.dy + _triggerSize!.height - safeBounds.top
+          : mediaQuery.size.height -
+              safeBounds.bottom -
+              _triggerGlobalPosition.dy;
+      maxHeight = math.min(maxHeight, availableFromAnchor);
+    }
+    return math.max(0.0, maxHeight);
+  }
+
   double _targetBodyHeight() {
     final naturalHeight = _naturalMenuHeight();
     if (widget.menuHeight != null &&
@@ -2249,57 +2301,23 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             _triggerSize == null)) {
       return naturalHeight;
     }
+    return math.min(naturalHeight, _maximumBodyHeightFromAnchor());
+  }
 
-    final mediaQuery = MediaQuery.maybeOf(context);
-
-    if (widget.autoAdjustToScreen) {
-      if (mediaQuery != null) {
-        final flutterView = View.of(context);
-        final mqPadding = EdgeInsets.fromViewPadding(
-            flutterView.padding, flutterView.devicePixelRatio);
-
-        // Clamp to screen height minus safe areas and a 20px safety buffer
-        final safetyBuffer =
-            widget.keepTriggerAnchorOnOverflow ? 0.0 : 20.0;
-        var maxHeight = mediaQuery.size.height -
-            mqPadding.vertical -
-            widget.menuPadding.vertical -
-            safetyBuffer;
-        // From the vertical bar strip, to the room below its status cluster.
-        final stripTop = _triggerSize == null
-            ? null
-            : verticalBarPresentationTop(
-                context,
-                _triggerGlobalPosition & _triggerSize!,
-              );
-        if (stripTop != null) {
-          maxHeight = math.min(
-            maxHeight,
-            mediaQuery.size.height -
-                stripTop -
-                mqPadding.bottom -
-                widget.menuPadding.bottom,
-          );
-        }
-        if (widget.keepTriggerAnchorOnOverflow && _triggerSize != null) {
-          final safeBounds = _verticalMenuSafeBounds(
-            _triggerGlobalPosition,
-            _triggerSize!,
-          );
-          final availableFromAnchor = _morphAlignment.y > 0
-              ? _triggerGlobalPosition.dy +
-                    _triggerSize!.height -
-                    safeBounds.top
-              : mediaQuery.size.height -
-                    safeBounds.bottom -
-                    _triggerGlobalPosition.dy;
-          maxHeight = math.min(maxHeight, availableFromAnchor);
-        }
-        return math.min(naturalHeight, math.max(0.0, maxHeight));
-      }
+  double _triggerReturnOvershootScale(double menuHeight, double triggerHeight) {
+    if (!widget.normalizeTriggerReturnOvershoot ||
+        _morphController.disableAnimations) {
+      return 1.0;
     }
-
-    return naturalHeight;
+    final actualTravel = (menuHeight - triggerHeight).abs();
+    if (actualTravel < 1.0) return 1.0;
+    final referenceHeight = math.max(
+      menuHeight,
+      _maximumBodyHeightFromAnchor(),
+    );
+    final referenceTravel = (referenceHeight - triggerHeight).abs();
+    if (referenceTravel <= actualTravel) return 1.0;
+    return referenceTravel / actualTravel;
   }
 
   Widget _buildMorphingContainer(LiquidMorphState state, double clampedValue,

@@ -4,8 +4,8 @@ description: Keep pinned menu optics tied to the popover curve, not the shared r
 ---
 
 ## Rule
-In Smart Scheduler, expanded `GlassBarItem.menu` surfaces follow the Liquid Glass setting's GlassPopover slider curve. “Curve” refers to the slider-driven glass optics, not the menu's corner radius. Keep the menu radius at its existing 32px default unless the user separately asks to change it.
+In Smart Scheduler, `GlassPopover`, `GlassBarItem.menu`, and modal picker `GlassMenu` surfaces share the popover opacity curve, and menus use standard quality. The existing opacity curve occupies slider positions 50–100%; positions 0–50% ramp linearly from transparent to the former 0% opacity. Keep the popover blur curve on its existing full slider range, and do not alter the shared-renderer or active-tab curves.
 
-**Why:** The user corrected an earlier radius change: they meant the popover's slider-dependent optics, and specifically asked to restore the previous radius.
+**Why:** The user wants a much lighter opacity floor while preserving the established upper-range opacity response and all blur behavior; premium rendering is reserved for persistent navigation surfaces, not these menus.
 
-**How to apply:** Pass the popover-specific settings to the expanded menu surface independently of the toolbar capsule's shared renderer settings. When adjusting the Liquid Glass slider, preserve the separate popover opacity/blur anchors and leave menu geometry alone.
+**How to apply:** Keep `skeddoPopoverOpacityForPosition` as the sole remapping point for all popover-curve consumers. Preserve `skeddoPopoverBlurForPosition`, `skeddoSharedGlassOpacityForPosition`, and `skeddoActiveTabIndicatorBlurForPosition`; leave menu geometry and radius alone.

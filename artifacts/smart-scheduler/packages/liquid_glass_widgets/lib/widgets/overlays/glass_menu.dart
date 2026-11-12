@@ -2,7 +2,6 @@ import 'dart:async' show Timer, scheduleMicrotask;
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../../src/utils/glass_localizations.dart';
@@ -311,6 +310,14 @@ class GlassMenu extends StatefulWidget {
   /// compression. Values from `0.0` to `2.0` are supported.
   final double triggerImpactStrength;
 
+  /// Normalizes the trigger's return overshoot to the largest menu height
+  /// available from its anchor, so small and large menus give the trigger the
+  /// same closing spring travel. The platter itself still morphs from its
+  /// actual content size.
+  ///
+  /// Defaults to `false`, preserving size-proportional return travel.
+  final bool normalizeTriggerReturnOvershoot;
+
   /// Whether to enable iOS-style continuous swipe-to-select.
   ///
   /// When true, pressing down on the trigger opens the menu immediately and
@@ -391,6 +398,7 @@ class GlassMenu extends StatefulWidget {
     this.platformViewBackdrop = false,
     this.morphSpeed = MorphSpeed.normal,
     this.triggerImpactStrength = 1.0,
+    this.normalizeTriggerReturnOvershoot = false,
     this.enableContinuousSwipe = false,
     this.continuousSwipeSlop = 10.0,
     this.semanticLabel,

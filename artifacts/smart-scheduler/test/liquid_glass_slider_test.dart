@@ -87,7 +87,7 @@ void main() {
   });
 
   test(
-    '50% reproduces the former 57% effect values and endpoints stay fixed',
+    'popover opacity shifts to 50% while its blur curve remains unchanged',
     () {
       expect(skeddoLiquidGlassEffectPositionForSliderPosition(0), 0);
       expect(skeddoLiquidGlassEffectPositionForSliderPosition(0.5), 0.57);
@@ -105,7 +105,9 @@ void main() {
         skeddoSharedGlassOpacityForPosition(0.5, Brightness.dark),
         closeTo(0.628, 0.000001),
       );
-      expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.907, 0.000001));
+      expect(skeddoPopoverOpacityForPosition(0), 0);
+      expect(skeddoPopoverOpacityForPosition(0.25), closeTo(0.425, 0.000001));
+      expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.85, 0.000001));
       expect(skeddoPopoverBlurForPosition(0.5), closeTo(5.7, 0.000001));
     },
   );
@@ -147,7 +149,7 @@ void main() {
 
     const tint = Color(0xFF123456);
     const positions = <double>[0, 0.25, 0.5, 0.75, 1];
-    const expectedOpacities = <double>[0.85, 0.8785, 0.907, 0.9285, 0.95];
+    const expectedOpacities = <double>[0, 0.425, 0.85, 0.907, 0.95];
     const expectedBlurs = <double>[1, 2.85, 5.7, 7.85, 10];
 
     for (var index = 0; index < positions.length; index++) {
@@ -181,7 +183,7 @@ void main() {
       );
     }
 
-    expect(skeddoPopoverOpacityForPosition(0.125), closeTo(0.86425, 0.000001));
+    expect(skeddoPopoverOpacityForPosition(0.125), closeTo(0.2125, 0.000001));
     expect(skeddoPopoverBlurForPosition(0.125), closeTo(1.855, 0.000001));
   });
 

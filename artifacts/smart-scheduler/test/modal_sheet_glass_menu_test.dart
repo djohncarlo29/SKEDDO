@@ -57,7 +57,8 @@ void main() {
     final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
     expect(menu.morphFromZero, isTrue);
     expect(menu.triggerImpactStrength, 1.15);
-    expect(menu.quality, GlassQuality.premium);
+    expect(menu.normalizeTriggerReturnOvershoot, isTrue);
+      expect(menu.quality, GlassQuality.standard);
     expect(menu.keepTriggerAnchorOnOverflow, isTrue);
     expect(menu.showItemInteractionHighlight, isFalse);
     expect(menu.menuContentHorizontalInset, 12);
@@ -168,4 +169,163 @@ void main() {
       expect(callbackSawOverlayOpen, isFalse);
     },
   );
+
+  testWidgets(
+    'single-select picker closes without recoloring its selected option',
+    (tester) async {
+      var selected = false;
+      GlassMenuController? controller;
+      const idleColor = Color(0xff222222);
+      const selectedColor = Color(0xff087df0);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: StatefulBuilder(
+              builder: (context, setState) => ModalSheetGlassMenu(
+                trigger: Text(selected ? 'Selected value' : 'Current value'),
+                actions: [
+                  ActionItem(
+                    label: 'Choice',
+                    icon: CupertinoIcons.circle,
+                    checkmark: selected,
+                    labelColor: selected ? selectedColor : idleColor,
+                    onTap: () => setState(() => selected = true),
+                  ),
+                ],
+                semanticLabel: 'Example picker',
+                onOpened: (value) => controller = value,
+                builder: (context, menuTrigger, openMenu) => menuTrigger,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Current value'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Choice'));
+      await tester.pump();
+
+      expect(controller!.isOpen, isTrue);
+      expect(selected, isTrue);
+      final closingOption = tester
+          .widgetList<GlassMenuItem>(find.byType(GlassMenuItem))
+          .singleWhere((item) => item.title == 'Choice');
+      expect(closingOption.titleStyle!.color, idleColor);
+
+      await tester.pumpAndSettle();
+      expect(controller!.isOpen, isFalse);
+      expect(find.text('Selected value'), findsOneWidget);
+    },
+  );
+
+  testWidgets('multi-select Include option stays open and updates live', (
+    tester,
+  ) async {
+    var selected = false;
+    GlassMenuController? controller;
+    const idleColor = Color(0xff222222);
+    const selectedColor = Color(0xff087df0);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: StatefulBuilder(
+            builder: (context, setState) => ModalSheetGlassMenu(
+              trigger: Text(selected ? 'One selected' : 'None selected'),
+              actions: [
+                ActionItem(
+                  label: 'Category',
+                  icon: CupertinoIcons.circle,
+                  checkmark: selected,
+                  labelColor: selected ? selectedColor : idleColor,
+                  closeMenuOnTap: false,
+                  onTap: () => setState(() => selected = !selected),
+                ),
+              ],
+              semanticLabel: 'Include',
+              onOpened: (value) => controller = value,
+              builder: (context, menuTrigger, openMenu) => menuTrigger,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('None selected'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Category'));
+    await tester.pumpAndSettle();
+
+    expect(controller!.isOpen, isTrue);
+    expect(selected, isTrue);
+    final updatedOption = tester
+        .widgetList<GlassMenuItem>(find.byType(GlassMenuItem))
+        .singleWhere((item) => item.title == 'Category');
+    expect(updatedOption.titleStyle!.color, selectedColor);
+
+    controller!.close();
+    await tester.pumpAndSettle();
+    expect(controller!.isOpen, isFalse);
+  });
+
+  testWidgets('picker trigger return spring is independent of option count', (
+    tester,
+  ) async {
+    Future<double> peakTriggerTravel(int optionCount) async {
+      GlassMenuController? controller;
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Padding(
+            padding: const EdgeInsets.only(top: 220),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ModalSheetGlassMenu(
+                trigger: const Text('Spring trigger'),
+                actions: [
+                  for (var index = 0; index < optionCount; index++)
+                    ActionItem(
+                      label: 'Choice $index',
+                      icon: CupertinoIcons.circle,
+                      onTap: () {},
+                    ),
+                ],
+                semanticLabel: 'Spring test',
+                onOpened: (value) => controller = value,
+                builder: (context, menuTrigger, openMenu) => menuTrigger,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Spring trigger'));
+      await tester.pumpAndSettle();
+      controller!.close();
+
+      var peak = 0.0;
+      final triggerTransforms = find.ancestor(
+        of: find.text('Spring trigger'),
+        matching: find.byType(Transform),
+      );
+      for (var frame = 0; frame < 100 && controller!.isOpen; frame++) {
+        await tester.pump(const Duration(milliseconds: 8));
+        for (final transform in tester.widgetList<Transform>(
+          triggerTransforms,
+        )) {
+          final distance = transform.transform.getTranslation().y.abs();
+          if (distance > peak) peak = distance;
+        }
+      }
+      await tester.pumpAndSettle();
+      return peak;
+    }
+
+    final shortMenuTravel = await peakTriggerTravel(1);
+    final longMenuTravel = await peakTriggerTravel(8);
+
+    expect(shortMenuTravel, greaterThan(0));
+    expect(longMenuTravel, greaterThan(0));
+    expect(shortMenuTravel, closeTo(longMenuTravel, 1.0));
+  });
 }

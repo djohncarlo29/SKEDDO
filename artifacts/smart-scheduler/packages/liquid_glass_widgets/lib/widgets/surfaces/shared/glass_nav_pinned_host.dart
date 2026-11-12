@@ -2744,10 +2744,9 @@ class _PinnedGroupState extends State<_PinnedGroup> {
               menuWidth: menuItem?.menuWidth ?? 200,
               menuHeight: menuItem?.menuHeight,
               settings: menuItem?.menuSettings,
-              // Match GlassPopover's premium morph profile. The adaptive
-              // scope still caps this to the best quality supported by the
-              // current device.
-              quality: GlassQuality.premium,
+              // Keep menu platters at standard quality; premium is reserved
+              // for persistent navigation surfaces.
+              quality: GlassQuality.standard,
               // Match GlassPopover's softer surface stretch. The resistance
               // coefficient is shared; the smaller stretch amount keeps the
               // toolbar menu from feeling more elastic than the popover.

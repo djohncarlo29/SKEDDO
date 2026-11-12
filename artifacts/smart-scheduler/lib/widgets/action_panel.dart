@@ -892,13 +892,22 @@ class ModalSheetGlassMenu extends StatefulWidget {
 class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
   final GlassMenuController _controller = GlassMenuController();
   int _closeCompletionGeneration = 0;
+  List<ActionItem>? _actionsDuringClose;
 
   void _prepareToOpen() {
     // A close can be reversed by reopening the menu before its spring settles.
     // In that case, don't deliver a stale "closed" notification.
     _closeCompletionGeneration++;
+    if (_actionsDuringClose != null) {
+      setState(() => _actionsDuringClose = null);
+    }
     widget.onBeforeOpen?.call();
     widget.onOpened?.call(_controller);
+  }
+
+  void _holdActionAppearanceDuringClose() {
+    if (!mounted || _actionsDuringClose != null) return;
+    setState(() => _actionsDuringClose = List<ActionItem>.of(widget.actions));
   }
 
   void _notifyClosedAfterMorph() {
@@ -907,6 +916,9 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
     void checkSettled() {
       if (!mounted || generation != _closeCompletionGeneration) return;
       if (!_controller.isOpen) {
+        if (_actionsDuringClose != null) {
+          setState(() => _actionsDuringClose = null);
+        }
         widget.onClosed?.call(_controller);
         return;
       }
@@ -931,7 +943,12 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _glassMenuItemsForActions(context, widget.actions);
+    final actions = _actionsDuringClose ?? widget.actions;
+    final items = _glassMenuItemsForActions(
+      context,
+      actions,
+      onClosingSelection: _holdActionAppearanceDuringClose,
+    );
     return ValueListenableBuilder<double>(
       valueListenable: appLiquidGlassOpacityNotifier,
       builder: (context, opacity, _) {
@@ -962,9 +979,12 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
               sliderPosition: sliderPosition,
             ),
           ),
-          // Match GlassBarItem.menu's premium rim renderer; the slider-derived
-          // dark settings already use SKEDDO's half-strength edge lighting.
-          quality: GlassQuality.premium,
+          // Picker menus use standard quality; premium remains for persistent
+          // navigation glass. Dark settings retain half-strength edge lighting.
+          quality: GlassQuality.standard,
+          // Normalize the trigger's return travel to the available menu height,
+          // so the trailing value's spring does not depend on option count.
+          normalizeTriggerReturnOvershoot: true,
           // Picker values remain plain text during the handoff; the glass
           // platter blooms from the same anchor without wrapping the trigger.
           morphFromZero: true,
@@ -983,8 +1003,9 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
 
 List<Widget> _glassMenuItemsForActions(
   BuildContext context,
-  List<ActionItem> actions,
-) {
+  List<ActionItem> actions, {
+  VoidCallback? onClosingSelection,
+}) {
   final items = <Widget>[];
   for (final action in actions) {
     if (action.groupBreakAbove && items.isNotEmpty) {
@@ -1050,7 +1071,10 @@ List<Widget> _glassMenuItemsForActions(
         height: action.subtitle == null
             ? ActionItem.rowHeight
             : ActionItem.rowHeightWithSubtitle,
-        onTap: action.onTap ?? () {},
+        onTap: () {
+          if (action.closeMenuOnTap) onClosingSelection?.call();
+          action.onTap?.call();
+        },
       ),
     );
   }
