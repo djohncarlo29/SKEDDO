@@ -204,6 +204,16 @@ class _TilePressScale extends StatelessWidget {
   }
 }
 
+Rect? _contextMenuTileRect(BuildContext context) {
+  final renderObject = context.findRenderObject();
+  if (renderObject is! RenderBox ||
+      !renderObject.attached ||
+      !renderObject.hasSize) {
+    return null;
+  }
+  return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+}
+
 class _CategoryContextMenu extends StatefulWidget {
   final Widget child;
   final WidgetBuilder previewBuilder;
@@ -262,7 +272,7 @@ class _CategoryContextMenu extends StatefulWidget {
 }
 
 class _CategoryContextMenuState extends State<_CategoryContextMenu>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // upperBound > 1 so the spring simulation can overshoot without being clamped.
   // During dismiss the controller is animated to 1.06 (bloom phase) then to 0
   // (collapse phase), so values slightly above 1.0 are intentional.
@@ -274,6 +284,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   // Signals the overlay which scrim fade curve to use on open and close.
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
+  final ValueNotifier<Rect> _anchorRect = ValueNotifier(Rect.zero);
+  bool _anchorRefreshScheduled = false;
 
   OverlayEntry? _entry;
   OverlayEntry? _closingEntry;
@@ -319,7 +331,39 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeMetrics() => _scheduleAnchorRefresh();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scheduleAnchorRefresh();
+  }
+
+  void _scheduleAnchorRefresh() {
+    if ((_entry == null && _closingEntry == null) ||
+        _anchorRefreshScheduled) {
+      return;
+    }
+    _anchorRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _anchorRefreshScheduled = false;
+      if (!mounted || (_entry == null && _closingEntry == null)) return;
+      final rect = _contextMenuTileRect(context);
+      if (rect != null && rect != _anchorRect.value) {
+        _anchorRect.value = rect;
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _entry?.remove();
     _entry = null;
     // Capture before nulling — used below to detect mid-animation disposal.
@@ -343,6 +387,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     _menuShowTimer?.cancel();
     _menuShowTimer = null;
     _isClosing.dispose();
+    _anchorRect.dispose();
     _overlayCtrl.dispose();
     _pressCtrl.dispose();
     _liftCtrl.dispose();
@@ -351,6 +396,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   void _show() {
     if (_entry != null) return;
+    final sourceRect = _contextMenuTileRect(context);
+    if (sourceRect == null) return;
     // Global exclusivity lock — prevents two simultaneous long-presses
     // (multi-touch) from each opening their own overlay at the same time.
     // Dart is single-threaded so this read-then-write is atomic; the first
@@ -359,25 +406,26 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     sbContextMenuActive.value = true;
     sbContextMenuDismiss.value = _hide; // register OS-back dismiss hook
 
-    final box = context.findRenderObject() as RenderBox;
-    final offset = box.localToGlobal(Offset.zero);
-    final size = box.size;
+    _anchorRect.value = sourceRect;
 
     _isClosing.value = false;
     _overlayCtrl.value = 0;
 
     _entry = OverlayEntry(
       builder:
-          (ctx) => _ContextMenuOverlay(
-            animation: _overlayCtrl,
-            isClosing: _isClosing,
-            originalOffset: offset,
-            originalSize: size,
-            previewBuilder: widget.previewBuilder,
-            isSmartCategory: widget.isSmartCategory,
-            isPinned: widget.isPinned,
-            isUtilityCategory: widget.isUtilityCategory,
-            onDismiss: _hide,
+          (ctx) => ValueListenableBuilder<Rect>(
+            valueListenable: _anchorRect,
+            builder:
+                (ctx, rect, _) => _ContextMenuOverlay(
+                  animation: _overlayCtrl,
+                  isClosing: _isClosing,
+                  originalOffset: rect.topLeft,
+                  originalSize: rect.size,
+                  previewBuilder: widget.previewBuilder,
+                  isSmartCategory: widget.isSmartCategory,
+                  isPinned: widget.isPinned,
+                  isUtilityCategory: widget.isUtilityCategory,
+                  onDismiss: _hide,
             // The closing overlay (~420ms) paints an opaque floating copy of the
             // row directly on top of the real one while it animates back down —
             // so firing the action synchronously (as before) let the real row's
@@ -385,31 +433,36 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
             // overlay, invisible to the user. Deferring the callback to `then`
             // (invoked from cleanup() once the overlay is actually gone) makes
             // every action's animation play out fully visible.
-            isGroup: widget.isGroup,
-            onPin:
-                widget.onPin != null ? () => _hide(then: widget.onPin) : null,
-            onUnpin:
-                widget.onUnpin != null
-                    ? () => _hide(then: widget.onUnpin)
-                    : null,
-            onEdit:
-                widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
-            onArchive:
-                widget.onArchive != null
-                    ? () => _hide(then: widget.onArchive)
-                    : null,
-            onDelete:
-                widget.onDelete != null
-                    ? () => _hide(then: widget.onDelete)
-                    : null,
-            onEditGroup:
-                widget.onEditGroup != null
-                    ? () => _hide(then: widget.onEditGroup)
-                    : null,
-            onDeleteGroup:
-                widget.onDeleteGroup != null
-                    ? () => _hide(then: widget.onDeleteGroup)
-                    : null,
+                  isGroup: widget.isGroup,
+                  onPin:
+                      widget.onPin != null
+                          ? () => _hide(then: widget.onPin)
+                          : null,
+                  onUnpin:
+                      widget.onUnpin != null
+                          ? () => _hide(then: widget.onUnpin)
+                          : null,
+                  onEdit:
+                      widget.onEdit != null
+                          ? () => _hide(then: widget.onEdit)
+                          : null,
+                  onArchive:
+                      widget.onArchive != null
+                          ? () => _hide(then: widget.onArchive)
+                          : null,
+                  onDelete:
+                      widget.onDelete != null
+                          ? () => _hide(then: widget.onDelete)
+                          : null,
+                  onEditGroup:
+                      widget.onEditGroup != null
+                          ? () => _hide(then: widget.onEditGroup)
+                          : null,
+                  onDeleteGroup:
+                      widget.onDeleteGroup != null
+                          ? () => _hide(then: widget.onDeleteGroup)
+                          : null,
+                ),
           ),
     );
     Overlay.of(context).insert(_entry!);
@@ -22183,13 +22236,15 @@ class _EventContextMenu extends StatefulWidget {
 }
 
 class _EventContextMenuState extends State<_EventContextMenu>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _overlayCtrl = AnimationController(
     vsync: this,
     lowerBound: 0,
     upperBound: 1.5,
   );
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
+  final ValueNotifier<Rect> _anchorRect = ValueNotifier(Rect.zero);
+  bool _anchorRefreshScheduled = false;
   OverlayEntry? _entry;
   OverlayEntry? _closingEntry;
 
@@ -22213,7 +22268,39 @@ class _EventContextMenuState extends State<_EventContextMenu>
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeMetrics() => _scheduleAnchorRefresh();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scheduleAnchorRefresh();
+  }
+
+  void _scheduleAnchorRefresh() {
+    if ((_entry == null && _closingEntry == null) ||
+        _anchorRefreshScheduled) {
+      return;
+    }
+    _anchorRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _anchorRefreshScheduled = false;
+      if (!mounted || (_entry == null && _closingEntry == null)) return;
+      final rect = _contextMenuTileRect(context);
+      if (rect != null && rect != _anchorRect.value) {
+        _anchorRect.value = rect;
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _entry?.remove();
     _entry = null;
     final wasMidClose = _closingEntry != null;
@@ -22228,6 +22315,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
     _menuShowTimer?.cancel();
     _menuShowTimer = null;
     _isClosing.dispose();
+    _anchorRect.dispose();
     _overlayCtrl.dispose();
     _pressCtrl.dispose();
     _liftCtrl.dispose();
@@ -22236,36 +22324,42 @@ class _EventContextMenuState extends State<_EventContextMenu>
 
   void _show() {
     if (_entry != null) return;
+    final sourceRect = _contextMenuTileRect(context);
+    if (sourceRect == null) return;
     if (sbContextMenuActive.value) return;
     sbContextMenuActive.value = true;
     sbContextMenuDismiss.value = _hide;
-    final box = context.findRenderObject() as RenderBox;
-    final offset = box.localToGlobal(Offset.zero);
-    final size = box.size;
+    _anchorRect.value = sourceRect;
     _isClosing.value = false;
     _overlayCtrl.value = 0;
     _entry = OverlayEntry(
       builder:
-          (ctx) => _ContextMenuOverlay(
-            animation: _overlayCtrl,
-            isClosing: _isClosing,
-            originalOffset: offset,
-            originalSize: size,
-            previewBuilder: widget.previewBuilder,
-            isSmartCategory: false,
-            isPinned: false,
-            isEvent: true,
-            onDismiss: _hide,
-            onEdit:
-                widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
-            onArchive:
-                widget.onArchive != null
-                    ? () => _hide(then: widget.onArchive)
-                    : null,
-            onDelete:
-                widget.onDelete != null
-                    ? () => _hide(then: widget.onDelete)
-                    : null,
+          (ctx) => ValueListenableBuilder<Rect>(
+            valueListenable: _anchorRect,
+            builder:
+                (ctx, rect, _) => _ContextMenuOverlay(
+                  animation: _overlayCtrl,
+                  isClosing: _isClosing,
+                  originalOffset: rect.topLeft,
+                  originalSize: rect.size,
+                  previewBuilder: widget.previewBuilder,
+                  isSmartCategory: false,
+                  isPinned: false,
+                  isEvent: true,
+                  onDismiss: _hide,
+                  onEdit:
+                      widget.onEdit != null
+                          ? () => _hide(then: widget.onEdit)
+                          : null,
+                  onArchive:
+                      widget.onArchive != null
+                          ? () => _hide(then: widget.onArchive)
+                          : null,
+                  onDelete:
+                      widget.onDelete != null
+                          ? () => _hide(then: widget.onDelete)
+                          : null,
+                ),
           ),
     );
     Overlay.of(context).insert(_entry!);

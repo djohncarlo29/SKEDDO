@@ -1774,6 +1774,9 @@ class _ActionPanelState extends State<ActionPanel>
           }) => NotificationListener<ScrollNotification>(
             onNotification: _onScrollNotification,
             child: Stack(
+              clipBehavior: widget.useGlassMenuStyle
+                  ? Clip.none
+                  : Clip.hardEdge,
               children: [
                 // ── Faded scroll content ────────────────────────────────
                 ShaderMask(
@@ -1786,9 +1789,12 @@ class _ActionPanelState extends State<ActionPanel>
                 // • The track belongs only to the moving options area when
                 //   a pinned header is present.
                 Positioned(
-                  right: 3,
-                  top: 10,
-                  bottom: 10,
+                  // The glass platter adds 12 pt of padding around the panel
+                  // content. Extend into that inset so the indicator lands
+                  // 3 pt from the platter edge, like GlassMenu.
+                  right: widget.useGlassMenuStyle ? -9 : 3,
+                  top: widget.useGlassMenuStyle ? 20 : 10,
+                  bottom: widget.useGlassMenuStyle ? 20 : 10,
                   width: 2.5,
                   child: AnimatedSlide(
                     offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
@@ -2272,7 +2278,7 @@ class _ActionRowState extends State<_ActionRow> {
           : ActionItem.rowHeightWithSubtitle,
       allowTextWrapping: true,
       enablePressScale: true,
-      showInteractionHighlight: true,
+      showInteractionHighlight: false,
       titleStyle: TextStyle(
         color: labelColor,
         fontSize: 17,

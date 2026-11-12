@@ -28,3 +28,9 @@ Use the package's public `GlassInteractiveContainer` for the custom context plat
 **Why:** Rebuilding those effects in the app can drift from package menu behavior, while swapping to a trigger-morphing `GlassMenu` changes the established context-menu presentation. The category and event tiles already share one overlay path.
 
 **How to apply:** Route both category and event actions through the shared overlay and glass-styled `ActionPanel`. Keep its press feedback, overflow-only bounce/edge fade/scroll indicator, disabled selected state, and surface opacity animation together; do not add a backdrop filter to a dim-only scrim.
+
+For a platter with 12 pt of material inset, place its scroll indicator 3 pt from the outer glass edge (offset the content-relative indicator by -9 pt horizontally and use 20 pt vertical content insets for the 32 pt corner radius). Keep both `isSelected` and `showInteractionHighlight` false on action rows when no selection pill/highlight should appear; press scaling can remain enabled.
+
+**Why:** `isSelected: false` alone does not disable a row's touch/hover highlight, and the context platter's inset child otherwise leaves the scrollbar visibly farther from the edge than the package menus.
+
+**How to apply:** On orientation metrics changes, remeasure the trigger `RenderBox` after the next layout and update a `ValueListenable<Rect>` consumed by both the lifted preview and menu placement. Do this while opening or closing so the whole overlay stays attached to the same tile.

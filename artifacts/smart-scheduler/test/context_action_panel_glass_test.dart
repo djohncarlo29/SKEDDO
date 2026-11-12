@@ -80,7 +80,7 @@ void main() {
         expect(rows.first.titleStyle!.fontSize, 17);
         expect(rows.first.allowTextWrapping, isTrue);
         expect(rows.first.enablePressScale, isTrue);
-        expect(rows.first.showInteractionHighlight, isTrue);
+        expect(rows.first.showInteractionHighlight, isFalse);
         expect(rows.first.isSelected, isFalse);
         expect(rows.last.isDestructive, isTrue);
         final titleContext = tester.element(find.text('Edit Event Info'));
@@ -146,6 +146,17 @@ void main() {
       ),
       findsOneWidget,
     );
+    final menuScrollPill = tester.widget<Positioned>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Positioned &&
+            widget.width == 2.5 &&
+            widget.right == -9 &&
+            widget.top == 20 &&
+            widget.bottom == 20,
+      ),
+    );
+    expect(menuScrollPill.right, -9);
 
     await tester.drag(
       find.byType(SingleChildScrollView).first,
