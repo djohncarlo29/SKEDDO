@@ -473,7 +473,10 @@ class LiquidGlassSettings {
   ///
   /// The Premium shader always computes a physics-based Fresnel rim from the
   /// 3D surface normals of the glass bevel. This is the "lit physical glass"
-  /// appearance. [fresnelStrength] multiplies the coefficient of that term:
+  /// appearance. [fresnelStrength] multiplies the coefficient of that term.
+  /// On the lightweight shader's dark-appearance path it also scales the
+  /// structural perimeter opacity, which is otherwise retained in dark mode
+  /// for edge definition:
   ///
   /// - `1.0` (default) — full Fresnel, matching iOS 26 glass buttons and panels
   ///   that simulate real optical glass.

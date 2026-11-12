@@ -6,7 +6,8 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMenu,
         GlassMenuController,
         GlassMenuItem,
-        GlassQuality;
+        GlassQuality,
+        LightweightLiquidGlass;
 
 import 'package:smart_scheduler/app_settings.dart'
     show
@@ -172,6 +173,15 @@ void main() {
       find.byType(GlassContainer).last,
     );
     expect(menuBody.settings!.visibility, lessThan(1));
+    expect(menuBody.settings!.lightIntensity, 0.175);
+    expect(menuBody.settings!.fresnelStrength, 0.5);
+    final renderer = tester
+        .widgetList<LightweightLiquidGlass>(
+          find.byType(LightweightLiquidGlass),
+        )
+        .last;
+    expect(renderer.settings!.lightIntensity, 0.175);
+    expect(renderer.settings!.fresnelStrength, 0.5);
     final triggerOpacity = tester
         .widgetList<Opacity>(
           find.ancestor(

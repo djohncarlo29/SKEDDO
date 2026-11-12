@@ -3554,10 +3554,9 @@ class _SettingsCheckmarkSlot extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerRight,
         child: selected
-            ? FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: checkmarkSize,
-                fontWeight: FontWeight.w500,
+            ? Icon(
+                CupertinoIcons.checkmark,
+                size: checkmarkSize,
                 color: accentColor,
               )
             : SizedBox(width: checkmarkSize, height: checkmarkSize),

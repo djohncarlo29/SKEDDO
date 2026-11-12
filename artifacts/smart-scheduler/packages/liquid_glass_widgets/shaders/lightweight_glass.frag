@@ -32,7 +32,9 @@ uniform vec4 uData7; // 28..31 (bgOrigin.x, bgOrigin.y, bgSize.width, bgSize.hei
 // 32: uEdgeAbsorption — Beer-Lambert meniscus rim darkening [0..1]. Applied after
 // all lighting so it dims the total rim output, matching iOS 26's darker perimeter.
 uniform float uEdgeAbsorption;
-// 33: uFresnelStrength — scales the grazing-angle Fresnel rim brightening [0..∞].
+// 33: uFresnelStrength — scales grazing-angle Fresnel brightening [0..∞].
+// In dark appearance it also scales the otherwise fixed structural rim opacity,
+// allowing callers to reduce the bright perimeter without changing fill/blur.
 // Default 1.0 = calibrated iOS 26 baseline. 0.0 = no rim highlight.
 uniform float uFresnelStrength;
 // 34: uBodyMode — 0.0 = adaptive (default, iOS 26 Glass.regular), 1.0 = clear (iOS 26 Glass.clear).
@@ -347,11 +349,16 @@ void main() {
   // defined by subtle refraction and shadow, not by an opaque border.
   //
   // smoothstep(0.3, 0.5, luma) creates a sharp binary-like transition:
-  //   dark  (luma=0.15) → smoothstep=0.0 → rimFade=1.0  (FULL rim, untouched)
+  //   dark  (luma=0.15) → smoothstep=0.0 → rimFade=1.0  (retain structural rim)
   //   light (luma=0.85) → smoothstep=1.0 → rimFade=0.08 (near-invisible rim)
-  // Dark mode is completely unaffected.
+  float darkAppearance = 1.0 - smoothstep(0.3, 0.5, uBackdropLuma);
   float rimFade = 1.0 - smoothstep(0.3, 0.5, uBackdropLuma) * 0.92;
   float rimAlphaBase = kRimAlphaBase * rimFade + 0.15 * directionalInfluence * uLightIntensity;
+  // The dark-mode structural rim intentionally stays visible, but must still
+  // honor the caller's edge-strength reduction. Previously this base opacity
+  // bypassed every settings value, leaving the menu rim at full strength even
+  // when lightIntensity, glowIntensity, and fresnelStrength were reduced.
+  rimAlphaBase *= mix(1.0, uFresnelStrength, darkAppearance);
   rimAlphaBase *= uRefractiveIndex;
   rimAlphaBase += totalSpecular * kRimAlphaSpecular * rimFade;
   rimAlphaBase *= (1.0 + thicknessOffset * kThicknessRimBoost) * (1.0 + densityFactor * 0.1);

@@ -19,3 +19,15 @@ and use the resolved value for custom painting. Resolve `TextStyle.color` before
 passing styles to platform-backed inputs, picker text, SF Symbols, or other
 widgets that may not resolve CupertinoDynamicColor themselves. Keep intentional
 white-on-accent icons/text and image/export colors unchanged.
+
+For `liquid_glass_widgets`' lightweight shader, Dark Mode's structural rim has
+a fixed base opacity independent of `lightIntensity`, `glowIntensity`, and
+Fresnel. Halve it through `fresnelStrength` on the dark shader path as well as
+reducing the other bright-edge inputs.
+
+**Why:** Dark menus kept their full white perimeter even after the settings
+values were halved because the shader intentionally preserved its base rim.
+
+**How to apply:** When the active `GlassTheme` is dark, set `fresnelStrength`
+to the desired rim opacity multiplier; the shader applies it to the structural
+rim only on its dark-appearance path. Light Mode retains the standard rim.
