@@ -923,6 +923,9 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
       menuWidth: widget.menuWidth,
       autoAdjustToScreen: true,
       menuAlignment: GlassMenuAlignment.none,
+      // Picker values remain plain text during the handoff; the glass platter
+      // blooms from the same anchor without wrapping the trigger in a blob.
+      morphFromZero: true,
       menuPadding: const EdgeInsets.all(16),
       triggerImpactStrength: 1.15,
       onClose: () => widget.onClosed?.call(_controller),
