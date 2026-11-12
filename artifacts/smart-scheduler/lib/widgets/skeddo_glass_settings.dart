@@ -30,7 +30,10 @@ const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 
-/// Shared lens settings for the moving tab indicator and morphing menus.
+/// Lens settings for the moving tab indicator and menu foreground transitions.
+///
+/// Menu surfaces keep the stronger toolbar/tab-bar refraction and thickness;
+/// these values apply only to the content being refracted during the morph.
 const double kSkeddoSharedGlassThickness = 20;
 const double kSkeddoSharedGlassRefractiveIndex = 1.10;
 const double kSkeddoSharedGlassChromaticAberration = 0.20;
@@ -454,9 +457,6 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   return _withSharedGlassRimStrength(
     brightness,
     shared.copyWith(
-      thickness: kSkeddoSharedGlassThickness,
-      refractiveIndex: kSkeddoSharedGlassRefractiveIndex,
-      chromaticAberration: kSkeddoSharedGlassChromaticAberration,
       blur: skeddoPopoverBlurForPosition(position),
       glassColor: cardTint.withValues(
         alpha: skeddoPopoverOpacityForPosition(position),

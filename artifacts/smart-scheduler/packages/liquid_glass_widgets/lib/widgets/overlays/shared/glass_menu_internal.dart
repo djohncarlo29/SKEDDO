@@ -2450,9 +2450,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           progress: clampedValue,
           size: Size(currentWidth, currentHeight),
           cornerRadius: currentRadius,
-          thickness: effectiveSettings.effectiveThickness,
-          refractiveIndex: effectiveSettings.effectiveRefractiveIndex,
-          chromaticAberration: effectiveSettings.chromaticAberration,
+          // Keep the content-only transition lens independent of the menu
+          // surface, which retains the stronger toolbar-matched glass optics.
+          thickness: 20,
+          refractiveIndex: 1.10,
+          chromaticAberration: 0.20,
           child: _buildBodyContent(
             effectiveSettings,
             effectiveQuality,

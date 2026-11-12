@@ -815,9 +815,11 @@ class _GlassPopoverState extends State<GlassPopover>
                     progress: clampedValue,
                     size: Size(currentWidth, currentHeight),
                     cornerRadius: currentRadius,
-                    thickness: effectiveSettings.effectiveThickness,
-                    refractiveIndex: effectiveSettings.effectiveRefractiveIndex,
-                    chromaticAberration: effectiveSettings.chromaticAberration,
+                    // Keep the content-only transition lens independent of
+                    // the popover surface's stronger toolbar-matched optics.
+                    thickness: 20,
+                    refractiveIndex: 1.10,
+                    chromaticAberration: 0.20,
                     child: _buildContentWithMeasurement(
                       clampedValue,
                       targetHeight,

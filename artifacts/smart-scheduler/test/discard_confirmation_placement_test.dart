@@ -11,6 +11,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassPopover,
         GlassQuality,
         LiquidGlassLayer;
+import 'package:flutter_liquid_glass_widgets/widgets/shared/glass_popover_content_lens.dart'
+    show GlassPopoverContentLens;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
@@ -115,12 +117,18 @@ void main() {
     expect(popover.barrierDismissible, isTrue);
     expect(
       popover.settings!.refractiveIndex,
-      1.10,
+      1.59,
     );
-    expect(popover.settings!.thickness, 20);
-    expect(popover.settings!.chromaticAberration, 0.20);
+    expect(popover.settings!.thickness, 30);
+    expect(popover.settings!.chromaticAberration, 0.3);
     expect(popover.settings!.blur, skeddoPopoverBlurForPosition(0.5));
     expect(popover.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
+    final foregroundLens = tester.widget<GlassPopoverContentLens>(
+      find.byType(GlassPopoverContentLens),
+    );
+    expect(foregroundLens.thickness, 20);
+    expect(foregroundLens.refractiveIndex, 1.10);
+    expect(foregroundLens.chromaticAberration, 0.20);
     final morphLayerFinder = find.byType(LiquidGlassLayer);
     expect(morphLayerFinder, findsOneWidget);
     final morphLayer = tester.widget<LiquidGlassLayer>(morphLayerFinder);

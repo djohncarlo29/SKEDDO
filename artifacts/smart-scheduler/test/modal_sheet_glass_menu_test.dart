@@ -11,6 +11,8 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassQuality,
         AdaptiveLiquidGlassLayer,
         LiquidRoundedRectangle;
+import 'package:liquid_glass_widgets/widgets/shared/glass_menu_content_lens.dart'
+    show GlassMenuContentLens;
 
 import 'package:smart_scheduler/app_settings.dart'
     show
@@ -40,9 +42,9 @@ void main() {
       expect(dark.lightIntensity, 0.35);
       expect(dark.glowIntensity, 0.375);
       expect(dark.fresnelStrength, 1.0);
-      expect(dark.thickness, 20);
-      expect(dark.refractiveIndex, 1.10);
-      expect(dark.chromaticAberration, 0.20);
+      expect(dark.thickness, 30);
+      expect(dark.refractiveIndex, 1.59);
+      expect(dark.chromaticAberration, 0.3);
       expect(dark.ambientRim, 0);
       expect(
         dark.glassColor.a,
@@ -64,9 +66,9 @@ void main() {
     );
     expect(light.glowIntensity, 0.75);
     expect(light.fresnelStrength, 1.0);
-    expect(light.thickness, 20);
-    expect(light.refractiveIndex, 1.10);
-    expect(light.chromaticAberration, 0.20);
+    expect(light.thickness, 30);
+    expect(light.refractiveIndex, 1.59);
+    expect(light.chromaticAberration, 0.3);
   });
 
   test('modal picker menus use the toolbar surface tint in both themes', () {
@@ -183,9 +185,9 @@ void main() {
     expect(menu.settings!.lightIntensity, 0.35);
     expect(menu.settings!.glowIntensity, 0.375);
     expect(menu.settings!.fresnelStrength, 1.0);
-    expect(menu.settings!.thickness, 20);
-    expect(menu.settings!.refractiveIndex, 1.10);
-    expect(menu.settings!.chromaticAberration, 0.20);
+    expect(menu.settings!.thickness, 30);
+    expect(menu.settings!.refractiveIndex, 1.59);
+    expect(menu.settings!.chromaticAberration, 0.3);
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       1.0,
@@ -214,6 +216,12 @@ void main() {
       find.byKey(const ValueKey<String>('glass-menu-content-lens-wrapper')),
       findsOneWidget,
     );
+    final foregroundLens = tester.widget<GlassMenuContentLens>(
+      find.byType(GlassMenuContentLens),
+    );
+    expect(foregroundLens.thickness, 20);
+    expect(foregroundLens.refractiveIndex, 1.10);
+    expect(foregroundLens.chromaticAberration, 0.20);
     final menuBody = tester.widget<GlassContainer>(
       find.byType(GlassContainer).last,
     );
@@ -221,9 +229,9 @@ void main() {
     expect(menuBody.settings!.visibility, lessThan(1));
     expect(menuBody.settings!.lightIntensity, 0.35);
     expect(menuBody.settings!.fresnelStrength, 1.0);
-    expect(menuBody.settings!.thickness, 20);
-    expect(menuBody.settings!.refractiveIndex, 1.10);
-    expect(menuBody.settings!.chromaticAberration, 0.20);
+    expect(menuBody.settings!.thickness, 30);
+    expect(menuBody.settings!.refractiveIndex, 1.59);
+    expect(menuBody.settings!.chromaticAberration, 0.3);
     final capturedGlassLayers = tester
         .widgetList<AdaptiveLiquidGlassLayer>(
           find.byType(AdaptiveLiquidGlassLayer),
@@ -283,9 +291,9 @@ void main() {
           (menuBody().shape as LiquidRoundedRectangle).borderRadius;
 
       expect(menuRadius(), 32);
-      expect(menuBody().settings!.thickness, 20);
-      expect(menuBody().settings!.refractiveIndex, 1.10);
-      expect(menuBody().settings!.chromaticAberration, 0.20);
+      expect(menuBody().settings!.thickness, 30);
+      expect(menuBody().settings!.refractiveIndex, 1.59);
+      expect(menuBody().settings!.chromaticAberration, 0.3);
       controller!.close();
 
       var sawStadiumPhase = false;
@@ -294,9 +302,9 @@ void main() {
         final glassContainers = find.byType(GlassContainer);
         if (glassContainers.evaluate().isEmpty) break;
         final body = tester.widget<GlassContainer>(glassContainers.first);
-        expect(body.settings!.thickness, 20);
-        expect(body.settings!.refractiveIndex, 1.10);
-        expect(body.settings!.chromaticAberration, 0.20);
+        expect(body.settings!.thickness, 30);
+        expect(body.settings!.refractiveIndex, 1.59);
+        expect(body.settings!.chromaticAberration, 0.3);
         final shortSide = math.min(body.width!, body.height!);
         final radius = (body.shape as LiquidRoundedRectangle).borderRadius;
         if (shortSide >= 64) {
