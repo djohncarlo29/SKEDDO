@@ -25,7 +25,7 @@ const double kSkeddoLightBottomBarOpacity = 0.528;
 const double kSkeddoDarkBottomBarOpacity = 0.628;
 
 /// GlassPopover card and button opacity at the new 50% slider mark.
-const double kSkeddoPopoverGlassOpacity = 0.85;
+const double kSkeddoPopoverGlassOpacity = 0.425;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -220,10 +220,15 @@ double skeddoSharedGlassOpacityForPosition(
 
 /// Independent opacity curve used by GlassPopover and pinned GlassMenu surfaces.
 ///
-/// The existing opacity curve now occupies the upper half of the slider.
-/// The lower half ramps linearly from transparent to the existing 0% opacity.
-/// Blur keeps its existing full-range curve.
-double skeddoPopoverOpacityForPosition(double position) {
+/// The shared popover/menu curve maps its current 25% point to the new 50%
+/// point. The same position remap is used for opacity and blur.
+double _popoverCurvePositionForSliderPosition(double position) {
+  final normalized = position.clamp(0.0, 1.0).toDouble();
+  if (normalized <= 0.5) return normalized * 0.5;
+  return 0.25 + (normalized - 0.5) * 1.5;
+}
+
+double _currentPopoverOpacityForPosition(double position) {
   final normalized = position.clamp(0.0, 1.0).toDouble();
   if (normalized <= 0.5) {
     final formerMinimum = _interpolateSliderAnchors(
@@ -240,12 +245,20 @@ double skeddoPopoverOpacityForPosition(double position) {
   );
 }
 
+double skeddoPopoverOpacityForPosition(double position) {
+  return _currentPopoverOpacityForPosition(
+    _popoverCurvePositionForSliderPosition(position),
+  );
+}
+
 /// Independent blur curve used by GlassPopover and pinned GlassMenu surfaces.
-double skeddoPopoverBlurForPosition(double position) =>
-    _interpolateSliderAnchors(
-      skeddoLiquidGlassEffectPositionForSliderPosition(position),
-      _kPopoverBlurAnchors,
-    );
+double skeddoPopoverBlurForPosition(double position) {
+  final curvePosition = _popoverCurvePositionForSliderPosition(position);
+  return _interpolateSliderAnchors(
+    skeddoLiquidGlassEffectPositionForSliderPosition(curvePosition),
+    _kPopoverBlurAnchors,
+  );
+}
 
 LiquidGlassSettings _settingsForSharedGlassPosition(
   Brightness brightness,
