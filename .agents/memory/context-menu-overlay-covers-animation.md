@@ -34,3 +34,9 @@ For a platter with 12 pt of material inset, place its scroll indicator 3 pt from
 **Why:** `isSelected: false` alone does not disable a row's touch/hover highlight, and the context platter's inset child otherwise leaves the scrollbar visibly farther from the edge than the package menus.
 
 **How to apply:** On orientation metrics changes, remeasure the trigger `RenderBox` after the next layout and update a `ValueListenable<Rect>` consumed by both the lifted preview and menu placement. Do this while opening or closing so the whole overlay stays attached to the same tile.
+
+While a context menu is open, exempt category grid/list geometry from its normal animated reflow. The menu and tile should stay present and use one settled destination rectangle after rotation.
+
+**Why:** The normal position animation can move the real tile over several frames while the lifted preview is already re-anchored, making the two appear to separate or briefly disappear.
+
+**How to apply:** Listen to the shared context-menu-active notifier at the category layout boundary and use zero geometry duration for that open interval. Keep the overlay entry alive and refresh its source rectangle after the new layout completes.

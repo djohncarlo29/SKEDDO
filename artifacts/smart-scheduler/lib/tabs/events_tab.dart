@@ -8936,7 +8936,10 @@ class EventsTabState extends State<EventsTab>
             ),
             sliver: SliverToBoxAdapter(
               child: AnimatedBuilder(
-                animation: widget.dcvSlideController,
+                animation: Listenable.merge([
+                  widget.dcvSlideController,
+                  sbContextMenuActive,
+                ]),
                 builder: (context, _) => _AnimatedCategoryGrid(
                 entries: gridItems,
                 gridStackKey: _gridStackKey,
@@ -8944,9 +8947,12 @@ class EventsTabState extends State<EventsTab>
                 dragLocalTopLeft: _dragGridTopLeft,
                 dragTileWidth: _dragGridTileWidth,
                 dragTileHeight: _dragGridTileHeight,
+                // Keep the source tile visible and aligned with its open
+                // context-menu preview while orientation reflows the grid.
                 suppressGeometryAnimation:
-                    widget.landscapeMasterDetail &&
-                    widget.dcvSlideController.isAnimating,
+                    sbContextMenuActive.value ||
+                    (widget.landscapeMasterDetail &&
+                        widget.dcvSlideController.isAnimating),
                 ),
               ),
             ),
@@ -8979,7 +8985,10 @@ class EventsTabState extends State<EventsTab>
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverToBoxAdapter(
                   child: AnimatedBuilder(
-                    animation: widget.dcvSlideController,
+                    animation: Listenable.merge([
+                      widget.dcvSlideController,
+                      sbContextMenuActive,
+                    ]),
                     builder: (context, _) => _CategoryCard(
                     items: flatItems,
                     rowAnchorKeys: {
@@ -9024,9 +9033,12 @@ class EventsTabState extends State<EventsTab>
                     onGroupHeaderReorderUpdate: _onGroupHeaderReorderUpdate,
                     onGroupHeaderReorderEnd: _onGroupHeaderReorderEnd,
                     onGroupHeaderReorderCancel: _onGroupHeaderReorderCancel,
+                    // Do not animate the source row out from under its open
+                    // context-menu preview during an orientation reflow.
                     suppressGeometryAnimation:
-                        widget.landscapeMasterDetail &&
-                        widget.dcvSlideController.isAnimating,
+                        sbContextMenuActive.value ||
+                        (widget.landscapeMasterDetail &&
+                            widget.dcvSlideController.isAnimating),
                     ),
                   ),
                 ),
