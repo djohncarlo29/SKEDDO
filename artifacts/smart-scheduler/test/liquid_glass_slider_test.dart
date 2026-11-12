@@ -105,7 +105,7 @@ void main() {
     );
   });
 
-  test('popover curve maps pre-remap 40% to new 50% for opacity and blur', () {
+  test('popover curve interpolates the requested opacity and blur anchors', () {
     expect(skeddoLiquidGlassEffectPositionForSliderPosition(0), 0);
     expect(skeddoLiquidGlassEffectPositionForSliderPosition(0.5), 0.57);
     expect(skeddoLiquidGlassEffectPositionForSliderPosition(1), 1);
@@ -122,10 +122,12 @@ void main() {
       skeddoSharedGlassOpacityForPosition(0.5, Brightness.dark),
       closeTo(0.628, 0.000001),
     );
-    expect(skeddoPopoverOpacityForPosition(0), 0);
-    expect(skeddoPopoverOpacityForPosition(0.25), closeTo(0.34, 0.000001));
-    expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.68, 0.000001));
-    expect(skeddoPopoverBlurForPosition(0.5), closeTo(4.56, 0.000001));
+    expect(skeddoPopoverOpacityForPosition(0), closeTo(0.7464, 0.000001));
+    expect(skeddoPopoverOpacityForPosition(0.25), closeTo(0.8, 0.000001));
+    expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.8546, 0.000001));
+    expect(skeddoPopoverBlurForPosition(0), closeTo(1.744, 0.000001));
+    expect(skeddoPopoverBlurForPosition(0.25), closeTo(3.808, 0.000001));
+    expect(skeddoPopoverBlurForPosition(0.5), closeTo(5.872, 0.000001));
   });
 
   test('active checkmark optics stay fixed regardless of slider position', () {
@@ -165,8 +167,8 @@ void main() {
 
     const tint = Color(0xFF123456);
     const positions = <double>[0, 0.25, 0.5, 0.75, 1];
-    const expectedOpacities = <double>[0, 0.34, 0.68, 0.8956, 0.95];
-    const expectedBlurs = <double>[1, 2.368, 4.56, 7.42, 10];
+    const expectedOpacities = <double>[0.7464, 0.8, 0.8546, 0.9087, 0.95];
+    const expectedBlurs = <double>[1.744, 3.808, 5.872, 7.936, 10];
 
     for (var index = 0; index < positions.length; index++) {
       appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
@@ -199,8 +201,11 @@ void main() {
       );
     }
 
-    expect(skeddoPopoverOpacityForPosition(0.125), closeTo(0.17, 0.000001));
-    expect(skeddoPopoverBlurForPosition(0.125), closeTo(1.684, 0.000001));
+    expect(
+      skeddoPopoverOpacityForPosition(0.125),
+      closeTo(0.7732, 0.000001),
+    );
+    expect(skeddoPopoverBlurForPosition(0.125), closeTo(2.776, 0.000001));
   });
 
   test('Liquid Glass slider positions settle on whole percentages', () {

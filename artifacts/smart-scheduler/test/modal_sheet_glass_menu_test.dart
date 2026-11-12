@@ -28,8 +28,8 @@ void main() {
     expect(dark.lightIntensity, 0.35);
     expect(dark.glowIntensity, 0.375);
     expect(dark.fresnelStrength, 0.5);
-    expect(dark.glassColor.a, closeTo(0.68, 0.001));
-    expect(dark.blur, closeTo(4.56, 0.001));
+    expect(dark.glassColor.a, closeTo(0.8546, 0.001));
+    expect(dark.blur, closeTo(5.872, 0.001));
 
     final navigationSettings = skeddoNavigationGlassSettingsFromShared(dark);
     expect(navigationSettings.lightIntensity, dark.lightIntensity);
