@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../app_settings.dart'
+    show appLiquidGlassOpacityNotifier, liquidGlassSliderPositionForOpacity;
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
 import 'skeddo_glass_settings.dart';
@@ -907,34 +909,49 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final menu = GlassMenu(
-      controller: _controller,
-      triggerBuilder: (context, toggleMenu) => Semantics(
-        container: true,
-        button: true,
-        label: widget.semanticLabel,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _toggleMenu(toggleMenu),
-          child: widget.trigger,
-        ),
-      ),
-      items: _glassMenuItemsForActions(context, widget.actions),
-      menuWidth: widget.menuWidth,
-      autoAdjustToScreen: true,
-      menuAlignment: GlassMenuAlignment.none,
-      keepTriggerAnchorOnOverflow: true,
-      // Picker values remain plain text during the handoff; the glass platter
-      // blooms from the same anchor without wrapping the trigger in a blob.
-      morphFromZero: true,
-      // GlassMenuItem already supplies the picker menu's 16pt left/right inset.
-      menuContentHorizontalInset: 0,
-      menuPadding: const EdgeInsets.all(16),
-      triggerImpactStrength: 1.15,
-      onClose: () => widget.onClosed?.call(_controller),
-    );
+    final items = _glassMenuItemsForActions(context, widget.actions);
+    return ValueListenableBuilder<double>(
+      valueListenable: appLiquidGlassOpacityNotifier,
+      builder: (context, opacity, _) {
+        final sliderPosition = liquidGlassSliderPositionForOpacity(opacity);
+        final menu = GlassMenu(
+          controller: _controller,
+          triggerBuilder: (context, toggleMenu) => Semantics(
+            container: true,
+            button: true,
+            label: widget.semanticLabel,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _toggleMenu(toggleMenu),
+              child: widget.trigger,
+            ),
+          ),
+          items: items,
+          menuWidth: widget.menuWidth,
+          autoAdjustToScreen: true,
+          menuAlignment: GlassMenuAlignment.none,
+          keepTriggerAnchorOnOverflow: true,
+          // Match the Calendar toolbar menu and GlassPopover slider curve.
+          settings: skeddoNavigationGlassSettingsFromShared(
+            skeddoPopoverGlassSettingsFor(
+              MediaQuery.platformBrightnessOf(context),
+              resolveThemeColor(kCardColor, context),
+              sliderPosition: sliderPosition,
+            ),
+          ),
+          // Picker values remain plain text during the handoff; the glass
+          // platter blooms from the same anchor without wrapping the trigger.
+          morphFromZero: true,
+          // Calendar menus use a 12pt platter inset plus the row's 16pt inset.
+          menuContentHorizontalInset: 12,
+          menuPadding: const EdgeInsets.all(16),
+          triggerImpactStrength: 1.15,
+          onClose: () => widget.onClosed?.call(_controller),
+        );
 
-    return widget.builder(context, menu, _openMenu);
+        return widget.builder(context, menu, _openMenu);
+      },
+    );
   }
 }
 
@@ -958,17 +975,24 @@ List<Widget> _glassMenuItemsForActions(
               ? CupertinoColors.destructiveRed
               : action.checkmark
               ? checkColor
-              : CupertinoDynamicColor.resolve(kPrimaryLabel, context)
+              : resolveThemeColor(
+                  kPrimaryLabel,
+                  context,
+                ).withValues(alpha: 0.9)
         : CupertinoDynamicColor.resolve(action.labelColor!, context);
-    final checkmarkSize = MediaQuery.textScalerOf(context).scale(17);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final leadingSlotSize = textScaler.scale(24);
+    final checkmarkSize = textScaler.scale(17);
     final menuIcon = SizedBox(
-      width: checkmarkSize,
-      height: checkmarkSize,
+      width: leadingSlotSize,
+      height: leadingSlotSize,
       child: action.checkmark
-          ? Icon(
-              CupertinoIcons.checkmark,
-              size: checkmarkSize,
-              color: checkColor,
+          ? Center(
+              child: Icon(
+                CupertinoIcons.checkmark,
+                size: checkmarkSize,
+                color: checkColor,
+              ),
             )
           : const SizedBox.shrink(),
     );
@@ -978,16 +1002,13 @@ List<Widget> _glassMenuItemsForActions(
         title: action.label,
         subtitle: action.subtitle,
         icon: menuIcon,
-        iconSize: checkmarkSize,
-        iconLabelGap: 16,
+        iconSize: leadingSlotSize,
+        iconLabelGap: 12,
         isDestructive: action.isDestructive,
         titleStyle: TextStyle(
-          inherit: false,
           color: labelColor,
-          fontSize: 15,
-          fontFamily: kSFProText,
+          fontSize: 17,
           fontWeight: FontWeight.w400,
-          letterSpacing: kTracking16,
         ),
         subtitleStyle: TextStyle(
           inherit: false,
