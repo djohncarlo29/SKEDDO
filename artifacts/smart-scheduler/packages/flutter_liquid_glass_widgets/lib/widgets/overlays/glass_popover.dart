@@ -7,6 +7,7 @@ import '../../src/renderer/liquid_glass_renderer.dart';
 import '../../constants/glass_defaults.dart';
 import '../../types/glass_quality.dart';
 import '../containers/glass_container.dart';
+import '../shared/glass_popover_content_lens.dart';
 import '../shared/inherited_liquid_glass.dart';
 import 'glass_menu.dart' show GlassMenuAlignment;
 import '../../theme/glass_theme_helpers.dart';

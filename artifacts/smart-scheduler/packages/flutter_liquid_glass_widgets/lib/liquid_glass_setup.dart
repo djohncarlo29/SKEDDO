@@ -18,6 +18,7 @@ import 'widgets/shared/glass_adaptive_scope.dart';
 import 'widgets/shared/glass_effect.dart';
 import 'widgets/shared/glass_accessibility_scope.dart';
 import 'widgets/shared/lightweight_liquid_glass.dart';
+import 'widgets/shared/glass_popover_content_lens.dart';
 import 'widgets/effects/progressive_blur.dart';
 
 /// Entry point and configuration for the Liquid Glass Widgets library.
@@ -140,6 +141,7 @@ class LiquidGlassWidgets {
     await Future.wait([
       LightweightLiquidGlass.preWarm(),
       GlassEffect.preWarm(),
+      GlassPopoverContentLens.preWarm(),
       MultiShaderBuilder.precacheShaders([
         ShaderKeys.blendedGeometry,
         ShaderKeys.liquidGlassRender,

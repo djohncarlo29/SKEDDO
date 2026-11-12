@@ -209,6 +209,11 @@ void main() {
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(
+      find.byKey(const ValueKey<String>('glass-menu-content-lens-wrapper')),
+      findsOneWidget,
+    );
     final menuBody = tester.widget<GlassContainer>(
       find.byType(GlassContainer).last,
     );

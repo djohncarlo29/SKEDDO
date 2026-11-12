@@ -76,3 +76,4 @@ flutter:
     - shaders/liquid_glass_geometry_blended.frag
     - shaders/liquid_glass_final_render.frag
     - shaders/progressive_blur.frag
+    - shaders/menu_content_lens.frag

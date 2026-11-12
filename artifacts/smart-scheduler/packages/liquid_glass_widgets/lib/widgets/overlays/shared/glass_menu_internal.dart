@@ -2445,12 +2445,21 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         clipBehavior:
             Clip.antiAlias, // Clip items at the edges for edge-to-edge feel
         glowIntensity: widget.glowIntensity,
-        child: _buildBodyContent(
-          effectiveSettings,
-          effectiveQuality,
-          clampedValue,
-          teardropShape,
-          containerScale,
+        child: GlassMenuContentLens(
+          key: const ValueKey<String>('glass-menu-content-lens-wrapper'),
+          progress: clampedValue,
+          size: Size(currentWidth, currentHeight),
+          cornerRadius: currentRadius,
+          thickness: effectiveSettings.effectiveThickness,
+          refractiveIndex: effectiveSettings.effectiveRefractiveIndex,
+          chromaticAberration: effectiveSettings.chromaticAberration,
+          child: _buildBodyContent(
+            effectiveSettings,
+            effectiveQuality,
+            clampedValue,
+            teardropShape,
+            containerScale,
+          ),
         ),
       ), // GlassContainer
     ); // LiquidStretch (glassContent)

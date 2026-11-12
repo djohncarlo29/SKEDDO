@@ -808,7 +808,21 @@ class _GlassPopoverState extends State<GlassPopover>
                 // Content enters at 30 % morph progress and scales 0.5 → 1.0.
                 // On close the reverse plays, matching GlassMenu behaviour.
                 if (clampedValue > 0.3)
-                  _buildContentWithMeasurement(clampedValue, targetHeight),
+                  GlassPopoverContentLens(
+                    key: const ValueKey<String>(
+                      'glass-popover-content-lens-wrapper',
+                    ),
+                    progress: clampedValue,
+                    size: Size(currentWidth, currentHeight),
+                    cornerRadius: currentRadius,
+                    thickness: effectiveSettings.effectiveThickness,
+                    refractiveIndex: effectiveSettings.effectiveRefractiveIndex,
+                    chromaticAberration: effectiveSettings.chromaticAberration,
+                    child: _buildContentWithMeasurement(
+                      clampedValue,
+                      targetHeight,
+                    ),
+                  ),
               ],
             ),
           ),

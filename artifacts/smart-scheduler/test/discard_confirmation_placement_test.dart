@@ -91,6 +91,7 @@ void main() {
     final popoverFinder = find.byType(GlassPopover);
     expect(popoverFinder, findsOneWidget);
     final popover = tester.widget<GlassPopover>(popoverFinder);
+    expect(popover.quality, GlassQuality.premium);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.popoverWidth, 400);
     expect(popover.popoverOffset, const Offset(-4, -4));
