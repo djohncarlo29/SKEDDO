@@ -926,6 +926,8 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
       // Picker values remain plain text during the handoff; the glass platter
       // blooms from the same anchor without wrapping the trigger in a blob.
       morphFromZero: true,
+      // GlassMenuItem already supplies the picker menu's 16pt left/right inset.
+      menuContentHorizontalInset: 0,
       menuPadding: const EdgeInsets.all(16),
       triggerImpactStrength: 1.15,
       onClose: () => widget.onClosed?.call(_controller),
@@ -957,31 +959,26 @@ List<Widget> _glassMenuItemsForActions(
               ? checkColor
               : CupertinoDynamicColor.resolve(kPrimaryLabel, context)
         : CupertinoDynamicColor.resolve(action.labelColor!, context);
-    final Widget? menuIcon;
-    if (action.iconBuilder != null) {
-      final customIcon = action.iconBuilder!(labelColor);
-      menuIcon = customIcon is SizedBox &&
-              customIcon.width == 0 &&
-              customIcon.height == 0 &&
-              customIcon.child == null
-          ? null
-          : customIcon;
-    } else if (action.showTrailingIcon) {
-      menuIcon = _ActionPanelSFIcon(
-        action.icon,
-        size: action.iconSize,
-        color: labelColor,
-        weight: action.iconWeight,
-      );
-    } else {
-      menuIcon = null;
-    }
+    final checkmarkSize = MediaQuery.textScalerOf(context).scale(17);
+    final menuIcon = SizedBox(
+      width: checkmarkSize,
+      height: checkmarkSize,
+      child: action.checkmark
+          ? Icon(
+              CupertinoIcons.checkmark,
+              size: checkmarkSize,
+              color: checkColor,
+            )
+          : const SizedBox.shrink(),
+    );
 
     items.add(
       GlassMenuItem(
         title: action.label,
         subtitle: action.subtitle,
         icon: menuIcon,
+        iconSize: checkmarkSize,
+        iconLabelGap: 16,
         isDestructive: action.isDestructive,
         titleStyle: TextStyle(
           inherit: false,
@@ -999,9 +996,6 @@ List<Widget> _glassMenuItemsForActions(
           fontWeight: FontWeight.w400,
           letterSpacing: -0.08,
         ),
-        trailing: action.checkmark
-            ? Icon(CupertinoIcons.checkmark, size: 18, color: checkColor)
-            : null,
         enabled: action.onTap != null,
         closeOnTap: action.closeMenuOnTap,
         height: action.subtitle == null

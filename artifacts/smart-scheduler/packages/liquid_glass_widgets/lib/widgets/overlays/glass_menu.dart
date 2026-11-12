@@ -229,6 +229,11 @@ class GlassMenu extends StatefulWidget {
   /// Defaults to 0.0 (touches the edge). Set to a value like 12.0 for a safe margin.
   final EdgeInsets menuPadding;
 
+  /// Horizontal inset between the menu surface edge and its row content.
+  ///
+  /// Defaults to 12.0 logical pixels.
+  final double menuContentHorizontalInset;
+
   /// Called when the menu begins closing.
   ///
   /// Fires immediately when a close is triggered — tap outside the barrier,
@@ -363,6 +368,7 @@ class GlassMenu extends StatefulWidget {
     this.menuHeight,
     this.maxStackHeight,
     this.menuPadding = EdgeInsets.zero,
+    this.menuContentHorizontalInset = 12.0,
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = false,
     this.glowColor,

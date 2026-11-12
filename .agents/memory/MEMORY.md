@@ -70,6 +70,7 @@
 - [Deleted category recovery](deleted-category-recovery.md) — recovering a category restores its structure only; events remain in Uncategorized by product decision.
 - [Category archive choices](category-archive-choices.md) — contentful categories ask whether to archive intact or move events out and archive only the category.
 - [GlassMenu runtime](glass-menu-runtime-index.md) — grouped notes for menu curves, morph bounds, scrolling, selection, and submenu chevrons.
+- [Modal picker menu layout](glass-menu-modal-picker-layout.md) — use a 17pt OS-scaled leading checkmark, 16pt edge/gap, and no trailing option icons.
 - [Default category setting](default-category-setting.md) — persist the selected category by ID and reset it before deleting that category.
 - [Group deletion confirmation](group-deletion-confirmation.md) — removing a group is immediate; deleting its categories requires a second confirmation.
 - [EventStore date-parse concatenation bug](event-store-date-parse-bug.md) — parse date-only in create(); appending normTime breaks _tryMonthDay regex → absoluteDate null → Unscheduled.

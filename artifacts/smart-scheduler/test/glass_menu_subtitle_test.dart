@@ -81,6 +81,34 @@ void main() {
     );
   });
 
+  testWidgets('GlassMenuItem supports an exact custom leading-label gap', (
+    tester,
+  ) async {
+    const iconKey = ValueKey('leading-checkmark-slot');
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 260,
+            child: GlassMenuItem(
+              title: 'Selected option',
+              icon: const SizedBox(key: iconKey, width: 17, height: 17),
+              iconSize: 17,
+              iconLabelGap: 16,
+              onTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final rowRect = tester.getRect(find.byType(GlassMenuItem));
+    final iconRect = tester.getRect(find.byKey(iconKey));
+    final labelRect = tester.getRect(find.text('Selected option'));
+    expect(iconRect.left - rowRect.left, 16);
+    expect(labelRect.left - iconRect.right, 16);
+  });
+
   testWidgets('multi-select items can keep their GlassMenu open', (
     tester,
   ) async {
@@ -590,10 +618,12 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.text('Option 0')),
     );
-    final optionRow = find.ancestor(
-      of: find.text('Option 0'),
-      matching: find.byType(GlassMenuItem),
-    ).first;
+    final optionRow = find
+        .ancestor(
+          of: find.text('Option 0'),
+          matching: find.byType(GlassMenuItem),
+        )
+        .first;
     final rowScale = find.descendant(
       of: optionRow,
       matching: find.byType(AnimatedScale),
@@ -939,10 +969,7 @@ void main() {
       final indicatorTrack = tester.widget<Padding>(
         find.byKey(const ValueKey('glass-menu-scroll-indicator-track-0')),
       );
-      expect(
-        indicatorTrack.padding,
-        const EdgeInsets.symmetric(vertical: 32),
-      );
+      expect(indicatorTrack.padding, const EdgeInsets.symmetric(vertical: 32));
       final scale = find.descendant(
         of: indicatorFinder,
         matching: find.byType(AnimatedScale),
@@ -1169,10 +1196,7 @@ void main() {
 
     final nestedScrollView = find.byType(SingleChildScrollView).last;
     final nestedScrollable = tester.state<ScrollableState>(
-      find.descendant(
-        of: nestedScrollView,
-        matching: find.byType(Scrollable),
-      ),
+      find.descendant(of: nestedScrollView, matching: find.byType(Scrollable)),
     );
     expect(nestedScrollable.position.maxScrollExtent, 0);
     expect(

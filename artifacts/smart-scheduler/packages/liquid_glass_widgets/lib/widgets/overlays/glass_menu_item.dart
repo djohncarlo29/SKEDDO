@@ -25,6 +25,7 @@ class GlassMenuItem extends StatefulWidget {
     this.subtitleStyle,
     this.iconColor,
     this.iconSize = 20.0,
+    this.iconLabelGap = 12.0,
     this.trailingWidth,
     this.trailingBuilder,
     this.submenuOpen = false,
@@ -98,6 +99,11 @@ class GlassMenuItem extends StatefulWidget {
 
   /// Custom size for the icon.
   final double iconSize;
+
+  /// Gap between the leading icon slot and the title.
+  ///
+  /// Defaults to 12.0 logical pixels.
+  final double iconLabelGap;
 
   /// Maximum number of lines for the title text.
   ///
@@ -394,7 +400,7 @@ class _GlassMenuItemState extends State<GlassMenuItem>
                             ),
                             child: widget.icon!,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: widget.iconLabelGap),
                         ],
 
                         // Text Content (Title & Subtitle)
@@ -451,7 +457,7 @@ class _GlassMenuItemState extends State<GlassMenuItem>
 
                     if (constraints.hasBoundedWidth) {
                       final double minRequired = (widget.icon != null
-                              ? (widget.iconSize + 12.0)
+                              ? (widget.iconSize + widget.iconLabelGap)
                               : 0.0) +
                           (trailing != null ? 24.0 : 0.0);
                       if (constraints.maxWidth < minRequired) {

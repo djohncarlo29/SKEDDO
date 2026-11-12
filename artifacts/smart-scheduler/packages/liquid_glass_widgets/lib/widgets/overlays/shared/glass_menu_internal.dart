@@ -1020,6 +1020,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           height: parent.height,
           iconColor: parent.isDestructive ? null : parent.iconColor,
           iconSize: parent.iconSize,
+          iconLabelGap: parent.iconLabelGap,
           trailingWidth: parent.trailingWidth,
           enablePressScale: false,
           trailing: parent.trailingBuilder?.call(context, isSubmenuOpen) ??
@@ -2485,7 +2486,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       width: widget.menuWidth,
       height: viewportHeight,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: widget.menuContentHorizontalInset,
+        ),
         child: SingleChildScrollView(
           key: PageStorageKey<String>('glass-menu-scroll-$scrollDepth'),
           controller: scrollController,
@@ -2685,6 +2688,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           subtitleStyle: item.subtitleStyle,
           iconColor: item.iconColor,
           iconSize: item.iconSize,
+          iconLabelGap: item.iconLabelGap,
           maxLines: item.maxLines,
           allowTextWrapping: item.allowTextWrapping,
           closeDelay: item.closeDelay,
@@ -2740,6 +2744,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       subtitleStyle: item.subtitleStyle,
       iconColor: item.iconColor,
       iconSize: item.iconSize,
+      iconLabelGap: item.iconLabelGap,
       maxLines: item.maxLines,
       allowTextWrapping: item.allowTextWrapping,
       closeDelay: item.closeDelay,
@@ -2796,8 +2801,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           math.max(0.0, item.height - fixedPadding).toDouble();
       final scaledMinimumHeight =
           textScaler.scale(baseContentHeight) + fixedPadding;
-      final rowWidth = math.max(1.0, widget.menuWidth - 24.0 - 32.0);
-      final leadingWidth = item.icon == null ? 0.0 : item.iconSize + 12.0;
+      final rowWidth = math.max(
+        1.0,
+        widget.menuWidth - (widget.menuContentHorizontalInset * 2) - 32.0,
+      );
+      final leadingWidth = item.icon == null
+          ? 0.0
+          : item.iconSize + item.iconLabelGap;
       final trailingWidth =
           item.trailing != null || item.trailingBuilder != null
               ? (item.trailingWidth ?? textScaler.scale(24.0)) + 8.0
@@ -3011,6 +3021,7 @@ class _GlassMenuHeaderItem extends GlassMenuItem {
     super.titleStyle,
     super.iconColor,
     super.iconSize,
+    super.iconLabelGap,
     super.enablePressScale,
     required super.trailing,
   }) : super(onTap: _noop);
