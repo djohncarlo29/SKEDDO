@@ -33,6 +33,7 @@ class GlassMenuItem extends StatefulWidget {
     this.enablePressScale = true,
     this.showInteractionHighlight = true,
     this.closeDelay,
+    this.closeOnTap = true,
     this.submenu,
   });
 
@@ -133,6 +134,12 @@ class GlassMenuItem extends StatefulWidget {
   /// widget (e.g. a [GlassSwitch]) whose state transition should be visible
   /// before the menu morphs away.
   final Duration? closeDelay;
+
+  /// Whether selecting this item closes its parent menu.
+  ///
+  /// Defaults to `true`. Set to `false` for multi-select menus that remain open
+  /// while the user toggles several options.
+  final bool closeOnTap;
 
   /// Child items shown when this item is activated inside a [GlassMenu].
   ///

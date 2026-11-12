@@ -30,6 +30,7 @@ import 'package:flutter/services.dart' show HapticFeedback, MethodChannel;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../app_theme.dart';
 import '../app_settings.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -11278,11 +11279,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
   late final AnimationController
   _sectionRowCtrl; // expands the Section subrow for categories with DCV sections
 
-  // ── Picker overlay (Category / Repeat / Alert) ────────────────────────────
-  OverlayEntry? _pickerEntry;
-  final ValueNotifier<bool> _pickerIsClosing = ValueNotifier(false);
+  // ── GlassMenu picker state ────────────────────────────────────────────────
+  GlassMenuController? _activePickerController;
   bool _pickerMenuOpen = false;
-  String? _openPickerLabel;
 
   @override
   void initState() {
@@ -11486,9 +11485,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   @override
   void dispose() {
-    _pickerEntry?.remove();
     _importOverlayEntry?.remove();
-    _pickerIsClosing.dispose();
+    _activePickerController = null;
     _startsPickerCtrl.dispose();
     _endsPickerCtrl.dispose();
     _schedRowsCtrl.dispose();
@@ -13107,52 +13105,19 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Picker overlay (Category / Repeat / Alert) ────────────────────────────
 
-  void _dismissPickerOverlay({bool animate = true}) {
-    if (!_pickerMenuOpen) return;
-    _pickerIsClosing.value = true;
-    if (mounted) setState(() => _openPickerLabel = null);
-    final delay = animate ? const Duration(milliseconds: 420) : Duration.zero;
-    Future.delayed(delay, () {
-      _pickerEntry?.remove();
-      _pickerEntry = null;
-      if (mounted) {
-        _pickerIsClosing.value = false;
-        setState(() => _pickerMenuOpen = false);
-      }
-    });
+  void _onPickerMenuOpened(GlassMenuController controller) {
+    _activePickerController = controller;
+    if (mounted) setState(() => _pickerMenuOpen = true);
   }
 
-  void _showPickerOverlay(
-    BuildContext rowCtx,
-    String rowLabel,
-    List<ActionItem> items,
-  ) {
-    if (_pickerMenuOpen) _dismissPickerOverlay(animate: false);
-    FocusManager.instance.primaryFocus?.unfocus();
-    final box = rowCtx.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    final pos = box.localToGlobal(Offset.zero);
-    final size = box.size;
-    _pickerIsClosing.value = false;
-    setState(() {
-      _pickerMenuOpen = true;
-      _openPickerLabel = rowLabel;
-    });
-    _pickerEntry = OverlayEntry(
-      builder: (ctx) => ActionMenuOverlay(
-        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-        isClosing: _pickerIsClosing,
-        onDismiss: _dismissPickerOverlay,
-        actions: items,
-        panelWidth: kPickerPanelWidth,
-        chevronColumn: true,
-        anchorToRight: true,
-        labelFontSize: 15,
-        bouncingScroll: true,
-        isPickerMiniPanel: true,
-      ),
-    );
-    Overlay.of(context).insert(_pickerEntry!);
+  void _onPickerMenuClosed(GlassMenuController controller) {
+    if (!identical(_activePickerController, controller)) return;
+    _activePickerController = null;
+    if (mounted) setState(() => _pickerMenuOpen = false);
+  }
+
+  void _dismissPickerOverlay() {
+    _activePickerController?.close();
   }
 
   // ── _pickerRow ────────────────────────────────────────────────────────────
@@ -13171,49 +13136,61 @@ class _NewEventSheetState extends State<_NewEventSheet>
     Color? valueColor,
     VoidCallback? onTap,
   }) {
-    final isOpen = items != null && _openPickerLabel == label;
     final TextStyle valueStyle = valueColor != null
         ? _kRowValueStyle.copyWith(
             color: valueColor,
             fontWeight: FontWeight.w500,
           )
         : _kRowValueStyle;
-    return Builder(
-      builder: (ctx) {
-        final pickerTap = items != null
-            ? () => _showPickerOverlay(ctx, label, items)
-            : onTap;
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: pickerTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: kModalSheetPickerRowHorizontalInset,
-              vertical: 14,
-            ),
-            child: MinGapLabelValueRow(
-              label: label,
-              labelStyle: _kLabelStyle,
-              value: value,
-              valueStyle: valueStyle,
-              trailing: AnimatedOpacity(
-                opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                duration: const Duration(milliseconds: 150),
-                child: ModalSheetPickerTrailing(
-                  value: value,
-                  style: valueStyle,
-                  chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                  showChevron: showChevron,
-                ),
-              ),
-              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-                ctx,
-                showChevron: showChevron,
-              ),
+    Widget buildRow(
+      BuildContext context,
+      Widget trailing,
+      VoidCallback? openMenu,
+    ) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: openMenu ?? onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: trailing,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              context,
+              showChevron: showChevron,
             ),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    final trigger = ModalSheetPickerTrailing(
+      value: value,
+      style: valueStyle,
+      chevronColor: resolveThemeColor(kSecondaryLabel, context),
+      showChevron: showChevron,
+    );
+    if (items == null) {
+      return Builder(
+        builder: (context) => buildRow(context, trigger, null),
+      );
+    }
+    return ModalSheetGlassMenu(
+      key: ValueKey<String>('picker-$label'),
+      trigger: trigger,
+      actions: items,
+      semanticLabel: '$label, $value',
+      onBeforeOpen: () => FocusManager.instance.primaryFocus?.unfocus(),
+      onOpened: _onPickerMenuOpened,
+      onClosed: _onPickerMenuClosed,
+      builder: (context, menuTrigger, openMenu) =>
+          buildRow(context, menuTrigger, openMenu),
     );
   }
 
@@ -13222,50 +13199,47 @@ class _NewEventSheetState extends State<_NewEventSheet>
   // user category — "None" is not a valid selection.
 
   Widget _buildCategoryRow() {
-    final isOpen = _openPickerLabel == 'Category';
-    return Builder(
-      builder: (ctx) {
-        final pickerTap = () =>
-            _showPickerOverlay(ctx, 'Category', _categoryItems());
-        final valueWidget = AnimatedOpacity(
-          opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-          duration: const Duration(milliseconds: 150),
-          child: ModalSheetPickerTrailing(
+    return ModalSheetGlassMenu(
+      key: const ValueKey<String>('picker-category'),
+      trigger: ModalSheetPickerTrailing(
+        value: _categoryName,
+        style: _kRowValueStyle,
+        chevronColor: resolveThemeColor(kSecondaryLabel, context),
+        valuePrefix: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: renderCategoryColor(_categoryColor, context),
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+      actions: _categoryItems(),
+      semanticLabel: 'Category, $_categoryName',
+      onBeforeOpen: () => FocusManager.instance.primaryFocus?.unfocus(),
+      onOpened: _onPickerMenuOpened,
+      onClosed: _onPickerMenuClosed,
+      builder: (context, menuTrigger, openMenu) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: openMenu,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
+          child: MinGapLabelValueRow(
+            label: 'Category',
+            labelStyle: _kLabelStyle,
             value: _categoryName,
-            style: _kRowValueStyle,
-            chevronColor: resolveThemeColor(kSecondaryLabel, context),
-            valuePrefix: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: renderCategoryColor(_categoryColor, context),
-                shape: BoxShape.circle,
-              ),
+            valueStyle: _kRowValueStyle,
+            trailing: menuTrigger,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              context,
+              hasValuePrefix: true,
             ),
           ),
-        );
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: pickerTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: kModalSheetPickerRowHorizontalInset,
-              vertical: 14,
-            ),
-            child: MinGapLabelValueRow(
-              label: 'Category',
-              labelStyle: _kLabelStyle,
-              value: _categoryName,
-              valueStyle: _kRowValueStyle,
-              trailing: valueWidget,
-              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-                ctx,
-                hasValuePrefix: true,
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -13317,13 +13291,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           iconBuilder: (_) => const SizedBox.shrink(),
           checkmark: index == _selectedSectionIndex,
           checkmarkColor: _resolvedCategoryColor,
-          onTap: () {
-            setState(() => _selectedSectionIndex = index);
-            Future.delayed(
-              const Duration(milliseconds: 80),
-              _dismissPickerOverlay,
-            );
-          },
+          onTap: () => setState(() => _selectedSectionIndex = index),
         ),
     ];
   }
@@ -13357,13 +13325,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           checkmark: label == current,
           checkmarkColor: checkmarkColor,
           groupBreakAbove: groupBreakBefore.contains(label),
-          onTap: () {
-            onSelect(label);
-            Future.delayed(
-              const Duration(milliseconds: 80),
-              _dismissPickerOverlay,
-            );
-          },
+          onTap: () => onSelect(label),
         ),
       )
       .toList();
@@ -13467,8 +13429,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _alert != 'None' ? 1.0 : 0.0,
           curve: Curves.easeOut,
         );
-        _pickerEntry?.markNeedsBuild();
-        _dismissPickerOverlay();
       },
     );
 
@@ -13511,8 +13471,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
             _endDateCtrl.animateTo(0.0, curve: Curves.easeIn);
             // Alert defaults to 'At time of event' → second alert row stays visible.
             _secondAlertCtrl.animateTo(1.0, curve: Curves.easeOut);
-            _pickerEntry?.markNeedsBuild();
-            _dismissPickerOverlay();
           },
         ),
       );
@@ -14482,13 +14440,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           checkmark: base == current,
           checkmarkColor: checkmarkColor,
           groupBreakAbove: groupBreakBefore.contains(base),
-          onTap: () {
-            onSelect(base);
-            Future.delayed(
-              const Duration(milliseconds: 80),
-              _dismissPickerOverlay,
-            );
-          },
+          onTap: () => onSelect(base),
         ),
       )
       .toList();
@@ -15447,10 +15399,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   setState(() => _activePicker = '');
                 }
               }
-              Future.delayed(
-                const Duration(milliseconds: 80),
-                _dismissPickerOverlay,
-              );
             },
           ),
         )
@@ -15498,10 +15446,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
             groupBreakAbove: opt == 'Custom',
             onTap: () {
               _setReminderRepeat(opt);
-              Future.delayed(
-                const Duration(milliseconds: 80),
-                _dismissPickerOverlay,
-              );
             },
           ),
         )
@@ -16746,11 +16690,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   late final FixedExtentScrollController _everyCountCtrl;
   late final AnimationController _everyPickerCtrl;
 
-  // ── Picker overlay ────────────────────────────────────────────────────────
-  final _pickerIsClosing = ValueNotifier<bool>(false);
-  OverlayEntry? _pickerEntry;
+  // ── GlassMenu picker state ────────────────────────────────────────────────
+  GlassMenuController? _activePickerController;
   bool _pickerMenuOpen = false;
-  String? _openPickerLabel;
 
   @override
   void initState() {
@@ -16800,8 +16742,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     _yearlyDayCtrl.dispose();
     _everyPickerCtrl.dispose();
     _yearlyDaysCtrl.dispose();
-    _pickerIsClosing.dispose();
-    _pickerEntry?.remove();
+    _activePickerController = null;
     super.dispose();
   }
 
@@ -16813,52 +16754,19 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     }
   }
 
-  void _dismissPickerOverlay({bool animate = true}) {
-    if (!_pickerMenuOpen) return;
-    _pickerIsClosing.value = true;
-    if (mounted) setState(() => _openPickerLabel = null);
-    final delay = animate ? const Duration(milliseconds: 420) : Duration.zero;
-    Future.delayed(delay, () {
-      _pickerEntry?.remove();
-      _pickerEntry = null;
-      if (mounted) {
-        _pickerIsClosing.value = false;
-        setState(() => _pickerMenuOpen = false);
-      }
-    });
+  void _dismissPickerOverlay() {
+    _activePickerController?.close();
   }
 
-  void _showPickerOverlay(
-    BuildContext rowCtx,
-    String rowLabel,
-    List<ActionItem> items,
-  ) {
-    if (_pickerMenuOpen) _dismissPickerOverlay(animate: false);
-    FocusManager.instance.primaryFocus?.unfocus();
-    final box = rowCtx.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    final pos = box.localToGlobal(Offset.zero);
-    final size = box.size;
-    _pickerIsClosing.value = false;
-    setState(() {
-      _pickerMenuOpen = true;
-      _openPickerLabel = rowLabel;
-    });
-    _pickerEntry = OverlayEntry(
-      builder: (ctx) => ActionMenuOverlay(
-        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-        isClosing: _pickerIsClosing,
-        onDismiss: _dismissPickerOverlay,
-        actions: items,
-        panelWidth: kPickerPanelWidth,
-        chevronColumn: true,
-        anchorToRight: true,
-        labelFontSize: 15,
-        bouncingScroll: true,
-        isPickerMiniPanel: true,
-      ),
-    );
-    Overlay.of(context).insert(_pickerEntry!);
+  void _onPickerMenuOpened(GlassMenuController controller) {
+    _activePickerController = controller;
+    if (mounted) setState(() => _pickerMenuOpen = true);
+  }
+
+  void _onPickerMenuClosed(GlassMenuController controller) {
+    if (!identical(_activePickerController, controller)) return;
+    _activePickerController = null;
+    if (mounted) setState(() => _pickerMenuOpen = false);
   }
 
   List<ActionItem> _makeItems(
@@ -16874,13 +16782,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           iconBuilder: (_) => const SizedBox.shrink(),
           checkmark: label == current,
           checkmarkColor: checkmarkColor,
-          onTap: () {
-            onSelect(label);
-            Future.delayed(
-              const Duration(milliseconds: 80),
-              _dismissPickerOverlay,
-            );
-          },
+          onTap: () => onSelect(label),
         ),
       )
       .toList();
@@ -17088,46 +16990,56 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     Color? valueColor,
     VoidCallback? onTap,
   }) {
-    final isOpen = items != null && _openPickerLabel == label;
     final TextStyle valueStyle = valueColor != null
         ? modalSheetAccentValueStyle(context, valueColor)
         : _kRowValueStyle;
-    return Builder(
-      builder: (ctx) {
-        final pickerTap = items != null
-            ? () => _showPickerOverlay(ctx, label, items)
-            : onTap;
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: pickerTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: kModalSheetPickerRowHorizontalInset,
-              vertical: 14,
-            ),
-            child: MinGapLabelValueRow(
-              label: label,
-              labelStyle: _kRowLabelStyle,
-              value: value,
-              valueStyle: valueStyle,
-              trailing: AnimatedOpacity(
-                opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                duration: const Duration(milliseconds: 150),
-                child: ModalSheetPickerTrailing(
-                  value: value,
-                  style: valueStyle,
-                  chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                  showChevron: showChevron,
-                ),
-              ),
-              trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
-                ctx,
-                showChevron: showChevron,
-              ),
+    Widget buildRow(
+      BuildContext context,
+      Widget trailing,
+      VoidCallback? openMenu,
+    ) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: openMenu ?? onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: trailing,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              context,
+              showChevron: showChevron,
             ),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    final trigger = ModalSheetPickerTrailing(
+      value: value,
+      style: valueStyle,
+      chevronColor: resolveThemeColor(kSecondaryLabel, context),
+      showChevron: showChevron,
+    );
+    if (items == null) {
+      return Builder(builder: (context) => buildRow(context, trigger, null));
+    }
+    return ModalSheetGlassMenu(
+      key: ValueKey<String>('picker-$label'),
+      trigger: trigger,
+      actions: items,
+      semanticLabel: '$label, $value',
+      onBeforeOpen: () => FocusManager.instance.primaryFocus?.unfocus(),
+      onOpened: _onPickerMenuOpened,
+      onClosed: _onPickerMenuClosed,
+      builder: (context, menuTrigger, openMenu) =>
+          buildRow(context, menuTrigger, openMenu),
     );
   }
 

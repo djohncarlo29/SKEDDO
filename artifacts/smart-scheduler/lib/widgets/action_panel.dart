@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
 import 'skeddo_glass_settings.dart';
@@ -591,6 +592,9 @@ class ActionItem {
   // When non-null, overrides the label (and icon) colour — used to gray out
   // rows that are disabled but should remain visible in the list.
   final Color? labelColor;
+  // When false, a GlassMenu adapter keeps the menu open after this selection.
+  // Used by modal pickers that allow multiple selections before dismissal.
+  final bool closeMenuOnTap;
 
   const ActionItem({
     required this.label,
@@ -614,6 +618,7 @@ class ActionItem {
     this.contentOpacity = 1.0,
     this.checkmarkColor,
     this.labelColor,
+    this.closeMenuOnTap = true,
   });
 
   static const double rowHeight = 52.0;
@@ -843,6 +848,166 @@ class ActionItem {
     }
     return width;
   }
+}
+
+typedef ModalSheetGlassMenuRowBuilder =
+    Widget Function(
+      BuildContext context,
+      Widget menuTrigger,
+      VoidCallback openMenu,
+    );
+
+/// Adapts an existing modal-sheet picker row to the package's morphing menu.
+///
+/// The supplied trigger stays ordinary content (typically a value and
+/// chevron); only the expanded menu uses the package's Liquid Glass surface.
+class ModalSheetGlassMenu extends StatefulWidget {
+  const ModalSheetGlassMenu({
+    super.key,
+    required this.trigger,
+    required this.actions,
+    required this.semanticLabel,
+    required this.builder,
+    this.onBeforeOpen,
+    this.onOpened,
+    this.onClosed,
+    this.menuWidth = kPickerPanelWidth,
+  });
+
+  final Widget trigger;
+  final List<ActionItem> actions;
+  final String semanticLabel;
+  final ModalSheetGlassMenuRowBuilder builder;
+  final VoidCallback? onBeforeOpen;
+  final ValueChanged<GlassMenuController>? onOpened;
+  final ValueChanged<GlassMenuController>? onClosed;
+  final double menuWidth;
+
+  @override
+  State<ModalSheetGlassMenu> createState() => _ModalSheetGlassMenuState();
+}
+
+class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
+  final GlassMenuController _controller = GlassMenuController();
+
+  void _prepareToOpen() {
+    widget.onBeforeOpen?.call();
+    widget.onOpened?.call(_controller);
+  }
+
+  void _openMenu() {
+    _prepareToOpen();
+    _controller.open();
+  }
+
+  void _toggleMenu(VoidCallback toggleMenu) {
+    if (!_controller.isOpen) _prepareToOpen();
+    toggleMenu();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final menu = GlassMenu(
+      controller: _controller,
+      triggerBuilder: (context, toggleMenu) => Semantics(
+        container: true,
+        button: true,
+        label: widget.semanticLabel,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _toggleMenu(toggleMenu),
+          child: widget.trigger,
+        ),
+      ),
+      items: _glassMenuItemsForActions(context, widget.actions),
+      menuWidth: widget.menuWidth,
+      autoAdjustToScreen: true,
+      menuAlignment: GlassMenuAlignment.none,
+      menuPadding: const EdgeInsets.all(16),
+      onClose: () => widget.onClosed?.call(_controller),
+    );
+
+    return widget.builder(context, menu, _openMenu);
+  }
+}
+
+List<Widget> _glassMenuItemsForActions(
+  BuildContext context,
+  List<ActionItem> actions,
+) {
+  final items = <Widget>[];
+  for (final action in actions) {
+    if (action.groupBreakAbove && items.isNotEmpty) {
+      items.add(const GlassMenuDivider(height: ActionItem.groupBreakH + 4));
+    }
+
+    final checkColor = action.primaryCheckmark
+        ? CupertinoDynamicColor.resolve(kPrimaryLabel, context)
+        : action.checkmarkColor == null
+        ? resolveAccentColor(context)
+        : CupertinoDynamicColor.resolve(action.checkmarkColor!, context);
+    final labelColor = action.labelColor == null
+        ? action.isDestructive
+              ? CupertinoColors.destructiveRed
+              : action.checkmark
+              ? checkColor
+              : CupertinoDynamicColor.resolve(kPrimaryLabel, context)
+        : CupertinoDynamicColor.resolve(action.labelColor!, context);
+    final Widget? menuIcon;
+    if (action.iconBuilder != null) {
+      final customIcon = action.iconBuilder!(labelColor);
+      menuIcon = customIcon is SizedBox &&
+              customIcon.width == 0 &&
+              customIcon.height == 0 &&
+              customIcon.child == null
+          ? null
+          : customIcon;
+    } else if (action.showTrailingIcon) {
+      menuIcon = _ActionPanelSFIcon(
+        action.icon,
+        size: action.iconSize,
+        color: labelColor,
+        weight: action.iconWeight,
+      );
+    } else {
+      menuIcon = null;
+    }
+
+    items.add(
+      GlassMenuItem(
+        title: action.label,
+        subtitle: action.subtitle,
+        icon: menuIcon,
+        isDestructive: action.isDestructive,
+        titleStyle: TextStyle(
+          inherit: false,
+          color: labelColor,
+          fontSize: 15,
+          fontFamily: kSFProText,
+          fontWeight: FontWeight.w400,
+          letterSpacing: kTracking16,
+        ),
+        subtitleStyle: TextStyle(
+          inherit: false,
+          color: CupertinoDynamicColor.resolve(kSecondaryLabel, context),
+          fontSize: 13,
+          fontFamily: kSFProText,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.08,
+        ),
+        trailing: action.checkmark
+            ? Icon(CupertinoIcons.checkmark, size: 18, color: checkColor)
+            : null,
+        enabled: action.onTap != null,
+        closeOnTap: action.closeMenuOnTap,
+        height: action.subtitle == null
+            ? ActionItem.rowHeight
+            : ActionItem.rowHeightWithSubtitle,
+        onTap: action.onTap ?? () {},
+      ),
+    );
+  }
+  return items;
 }
 
 // ── ActionPanel ───────────────────────────────────────────────────────────────

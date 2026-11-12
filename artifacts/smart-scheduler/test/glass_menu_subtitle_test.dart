@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassMenu, GlassMenuItem;
+    show GlassMenu, GlassMenuController, GlassMenuItem;
 import 'package:liquid_glass_widgets/utils/glass_morph_controller.dart'
     show GlassMorphContentMotion;
 
@@ -79,6 +79,53 @@ void main() {
       tester.getRect(find.byKey(trailingKey)).center.dy,
       closeTo(labelCenterY, 0.1),
     );
+  });
+
+  testWidgets('multi-select items can keep their GlassMenu open', (
+    tester,
+  ) async {
+    final controller = GlassMenuController();
+    var selectionCount = 0;
+    var closeCount = 0;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Center(
+            child: GlassMenu(
+              controller: controller,
+              items: [
+                GlassMenuItem(
+                  title: 'Toggle category',
+                  closeOnTap: false,
+                  onTap: () => selectionCount++,
+                ),
+              ],
+              onClose: () => closeCount++,
+              triggerBuilder: (context, toggleMenu) => CupertinoButton(
+                onPressed: toggleMenu,
+                child: const Text('Include'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Include'));
+    await tester.pumpAndSettle();
+    expect(controller.isOpen, isTrue);
+
+    await tester.tap(find.text('Toggle category'));
+    await tester.pumpAndSettle();
+    expect(selectionCount, 1);
+    expect(controller.isOpen, isTrue);
+    expect(closeCount, 0);
+
+    controller.close();
+    await tester.pumpAndSettle();
+    expect(controller.isOpen, isFalse);
+    expect(closeCount, 1);
   });
 
   testWidgets('submenu height updates when its header gains a subtitle', (

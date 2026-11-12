@@ -1867,6 +1867,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   /// their state transition while the menu is still visible.
   void _fireItemTap(GlassMenuItem item) {
     item.onTap();
+    if (!item.closeOnTap) return;
     final delay = item.closeDelay;
     if (delay == null || delay == Duration.zero) {
       _closeMenu();
@@ -2681,6 +2682,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           maxLines: item.maxLines,
           allowTextWrapping: item.allowTextWrapping,
           closeDelay: item.closeDelay,
+          closeOnTap: item.closeOnTap,
           enablePressScale: false,
           showInteractionHighlight: widget.showItemInteractionHighlight,
           submenu: item.submenu,
@@ -2735,6 +2737,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       maxLines: item.maxLines,
       allowTextWrapping: item.allowTextWrapping,
       closeDelay: item.closeDelay,
+      closeOnTap: item.closeOnTap,
       enablePressScale: item.enablePressScale,
       showInteractionHighlight:
           item.showInteractionHighlight &&
