@@ -40,3 +40,9 @@ While a context menu is open, exempt category grid/list geometry from its normal
 **Why:** The normal position animation can move the real tile over several frames while the lifted preview is already re-anchored, making the two appear to separate or briefly disappear.
 
 **How to apply:** Listen to the shared context-menu-active notifier at the category layout boundary and use zero geometry duration for that open interval. Keep the overlay entry alive and refresh its source rectangle after the new layout completes.
+
+To guarantee the source stays visible after a rotation changes the viewport, keep its menu-owning list item alive while the menu opens/closes, insert the full-screen entry in the root overlay, and call `Scrollable.ensureVisible` with keep-visible-at-end then keep-visible-at-start before measuring the final anchor.
+
+**Why:** A tile can move outside a shorter or differently packed viewport after rotation; remeasuring alone does not bring it back onscreen, and a lazy list can otherwise dispose its menu owner before the correction runs.
+
+**How to apply:** Run the reveal only when the observed orientation actually changes, with zero-duration scrolling; after those scroll positions settle, update the preview rectangle and let the menu recalculate its placement in the new viewport.

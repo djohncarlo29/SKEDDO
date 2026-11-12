@@ -214,6 +214,20 @@ Rect? _contextMenuTileRect(BuildContext context) {
   return renderObject.localToGlobal(Offset.zero) & renderObject.size;
 }
 
+Future<void> _ensureContextMenuSourceVisible(BuildContext context) async {
+  await Scrollable.ensureVisible(
+    context,
+    duration: Duration.zero,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+  );
+  if (!context.mounted || _contextMenuTileRect(context) == null) return;
+  await Scrollable.ensureVisible(
+    context,
+    duration: Duration.zero,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+  );
+}
+
 class _CategoryContextMenu extends StatefulWidget {
   final Widget child;
   final WidgetBuilder previewBuilder;
@@ -272,7 +286,10 @@ class _CategoryContextMenu extends StatefulWidget {
 }
 
 class _CategoryContextMenuState extends State<_CategoryContextMenu>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with
+        TickerProviderStateMixin,
+        WidgetsBindingObserver,
+        AutomaticKeepAliveClientMixin<_CategoryContextMenu> {
   // upperBound > 1 so the spring simulation can overshoot without being clamped.
   // During dismiss the controller is animated to 1.06 (bloom phase) then to 0
   // (collapse phase), so values slightly above 1.0 are intentional.
@@ -286,9 +303,13 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
   final ValueNotifier<Rect> _anchorRect = ValueNotifier(Rect.zero);
   bool _anchorRefreshScheduled = false;
+  Orientation? _lastAnchorOrientation;
 
   OverlayEntry? _entry;
   OverlayEntry? _closingEntry;
+
+  @override
+  bool get wantKeepAlive => _entry != null || _closingEntry != null;
   // ── Drag-reorder state ────────────────────────────────────────────────────
   // After onLongPressStart fires (system ≈ 500ms threshold), a second timer
   // begins.  Two things can happen before it fires:
@@ -354,11 +375,30 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _anchorRefreshScheduled = false;
       if (!mounted || (_entry == null && _closingEntry == null)) return;
-      final rect = _contextMenuTileRect(context);
-      if (rect != null && rect != _anchorRect.value) {
-        _anchorRect.value = rect;
+      final orientation = MediaQuery.orientationOf(context);
+      final orientationChanged =
+          _lastAnchorOrientation != null &&
+          orientation != _lastAnchorOrientation;
+      _lastAnchorOrientation = orientation;
+      if (orientationChanged) {
+        unawaited(_ensureContextMenuSourceVisible(context).then((_) {
+          if (!mounted || (_entry == null && _closingEntry == null)) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _refreshAnchorRect();
+          });
+        }));
+      } else {
+        _refreshAnchorRect();
       }
     });
+  }
+
+  void _refreshAnchorRect() {
+    if (!mounted || (_entry == null && _closingEntry == null)) return;
+    final rect = _contextMenuTileRect(context);
+    if (rect != null && rect != _anchorRect.value) {
+      _anchorRect.value = rect;
+    }
   }
 
   @override
@@ -405,6 +445,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     if (sbContextMenuActive.value) return;
     sbContextMenuActive.value = true;
     sbContextMenuDismiss.value = _hide; // register OS-back dismiss hook
+    _lastAnchorOrientation = MediaQuery.orientationOf(context);
 
     _anchorRect.value = sourceRect;
 
@@ -465,7 +506,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
                 ),
           ),
     );
-    Overlay.of(context).insert(_entry!);
+    Overlay.of(context, rootOverlay: true).insert(_entry!);
+    updateKeepAlive();
 
     // Real underdamped spring — controller briefly exceeds 1.0 on overshoot,
     // giving the card its gel "pop" before settling.
@@ -499,6 +541,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
       _closingEntry = null;
       sbContextMenuActive.value = false;
       entry.remove();
+      updateKeepAlive();
       then?.call();
     }
 
@@ -641,6 +684,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     // Tree-side card stays at natural scale — the overlay copy handles all
     // the spring/bloom animation so there is no discontinuity when the
     // overlay fades out and the tree card is revealed.
@@ -22248,7 +22292,10 @@ class _EventContextMenu extends StatefulWidget {
 }
 
 class _EventContextMenuState extends State<_EventContextMenu>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with
+        TickerProviderStateMixin,
+        WidgetsBindingObserver,
+        AutomaticKeepAliveClientMixin<_EventContextMenu> {
   late final AnimationController _overlayCtrl = AnimationController(
     vsync: this,
     lowerBound: 0,
@@ -22257,8 +22304,12 @@ class _EventContextMenuState extends State<_EventContextMenu>
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
   final ValueNotifier<Rect> _anchorRect = ValueNotifier(Rect.zero);
   bool _anchorRefreshScheduled = false;
+  Orientation? _lastAnchorOrientation;
   OverlayEntry? _entry;
   OverlayEntry? _closingEntry;
+
+  @override
+  bool get wantKeepAlive => _entry != null || _closingEntry != null;
 
   // ── Drag-reorder disambiguation (mirrors _CategoryContextMenu) ────────────
   static const double _kReorderSlop = 10.0;
@@ -22303,11 +22354,30 @@ class _EventContextMenuState extends State<_EventContextMenu>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _anchorRefreshScheduled = false;
       if (!mounted || (_entry == null && _closingEntry == null)) return;
-      final rect = _contextMenuTileRect(context);
-      if (rect != null && rect != _anchorRect.value) {
-        _anchorRect.value = rect;
+      final orientation = MediaQuery.orientationOf(context);
+      final orientationChanged =
+          _lastAnchorOrientation != null &&
+          orientation != _lastAnchorOrientation;
+      _lastAnchorOrientation = orientation;
+      if (orientationChanged) {
+        unawaited(_ensureContextMenuSourceVisible(context).then((_) {
+          if (!mounted || (_entry == null && _closingEntry == null)) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _refreshAnchorRect();
+          });
+        }));
+      } else {
+        _refreshAnchorRect();
       }
     });
+  }
+
+  void _refreshAnchorRect() {
+    if (!mounted || (_entry == null && _closingEntry == null)) return;
+    final rect = _contextMenuTileRect(context);
+    if (rect != null && rect != _anchorRect.value) {
+      _anchorRect.value = rect;
+    }
   }
 
   @override
@@ -22341,6 +22411,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
     if (sbContextMenuActive.value) return;
     sbContextMenuActive.value = true;
     sbContextMenuDismiss.value = _hide;
+    _lastAnchorOrientation = MediaQuery.orientationOf(context);
     _anchorRect.value = sourceRect;
     _isClosing.value = false;
     _overlayCtrl.value = 0;
@@ -22374,7 +22445,8 @@ class _EventContextMenuState extends State<_EventContextMenu>
                 ),
           ),
     );
-    Overlay.of(context).insert(_entry!);
+    Overlay.of(context, rootOverlay: true).insert(_entry!);
+    updateKeepAlive();
     _overlayCtrl.animateWith(
       SpringSimulation(
         SpringDescription.withDampingRatio(
@@ -22403,6 +22475,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
       _closingEntry = null;
       sbContextMenuActive.value = false;
       entry.remove();
+      updateKeepAlive();
       then?.call();
     }
 
@@ -22508,6 +22581,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (!widget.enabled) return widget.child;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
