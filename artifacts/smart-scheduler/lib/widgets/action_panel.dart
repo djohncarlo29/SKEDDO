@@ -891,10 +891,32 @@ class ModalSheetGlassMenu extends StatefulWidget {
 
 class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
   final GlassMenuController _controller = GlassMenuController();
+  int _closeCompletionGeneration = 0;
 
   void _prepareToOpen() {
+    // A close can be reversed by reopening the menu before its spring settles.
+    // In that case, don't deliver a stale "closed" notification.
+    _closeCompletionGeneration++;
     widget.onBeforeOpen?.call();
     widget.onOpened?.call(_controller);
+  }
+
+  void _notifyClosedAfterMorph() {
+    final generation = ++_closeCompletionGeneration;
+
+    void checkSettled() {
+      if (!mounted || generation != _closeCompletionGeneration) return;
+      if (!_controller.isOpen) {
+        widget.onClosed?.call(_controller);
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => checkSettled());
+    }
+
+    // GlassMenu.onClose fires when the reverse morph starts. Keep the parent
+    // modal's picker-open state until the overlay has actually collapsed and
+    // returned to its text trigger.
+    checkSettled();
   }
 
   void _openMenu() {
@@ -927,6 +949,7 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
             ),
           ),
           items: items,
+          showItemInteractionHighlight: false,
           menuWidth: widget.menuWidth,
           autoAdjustToScreen: true,
           menuAlignment: GlassMenuAlignment.none,
@@ -939,6 +962,9 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
               sliderPosition: sliderPosition,
             ),
           ),
+          // Match GlassBarItem.menu's premium rim renderer; the slider-derived
+          // dark settings already use SKEDDO's half-strength edge lighting.
+          quality: GlassQuality.premium,
           // Picker values remain plain text during the handoff; the glass
           // platter blooms from the same anchor without wrapping the trigger.
           morphFromZero: true,
@@ -946,7 +972,7 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
           menuContentHorizontalInset: 12,
           menuPadding: const EdgeInsets.all(16),
           triggerImpactStrength: 1.15,
-          onClose: () => widget.onClosed?.call(_controller),
+          onClose: _notifyClosedAfterMorph,
         );
 
         return widget.builder(context, menu, _openMenu);
@@ -1004,6 +1030,7 @@ List<Widget> _glassMenuItemsForActions(
         icon: menuIcon,
         iconSize: leadingSlotSize,
         iconLabelGap: 12,
+        allowTextWrapping: true,
         isDestructive: action.isDestructive,
         titleStyle: TextStyle(
           color: labelColor,

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassMenu, GlassMenuItem;
+    show GlassMenu, GlassMenuController, GlassMenuItem, GlassQuality;
 
 import 'package:smart_scheduler/app_settings.dart'
     show
@@ -26,7 +26,10 @@ void main() {
     await tester.pumpWidget(
       CupertinoApp(
         home: MediaQuery(
-          data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+          data: const MediaQueryData(
+            platformBrightness: Brightness.dark,
+            textScaler: TextScaler.linear(1.5),
+          ),
           child: Center(
             child: ModalSheetGlassMenu(
               trigger: const Text('October'),
@@ -54,7 +57,9 @@ void main() {
     final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
     expect(menu.morphFromZero, isTrue);
     expect(menu.triggerImpactStrength, 1.15);
+    expect(menu.quality, GlassQuality.premium);
     expect(menu.keepTriggerAnchorOnOverflow, isTrue);
+    expect(menu.showItemInteractionHighlight, isFalse);
     expect(menu.menuContentHorizontalInset, 12);
     expect(find.text('October'), findsOneWidget);
 
@@ -63,6 +68,7 @@ void main() {
     for (final option in options) {
       expect(option.iconSize, 36);
       expect(option.iconLabelGap, 12);
+      expect(option.allowTextWrapping, isTrue);
       expect(option.trailing, isNull);
       final iconSlot = option.icon! as SizedBox;
       expect(iconSlot.width, 36);
@@ -85,6 +91,7 @@ void main() {
       menu.settings!.glassColor.a,
       closeTo(skeddoPopoverOpacityForPosition(initialPosition), 0.001),
     );
+    expect(menu.settings!.lightIntensity, 0.35);
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       1.0,
@@ -103,4 +110,62 @@ void main() {
       isNot(closeTo(menu.settings!.blur, 0.001)),
     );
   });
+
+  testWidgets(
+    'picker dismissal keeps the trigger mounted through the reverse morph',
+    (tester) async {
+      GlassMenuController? controller;
+      var closeCallbackRan = false;
+      var callbackSawOverlayOpen = true;
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: ModalSheetGlassMenu(
+              trigger: const Text('Picker value'),
+              actions: [
+                ActionItem(
+                  label: 'A picker option that wraps onto multiple lines',
+                  icon: CupertinoIcons.circle,
+                  onTap: () {},
+                ),
+              ],
+              semanticLabel: 'Picker value',
+              onOpened: (value) => controller = value,
+              onClosed: (value) {
+                closeCallbackRan = true;
+                callbackSawOverlayOpen = value.isOpen;
+              },
+              builder: (context, menuTrigger, openMenu) => menuTrigger,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Picker value'));
+      await tester.pumpAndSettle();
+      expect(controller, isNotNull);
+      expect(controller!.isOpen, isTrue);
+      final renderedOption = tester
+          .widgetList<GlassMenuItem>(find.byType(GlassMenuItem))
+          .singleWhere((item) => item.title.startsWith('A picker option'));
+      expect(renderedOption.showInteractionHighlight, isFalse);
+      expect(renderedOption.allowTextWrapping, isTrue);
+      final optionText = tester.widget<Text>(
+        find.text('A picker option that wraps onto multiple lines'),
+      );
+      expect(optionText.maxLines, isNull);
+      expect(optionText.overflow, TextOverflow.visible);
+
+      controller!.close();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(controller!.isOpen, isTrue);
+      expect(closeCallbackRan, isFalse);
+
+      await tester.pumpAndSettle();
+      expect(controller!.isOpen, isFalse);
+      expect(closeCallbackRan, isTrue);
+      expect(callbackSawOverlayOpen, isFalse);
+    },
+  );
 }
