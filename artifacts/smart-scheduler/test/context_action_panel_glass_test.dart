@@ -76,7 +76,12 @@ void main() {
         );
         expect(rows, hasLength(2));
         expect(rows.first.title, 'Edit Event Info');
+        expect(rows.map((row) => row.iconSize), everyElement(24.0));
         expect(rows.first.iconLabelGap, 12);
+        final iconSlot = rows.first.icon! as SizedBox;
+        expect(iconSlot.width, 24);
+        expect(iconSlot.height, 24);
+        expect(iconSlot.child, isA<Center>());
         expect(rows.first.titleStyle!.fontSize, 17);
         expect(rows.first.allowTextWrapping, isTrue);
         expect(rows.first.enablePressScale, isTrue);

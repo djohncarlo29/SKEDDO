@@ -52,3 +52,9 @@ Context-menu action rows should use the shared `instantOnOpen` row behavior so e
 **Why:** Sequential row cascades obscure available actions, while a trigger aligned to the viewport's physical bottom can sit behind the floating navigation pill.
 
 **How to apply:** Set `instantOnOpen` on every action in category, group, and event context menus. Use the shared tab-bar content clearance when computing the trigger's reveal alignment and the menu's available placement height.
+
+Context-menu GlassMenu-style rows should match `GlassBarItem.menu` geometry: center each glyph inside a shared 24 pt text-scaled leading slot, then use the shared 12 pt icon-to-label gap so labels have one common left edge.
+
+**Why:** Sizing the slot to each individual glyph makes labels drift horizontally and icon centers vary from row to row.
+
+**How to apply:** Keep actual glyph dimensions and optical offsets per action, but wrap them in the same centered fixed-width slot and pass that slot width as the GlassMenuItem icon size.

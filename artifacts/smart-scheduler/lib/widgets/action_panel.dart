@@ -68,6 +68,7 @@ const double _actionPanelLeadingGlyphBoxPadding = 3.0;
 const double _actionPanelHorizontalInset = 16.0;
 const double _actionPanelLabelTrailingIconGap = 16.0;
 const double _actionPanelCustomIconBaseSize = 24.0;
+const double _actionPanelGlassMenuIconSlotBaseSize = 24.0;
 
 double _actionPanelLeadingColumnWidth(BuildContext context) {
   // The leading slot is sized to the complete glyph footprint, including the
@@ -2242,6 +2243,9 @@ class _ActionRowState extends State<_ActionRow> {
         ? actionColor
         : actionColor.withValues(alpha: 0.9);
     final textScaler = MediaQuery.textScalerOf(context);
+    // Match GlassBarItem.menu's shared 24 pt leading slot: icons center in it
+    // while every label starts after the same slot and 12 pt label gap.
+    final iconSlotSize = textScaler.scale(_actionPanelGlassMenuIconSlotBaseSize);
     final iconSize = textScaler.scale(item.iconSize);
     final Widget iconContent;
     if (item.iconBuilder != null) {
@@ -2258,10 +2262,13 @@ class _ActionRowState extends State<_ActionRow> {
       );
     }
     final icon = SizedBox(
-      width: iconSize,
-      height: iconSize,
+      width: iconSlotSize,
+      height: iconSlotSize,
       child: Center(
-        child: Transform.translate(offset: item.iconOffset, child: iconContent),
+        child: Transform.translate(
+          offset: item.iconOffset,
+          child: iconContent,
+        ),
       ),
     );
 
@@ -2271,7 +2278,7 @@ class _ActionRowState extends State<_ActionRow> {
       icon: icon,
       isDestructive: item.isDestructive,
       isSelected: false,
-      iconSize: iconSize,
+      iconSize: iconSlotSize,
       iconLabelGap: 12,
       height: item.subtitle == null
           ? ActionItem.rowHeight
