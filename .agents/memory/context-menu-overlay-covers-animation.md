@@ -22,3 +22,9 @@ For a platter above its source, pin its bottom edge to the source top minus the 
 **Why:** The platter's own padding increases its visible height beyond the action rows. A top-based position derived from row height alone makes the above-source platter overlap the tile, while a top-anchored scale causes the gap to vary during its entrance.
 
 **How to apply:** Keep one edge fixed at the source-facing side for each placement. Measure row wrapping at the actual menu width and text scale, then add the glass platter's insets before deciding whether to scroll.
+
+Use the package's public `GlassInteractiveContainer` for the custom context platter: it composes the premium glass surface with the same horizontal stretch and touch glow as `GlassMenu`, while preserving the context menu's independent placement and no-trigger-morph behavior. Keep the backdrop scrim as a clipped dim-only layer when blur is not requested.
+
+**Why:** Rebuilding those effects in the app can drift from package menu behavior, while swapping to a trigger-morphing `GlassMenu` changes the established context-menu presentation. The category and event tiles already share one overlay path.
+
+**How to apply:** Route both category and event actions through the shared overlay and glass-styled `ActionPanel`. Keep its press feedback, overflow-only bounce/edge fade/scroll indicator, disabled selected state, and surface opacity animation together; do not add a backdrop filter to a dim-only scrim.

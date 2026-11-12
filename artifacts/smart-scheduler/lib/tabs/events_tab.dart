@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' show max, min;
-import 'dart:ui';
 
 import 'package:flutter/services.dart' show HapticFeedback;
 
@@ -273,7 +272,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     upperBound: 1.5,
   );
 
-  // Signals the overlay which blur curve to use: fast-in on open, fast-out on close.
+  // Signals the overlay which scrim fade curve to use on open and close.
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
 
   OverlayEntry? _entry;
@@ -644,12 +643,11 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   }
 }
 
-// ── Blur hole clipper ─────────────────────────────────────────────────────────
-// Clips the BackdropFilter to every pixel EXCEPT the card's original rect,
-// so the underlying tile is never blurred or dimmed by the scrim.
-class _BlurHoleClipper extends CustomClipper<Path> {
+// ── Context-menu scrim hole clipper ───────────────────────────────────────────
+// Dims every pixel except the source tile, keeping its lifted preview crisp.
+class _ContextMenuScrimClipper extends CustomClipper<Path> {
   final Rect hole;
-  const _BlurHoleClipper({required this.hole});
+  const _ContextMenuScrimClipper({required this.hole});
 
   @override
   Path getClip(Size size) {
@@ -663,7 +661,7 @@ class _BlurHoleClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(_BlurHoleClipper old) => old.hole != hole;
+  bool shouldReclip(_ContextMenuScrimClipper old) => old.hole != hole;
 }
 
 // ── Full-screen overlay ───────────────────────────────────────────────────────
@@ -671,7 +669,7 @@ class _ContextMenuOverlay extends StatelessWidget {
   // Raw controller value — may briefly exceed 1.0 during spring overshoot (open)
   // or during the bloom phase of dismiss (animateTo(1.06) → animateTo(0)).
   final Animation<double> animation;
-  // True from the moment _hide() is called; drives asymmetric blur curves.
+  // True from the moment _hide() is called; drives the scrim's reverse fade.
   final ValueNotifier<bool> isClosing;
   final Offset originalOffset;
   final Size originalSize;
@@ -816,8 +814,8 @@ class _ContextMenuOverlay extends StatelessWidget {
     final safeBtm = mq.padding.bottom + 16.0;
 
     // Preview — sits at the card's exact original position (no relocation).
-    // The BackdropFilter below blurs the real card; this copy appears sharp
-    // above the blur at the same coordinates, scaled up as the menu opens.
+    // This copy remains sharp above the dimmed backdrop at the same
+    // coordinates, scaling up as the menu opens.
     final previewW = originalSize.width;
     final previewH = originalSize.height;
 
@@ -888,21 +886,16 @@ class _ContextMenuOverlay extends StatelessWidget {
 
     return AnimatedBuilder(
       // Rebuild on every animation tick AND whenever isClosing flips so the
-      // blur curve switches immediately at the moment _hide() is called.
+      // scrim fade reverses immediately when _hide() is called.
       animation: Listenable.merge([animation, isClosing]),
       builder: (context, _) {
         final rawT = animation.value; // spring: may briefly exceed 1.0
         final closing = isClosing.value;
         final clampedT = rawT.clamp(0.0, 1.0);
 
-        // ── Blur / tint ──────────────────────────────────────────────────────
-        // On open  : easeOut so the blur surges in quickly then decelerates —
-        //            reaches 1.0 when rawT first hits 1.0, stays clamped while
-        //            the spring overshoots. Blur is full before card settles.
-        // On close : Curves.easeIn applied on top of the easeIn-curved animateTo,
-        //            giving a "double-easeIn" that drops the blur far ahead of
-        //            the linear cardOpacity — blur is the first thing to vanish.
-        final blurT =
+        // The backdrop only dims; it never blurs. Keep the same asymmetric
+        // fade timing as the menu transition.
+        final scrimT =
             closing
                 ? Curves.easeIn.transform(clampedT)
                 : Curves.easeOut.transform(clampedT);
@@ -916,9 +909,8 @@ class _ContextMenuOverlay extends StatelessWidget {
         // ── Card opacity — linear fade in/out ────────────────────────────────
         final cardOpacity = clampedT;
 
-        // Hole is fixed at the original tile footprint — the blur mask never
-        // moves or resizes.  The below-blur tile overflows the hole as it
-        // scales, but the overflow is covered by the surrounding blur.
+        // Hole is fixed at the original tile footprint — the dim mask never
+        // moves or resizes. The preview can scale beyond the hole above it.
         final holeRect = Rect.fromLTWH(
           originalOffset.dx,
           originalOffset.dy,
@@ -928,8 +920,8 @@ class _ContextMenuOverlay extends StatelessWidget {
 
         return Stack(
           children: [
-            // ① Below-blur tile — painted BEFORE the BackdropFilter so it
-            //   sits in the unblurred backdrop that shows through the hole.
+            // ① Below-scrim tile — painted before the scrim and kept sharp in
+            //   the source hole while the lifted copy animates above it.
             //   Scales and fades in sync with the card copy above, making
             //   the original tile appear to lift and magnify with the menu.
             Positioned(
@@ -945,23 +937,16 @@ class _ContextMenuOverlay extends StatelessWidget {
               ),
             ),
 
-            // ② Full-screen backdrop blur + light tint, with a squircle hole
-            //   at the original tile position.  GestureDetector wraps ClipPath
-            //   so opaque hit-testing covers the whole screen and any tap
-            //   dismisses the menu.
+            // ② Full-screen dimming scrim, with a squircle hole at the
+            //   original tile position. GestureDetector wraps ClipPath so
+            //   opaque hit-testing covers the screen and taps dismiss.
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onDismiss,
               child: ClipPath(
-                clipper: _BlurHoleClipper(hole: holeRect),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: 6 * blurT,
-                    sigmaY: 6 * blurT,
-                  ),
-                  child: Container(
-                    color: Color.fromRGBO(0, 0, 0, 0.18 * blurT),
-                  ),
+                clipper: _ContextMenuScrimClipper(hole: holeRect),
+                child: Container(
+                  color: Color.fromRGBO(0, 0, 0, 0.18 * scrimT),
                 ),
               ),
             ),

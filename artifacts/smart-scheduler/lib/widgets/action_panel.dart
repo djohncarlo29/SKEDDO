@@ -2264,12 +2264,14 @@ class _ActionRowState extends State<_ActionRow> {
       subtitle: item.subtitle,
       icon: icon,
       isDestructive: item.isDestructive,
+      isSelected: false,
       iconSize: iconSize,
       iconLabelGap: 12,
       height: item.subtitle == null
           ? ActionItem.rowHeight
           : ActionItem.rowHeightWithSubtitle,
       allowTextWrapping: true,
+      enablePressScale: true,
       showInteractionHighlight: true,
       titleStyle: TextStyle(
         color: labelColor,
@@ -2750,14 +2752,22 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
           sharedSettings,
         );
 
-        return GlassContainer(
+        return GlassInteractiveContainer(
+          padding: const EdgeInsets.all(12),
           useOwnLayer: true,
           settings: settings,
           quality: GlassQuality.premium,
           allowElevation: false,
           shape: const LiquidRoundedRectangle(borderRadius: 32),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(padding: const EdgeInsets.all(12), child: child),
+          stretch: 0.5,
+          interactionScale: 1.02,
+          stretchResistance: 0.08,
+          stretchAxis: Axis.horizontal,
+          allowPositiveX: true,
+          allowNegativeX: true,
+          glowRadius: 0.6,
+          glowBlurRadius: 40,
+          child: child,
         );
       },
     );

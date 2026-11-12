@@ -1,7 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassContainer, GlassMenuItem, GlassQuality;
+    show
+        GlassContainer,
+        GlassGlow,
+        GlassInteractiveContainer,
+        GlassMenuItem,
+        GlassQuality;
 import 'package:smart_scheduler/app_theme.dart'
     show kPrimaryLabel, resolveThemeColor;
 import 'package:smart_scheduler/widgets/action_panel.dart'
@@ -50,10 +55,13 @@ void main() {
         final surface = tester.widget<GlassContainer>(
           find.byType(GlassContainer),
         );
+        expect(find.byType(GlassInteractiveContainer), findsOneWidget);
+        expect(find.byType(GlassGlow), findsOneWidget);
         expect(surface.quality, GlassQuality.premium);
         expect(surface.settings!.thickness, 30);
         expect(surface.settings!.refractiveIndex, 1.59);
         expect(surface.settings!.chromaticAberration, 0.3);
+        expect(surface.settings!.visibility, 1);
 
         final rows = tester.widgetList<GlassMenuItem>(
           find.byType(GlassMenuItem),
@@ -71,6 +79,9 @@ void main() {
         expect(rows.first.iconLabelGap, 12);
         expect(rows.first.titleStyle!.fontSize, 17);
         expect(rows.first.allowTextWrapping, isTrue);
+        expect(rows.first.enablePressScale, isTrue);
+        expect(rows.first.showInteractionHighlight, isTrue);
+        expect(rows.first.isSelected, isFalse);
         expect(rows.last.isDestructive, isTrue);
         final titleContext = tester.element(find.text('Edit Event Info'));
         expect(
@@ -93,4 +104,59 @@ void main() {
       },
     );
   }
+
+  testWidgets('context action panel scrolls and reveals its scroll pill', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    addTearDown(closing.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 250,
+            child: ActionPanel(
+              isClosing: closing,
+              useGlassMenuStyle: true,
+              maxHeight: 96,
+              bouncingScroll: true,
+              items: [
+                for (var i = 0; i < 5; i++)
+                  ActionItem(
+                    label: 'Action $i',
+                    icon: CupertinoIcons.pencil,
+                    onTap: () {},
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView).first,
+    );
+    expect(scrollView.physics, isA<BouncingScrollPhysics>());
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Positioned && widget.width == 2.5,
+      ),
+      findsOneWidget,
+    );
+
+    await tester.drag(
+      find.byType(SingleChildScrollView).first,
+      const Offset(0, -70),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is AnimatedOpacity && widget.opacity == 0.8,
+      ),
+      findsWidgets,
+    );
+  });
 }
