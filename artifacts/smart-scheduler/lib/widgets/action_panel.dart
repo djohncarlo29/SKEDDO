@@ -924,6 +924,7 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
       autoAdjustToScreen: true,
       menuAlignment: GlassMenuAlignment.none,
       menuPadding: const EdgeInsets.all(16),
+      triggerImpactStrength: 1.15,
       onClose: () => widget.onClosed?.call(_controller),
     );
 

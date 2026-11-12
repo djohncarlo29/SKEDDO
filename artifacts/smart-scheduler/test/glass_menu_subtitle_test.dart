@@ -128,6 +128,18 @@ void main() {
     expect(closeCount, 1);
   });
 
+  test('trigger impact strength defaults to the existing rebound', () {
+    const defaultMenu = GlassMenu(items: [], trigger: Text('Actions'));
+    const pickerMenu = GlassMenu(
+      items: [],
+      trigger: Text('Picker value'),
+      triggerImpactStrength: 1.15,
+    );
+
+    expect(defaultMenu.triggerImpactStrength, 1.0);
+    expect(pickerMenu.triggerImpactStrength, 1.15);
+  });
+
   testWidgets('submenu height updates when its header gains a subtitle', (
     tester,
   ) async {

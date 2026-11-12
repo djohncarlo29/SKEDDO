@@ -515,8 +515,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         // Underdamped bounce impact squash: as the droplet slams into the trigger,
         // the button compresses slightly and rebounds to rest, giving a visceral
         // tactile sensation of liquid absorption.
-        final double impactScale =
-            isHandoff ? (1.0 + rawValue * 0.35).clamp(0.88, 1.0) : 1.0;
+        final impactStrength = widget.triggerImpactStrength;
+        final maxImpactCompression = 0.12 * impactStrength;
+        final double impactScale = isHandoff
+            ? (1.0 + rawValue * 0.35 * impactStrength).clamp(
+                1.0 - maxImpactCompression,
+                1.0,
+              )
+            : 1.0;
 
         final Widget triggerChild = widget.triggerBuilder != null
             ? widget.triggerBuilder!(context, _toggleMenu)
