@@ -186,8 +186,10 @@ void main() {
       );
       expect(
         tabBar.indicatorSettings!.chromaticAberration,
-        kSkeddoActiveTabIndicatorChromaticAberration,
+        0.20,
       );
+      expect(tabBar.indicatorSettings!.thickness, 20);
+      expect(tabBar.indicatorSettings!.refractiveIndex, 1.10);
       expect(tabBar.settings!.chromaticAberration, 0.3);
       expect(
         tabBar.indicatorSettings!.glassColor,

@@ -114,8 +114,10 @@ void main() {
     expect(popover.barrierDismissible, isTrue);
     expect(
       popover.settings!.refractiveIndex,
-      skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
+      1.10,
     );
+    expect(popover.settings!.thickness, 20);
+    expect(popover.settings!.chromaticAberration, 0.20);
     expect(popover.settings!.blur, skeddoPopoverBlurForPosition(0.5));
     expect(popover.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
     final morphLayerFinder = find.byType(LiquidGlassLayer);

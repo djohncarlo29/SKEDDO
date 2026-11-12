@@ -30,6 +30,11 @@ const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 
+/// Shared lens settings for the moving tab indicator and morphing menus.
+const double kSkeddoSharedGlassThickness = 20;
+const double kSkeddoSharedGlassRefractiveIndex = 1.10;
+const double kSkeddoSharedGlassChromaticAberration = 0.20;
+
 /// Shared rim/specular strength used by SKEDDO's glass renderers.
 ///
 /// `1.0` matches the brighter package-default rim used by the toolbar and
@@ -37,7 +42,8 @@ const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 /// independent from this rim-only value.
 const double kSkeddoSharedGlassRimStrength = 1.0;
 const double kSkeddoDarkGlassInteractionGlowMultiplier = 0.5;
-const double kSkeddoActiveTabIndicatorChromaticAberration = 0.15;
+const double kSkeddoActiveTabIndicatorChromaticAberration =
+    kSkeddoSharedGlassChromaticAberration;
 const double _kActiveCheckmarkGlassSliderReference = 0.5;
 const double _kOldSliderPositionForNewMidpoint = 0.57;
 
@@ -403,13 +409,17 @@ navigation_glass.LiquidGlassSettings skeddoNavigationTabIndicatorGlassSettings(
   final navigation_glass.LiquidGlassSettings base;
   if (brightness == Brightness.dark) {
     base = navigation_glass.LiquidGlassSettings(
-      chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+      thickness: kSkeddoSharedGlassThickness,
+      refractiveIndex: kSkeddoSharedGlassRefractiveIndex,
+      chromaticAberration: kSkeddoSharedGlassChromaticAberration,
       fresnelStrength: kSkeddoSharedGlassRimStrength,
     );
   } else {
     base = skeddoNavigationGlassSettingsFromShared(
       kSkeddoLightLiftedTabIndicatorSettings.copyWith(
-        chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+        thickness: kSkeddoSharedGlassThickness,
+        refractiveIndex: kSkeddoSharedGlassRefractiveIndex,
+        chromaticAberration: kSkeddoSharedGlassChromaticAberration,
         fresnelStrength: kSkeddoSharedGlassRimStrength,
       ),
     );
@@ -444,6 +454,9 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   return _withSharedGlassRimStrength(
     brightness,
     shared.copyWith(
+      thickness: kSkeddoSharedGlassThickness,
+      refractiveIndex: kSkeddoSharedGlassRefractiveIndex,
+      chromaticAberration: kSkeddoSharedGlassChromaticAberration,
       blur: skeddoPopoverBlurForPosition(position),
       glassColor: cardTint.withValues(
         alpha: skeddoPopoverOpacityForPosition(position),

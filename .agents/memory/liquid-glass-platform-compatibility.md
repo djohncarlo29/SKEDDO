@@ -19,3 +19,15 @@ the toolbar and tab bar.
 **How to apply:** Use the shared rim-strength constant once for package
 Fresnel and app-owned specular edges. Avoid applying a second Dark Mode
 reduction; preserve independent glow, fill, blur, geometry, and dark contours.
+
+The moving active-tab lens and morphing `GlassPopover`, `GlassBarItem.menu`,
+and modal `GlassMenu` share the same lens targets: thickness 20, refractive
+index 1.10, and chromatic aberration 0.20. Keep these material values active
+throughout their open/close morphs; slider-controlled tint and blur remain
+independent.
+
+**Why:** Different lens targets create a visible change in backdrop distortion
+as similar glass shapes move or morph.
+
+**How to apply:** Define shared lens constants and pass them through the
+app-owned settings helpers rather than changing unrelated package defaults.
