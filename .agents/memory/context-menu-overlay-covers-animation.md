@@ -16,3 +16,9 @@ Keep category and event long-press menus on the shared custom overlay when the i
 **Why:** The package menu API owns a trigger-to-menu transition, while the app's context menu is anchored to a lifted tile and has separate action/dismiss callbacks. Reusing the package's surface and row primitives gives consistent formatting without replacing that interaction.
 
 **How to apply:** Enable the GlassMenu-style ActionPanel only from the shared context-menu overlay. Leave the existing overlay lifecycle, tile preview, and callbacks intact; do not globally change other ActionPanel call sites.
+
+For a platter above its source, pin its bottom edge to the source top minus the desired gap and scale from `Alignment.bottomCenter`; for a platter below, pin its top edge to the source bottom plus the gap and scale from `Alignment.topCenter`. Include the platter's material insets when calculating overflow height.
+
+**Why:** The platter's own padding increases its visible height beyond the action rows. A top-based position derived from row height alone makes the above-source platter overlap the tile, while a top-anchored scale causes the gap to vary during its entrance.
+
+**How to apply:** Keep one edge fixed at the source-facing side for each placement. Measure row wrapping at the actual menu width and text scale, then add the glass platter's insets before deciding whether to scroll.

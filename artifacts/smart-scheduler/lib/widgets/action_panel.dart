@@ -1131,6 +1131,8 @@ class ActionPanel extends StatefulWidget {
   // Uses the package GlassMenu platter and row geometry without attaching a
   // morphing trigger. Intended for long-press context-menu overlays.
   final bool useGlassMenuStyle;
+  // Keeps the nearest edge fixed while the panel scales into place.
+  final Alignment scaleAlignment;
   // Standard action panels keep a fixed 16 px label-to-trailing-icon gap.
   // Modal picker mini-panels opt out to preserve their compact legacy layout.
   final bool enforceTrailingIconSpacing;
@@ -1152,6 +1154,7 @@ class ActionPanel extends StatefulWidget {
     this.pinSeparatorAfterTop = false,
     this.useLiquidGlass = false,
     this.useGlassMenuStyle = false,
+    this.scaleAlignment = Alignment.topCenter,
     this.enforceTrailingIconSpacing = true,
   });
 
@@ -1938,7 +1941,7 @@ class _ActionPanelState extends State<ActionPanel>
 
         return Transform.scale(
           scale: panelScale,
-          alignment: Alignment.topCenter,
+          alignment: widget.scaleAlignment,
           child: panelCard,
         );
       },
@@ -2224,24 +2227,27 @@ class _ActionRowState extends State<_ActionRow> {
   }
 
   Widget _buildGlassMenuStyleRow(BuildContext context, ActionItem item) {
-    final textColor = item.labelColor != null
+    final actionColor = item.labelColor != null
         ? CupertinoDynamicColor.resolve(item.labelColor!, context)
         : item.isDestructive
         ? CupertinoColors.destructiveRed
-        : CupertinoDynamicColor.resolve(kPrimaryLabel, context);
+        : resolveThemeColor(kPrimaryLabel, context);
+    final labelColor = item.labelColor != null || item.isDestructive
+        ? actionColor
+        : actionColor.withValues(alpha: 0.9);
     final textScaler = MediaQuery.textScalerOf(context);
     final iconSize = textScaler.scale(item.iconSize);
     final Widget iconContent;
     if (item.iconBuilder != null) {
       iconContent = Transform.scale(
         scale: iconSize / item.iconSize,
-        child: item.iconBuilder!(textColor),
+        child: item.iconBuilder!(actionColor),
       );
     } else {
       iconContent = _ActionPanelSFIcon(
         item.icon,
         size: iconSize,
-        color: textColor,
+        color: actionColor,
         weight: item.iconWeight,
       );
     }
@@ -2265,13 +2271,11 @@ class _ActionRowState extends State<_ActionRow> {
           : ActionItem.rowHeightWithSubtitle,
       allowTextWrapping: true,
       showInteractionHighlight: true,
-      titleStyle: item.labelColor == null
-          ? null
-          : TextStyle(
-              color: textColor,
-              fontSize: 17,
-              fontWeight: FontWeight.w400,
-            ),
+      titleStyle: TextStyle(
+        color: labelColor,
+        fontSize: 17,
+        fontWeight: FontWeight.w400,
+      ),
       onTap: item.onTap ?? () {},
     );
   }

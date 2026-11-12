@@ -829,11 +829,52 @@ class _ContextMenuOverlay extends StatelessWidget {
       max(1.0, screenW - 32.0),
     );
     final panelLeft = (screenW - panelW) / 2;
-    final panelH = ActionItem.panelHeightForItems(
-      actions,
-      context: context,
-      panelWidth: panelW,
-    );
+    const panelVerticalInset = 12.0;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+
+    double menuTextHeight(String text, double fontSize, double maxWidth) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w400),
+        ),
+        textDirection: textDirection,
+        textScaler: textScaler,
+      )..layout(maxWidth: maxWidth);
+      return painter.height;
+    }
+
+    var panelContentH = 0.0;
+    for (var index = 0; index < actions.length; index++) {
+      final action = actions[index];
+      if (index > 0 && action.groupBreakAbove) {
+        panelContentH += ActionItem.groupBreakH + 4.0;
+      }
+      final configuredHeight = action.subtitle == null
+          ? ActionItem.rowHeight
+          : ActionItem.rowHeightWithSubtitle;
+      final scaledMinimumHeight =
+          textScaler.scale(configuredHeight - 16.0) + 16.0;
+      final labelWidth = max(
+        1.0,
+        panelW -
+            panelVerticalInset * 2 -
+            32.0 -
+            textScaler.scale(action.iconSize) -
+            12.0,
+      );
+      final textContentHeight =
+          menuTextHeight(action.label, 17.0, labelWidth) +
+          (action.subtitle == null
+              ? 0.0
+              : menuTextHeight(action.subtitle!, 13.0, labelWidth));
+      panelContentH += max(scaledMinimumHeight, textContentHeight + 16.0);
+    }
+    // The GlassMenu-style platter has 12 pt of vertical material inset and no
+    // ordinary row separators. Measure the whole platter for overflow handling
+    // so the above and below placements share the same visible edge gap.
+    final panelH = panelContentH + panelVerticalInset * 2;
 
     final tileBottom = originalOffset.dy + originalSize.height;
     const panelGap = 12.0;
@@ -841,11 +882,9 @@ class _ContextMenuOverlay extends StatelessWidget {
     final spaceBelow = max(1.0, screenH - safeBtm - tileBottom - panelGap);
     final goAbove = spaceAbove > spaceBelow;
     final availableRoom = goAbove ? spaceAbove : spaceBelow;
-    final visiblePanelH = min(panelH, availableRoom);
-    final panelTop =
-        goAbove
-            ? originalOffset.dy - panelGap - visiblePanelH
-            : tileBottom + panelGap;
+    final maxPanelContentHeight = panelH > availableRoom
+        ? max(1.0, availableRoom - panelVerticalInset * 2)
+        : null;
 
     return AnimatedBuilder(
       // Rebuild on every animation tick AND whenever isClosing flips so the
@@ -955,13 +994,17 @@ class _ContextMenuOverlay extends StatelessWidget {
             //   independent of the fast spring that drives rawT.
             Positioned(
               left: panelLeft,
-              top: panelTop,
+              top: goAbove ? null : tileBottom + panelGap,
+              bottom: goAbove ? screenH - originalOffset.dy + panelGap : null,
               width: panelW,
               child: ActionPanel(
                 items: actions,
                 isClosing: isClosing,
-                maxHeight: panelH > availableRoom ? availableRoom : null,
+                maxHeight: maxPanelContentHeight,
                 bouncingScroll: true,
+                scaleAlignment: goAbove
+                    ? Alignment.bottomCenter
+                    : Alignment.topCenter,
                 useGlassMenuStyle: true,
               ),
             ),
