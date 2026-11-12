@@ -1933,6 +1933,24 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     return settings.copyWith(blur: settings.blur * factor);
   }
 
+  LiquidGlassSettings _withTextTriggerSurfaceFade(
+    LiquidGlassSettings settings,
+    double morphProgress,
+  ) {
+    if (widget.morphFromZero || !widget.suppressTriggerGlassBlob) {
+      return settings;
+    }
+
+    // Keep the plain picker value visible for the exact interval in which the
+    // existing trigger opacity fades. The menu body still grows from the
+    // trigger's measured width/height, but its glass optics don't cover that
+    // text until it has independently faded away.
+    final surfaceVisibility = (morphProgress / 0.20).clamp(0.0, 1.0);
+    return settings.copyWith(
+      visibility: settings.visibility * surfaceVisibility,
+    );
+  }
+
   Widget _buildMorphingOverlay(BuildContext context) {
     if (_triggerSize == null || _openMorphPending) {
       return const SizedBox.shrink();
@@ -1990,22 +2008,26 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             .clamp(0.0, double.infinity);
 
     final inheritedSettings = InheritedLiquidGlass.of(context);
-    final effectiveSettings = _withPopoverBlurRamp(
-      widget.settings ??
-          inheritedSettings ??
-          LiquidGlassSettings(
-            blur: 10,
-            thickness: 10,
-            glassColor: Color.fromRGBO(255, 255, 255, 0.12),
-            lightAngle: GlassDefaults.lightAngle,
-            lightIntensity: GlassTheme.brightnessOf(context) == Brightness.dark
-                ? 0.35
-                : 0.7,
-            ambientStrength: 0.4,
-            saturation: 1.2,
-            refractiveIndex: 0.7,
-            chromaticAberration: 0.0,
-          ),
+    final effectiveSettings = _withTextTriggerSurfaceFade(
+      _withPopoverBlurRamp(
+        widget.settings ??
+            inheritedSettings ??
+            LiquidGlassSettings(
+              blur: 10,
+              thickness: 10,
+              glassColor: Color.fromRGBO(255, 255, 255, 0.12),
+              lightAngle: GlassDefaults.lightAngle,
+              lightIntensity:
+                  GlassTheme.brightnessOf(context) == Brightness.dark
+                  ? 0.35
+                  : 0.7,
+              ambientStrength: 0.4,
+              saturation: 1.2,
+              refractiveIndex: 0.7,
+              chromaticAberration: 0.0,
+            ),
+      ),
+      clampedValue,
     );
 
     final effectiveQuality = GlassThemeHelpers.resolveQuality(
@@ -2375,22 +2397,26 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     // settings from parent layer. If none, use subtle overlay defaults.
     // This matches the pattern used by all other glass widgets.
     final inheritedSettings = InheritedLiquidGlass.of(context);
-    final effectiveSettings = _withPopoverBlurRamp(
-      widget.settings ??
-          inheritedSettings ??
-          LiquidGlassSettings(
-            blur: 10,
-            thickness: 10,
-            glassColor: Color.fromRGBO(255, 255, 255, 0.12),
-            lightAngle: GlassDefaults.lightAngle,
-            lightIntensity: GlassTheme.brightnessOf(context) == Brightness.dark
-                ? 0.35
-                : 0.7,
-            ambientStrength: 0.4,
-            saturation: 1.2,
-            refractiveIndex: 0.7,
-            chromaticAberration: 0.0,
-          ),
+    final effectiveSettings = _withTextTriggerSurfaceFade(
+      _withPopoverBlurRamp(
+        widget.settings ??
+            inheritedSettings ??
+            LiquidGlassSettings(
+              blur: 10,
+              thickness: 10,
+              glassColor: Color.fromRGBO(255, 255, 255, 0.12),
+              lightAngle: GlassDefaults.lightAngle,
+              lightIntensity:
+                  GlassTheme.brightnessOf(context) == Brightness.dark
+                  ? 0.35
+                  : 0.7,
+              ambientStrength: 0.4,
+              saturation: 1.2,
+              refractiveIndex: 0.7,
+              chromaticAberration: 0.0,
+            ),
+      ),
+      clampedValue,
     );
 
     final glassContent = LiquidStretch(

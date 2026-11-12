@@ -66,6 +66,8 @@ LiquidGlassSettings _reduceBrightDarkGlassEdges(
 ) {
   if (brightness != Brightness.dark) return settings;
   return settings.copyWith(
+    lightIntensity:
+        settings.lightIntensity * kSkeddoDarkGlassEdgeIntensityMultiplier,
     ambientRim: settings.ambientRim * kSkeddoDarkGlassEdgeIntensityMultiplier,
     fresnelStrength:
         settings.fresnelStrength * kSkeddoDarkGlassEdgeIntensityMultiplier,

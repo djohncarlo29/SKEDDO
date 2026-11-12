@@ -1,7 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassMenu, GlassMenuController, GlassMenuItem, GlassQuality;
+    show
+        GlassContainer,
+        GlassMenu,
+        GlassMenuController,
+        GlassMenuItem,
+        GlassQuality;
 
 import 'package:smart_scheduler/app_settings.dart'
     show
@@ -26,7 +31,7 @@ void main() {
         tint,
         sliderPosition: position,
       );
-      expect(dark.lightIntensity, 0.35);
+      expect(dark.lightIntensity, 0.175);
       expect(dark.glowIntensity, 0.375);
       expect(dark.fresnelStrength, 0.5);
       expect(dark.ambientRim, 0);
@@ -37,7 +42,7 @@ void main() {
       expect(dark.blur, closeTo(skeddoPopoverBlurForPosition(position), 0.001));
 
       final navigationSettings = skeddoNavigationGlassSettingsFromShared(dark);
-      expect(navigationSettings.lightIntensity, dark.lightIntensity);
+      expect(navigationSettings.lightIntensity, 0.175);
       expect(navigationSettings.glowIntensity, dark.glowIntensity);
       expect(navigationSettings.fresnelStrength, dark.fresnelStrength);
       expect(navigationSettings.ambientRim, dark.ambientRim);
@@ -57,6 +62,7 @@ void main() {
   ) async {
     final originalOpacity = appLiquidGlassOpacityNotifier.value;
     addTearDown(() => appLiquidGlassOpacityNotifier.value = originalOpacity);
+    VoidCallback? openMenu;
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       0.0,
     );
@@ -86,7 +92,10 @@ void main() {
                 ),
               ],
               semanticLabel: 'Month, October',
-              builder: (context, menuTrigger, openMenu) => menuTrigger,
+              builder: (context, menuTrigger, open) {
+                openMenu = open;
+                return menuTrigger;
+              },
             ),
           ),
         ),
@@ -133,7 +142,7 @@ void main() {
       menu.settings!.glassColor.a,
       closeTo(skeddoPopoverOpacityForPosition(initialPosition), 0.001),
     );
-    expect(menu.settings!.lightIntensity, 0.35);
+    expect(menu.settings!.lightIntensity, 0.175);
     expect(menu.settings!.glowIntensity, 0.375);
     expect(menu.settings!.fresnelStrength, 0.5);
 
@@ -153,6 +162,27 @@ void main() {
       updatedMenu.settings!.blur,
       isNot(closeTo(menu.settings!.blur, 0.001)),
     );
+
+    openMenu!();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    final menuBody = tester.widget<GlassContainer>(
+      find.byType(GlassContainer).last,
+    );
+    expect(menuBody.settings!.visibility, lessThan(1));
+    final triggerOpacity = tester
+        .widgetList<Opacity>(
+          find.ancestor(
+            of: find.text('October'),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .map((widget) => widget.opacity)
+        .where((opacity) => opacity > 0 && opacity < 1)
+        .first;
+    expect(triggerOpacity, greaterThan(0));
   });
 
   testWidgets(
