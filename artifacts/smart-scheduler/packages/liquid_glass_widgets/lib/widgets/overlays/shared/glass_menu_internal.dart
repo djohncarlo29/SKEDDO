@@ -785,6 +785,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final screenWidth = mediaQuery?.size.width ?? double.infinity;
     final screenHeight = mediaQuery?.size.height ?? double.infinity;
     final menuHeight = _calculateMenuHeight();
+    final naturalMenuHeight = _naturalMenuHeight();
 
     // Determine base alignment (automatic unless the caller pins one).
     final stripAlignment = verticalBarPresentationAlignment(
@@ -792,6 +793,31 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       position & _triggerSize!,
     );
     if ((widget.menuAlignment == null ||
+            widget.menuAlignment == GlassMenuAlignment.none) &&
+        widget.keepTriggerAnchorOnOverflow &&
+        widget.autoAdjustToScreen &&
+        screenHeight.isFinite) {
+      final safeBounds = _verticalMenuSafeBounds(position, _triggerSize!);
+      final spaceBelow = math.max(
+        0.0,
+        screenHeight - safeBounds.bottom - position.dy,
+      );
+      final spaceAbove = math.max(
+        0.0,
+        position.dy + _triggerSize!.height - safeBounds.top,
+      );
+      final fitsBelow = naturalMenuHeight <= spaceBelow;
+      final fitsAbove = naturalMenuHeight <= spaceAbove;
+      final openAbove =
+          !fitsBelow && (fitsAbove || spaceAbove > spaceBelow);
+      final horizontalAlignment =
+          stripAlignment?.x ??
+          (screenWidth.isFinite && position.dx > screenWidth / 2 ? 1.0 : -1.0);
+      _morphAlignment = Alignment(
+        horizontalAlignment,
+        openAbove ? 1.0 : -1.0,
+      );
+    } else if ((widget.menuAlignment == null ||
             widget.menuAlignment == GlassMenuAlignment.none) &&
         stripAlignment != null) {
       // From iPhone Duo's vertical bar strip: towards the content. Natively a
@@ -808,8 +834,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           ? screenHeight - (position.dy + _triggerSize!.height)
           : double.infinity;
       final spaceAbove = screenHeight.isFinite ? position.dy : double.infinity;
-      final shouldFlipVertical =
-          spaceBelow < menuHeight && spaceAbove > menuHeight;
+      final shouldFlipVertical = spaceBelow < menuHeight &&
+          spaceAbove > menuHeight;
 
       if (shouldFlipVertical) {
         _morphAlignment =
@@ -823,7 +849,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           _getAlignment(widget.menuAlignment!) ?? Alignment.center;
     }
 
-    final clamp = _computeClampOffsets(menuHeight);
+    final clamp = _computeClampOffsets(_calculateMenuHeight());
     _horizontalOffset = clamp.dx;
     _verticalOffset = clamp.dy;
   }
@@ -2195,7 +2221,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
   /// The resting height of the menu body: the ROOT list's natural height, or
   /// the fixed [GlassMenu.menuHeight] when set.
-  double _targetBodyHeight() {
+  double _naturalMenuHeight() {
     if (widget.menuHeight != null) {
       return math.min(widget.menuHeight!, _maximumStackHeight);
     }
@@ -2203,8 +2229,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     // Account for system text scaling when calculating natural height.
     // Without this, increased text size causes items to render taller than
     // the height budget, triggering unwanted scrolling (GitHub issue).
-    final mediaQuery = MediaQuery.maybeOf(context);
-
     // Sum all menu item heights, scaled by text scaler
     final itemHeights = widget.items.fold<double>(
       0.0,
@@ -2214,8 +2238,19 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     // Add vertical padding (12px top + 12px bottom = 24px total)
     // plus vertical gaps between items (2px each)
     final gaps = (widget.items.length - 1) * 2.0;
-    final naturalHeight =
-        math.min(itemHeights + 24.0 + gaps, _maximumStackHeight);
+    return math.min(itemHeights + 24.0 + gaps, _maximumStackHeight);
+  }
+
+  double _targetBodyHeight() {
+    final naturalHeight = _naturalMenuHeight();
+    if (widget.menuHeight != null &&
+        (!widget.keepTriggerAnchorOnOverflow ||
+            !widget.autoAdjustToScreen ||
+            _triggerSize == null)) {
+      return naturalHeight;
+    }
+
+    final mediaQuery = MediaQuery.maybeOf(context);
 
     if (widget.autoAdjustToScreen) {
       if (mediaQuery != null) {
@@ -2224,10 +2259,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             flutterView.padding, flutterView.devicePixelRatio);
 
         // Clamp to screen height minus safe areas and a 20px safety buffer
+        final safetyBuffer =
+            widget.keepTriggerAnchorOnOverflow ? 0.0 : 20.0;
         var maxHeight = mediaQuery.size.height -
             mqPadding.vertical -
             widget.menuPadding.vertical -
-            20.0;
+            safetyBuffer;
         // From the vertical bar strip, to the room below its status cluster.
         final stripTop = _triggerSize == null
             ? null
@@ -2243,6 +2280,20 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                 mqPadding.bottom -
                 widget.menuPadding.bottom,
           );
+        }
+        if (widget.keepTriggerAnchorOnOverflow && _triggerSize != null) {
+          final safeBounds = _verticalMenuSafeBounds(
+            _triggerGlobalPosition,
+            _triggerSize!,
+          );
+          final availableFromAnchor = _morphAlignment.y > 0
+              ? _triggerGlobalPosition.dy +
+                    _triggerSize!.height -
+                    safeBounds.top
+              : mediaQuery.size.height -
+                    safeBounds.bottom -
+                    _triggerGlobalPosition.dy;
+          maxHeight = math.min(maxHeight, availableFromAnchor);
         }
         return math.min(naturalHeight, math.max(0.0, maxHeight));
       }
@@ -2722,6 +2773,28 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       }
     }
     return false;
+  }
+
+  ({double top, double bottom}) _verticalMenuSafeBounds(
+    Offset triggerPosition,
+    Size triggerSize,
+  ) {
+    final flutterView = View.of(context);
+    final viewPadding = EdgeInsets.fromViewPadding(
+      flutterView.padding,
+      flutterView.devicePixelRatio,
+    );
+    final stripTop = verticalBarPresentationTop(
+      context,
+      triggerPosition & triggerSize,
+    );
+    return (
+      top: math.max(
+        widget.menuPadding.top + viewPadding.top,
+        stripTop ?? 0.0,
+      ),
+      bottom: widget.menuPadding.bottom + viewPadding.bottom,
+    );
   }
 
   Widget _buildPassiveMenuItem(Widget item) {

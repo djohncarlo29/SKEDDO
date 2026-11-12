@@ -41,6 +41,7 @@ void main() {
     final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
     expect(menu.morphFromZero, isTrue);
     expect(menu.triggerImpactStrength, 1.15);
+    expect(menu.keepTriggerAnchorOnOverflow, isTrue);
     expect(menu.menuContentHorizontalInset, 0);
     expect(find.text('October'), findsOneWidget);
 

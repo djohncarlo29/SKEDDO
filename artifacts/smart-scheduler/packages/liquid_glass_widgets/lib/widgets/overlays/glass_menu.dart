@@ -132,6 +132,15 @@ class GlassMenu extends StatefulWidget {
   /// Whether to automatically adjust the menu position to keep it on screen.
   final bool autoAdjustToScreen;
 
+  /// Whether an overflowing menu should keep its trigger-side anchor and scroll.
+  ///
+  /// When [autoAdjustToScreen] is enabled, the menu opens on the side that can
+  /// fit it, if either side can. If neither side can fit the full menu, the
+  /// larger side is used and the menu body is limited to that space so its
+  /// items can scroll, rather than shifting the platter away from the trigger.
+  /// Defaults to false.
+  final bool keepTriggerAnchorOnOverflow;
+
   /// Width of the expanded menu.
   final double menuWidth;
 
@@ -352,6 +361,7 @@ class GlassMenu extends StatefulWidget {
     this.showItemInteractionHighlight = true,
     this.menuAlignment,
     this.autoAdjustToScreen = false,
+    this.keepTriggerAnchorOnOverflow = false,
     this.menuWidth = 200,
     this.menuBorderRadius = 32.0,
     this.itemBorderRadius = 24.0,

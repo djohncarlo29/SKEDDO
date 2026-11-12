@@ -10,6 +10,7 @@ void main() {
   test('GlassMenu retains its original default corner radius', () {
     const menu = GlassMenu(items: [], trigger: Text('Actions'));
     expect(menu.menuBorderRadius, 32.0);
+    expect(menu.keepTriggerAnchorOnOverflow, isFalse);
   });
 
   test('menu and popover content share the same morph fade and scale', () {
@@ -107,6 +108,65 @@ void main() {
     final labelRect = tester.getRect(find.text('Selected option'));
     expect(iconRect.left - rowRect.left, 16);
     expect(labelRect.left - iconRect.right, 16);
+  });
+
+  testWidgets('overflowing anchored menus scroll from the trigger edge', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = GlassMenuController();
+    const triggerKey = ValueKey('anchored-overflow-trigger');
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 80, top: 180),
+              child: GlassMenu(
+                controller: controller,
+                menuWidth: 240,
+                autoAdjustToScreen: true,
+                keepTriggerAnchorOnOverflow: true,
+                menuPadding: const EdgeInsets.all(16),
+                items: [
+                  for (var index = 0; index < 12; index++)
+                    GlassMenuItem(title: 'Choice $index', onTap: () {}),
+                ],
+                triggerBuilder: (context, toggleMenu) => GestureDetector(
+                  key: triggerKey,
+                  onTap: toggleMenu,
+                  child: const SizedBox(
+                    width: 80,
+                    height: 44,
+                    child: Text('Picker'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    controller.open();
+    await tester.pumpAndSettle();
+
+    final triggerRect = tester.getRect(find.byKey(triggerKey));
+    final scrollViewFinder = find.byType(SingleChildScrollView).last;
+    final scrollViewRect = tester.getRect(scrollViewFinder);
+    final scrollableFinder = find.descendant(
+      of: scrollViewFinder,
+      matching: find.byType(Scrollable),
+    );
+    final scrollable = tester.state<ScrollableState>(scrollableFinder);
+
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    expect(scrollViewRect.bottom, closeTo(triggerRect.bottom, 1));
   });
 
   testWidgets('multi-select items can keep their GlassMenu open', (
