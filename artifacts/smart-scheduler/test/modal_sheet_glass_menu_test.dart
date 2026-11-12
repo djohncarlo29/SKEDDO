@@ -19,6 +19,7 @@ import 'package:smart_scheduler/app_settings.dart'
         appLiquidGlassOpacityNotifier,
         liquidGlassOpacityForSliderPosition,
         liquidGlassSliderPositionForOpacity;
+import 'package:smart_scheduler/app_theme.dart' show kCardColor;
 import 'package:smart_scheduler/widgets/action_panel.dart'
     show ActionItem, ModalSheetGlassMenu;
 import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart'
@@ -27,8 +28,8 @@ import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart'
         skeddoPopoverBlurForPosition,
         skeddoPopoverGlassSettingsFor,
         skeddoPopoverOpacityForPosition,
-        skeddoBottomBarGlassSettingsFor,
-        skeddoModalSheetPickerGlassSettingsFor;
+        skeddoModalSheetPickerGlassSettingsFor,
+        skeddoGlassMenuSurfaceTintForBrightness;
 
 void main() {
   test('popover menus use the shared rim strength in both themes', () {
@@ -71,31 +72,49 @@ void main() {
     expect(light.chromaticAberration, 0.3);
   });
 
-  test('modal picker menus use the toolbar surface tint in both themes', () {
-    for (final brightness in [Brightness.light, Brightness.dark]) {
-      for (final position in [0.0, 0.25, 0.5, 0.75, 1.0]) {
-        final toolbar = skeddoBottomBarGlassSettingsFor(
-          brightness,
-          sliderPosition: position,
-        );
-        final picker = skeddoModalSheetPickerGlassSettingsFor(
-          brightness,
-          sliderPosition: position,
-        );
+  test(
+    'modal menus and popovers share toolbar menu card tint in both themes',
+    () {
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        for (final position in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+          final menuTint = skeddoGlassMenuSurfaceTintForBrightness(brightness);
+          final picker = skeddoModalSheetPickerGlassSettingsFor(
+            brightness,
+            sliderPosition: position,
+          );
+          final popover = skeddoPopoverGlassSettingsFor(
+            brightness,
+            menuTint,
+            sliderPosition: position,
+          );
 
-        expect(
-          picker.glassColor,
-          toolbar.glassColor.withValues(
-            alpha: skeddoPopoverOpacityForPosition(position),
-          ),
-        );
-        expect(
-          picker.blur,
-          closeTo(skeddoPopoverBlurForPosition(position), 0.001),
-        );
+          expect(
+            menuTint,
+            brightness == Brightness.light
+                ? const Color(0xFFFDFDFD)
+                : const Color(0xFF1C1C1E),
+          );
+          expect(
+            menuTint,
+            brightness == Brightness.light
+                ? kCardColor.color
+                : kCardColor.darkColor,
+          );
+          expect(picker.glassColor, popover.glassColor);
+          expect(
+            picker.glassColor,
+            menuTint.withValues(
+              alpha: skeddoPopoverOpacityForPosition(position),
+            ),
+          );
+          expect(
+            picker.blur,
+            closeTo(skeddoPopoverBlurForPosition(position), 0.001),
+          );
+        }
       }
-    }
-  });
+    },
+  );
 
   testWidgets('modal picker menu keeps its text trigger free of a glass blob', (
     tester,
@@ -113,7 +132,7 @@ void main() {
         home: MediaQuery(
           data: const MediaQueryData(
             platformBrightness: Brightness.light,
-            textScaler: TextScaler.linear(1.5),
+            textScaler: TextScaler.linear(2.5),
           ),
           child: Center(
             child: ModalSheetGlassMenu(
@@ -157,18 +176,18 @@ void main() {
     final options = menu.items.whereType<GlassMenuItem>().toList();
     expect(options, hasLength(2));
     for (final option in options) {
-      expect(option.iconSize, 36);
+      expect(option.iconSize, 70);
       expect(option.iconLabelGap, 12);
       expect(option.allowTextWrapping, isTrue);
       expect(option.trailing, isNull);
       final iconSlot = option.icon! as SizedBox;
-      expect(iconSlot.width, 36);
-      expect(iconSlot.height, 36);
+      expect(iconSlot.width, 70);
+      expect(iconSlot.height, 70);
     }
     final checkmark =
         ((options.first.icon! as SizedBox).child as Center).child as Icon;
     expect(checkmark.icon, CupertinoIcons.checkmark);
-    expect(checkmark.size, 25.5);
+    expect(checkmark.size, 42.5);
     expect((options.last.icon! as SizedBox).child, isA<SizedBox>());
 
     final initialPosition = liquidGlassSliderPositionForOpacity(

@@ -68,7 +68,6 @@ const double _actionPanelLeadingGlyphBoxPadding = 3.0;
 const double _actionPanelHorizontalInset = 16.0;
 const double _actionPanelLabelTrailingIconGap = 16.0;
 const double _actionPanelCustomIconBaseSize = 24.0;
-const double _actionPanelGlassMenuIconSlotBaseSize = 24.0;
 
 double _actionPanelLeadingColumnWidth(BuildContext context) {
   // The leading slot is sized to the complete glyph footprint, including the
@@ -1033,7 +1032,7 @@ List<Widget> _glassMenuItemsForActions(
                 ).withValues(alpha: 0.9)
         : CupertinoDynamicColor.resolve(action.labelColor!, context);
     final textScaler = MediaQuery.textScalerOf(context);
-    final leadingSlotSize = textScaler.scale(24);
+    final leadingSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
     final checkmarkSize = textScaler.scale(17);
     final menuIcon = SizedBox(
       width: leadingSlotSize,
@@ -2243,9 +2242,9 @@ class _ActionRowState extends State<_ActionRow> {
         ? actionColor
         : actionColor.withValues(alpha: 0.9);
     final textScaler = MediaQuery.textScalerOf(context);
-    // Match GlassBarItem.menu's shared 24 pt leading slot: icons center in it
-    // while every label starts after the same slot and 12 pt label gap.
-    final iconSlotSize = textScaler.scale(_actionPanelGlassMenuIconSlotBaseSize);
+    // Match the shared GlassMenu slot with scaled ink allowance: icons center
+    // within it while every label starts after the same slot and 12 pt gap.
+    final iconSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
     final iconSize = textScaler.scale(item.iconSize);
     final Widget iconContent;
     if (item.iconBuilder != null) {

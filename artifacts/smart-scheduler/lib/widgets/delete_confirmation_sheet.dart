@@ -603,7 +603,7 @@ class DiscardChangesPopoverAnchorState
         screenPadding: const EdgeInsets.all(12),
         settings: skeddoPopoverGlassSettingsFor(
           CupertinoTheme.brightnessOf(context),
-          resolveThemeColor(kModalCard, context),
+          resolveThemeColor(kCardColor, context),
           sliderPosition: sliderPosition,
         ),
         quality: GlassQuality.premium,

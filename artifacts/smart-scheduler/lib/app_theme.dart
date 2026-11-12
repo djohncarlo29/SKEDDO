@@ -28,8 +28,8 @@ const kAddCategorySheetBackground = CupertinoDynamicColor.withBrightness(
   darkColor: Color(0xFF000000),
 );
 const kCardColor = CupertinoDynamicColor.withBrightness(
-  color: Color(0xFFFDFDFD),
-  darkColor: Color(0xFF1C1C1E),
+  color: kSkeddoGlassMenuSurfaceLightTint,
+  darkColor: kSkeddoGlassMenuSurfaceDarkTint,
 );
 // Floating AppShell tab bar geometry. The pill matches the 49px native iOS
 // tab-bar height. The layout wrapper constrains the package bar to the same
@@ -41,6 +41,10 @@ const Duration kDcvPaneTransitionDuration = Duration(milliseconds: 380);
 const double kClassicNativeTabBarHeight = 49.0;
 const double kClassicNativeTabBarMinimumContentGap = 16.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
+// Shared, text-scaled icon viewport for GlassMenu rows across toolbar menus,
+// modal pickers, and long-press context menus. The four points beyond a 24pt
+// authored view box leave room for symbol ink at accessibility text scales.
+const double kGlassMenuIconSlotBaseSize = 28.0;
 const kTabBarInactiveColor = CupertinoDynamicColor.withBrightness(
   color: Color.fromRGBO(0, 0, 0, 0.75),
   darkColor: Color.fromRGBO(253, 253, 253, 0.75),

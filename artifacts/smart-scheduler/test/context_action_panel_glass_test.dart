@@ -76,11 +76,11 @@ void main() {
         );
         expect(rows, hasLength(2));
         expect(rows.first.title, 'Edit Event Info');
-        expect(rows.map((row) => row.iconSize), everyElement(24.0));
+        expect(rows.map((row) => row.iconSize), everyElement(28.0));
         expect(rows.first.iconLabelGap, 12);
         final iconSlot = rows.first.icon! as SizedBox;
-        expect(iconSlot.width, 24);
-        expect(iconSlot.height, 24);
+        expect(iconSlot.width, 28);
+        expect(iconSlot.height, 28);
         expect(iconSlot.child, isA<Center>());
         expect(rows.first.titleStyle!.fontSize, 17);
         expect(rows.first.allowTextWrapping, isTrue);
@@ -153,6 +153,50 @@ void main() {
         reason: '$label should appear immediately',
       );
     }
+  });
+
+  testWidgets('context menu icon slots grow without clipping at large text', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    addTearDown(closing.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.5)),
+          child: Center(
+            child: SizedBox(
+              width: 250,
+              child: ActionPanel(
+                isClosing: closing,
+                useGlassMenuStyle: true,
+                items: [
+                  ActionItem(
+                    label: 'Edit Event Info',
+                    icon: CupertinoIcons.pencil,
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final row = tester.widget<GlassMenuItem>(find.byType(GlassMenuItem));
+    expect(row.iconSize, 70);
+    expect(row.iconLabelGap, 12);
+    final iconSlot = row.icon! as SizedBox;
+    expect(iconSlot.width, 70);
+    expect(iconSlot.height, 70);
+    expect(
+      tester.getSize(find.byType(GlassMenuItem)).height,
+      greaterThanOrEqualTo(86),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('context action panel scrolls and reveals its scroll pill', (

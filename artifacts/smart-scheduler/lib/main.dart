@@ -2022,8 +2022,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       context,
     );
     final textScaler = MediaQuery.textScalerOf(context);
-    final iconSlotSize = textScaler.scale(24);
-    final iconVisualScale = iconSlotSize / 24;
+    final iconSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
+    final iconVisualScale = textScaler.scale(24) / 24;
     final iconInkScale = icon is FixedSFIcon
         ? textScaler.scale(20) / 20
         : iconVisualScale;

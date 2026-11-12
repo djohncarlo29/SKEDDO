@@ -313,9 +313,18 @@ class _GlassMenuItemState extends State<GlassMenuItem>
     final baseContentHeight = widget.height > fixedVerticalPadding
         ? widget.height - fixedVerticalPadding
         : 0.0;
-    final minimumHeight =
+    final scaledMinimumHeight =
         MediaQuery.textScalerOf(context).scale(baseContentHeight) +
             fixedVerticalPadding;
+    // A caller may provide an OS-scaled square icon slot. Preserve enough row
+    // height for that entire viewport plus vertical padding so accessibility
+    // scaling cannot clip the icon ink at the menu's top or bottom edge.
+    final iconMinimumHeight = widget.icon == null
+        ? 0.0
+        : widget.iconSize + fixedVerticalPadding;
+    final minimumHeight = scaledMinimumHeight >= iconMinimumHeight
+        ? scaledMinimumHeight
+        : iconMinimumHeight;
 
     // Dynamic background for hover/press states
     // We use a subtle white overlay to "brighten" the glass

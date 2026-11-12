@@ -30,6 +30,16 @@ const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 
+/// Shared card tint for GlassBarItem.menu, modal GlassMenu, GlassPopover, and
+/// long-press context menus. Keep the popover's separate button tint independent.
+const Color kSkeddoGlassMenuSurfaceLightTint = Color(0xFFFDFDFD);
+const Color kSkeddoGlassMenuSurfaceDarkTint = Color(0xFF1C1C1E);
+
+Color skeddoGlassMenuSurfaceTintForBrightness(Brightness brightness) =>
+    brightness == Brightness.dark
+        ? kSkeddoGlassMenuSurfaceDarkTint
+        : kSkeddoGlassMenuSurfaceLightTint;
+
 /// Lens settings for the moving tab indicator and menu foreground transitions.
 ///
 /// Menu surfaces keep the stronger toolbar/tab-bar refraction and thickness;
@@ -465,19 +475,15 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   );
 }
 
-/// Modal picker menus use the toolbar's Light/Dark surface tint while
+/// Modal picker menus use the shared menu-card tint in both themes while
 /// retaining the shared popover/menu opacity, blur, and rim behavior.
 LiquidGlassSettings skeddoModalSheetPickerGlassSettingsFor(
   Brightness brightness, {
   double? sliderPosition,
 }) {
-  final toolbarSurfaceTint = skeddoBottomBarGlassSettingsFor(
-    brightness,
-    sliderPosition: sliderPosition,
-  ).glassColor;
   return skeddoPopoverGlassSettingsFor(
     brightness,
-    toolbarSurfaceTint,
+    skeddoGlassMenuSurfaceTintForBrightness(brightness),
     sliderPosition: sliderPosition,
   );
 }
