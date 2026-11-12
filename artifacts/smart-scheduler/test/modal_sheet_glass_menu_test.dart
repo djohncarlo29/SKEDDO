@@ -11,9 +11,40 @@ import 'package:smart_scheduler/app_settings.dart'
 import 'package:smart_scheduler/widgets/action_panel.dart'
     show ActionItem, ModalSheetGlassMenu;
 import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart'
-    show skeddoPopoverBlurForPosition, skeddoPopoverOpacityForPosition;
+    show
+        skeddoNavigationGlassSettingsFromShared,
+        skeddoPopoverBlurForPosition,
+        skeddoPopoverGlassSettingsFor,
+        skeddoPopoverOpacityForPosition;
 
 void main() {
+  test('popover menus use SKEDDO dark-mode rim intensity', () {
+    const tint = Color(0xff202024);
+    final dark = skeddoPopoverGlassSettingsFor(
+      Brightness.dark,
+      tint,
+      sliderPosition: 0.5,
+    );
+    expect(dark.lightIntensity, 0.35);
+    expect(dark.glowIntensity, 0.375);
+    expect(dark.fresnelStrength, 0.5);
+    expect(dark.glassColor.a, closeTo(0.68, 0.001));
+    expect(dark.blur, closeTo(4.56, 0.001));
+
+    final navigationSettings = skeddoNavigationGlassSettingsFromShared(dark);
+    expect(navigationSettings.lightIntensity, dark.lightIntensity);
+    expect(navigationSettings.glowIntensity, dark.glowIntensity);
+    expect(navigationSettings.fresnelStrength, dark.fresnelStrength);
+
+    final light = skeddoPopoverGlassSettingsFor(
+      Brightness.light,
+      tint,
+      sliderPosition: 0.5,
+    );
+    expect(light.glowIntensity, 0.75);
+    expect(light.fresnelStrength, 1.0);
+  });
+
   testWidgets('modal picker menu keeps its text trigger free of a glass blob', (
     tester,
   ) async {
@@ -58,7 +89,7 @@ void main() {
     expect(menu.morphFromZero, isTrue);
     expect(menu.triggerImpactStrength, 1.15);
     expect(menu.normalizeTriggerReturnOvershoot, isTrue);
-      expect(menu.quality, GlassQuality.standard);
+    expect(menu.quality, GlassQuality.standard);
     expect(menu.keepTriggerAnchorOnOverflow, isTrue);
     expect(menu.showItemInteractionHighlight, isFalse);
     expect(menu.menuContentHorizontalInset, 12);
@@ -93,6 +124,8 @@ void main() {
       closeTo(skeddoPopoverOpacityForPosition(initialPosition), 0.001),
     );
     expect(menu.settings!.lightIntensity, 0.35);
+    expect(menu.settings!.glowIntensity, 0.375);
+    expect(menu.settings!.fresnelStrength, 0.5);
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       1.0,

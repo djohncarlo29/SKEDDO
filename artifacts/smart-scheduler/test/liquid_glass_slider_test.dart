@@ -62,8 +62,8 @@ void main() {
 
   test('shared renderer opacity follows the slider in both themes', () {
     const positions = <double>[0, 0.25, 0.5, 0.75, 1];
-    const lightValues = <double>[0.20, 0.371, 0.528, 0.614, 0.70];
-    const darkValues = <double>[0.30, 0.471, 0.628, 0.714, 0.80];
+    const lightValues = <double>[0.5052, 0.5166, 0.528, 0.614, 0.70];
+    const darkValues = <double>[0.6052, 0.6166, 0.628, 0.714, 0.80];
 
     for (var index = 0; index < positions.length; index++) {
       expect(
@@ -78,7 +78,7 @@ void main() {
 
     expect(
       skeddoSharedGlassOpacityForPosition(0.125, Brightness.light),
-      closeTo(0.2855, 0.000001),
+      closeTo(0.5109, 0.000001),
     );
     expect(
       skeddoSharedGlassOpacityForPosition(0.875, Brightness.dark),
@@ -86,34 +86,47 @@ void main() {
     );
   });
 
-  test(
-    'popover curve maps current 25% to new 50% for opacity and blur',
-    () {
-      expect(skeddoLiquidGlassEffectPositionForSliderPosition(0), 0);
-      expect(skeddoLiquidGlassEffectPositionForSliderPosition(0.5), 0.57);
-      expect(skeddoLiquidGlassEffectPositionForSliderPosition(1), 1);
-      expect(skeddoSharedGlassBlurForPosition(0.5), closeTo(1.7, 0.000001));
-      expect(
-        skeddoActiveTabIndicatorBlurForPosition(0.5),
-        closeTo(2.7, 0.000001),
-      );
-      expect(
-        skeddoSharedGlassOpacityForPosition(0.5, Brightness.light),
-        closeTo(0.528, 0.000001),
-      );
-      expect(
-        skeddoSharedGlassOpacityForPosition(0.5, Brightness.dark),
-        closeTo(0.628, 0.000001),
-      );
-      expect(skeddoPopoverOpacityForPosition(0), 0);
-      expect(
-        skeddoPopoverOpacityForPosition(0.25),
-        closeTo(0.2125, 0.000001),
-      );
-      expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.425, 0.000001));
-      expect(skeddoPopoverBlurForPosition(0.5), closeTo(2.85, 0.000001));
-    },
-  );
+  test('active tab lens preserves midpoint while following shared opacity', () {
+    expect(
+      skeddoActiveTabIndicatorOpacityScaleForPosition(0, Brightness.light),
+      closeTo(0.5052 / 0.528, 0.000001),
+    );
+    expect(
+      skeddoActiveTabIndicatorOpacityScaleForPosition(0, Brightness.dark),
+      closeTo(0.6052 / 0.628, 0.000001),
+    );
+    expect(
+      skeddoActiveTabIndicatorOpacityScaleForPosition(0.5, Brightness.light),
+      1,
+    );
+    expect(
+      skeddoActiveTabIndicatorOpacityScaleForPosition(0.5, Brightness.dark),
+      1,
+    );
+  });
+
+  test('popover curve maps pre-remap 40% to new 50% for opacity and blur', () {
+    expect(skeddoLiquidGlassEffectPositionForSliderPosition(0), 0);
+    expect(skeddoLiquidGlassEffectPositionForSliderPosition(0.5), 0.57);
+    expect(skeddoLiquidGlassEffectPositionForSliderPosition(1), 1);
+    expect(skeddoSharedGlassBlurForPosition(0.5), closeTo(1.7, 0.000001));
+    expect(
+      skeddoActiveTabIndicatorBlurForPosition(0.5),
+      closeTo(2.7, 0.000001),
+    );
+    expect(
+      skeddoSharedGlassOpacityForPosition(0.5, Brightness.light),
+      closeTo(0.528, 0.000001),
+    );
+    expect(
+      skeddoSharedGlassOpacityForPosition(0.5, Brightness.dark),
+      closeTo(0.628, 0.000001),
+    );
+    expect(skeddoPopoverOpacityForPosition(0), 0);
+    expect(skeddoPopoverOpacityForPosition(0.25), closeTo(0.34, 0.000001));
+    expect(skeddoPopoverOpacityForPosition(0.5), closeTo(0.68, 0.000001));
+    expect(skeddoPopoverBlurForPosition(0.5), closeTo(4.56, 0.000001));
+  });
 
   test('active checkmark optics stay fixed regardless of slider position', () {
     final originalOpacity = appLiquidGlassOpacityNotifier.value;
@@ -152,8 +165,8 @@ void main() {
 
     const tint = Color(0xFF123456);
     const positions = <double>[0, 0.25, 0.5, 0.75, 1];
-    const expectedOpacities = <double>[0, 0.2125, 0.425, 0.8785, 0.95];
-    const expectedBlurs = <double>[1, 1.855, 2.85, 6.775, 10];
+    const expectedOpacities = <double>[0, 0.34, 0.68, 0.8956, 0.95];
+    const expectedBlurs = <double>[1, 2.368, 4.56, 7.42, 10];
 
     for (var index = 0; index < positions.length; index++) {
       appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
@@ -186,8 +199,8 @@ void main() {
       );
     }
 
-    expect(skeddoPopoverOpacityForPosition(0.125), closeTo(0.10625, 0.000001));
-    expect(skeddoPopoverBlurForPosition(0.125), closeTo(1.4275, 0.000001));
+    expect(skeddoPopoverOpacityForPosition(0.125), closeTo(0.17, 0.000001));
+    expect(skeddoPopoverBlurForPosition(0.125), closeTo(1.684, 0.000001));
   });
 
   test('Liquid Glass slider positions settle on whole percentages', () {
@@ -330,6 +343,11 @@ void main() {
     );
     expect(tabBar.settings!.blur, closeTo(4.41, 0.000001));
     expect(tabBar.settings!.glassColor.a, closeTo(0.614, 0.001));
+    expect(tabBar.indicatorColor!.a, closeTo(0.12 * (0.614 / 0.528), 0.001));
+    expect(
+      tabBar.indicatorSettings!.glassColor.a,
+      closeTo(0.04 * (0.614 / 0.528), 0.001),
+    );
     expect(
       skeddoBottomBarGlassSettingsFor(Brightness.light).blur,
       closeTo(4.41, 0.000001),
@@ -350,6 +368,8 @@ void main() {
     );
     expect(tabBar.settings!.blur, closeTo(1.7, 0.000001));
     expect(tabBar.settings!.glassColor.a, closeTo(0.528, 0.001));
+    expect(tabBar.indicatorColor!.a, closeTo(0.12, 0.001));
+    expect(tabBar.indicatorSettings!.glassColor.a, closeTo(0.04, 0.001));
     expect(
       skeddoBottomBarGlassSettingsFor(Brightness.light).blur,
       closeTo(1.7, 0.000001),
@@ -392,7 +412,7 @@ void main() {
       find.byType(GlassContainer),
     );
     expect(previewGlass.settings!.blur, closeTo(0.57, 0.000001));
-    expect(previewGlass.settings!.glassColor.a, closeTo(0.371, 0.001));
+    expect(previewGlass.settings!.glassColor.a, closeTo(0.5166, 0.001));
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       0.75,

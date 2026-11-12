@@ -25,7 +25,7 @@ const double kSkeddoLightBottomBarOpacity = 0.528;
 const double kSkeddoDarkBottomBarOpacity = 0.628;
 
 /// GlassPopover card and button opacity at the new 50% slider mark.
-const double kSkeddoPopoverGlassOpacity = 0.425;
+const double kSkeddoPopoverGlassOpacity = 0.68;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -33,6 +33,7 @@ const double kSkeddoDarkGlassEdgeIntensityMultiplier = 0.5;
 const double kSkeddoActiveTabIndicatorChromaticAberration = 0.15;
 const double _kActiveCheckmarkGlassSliderReference = 0.5;
 const double _kOldSliderPositionForNewMidpoint = 0.57;
+const double _kOldPopoverSliderPositionForNewMidpoint = 0.4;
 
 slider_glass.LiquidGlassLight skeddoGlassEdgeLightForBrightness(
   Brightness brightness,
@@ -57,6 +58,20 @@ slider_glass.LiquidGlassStyle skeddoGlassEdgeStyleForBrightness(
     glow: glow == null
         ? null
         : skeddoGlassEdgeLightForBrightness(brightness, glow),
+  );
+}
+
+LiquidGlassSettings _reduceBrightDarkGlassEdges(
+  Brightness brightness,
+  LiquidGlassSettings settings,
+) {
+  if (brightness != Brightness.dark) return settings;
+  return settings.copyWith(
+    ambientRim: settings.ambientRim * kSkeddoDarkGlassEdgeIntensityMultiplier,
+    fresnelStrength:
+        settings.fresnelStrength * kSkeddoDarkGlassEdgeIntensityMultiplier,
+    glowIntensity:
+        settings.glowIntensity * kSkeddoDarkGlassEdgeIntensityMultiplier,
   );
 }
 
@@ -206,9 +221,7 @@ double skeddoActiveTabIndicatorBlurForPosition(double position) =>
       _kActiveTabIndicatorBlurAnchors,
     );
 
-/// Slider-driven tint opacity for shared renderer surfaces. GlassPopover and
-/// GlassMenu surfaces use their separate slider curve.
-double skeddoSharedGlassOpacityForPosition(
+double _currentSharedGlassOpacityForPosition(
   double position,
   Brightness brightness,
 ) => _interpolateSliderAnchors(
@@ -218,14 +231,47 @@ double skeddoSharedGlassOpacityForPosition(
       : _kSharedGlassLightOpacityAnchors,
 );
 
+/// Slider-driven tint opacity for shared renderer surfaces.
+///
+/// The current 45% value becomes the new 0% value, interpolating linearly to
+/// the current 50% value at the new midpoint. Above 50%, the existing curve
+/// remains unchanged.
+double skeddoSharedGlassOpacityForPosition(
+  double position,
+  Brightness brightness,
+) {
+  final normalized = position.clamp(0.0, 1.0).toDouble();
+  if (normalized > 0.5) {
+    return _currentSharedGlassOpacityForPosition(normalized, brightness);
+  }
+
+  final old45Percent = _currentSharedGlassOpacityForPosition(0.45, brightness);
+  final old50Percent = _currentSharedGlassOpacityForPosition(0.5, brightness);
+  final progress = normalized / 0.5;
+  return old45Percent + (old50Percent - old45Percent) * progress;
+}
+
+/// Scales the active tab lens tint with the shared toolbar/tab-bar opacity
+/// curve, normalized so its previous 50% appearance remains unchanged.
+double skeddoActiveTabIndicatorOpacityScaleForPosition(
+  double position,
+  Brightness brightness,
+) =>
+    skeddoSharedGlassOpacityForPosition(position, brightness) /
+    skeddoSharedGlassOpacityForPosition(0.5, brightness);
+
 /// Independent opacity curve used by GlassPopover and pinned GlassMenu surfaces.
 ///
-/// The shared popover/menu curve maps its current 25% point to the new 50%
+/// The shared popover/menu curve maps its pre-remap 40% point to the new 50%
 /// point. The same position remap is used for opacity and blur.
 double _popoverCurvePositionForSliderPosition(double position) {
   final normalized = position.clamp(0.0, 1.0).toDouble();
-  if (normalized <= 0.5) return normalized * 0.5;
-  return 0.25 + (normalized - 0.5) * 1.5;
+  if (normalized <= 0.5) {
+    return normalized * (_kOldPopoverSliderPositionForNewMidpoint / 0.5);
+  }
+  return _kOldPopoverSliderPositionForNewMidpoint +
+      (normalized - 0.5) *
+          ((1 - _kOldPopoverSliderPositionForNewMidpoint) / 0.5);
 }
 
 double _currentPopoverOpacityForPosition(double position) {
@@ -375,21 +421,35 @@ navigation_glass.LiquidGlassSettings skeddoNavigationTabBarGlassSettingsFor(
   skeddoTabBarGlassSettingsFor(brightness),
 );
 
-/// Active-tab lens settings use the package-default chromatic aberration.
-/// Light Mode retains SKEDDO's tint and elevation; Dark Mode overrides only
-/// chromatic aberration so the package's dark indicator optics remain intact.
+/// Active-tab lens settings preserve the previous midpoint tint while following
+/// the shared opacity curve. Light Mode retains SKEDDO's tint and elevation;
+/// Dark Mode keeps the package's transparent lens tint.
 navigation_glass.LiquidGlassSettings skeddoNavigationTabIndicatorGlassSettings(
-  Brightness brightness,
-) {
+  Brightness brightness, {
+  double? sliderPosition,
+}) {
+  final position =
+      sliderPosition ??
+      liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value);
+  final opacityScale = skeddoActiveTabIndicatorOpacityScaleForPosition(
+    position,
+    brightness,
+  );
+  final navigation_glass.LiquidGlassSettings base;
   if (brightness == Brightness.dark) {
-    return navigation_glass.LiquidGlassSettings(
+    base = navigation_glass.LiquidGlassSettings(
       chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
     );
+  } else {
+    base = skeddoNavigationGlassSettingsFromShared(
+      kSkeddoLightLiftedTabIndicatorSettings.copyWith(
+        chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+      ),
+    );
   }
-
-  return skeddoNavigationGlassSettingsFromShared(
-    kSkeddoLightLiftedTabIndicatorSettings.copyWith(
-      chromaticAberration: kSkeddoActiveTabIndicatorChromaticAberration,
+  return base.copyWith(
+    glassColor: base.glassColor.withValues(
+      alpha: base.glassColor.a * opacityScale,
     ),
   );
 }
@@ -400,8 +460,8 @@ navigation_glass.LiquidGlassSettings skeddoNavigationTabIndicatorGlassSettings(
 LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
     skeddoBottomBarGlassSettingsFor(brightness);
 
-/// GlassPopover surfaces use a card tint and their own slider-driven opacity
-/// and blur while retaining the package's optical settings and edge lighting.
+/// Popover and menu surfaces share their slider-driven opacity and blur.
+/// Dark Mode reduces the bright rim channels to match SKEDDO's other glass.
 LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
   Color cardTint, {
@@ -414,10 +474,13 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
     brightness,
     sliderPosition: position,
   );
-  return shared.copyWith(
-    blur: skeddoPopoverBlurForPosition(position),
-    glassColor: cardTint.withValues(
-      alpha: skeddoPopoverOpacityForPosition(position),
+  return _reduceBrightDarkGlassEdges(
+    brightness,
+    shared.copyWith(
+      blur: skeddoPopoverBlurForPosition(position),
+      glassColor: cardTint.withValues(
+        alpha: skeddoPopoverOpacityForPosition(position),
+      ),
     ),
   );
 }

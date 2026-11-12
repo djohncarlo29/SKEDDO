@@ -147,6 +147,10 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       context,
     );
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final glassBrightness = isDark ? Brightness.dark : Brightness.light;
+    final glassSliderPosition = liquidGlassSliderPositionForOpacity(
+      appLiquidGlassOpacityNotifier.value,
+    );
     final tabTextScaler = skeddoTabBarTextScalerFor(
       MediaQuery.textScalerOf(context),
     );
@@ -154,7 +158,18 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     final landscapeIconSize = tabTextScaler.scale(_kLandscapeTabIconSize);
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barGlassSettings = skeddoNavigationTabBarGlassSettingsFor(
-      isDark ? Brightness.dark : Brightness.light,
+      glassBrightness,
+    );
+    final indicatorOpacityScale =
+        skeddoActiveTabIndicatorOpacityScaleForPosition(
+          glassSliderPosition,
+          glassBrightness,
+        );
+    final baseActiveIndicatorColor = isDark
+        ? kFloatingTabBarDarkIndicatorColor
+        : kFloatingTabBarLightIndicatorColor;
+    final activeIndicatorColor = baseActiveIndicatorColor.withValues(
+      alpha: baseActiveIndicatorColor.a * indicatorOpacityScale,
     );
     final screenSize = MediaQuery.sizeOf(context);
     final isLandscape = screenSize.width > screenSize.height;
@@ -257,16 +272,11 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       magnification: 1,
       settings: barGlassSettings,
       indicatorSettings: skeddoNavigationTabIndicatorGlassSettings(
-        isDark ? Brightness.dark : Brightness.light,
+        glassBrightness,
+        sliderPosition: glassSliderPosition,
       ),
-      innerBlur: skeddoActiveTabIndicatorBlurForPosition(
-        liquidGlassSliderPositionForOpacity(
-          appLiquidGlassOpacityNotifier.value,
-        ),
-      ),
-      indicatorColor: isDark
-          ? kFloatingTabBarDarkIndicatorColor
-          : kFloatingTabBarLightIndicatorColor,
+      innerBlur: skeddoActiveTabIndicatorBlurForPosition(glassSliderPosition),
+      indicatorColor: activeIndicatorColor,
       selectedIconColor: selectedColor,
       unselectedIconColor: unselectedColor,
       selectedLabelColor: selectedColor,
