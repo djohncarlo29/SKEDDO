@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'
     show ReorderableDragStartListener, ReorderableListView;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/physics.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -215,16 +216,40 @@ Rect? _contextMenuTileRect(BuildContext context) {
 }
 
 Future<void> _ensureContextMenuSourceVisible(BuildContext context) async {
+  final sourceRect = _contextMenuTileRect(context);
+  final renderObject = context.findRenderObject();
+  final viewport = renderObject == null
+      ? null
+      : RenderAbstractViewport.maybeOf(renderObject);
+  if (sourceRect == null || viewport == null) return;
+  final viewportBox = viewport as RenderBox;
+  if (viewportBox.size.height <= 0) return;
+
+  final viewportRect =
+      viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+  final tabBarSafeBottom =
+      MediaQuery.sizeOf(context).height -
+      floatingTabBarContentBottomClearance(context);
+  final visibleBottom = min(viewportRect.bottom, tabBarSafeBottom);
+  if (sourceRect.top >= viewportRect.top &&
+      sourceRect.bottom <= visibleBottom) {
+    return;
+  }
+
+  // If the tile is too low, place its bottom at the scrollable content edge
+  // above the floating tab bar. If it moved above the viewport, align it to
+  // the viewport's top edge. A tile taller than the available area gets the
+  // best possible placement; the scroll view clamps when it reaches its limit.
+  final targetTop = sourceRect.top < viewportRect.top
+      ? viewportRect.top
+      : max(viewportRect.top, visibleBottom - sourceRect.height);
+  final alignment = ((targetTop - viewportRect.top) / viewportRect.height)
+      .clamp(0.0, 1.0);
   await Scrollable.ensureVisible(
     context,
+    alignment: alignment,
     duration: Duration.zero,
-    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-  );
-  if (!context.mounted || _contextMenuTileRect(context) == null) return;
-  await Scrollable.ensureVisible(
-    context,
-    duration: Duration.zero,
-    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
   );
 }
 
@@ -819,17 +844,20 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: SFIcons.sf_pencil,
           iconSize: 22,
           iconWeight: FontWeight.w500,
+          instantOnOpen: true,
           onTap: onEdit,
         ),
         ActionItem(
           label: 'Archive Event',
           icon: SFIcons.sf_archivebox,
+          instantOnOpen: true,
           onTap: onArchive,
         ),
         ActionItem(
           label: 'Delete Event',
           icon: SFIcons.sf_trash,
           isDestructive: true,
+          instantOnOpen: true,
           onTap: onDelete,
         ),
       ];
@@ -841,12 +869,14 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: SFIcons.sf_pencil,
           iconSize: 22,
           iconWeight: FontWeight.w500,
+          instantOnOpen: true,
           onTap: onEditGroup,
         ),
         ActionItem(
           label: 'Delete Group',
           icon: SFIcons.sf_trash,
           isDestructive: true,
+          instantOnOpen: true,
           onTap: onDeleteGroup,
         ),
       ];
@@ -858,6 +888,7 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: isPinned ? SFIcons.sf_pin_slash : SFIcons.sf_pin,
           iconSize: 21,
           iconOffset: const Offset(-1.0, 0),
+          instantOnOpen: true,
           onTap: isPinned ? onUnpin : onPin,
         ),
         ActionItem(
@@ -865,6 +896,7 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: SFIcons.sf_pencil,
           iconSize: 22,
           iconWeight: FontWeight.w500,
+          instantOnOpen: true,
           onTap: onEdit,
         ),
       ];
@@ -876,6 +908,7 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: isPinned ? SFIcons.sf_pin_slash : SFIcons.sf_pin,
           iconSize: 21,
           iconOffset: const Offset(-1.0, 0),
+          instantOnOpen: true,
           onTap: isPinned ? onUnpin : onPin,
         ),
       if (onEdit != null)
@@ -884,12 +917,14 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: SFIcons.sf_pencil,
           iconSize: 22,
           iconWeight: FontWeight.w500,
+          instantOnOpen: true,
           onTap: onEdit,
         ),
       if (onArchive != null)
         ActionItem(
           label: 'Archive Category',
           icon: SFIcons.sf_archivebox,
+          instantOnOpen: true,
           onTap: onArchive,
         ),
       if (!isSmartCategory && onDelete != null)
@@ -897,6 +932,7 @@ class _ContextMenuOverlay extends StatelessWidget {
           label: 'Delete Category',
           icon: SFIcons.sf_trash,
           isDestructive: true,
+          instantOnOpen: true,
           onTap: onDelete,
         ),
     ];
@@ -908,7 +944,10 @@ class _ContextMenuOverlay extends StatelessWidget {
     final screenW = mq.size.width;
     final screenH = mq.size.height;
     final safeTop = mq.padding.top + 16.0;
-    final safeBtm = mq.padding.bottom + 16.0;
+    final safeBtm = max(
+      mq.padding.bottom + 16.0,
+      floatingTabBarContentBottomClearance(context),
+    );
 
     // Preview — sits at the card's exact original position (no relocation).
     // This copy remains sharp above the dimmed backdrop at the same

@@ -46,3 +46,9 @@ To guarantee the source stays visible after a rotation changes the viewport, kee
 **Why:** A tile can move outside a shorter or differently packed viewport after rotation; remeasuring alone does not bring it back onscreen, and a lazy list can otherwise dispose its menu owner before the correction runs.
 
 **How to apply:** Run the reveal only when the observed orientation actually changes, with zero-duration scrolling; after those scroll positions settle, update the preview rectangle and let the menu recalculate its placement in the new viewport.
+
+Context-menu action rows should use the shared `instantOnOpen` row behavior so every option is visible together as the panel opens. When revealing the trigger after rotation, target the bottom of the usable scroll area above the floating tab bar, not the physical screen edge; place the context platter within that same safe bottom boundary.
+
+**Why:** Sequential row cascades obscure available actions, while a trigger aligned to the viewport's physical bottom can sit behind the floating navigation pill.
+
+**How to apply:** Set `instantOnOpen` on every action in category, group, and event context menus. Use the shared tab-bar content clearance when computing the trigger's reveal alignment and the menu's available placement height.

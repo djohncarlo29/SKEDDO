@@ -105,6 +105,51 @@ void main() {
     );
   }
 
+  testWidgets('instant-on-open options are visible on the same frame', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    addTearDown(closing.dispose);
+    const labels = ['Pin', 'Edit Category Info', 'Archive Category'];
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 280,
+            child: ActionPanel(
+              isClosing: closing,
+              useGlassMenuStyle: true,
+              items: [
+                for (final label in labels)
+                  ActionItem(
+                    label: label,
+                    icon: CupertinoIcons.pencil,
+                    instantOnOpen: true,
+                    onTap: () {},
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+
+    for (final label in labels) {
+      final rowOpacity = tester
+          .widgetList<Opacity>(
+            find.ancestor(of: find.text(label), matching: find.byType(Opacity)),
+          )
+          .first;
+      expect(
+        rowOpacity.opacity,
+        1.0,
+        reason: '$label should appear immediately',
+      );
+    }
+  });
+
   testWidgets('context action panel scrolls and reveals its scroll pill', (
     tester,
   ) async {
