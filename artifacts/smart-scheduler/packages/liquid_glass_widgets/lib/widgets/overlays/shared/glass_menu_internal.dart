@@ -526,6 +526,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                 1.0,
               )
             : 1.0;
+        final entryProgress = (clampedValue / 0.20).clamp(0.0, 1.0);
+        final entrySpring = math.sin(entryProgress * math.pi * 2) *
+            math.exp(-0.65 * entryProgress);
+        final entryImpactScale = _overlayController.isShowing &&
+                !_morphController.isClosing &&
+                !_morphController.disableAnimations
+            ? 1.0 - 0.04 * widget.triggerEntryImpactStrength * entrySpring
+            : 1.0;
 
         final Widget triggerChild = widget.triggerBuilder != null
             ? widget.triggerBuilder!(context, _toggleMenu)
@@ -555,7 +563,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             Transform.translate(
               offset: Offset(pushDx, pushDy),
               child: Transform.scale(
-                scale: impactScale,
+                scale: impactScale * entryImpactScale,
                 child: Listener(
                   behavior: HitTestBehavior.translucent,
                   onPointerDown: _handleTriggerPointerDown,
@@ -2116,6 +2124,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                       // For standard/minimal quality, Blob A is suppressed during close so only
                       // the single collapsing menu container is visible (preventing double-button overlap).
                       if (!widget.morphFromZero &&
+                          !widget.suppressTriggerGlassBlob &&
                           (!_morphController.isClosing || isPremium))
                         Positioned(
                           left: _triggerOverlayPosition.dx +

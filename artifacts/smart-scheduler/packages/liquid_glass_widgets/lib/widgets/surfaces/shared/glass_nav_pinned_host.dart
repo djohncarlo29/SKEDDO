@@ -2744,9 +2744,8 @@ class _PinnedGroupState extends State<_PinnedGroup> {
               menuWidth: menuItem?.menuWidth ?? 200,
               menuHeight: menuItem?.menuHeight,
               settings: menuItem?.menuSettings,
-              // Keep menu platters at standard quality; premium is reserved
-              // for persistent navigation surfaces.
-              quality: GlassQuality.standard,
+              // Match the package's premium iOS-style bar-menu material.
+              quality: GlassQuality.premium,
               // Match GlassPopover's softer surface stretch. The resistance
               // coefficient is shared; the smaller stretch amount keeps the
               // toolbar menu from feeling more elastic than the popover.

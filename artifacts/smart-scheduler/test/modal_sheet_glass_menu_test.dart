@@ -20,21 +20,28 @@ import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart'
 void main() {
   test('popover menus use SKEDDO dark-mode rim intensity', () {
     const tint = Color(0xff202024);
-    final dark = skeddoPopoverGlassSettingsFor(
-      Brightness.dark,
-      tint,
-      sliderPosition: 0.5,
-    );
-    expect(dark.lightIntensity, 0.35);
-    expect(dark.glowIntensity, 0.375);
-    expect(dark.fresnelStrength, 0.5);
-    expect(dark.glassColor.a, closeTo(0.8546, 0.001));
-    expect(dark.blur, closeTo(5.872, 0.001));
+    for (final position in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+      final dark = skeddoPopoverGlassSettingsFor(
+        Brightness.dark,
+        tint,
+        sliderPosition: position,
+      );
+      expect(dark.lightIntensity, 0.35);
+      expect(dark.glowIntensity, 0.375);
+      expect(dark.fresnelStrength, 0.5);
+      expect(dark.ambientRim, 0);
+      expect(
+        dark.glassColor.a,
+        closeTo(skeddoPopoverOpacityForPosition(position), 0.001),
+      );
+      expect(dark.blur, closeTo(skeddoPopoverBlurForPosition(position), 0.001));
 
-    final navigationSettings = skeddoNavigationGlassSettingsFromShared(dark);
-    expect(navigationSettings.lightIntensity, dark.lightIntensity);
-    expect(navigationSettings.glowIntensity, dark.glowIntensity);
-    expect(navigationSettings.fresnelStrength, dark.fresnelStrength);
+      final navigationSettings = skeddoNavigationGlassSettingsFromShared(dark);
+      expect(navigationSettings.lightIntensity, dark.lightIntensity);
+      expect(navigationSettings.glowIntensity, dark.glowIntensity);
+      expect(navigationSettings.fresnelStrength, dark.fresnelStrength);
+      expect(navigationSettings.ambientRim, dark.ambientRim);
+    }
 
     final light = skeddoPopoverGlassSettingsFor(
       Brightness.light,
@@ -56,9 +63,10 @@ void main() {
 
     await tester.pumpWidget(
       CupertinoApp(
+        theme: const CupertinoThemeData(brightness: Brightness.dark),
         home: MediaQuery(
           data: const MediaQueryData(
-            platformBrightness: Brightness.dark,
+            platformBrightness: Brightness.light,
             textScaler: TextScaler.linear(1.5),
           ),
           child: Center(
@@ -86,7 +94,9 @@ void main() {
     );
 
     final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
-    expect(menu.morphFromZero, isTrue);
+    expect(menu.morphFromZero, isFalse);
+    expect(menu.suppressTriggerGlassBlob, isTrue);
+    expect(menu.triggerEntryImpactStrength, 0.35);
     expect(menu.triggerImpactStrength, 1.15);
     expect(menu.normalizeTriggerReturnOvershoot, isTrue);
     expect(menu.quality, GlassQuality.standard);

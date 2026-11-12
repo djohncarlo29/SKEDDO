@@ -974,20 +974,23 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
           // Match the Calendar toolbar menu and GlassPopover slider curve.
           settings: skeddoNavigationGlassSettingsFromShared(
             skeddoPopoverGlassSettingsFor(
-              MediaQuery.platformBrightnessOf(context),
+              CupertinoTheme.brightnessOf(context),
               resolveThemeColor(kCardColor, context),
               sliderPosition: sliderPosition,
             ),
           ),
-          // Picker menus use standard quality; premium remains for persistent
-          // navigation glass. Dark settings retain half-strength edge lighting.
+          // Picker menus retain standard quality and half-strength dark edges.
           quality: GlassQuality.standard,
           // Normalize the trigger's return travel to the available menu height,
           // so the trailing value's spring does not depend on option count.
           normalizeTriggerReturnOvershoot: true,
           // Picker values remain plain text during the handoff; the glass
           // platter blooms from the same anchor without wrapping the trigger.
-          morphFromZero: true,
+          // Start from the measured text trigger size, but suppress the
+          // separate trigger glass blob so the value never becomes a button.
+          morphFromZero: false,
+          suppressTriggerGlassBlob: true,
+          triggerEntryImpactStrength: 0.35,
           // Calendar menus use a 12pt platter inset plus the row's 16pt inset.
           menuContentHorizontalInset: 12,
           menuPadding: const EdgeInsets.all(16),

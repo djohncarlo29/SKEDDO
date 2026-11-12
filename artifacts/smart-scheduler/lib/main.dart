@@ -3699,7 +3699,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
     final menuGlassSettings = skeddoNavigationGlassSettingsFromShared(
       skeddoPopoverGlassSettingsFor(
-        MediaQuery.platformBrightnessOf(context),
+        CupertinoTheme.brightnessOf(context),
         resolveThemeColor(kCardColor, context),
         sliderPosition: menuSliderPosition,
       ),

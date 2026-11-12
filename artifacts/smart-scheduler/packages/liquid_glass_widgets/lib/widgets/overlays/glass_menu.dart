@@ -290,6 +290,21 @@ class GlassMenu extends StatefulWidget {
   /// zero-sized trigger reads as a point bloom rather than an 8px glass dot.
   final bool morphFromZero;
 
+  /// Suppresses the separate glass blob rendered over the trigger while the
+  /// menu body morphs. The menu body can still start at the trigger's measured
+  /// width and height when [morphFromZero] is false.
+  ///
+  /// Use this when the trigger is plain content (such as picker value text) and
+  /// should not acquire a separate glass button surface during the transition.
+  final bool suppressTriggerGlassBlob;
+
+  /// Subtle spring response applied to a plain trigger as the menu opens.
+  ///
+  /// The trigger gently compresses and rebounds while it fades into the menu.
+  /// `0.0` disables this entry response; values from `0.0` to `2.0` are
+  /// supported. The closing impact remains controlled by [triggerImpactStrength].
+  final double triggerEntryImpactStrength;
+
   /// When true (typically for iOS PlatformViews), forces the BackdropFilter
   /// fallback render path instead of the Impeller-native shader. Forwarded to
   /// the underlying [AdaptiveLiquidGlassLayer].
@@ -395,6 +410,8 @@ class GlassMenu extends StatefulWidget {
     this.controller,
     this.showDismissBarrier = true,
     this.morphFromZero = false,
+    this.suppressTriggerGlassBlob = false,
+    this.triggerEntryImpactStrength = 0.0,
     this.platformViewBackdrop = false,
     this.morphSpeed = MorphSpeed.normal,
     this.triggerImpactStrength = 1.0,
@@ -407,6 +424,11 @@ class GlassMenu extends StatefulWidget {
         assert(
           triggerImpactStrength >= 0.0 && triggerImpactStrength <= 2.0,
           'triggerImpactStrength must be between 0.0 and 2.0',
+        ),
+        assert(
+          triggerEntryImpactStrength >= 0.0 &&
+              triggerEntryImpactStrength <= 2.0,
+          'triggerEntryImpactStrength must be between 0.0 and 2.0',
         ),
         assert(trigger != null || triggerBuilder != null,
             'Either trigger or triggerBuilder must be provided');
