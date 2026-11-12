@@ -327,6 +327,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   // Signals the overlay which scrim fade curve to use on open and close.
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
   final ValueNotifier<Rect> _anchorRect = ValueNotifier(Rect.zero);
+  late final ActionPanelGlideController _glideController =
+      ActionPanelGlideController();
   bool _anchorRefreshScheduled = false;
   Orientation? _lastAnchorOrientation;
 
@@ -453,6 +455,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     _menuShowTimer = null;
     _isClosing.dispose();
     _anchorRect.dispose();
+    _glideController.dispose();
     _overlayCtrl.dispose();
     _pressCtrl.dispose();
     _liftCtrl.dispose();
@@ -488,6 +491,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
                   originalOffset: rect.topLeft,
                   originalSize: rect.size,
                   previewBuilder: widget.previewBuilder,
+                  glideController: _glideController,
                   isSmartCategory: widget.isSmartCategory,
                   isPinned: widget.isPinned,
                   isUtilityCategory: widget.isUtilityCategory,
@@ -533,6 +537,12 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     );
     Overlay.of(context, rootOverlay: true).insert(_entry!);
     updateKeepAlive();
+    final initialPointerPosition = _pressStartGlobal ?? sourceRect.center;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _entry != null) {
+        _glideController.move(initialPointerPosition);
+      }
+    });
 
     // Real underdamped spring — controller briefly exceeds 1.0 on overshoot,
     // giving the card its gel "pop" before settling.
@@ -607,6 +617,10 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   }
 
   void _onLongPressMoveUpdate(LongPressMoveUpdateDetails d) {
+    if (_entry != null) {
+      _glideController.move(d.globalPosition);
+      return;
+    }
     if (!widget.reorderable) return;
     if (_reorderActive) {
       widget.onReorderUpdate?.call(d.globalPosition);
@@ -643,6 +657,11 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   void _onLongPressEnd(LongPressEndDetails d) {
     _menuShowTimer?.cancel();
     _menuShowTimer = null;
+    if (_entry != null) {
+      _glideController.end(d.globalPosition);
+      return;
+    }
+    _glideController.cancel();
     if (_reorderActive) {
       _reorderActive = false;
       _liftCtrl.animateTo(
@@ -659,6 +678,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
   void _onLongPressCancel() {
     _menuShowTimer?.cancel();
     _menuShowTimer = null;
+    _glideController.cancel();
     if (_reorderActive) {
       _reorderActive = false;
       _liftCtrl.animateTo(
@@ -796,6 +816,7 @@ class _ContextMenuOverlay extends StatelessWidget {
   final Offset originalOffset;
   final Size originalSize;
   final WidgetBuilder previewBuilder;
+  final ActionPanelGlideController glideController;
   final bool isSmartCategory;
   final bool isPinned;
   final bool isUtilityCategory;
@@ -821,6 +842,7 @@ class _ContextMenuOverlay extends StatelessWidget {
     required this.originalOffset,
     required this.originalSize,
     required this.previewBuilder,
+    required this.glideController,
     required this.isSmartCategory,
     required this.isPinned,
     this.isUtilityCategory = false,
@@ -1121,6 +1143,7 @@ class _ContextMenuOverlay extends StatelessWidget {
               child: ActionPanel(
                 items: actions,
                 isClosing: isClosing,
+                externalGlideController: glideController,
                 maxHeight: maxPanelContentHeight,
                 bouncingScroll: true,
                 scaleAlignment: goAbove
@@ -22342,6 +22365,8 @@ class _EventContextMenuState extends State<_EventContextMenu>
   );
   final ValueNotifier<bool> _isClosing = ValueNotifier(false);
   final ValueNotifier<Rect> _anchorRect = ValueNotifier(Rect.zero);
+  late final ActionPanelGlideController _glideController =
+      ActionPanelGlideController();
   bool _anchorRefreshScheduled = false;
   Orientation? _lastAnchorOrientation;
   OverlayEntry? _entry;
@@ -22437,6 +22462,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
     _menuShowTimer = null;
     _isClosing.dispose();
     _anchorRect.dispose();
+    _glideController.dispose();
     _overlayCtrl.dispose();
     _pressCtrl.dispose();
     _liftCtrl.dispose();
@@ -22465,6 +22491,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
                   originalOffset: rect.topLeft,
                   originalSize: rect.size,
                   previewBuilder: widget.previewBuilder,
+                  glideController: _glideController,
                   isSmartCategory: false,
                   isPinned: false,
                   isEvent: true,
@@ -22486,6 +22513,12 @@ class _EventContextMenuState extends State<_EventContextMenu>
     );
     Overlay.of(context, rootOverlay: true).insert(_entry!);
     updateKeepAlive();
+    final initialPointerPosition = _pressStartGlobal ?? sourceRect.center;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _entry != null) {
+        _glideController.move(initialPointerPosition);
+      }
+    });
     _overlayCtrl.animateWith(
       SpringSimulation(
         SpringDescription.withDampingRatio(
@@ -22544,6 +22577,10 @@ class _EventContextMenuState extends State<_EventContextMenu>
   }
 
   void _onLongPressMoveUpdate(LongPressMoveUpdateDetails d) {
+    if (_entry != null) {
+      _glideController.move(d.globalPosition);
+      return;
+    }
     if (!widget.reorderable) return;
     if (_reorderActive) {
       widget.onReorderUpdate?.call(d.globalPosition);
@@ -22573,6 +22610,11 @@ class _EventContextMenuState extends State<_EventContextMenu>
   void _onLongPressEnd(LongPressEndDetails d) {
     _menuShowTimer?.cancel();
     _menuShowTimer = null;
+    if (_entry != null) {
+      _glideController.end(d.globalPosition);
+      return;
+    }
+    _glideController.cancel();
     if (_reorderActive) {
       _reorderActive = false;
       _liftCtrl.animateTo(
@@ -22587,6 +22629,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
   void _onLongPressCancel() {
     _menuShowTimer?.cancel();
     _menuShowTimer = null;
+    _glideController.cancel();
     if (_reorderActive) {
       _reorderActive = false;
       _liftCtrl.animateTo(

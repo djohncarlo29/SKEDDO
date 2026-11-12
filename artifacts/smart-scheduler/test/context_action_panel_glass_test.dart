@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_sficon/flutter_sficon.dart' show SFIcons;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassContainer,
@@ -10,7 +11,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
 import 'package:smart_scheduler/app_theme.dart'
     show kPrimaryLabel, resolveThemeColor;
 import 'package:smart_scheduler/widgets/action_panel.dart'
-    show ActionItem, ActionPanel;
+    show ActionItem, ActionPanel, ActionPanelGlideController;
 
 void main() {
   for (final brightness in Brightness.values) {
@@ -175,6 +176,7 @@ void main() {
                   ActionItem(
                     label: 'Edit Event Info',
                     icon: CupertinoIcons.pencil,
+                    iconSize: 24,
                     onTap: () {},
                   ),
                 ],
@@ -187,16 +189,161 @@ void main() {
     await tester.pumpAndSettle();
 
     final row = tester.widget<GlassMenuItem>(find.byType(GlassMenuItem));
-    expect(row.iconSize, 70);
+    expect(row.iconSize, greaterThan(70));
     expect(row.iconLabelGap, 12);
     final iconSlot = row.icon! as SizedBox;
     expect(iconSlot.width, 70);
-    expect(iconSlot.height, 70);
+    expect(iconSlot.height, greaterThan(70));
     expect(
       tester.getSize(find.byType(GlassMenuItem)).height,
-      greaterThanOrEqualTo(86),
+      greaterThanOrEqualTo(row.iconSize + 16),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('archive glyph reuses the toolbar menu optical offset', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    addTearDown(closing.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Center(
+            child: SizedBox(
+              width: 260,
+              child: ActionPanel(
+                isClosing: closing,
+                useGlassMenuStyle: true,
+                items: [
+                  ActionItem(
+                    label: 'Archive Category',
+                    icon: SFIcons.sf_archivebox,
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final translated = tester.widgetList<Transform>(find.byType(Transform));
+    expect(
+      translated.any(
+        (transform) =>
+            (transform.transform.getTranslation().x + 0.5).abs() < 0.001,
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets('external long-press glide activates the row under release', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    final glide = ActionPanelGlideController();
+    addTearDown(closing.dispose);
+    addTearDown(glide.dispose);
+    var pinCount = 0;
+    var archiveCount = 0;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 270,
+            child: ActionPanel(
+              isClosing: closing,
+              useGlassMenuStyle: true,
+              externalGlideController: glide,
+              items: [
+                ActionItem(
+                  label: 'Pin',
+                  icon: CupertinoIcons.pin,
+                  onTap: () => pinCount++,
+                ),
+                ActionItem(
+                  label: 'Archive Category',
+                  icon: SFIcons.sf_archivebox,
+                  onTap: () => archiveCount++,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    glide.move(tester.getCenter(find.text('Pin')));
+    glide.move(tester.getCenter(find.text('Archive Category')));
+    glide.end(tester.getCenter(find.text('Archive Category')));
+
+    expect(pinCount, 0);
+    expect(archiveCount, 1);
+  });
+
+  testWidgets('external glide scrolls overflowing rows before activation', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    final glide = ActionPanelGlideController();
+    addTearDown(closing.dispose);
+    addTearDown(glide.dispose);
+    var selected = '';
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 270,
+            child: ActionPanel(
+              isClosing: closing,
+              useGlassMenuStyle: true,
+              externalGlideController: glide,
+              maxHeight: 132,
+              items: [
+                for (var index = 0; index < 6; index++)
+                  ActionItem(
+                    label: 'Option $index',
+                    icon: CupertinoIcons.circle,
+                    onTap: () => selected = 'Option $index',
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final viewportFinder = find.byType(SingleChildScrollView).first;
+    final viewport = tester.getRect(viewportFinder);
+    final controller = tester
+        .widget<SingleChildScrollView>(viewportFinder)
+        .controller!;
+    final dragNearBottom = Offset(viewport.center.dx, viewport.bottom - 10);
+    glide.move(dragNearBottom);
+    await tester.pump();
+    for (var index = 0; index < 10; index++) {
+      glide.move(
+        Offset(viewport.center.dx, viewport.bottom - (index.isEven ? 20 : 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(controller.offset, greaterThan(0));
+
+    final visibleOption = find.text('Option 3');
+    expect(visibleOption, findsOneWidget);
+    final optionPosition = tester.getCenter(visibleOption);
+    glide.move(optionPosition);
+    glide.end(optionPosition);
+    expect(selected, 'Option 3');
   });
 
   testWidgets('context action panel scrolls and reveals its scroll pill', (

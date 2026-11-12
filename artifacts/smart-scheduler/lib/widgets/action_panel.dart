@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -38,12 +39,14 @@ class _ActionPanelSFIcon extends StatelessWidget {
     final fontSize = scaleWithText
         ? MediaQuery.textScalerOf(context).scale(size - 2)
         : size - 2;
-    final boxSize = math
-        .max(
-          size + boxPadding * 2,
-          scaleWithText ? fontSize + boxPadding * 2 : 0,
-        )
-        .toDouble();
+    // SF Symbols are text glyphs. Their line box is taller than the nominal
+    // font size, especially at accessibility scales; sizing the render box to
+    // the font alone clips tips and thin edges of some symbols.
+    final glyphLineBox = fontSize * kLineHeight;
+    final boxSize = math.max(
+      size + boxPadding * 2,
+      glyphLineBox + boxPadding * 2,
+    );
     return SizedBox(
       width: boxSize,
       height: boxSize,
@@ -68,6 +71,23 @@ const double _actionPanelLeadingGlyphBoxPadding = 3.0;
 const double _actionPanelHorizontalInset = 16.0;
 const double _actionPanelLabelTrailingIconGap = 16.0;
 const double _actionPanelCustomIconBaseSize = 24.0;
+
+/// Per-glyph correction shared by Calendar toolbar menus and context menus.
+///
+/// The correction is expressed at the 20pt reference icon size; callers scale
+/// it with the same text-scaling factor as the rendered glyph.
+Offset skeddoMenuSfIconInkCorrection(IconData icon) {
+  if (icon == SFIcons.sf_arrow_up_arrow_down) {
+    return const Offset(-1.75, 0);
+  }
+  if (icon == SFIcons.sf_eye || icon == SFIcons.sf_eye_slash) {
+    return const Offset(-3.25, 0);
+  }
+  if (icon == SFIcons.sf_archivebox) {
+    return const Offset(-0.25, 0);
+  }
+  return Offset.zero;
+}
 
 double _actionPanelLeadingColumnWidth(BuildContext context) {
   // The leading slot is sized to the complete glyph footprint, including the
@@ -1136,6 +1156,10 @@ class ActionPanel extends StatefulWidget {
   // Standard action panels keep a fixed 16 px label-to-trailing-icon gap.
   // Modal picker mini-panels opt out to preserve their compact legacy layout.
   final bool enforceTrailingIconSpacing;
+  /// Receives movement and release events from an owning long-press gesture.
+  /// This lets a context-menu trigger keep the original pointer and still
+  /// glide-select options after the overlay has opened.
+  final ActionPanelGlideController? externalGlideController;
 
   const ActionPanel({
     super.key,
@@ -1156,10 +1180,48 @@ class ActionPanel extends StatefulWidget {
     this.useGlassMenuStyle = false,
     this.scaleAlignment = Alignment.topCenter,
     this.enforceTrailingIconSpacing = true,
+    this.externalGlideController,
   });
 
   @override
   State<ActionPanel> createState() => _ActionPanelState();
+}
+
+enum _ActionPanelGlidePhase { move, end, cancel }
+
+class _ActionPanelGlideEvent {
+  const _ActionPanelGlideEvent(this.phase, [this.position]);
+
+  final _ActionPanelGlidePhase phase;
+  final Offset? position;
+}
+
+/// Forwards an external pointer's global position into a glass-style action
+/// panel. Primarily used by long-press context menus whose trigger owns the
+/// pointer sequence that opened the menu.
+class ActionPanelGlideController extends ChangeNotifier {
+  _ActionPanelGlideEvent? _event;
+
+  void move(Offset globalPosition) {
+    _event = _ActionPanelGlideEvent(
+      _ActionPanelGlidePhase.move,
+      globalPosition,
+    );
+    notifyListeners();
+  }
+
+  void end(Offset globalPosition) {
+    _event = _ActionPanelGlideEvent(
+      _ActionPanelGlidePhase.end,
+      globalPosition,
+    );
+    notifyListeners();
+  }
+
+  void cancel() {
+    _event = const _ActionPanelGlideEvent(_ActionPanelGlidePhase.cancel);
+    notifyListeners();
+  }
 }
 
 /// Scroll viewport shared by action panels and modal confirmation surfaces.
@@ -1416,6 +1478,10 @@ class _ActionPanelState extends State<ActionPanel>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   bool _isClosingNow = false;
+  late List<GlobalKey> _glideRowKeys;
+  final GlobalKey _glideScrollViewportKey = GlobalKey();
+  int? _glideIndex;
+  Offset? _lastGlidePosition;
 
   // Scroll state — only active when widget.maxHeight != null.
   final _scrollCtrl = ScrollController();
@@ -1455,6 +1521,7 @@ class _ActionPanelState extends State<ActionPanel>
   @override
   void initState() {
     super.initState();
+    _glideRowKeys = List.generate(widget.items.length, (_) => GlobalKey());
     _ctrl = AnimationController(vsync: this);
     // Scroll notifications describe the gesture, but with bouncing physics
     // the final snap-back to the exact edge can complete after the last
@@ -1462,6 +1529,7 @@ class _ActionPanelState extends State<ActionPanel>
     // so the edge mask always reflects the settled scroll offset.
     _scrollCtrl.addListener(_onScrollPositionChanged);
     widget.isClosing.addListener(_onClosingChanged);
+    widget.externalGlideController?.addListener(_onExternalGlideEvent);
     _ctrl.animateTo(
       1.0,
       duration: widget.openDurationOverrideMs != null
@@ -1477,6 +1545,107 @@ class _ActionPanelState extends State<ActionPanel>
           _syncScrollEdgeFades(_scrollCtrl.position);
         }
       });
+    }
+  }
+
+  void _onExternalGlideEvent() {
+    if (!mounted || !widget.useGlassMenuStyle) return;
+    final event = widget.externalGlideController?._event;
+    if (event == null) return;
+    switch (event.phase) {
+      case _ActionPanelGlidePhase.move:
+        final position = event.position;
+        if (position != null) _updateExternalGlide(position);
+      case _ActionPanelGlidePhase.end:
+        final position = event.position;
+        if (position != null) _endExternalGlide(position);
+      case _ActionPanelGlidePhase.cancel:
+        _clearExternalGlide();
+    }
+  }
+
+  void _updateExternalGlide(Offset globalPosition) {
+    _scrollForExternalGlide(globalPosition);
+    final nextIndex = _actionIndexAt(globalPosition);
+    if (nextIndex != _glideIndex) {
+      _glideIndex = nextIndex;
+      if (nextIndex != null) {
+        unawaited(HapticFeedback.selectionClick());
+      }
+    }
+    _lastGlidePosition = globalPosition;
+  }
+
+  void _endExternalGlide(Offset globalPosition) {
+    final index = _actionIndexAt(globalPosition) ?? _glideIndex;
+    _clearExternalGlide();
+    if (index == null || index < 0 || index >= widget.items.length) return;
+    widget.items[index].onTap?.call();
+  }
+
+  void _clearExternalGlide() {
+    _glideIndex = null;
+    _lastGlidePosition = null;
+  }
+
+  int? _actionIndexAt(Offset globalPosition) {
+    for (var index = 0; index < _glideRowKeys.length; index++) {
+      final renderObject =
+          _glideRowKeys[index].currentContext?.findRenderObject();
+      if (renderObject is! RenderBox ||
+          !renderObject.attached ||
+          !renderObject.hasSize) {
+        continue;
+      }
+      final rect = MatrixUtils.transformRect(
+        renderObject.getTransformTo(null),
+        Offset.zero & renderObject.size,
+      );
+      if (rect.contains(globalPosition)) return index;
+    }
+    return null;
+  }
+
+  void _scrollForExternalGlide(Offset globalPosition) {
+    if (!_scrollCtrl.hasClients ||
+        _scrollCtrl.position.maxScrollExtent <= 0 ||
+        _lastGlidePosition == null) {
+      return;
+    }
+    final viewportObject =
+        _glideScrollViewportKey.currentContext?.findRenderObject();
+    if (viewportObject is! RenderBox ||
+        !viewportObject.attached ||
+        !viewportObject.hasSize) {
+      return;
+    }
+    final viewportRect = MatrixUtils.transformRect(
+      viewportObject.getTransformTo(null),
+      Offset.zero & viewportObject.size,
+    );
+    if (!viewportRect.contains(globalPosition)) return;
+
+    final previous = _lastGlidePosition!;
+    final deltaY = globalPosition.dy - previous.dy;
+    final edgeZone = math.min(36.0, viewportRect.height * 0.2);
+    final nearTop = globalPosition.dy <= viewportRect.top + edgeZone;
+    final nearBottom = globalPosition.dy >= viewportRect.bottom - edgeZone;
+    // Match native drag scrolling: moving upward at the bottom reveals later
+    // rows; moving downward at the top reveals earlier rows.
+    final scrollDelta = nearBottom && deltaY < 0
+        ? -deltaY
+        : nearTop && deltaY > 0
+        ? -deltaY
+        : 0.0;
+    if (scrollDelta == 0) return;
+
+    final position = _scrollCtrl.position;
+    final nextOffset = (position.pixels + scrollDelta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (nextOffset != position.pixels) {
+      _scrollCtrl.jumpTo(nextOffset);
     }
   }
 
@@ -1565,6 +1734,7 @@ class _ActionPanelState extends State<ActionPanel>
   @override
   void dispose() {
     widget.isClosing.removeListener(_onClosingChanged);
+    widget.externalGlideController?.removeListener(_onExternalGlideEvent);
     _scrollCtrl.removeListener(_onScrollPositionChanged);
     _pillHideTimer?.cancel();
     _ctrl.dispose();
@@ -1575,8 +1745,18 @@ class _ActionPanelState extends State<ActionPanel>
   @override
   void didUpdateWidget(covariant ActionPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.externalGlideController !=
+        widget.externalGlideController) {
+      oldWidget.externalGlideController?.removeListener(
+        _onExternalGlideEvent,
+      );
+      widget.externalGlideController?.addListener(_onExternalGlideEvent);
+    }
     if (oldWidget.maxHeight != widget.maxHeight ||
         oldWidget.items.length != widget.items.length) {
+      if (oldWidget.items.length != widget.items.length) {
+        _glideRowKeys = List.generate(widget.items.length, (_) => GlobalKey());
+      }
       if (widget.maxHeight == null) {
         _canScroll = false;
         _showTopFade = false;
@@ -1666,6 +1846,7 @@ class _ActionPanelState extends State<ActionPanel>
         // their content is clipped into a scrollable viewport.  Callers that
         // render a fixed-height panel never enter this scrollable path.
         final scrollable = SingleChildScrollView(
+          key: _glideScrollViewportKey,
           controller: _scrollCtrl,
           physics: _effectiveScrollPhysics,
           child: column,
@@ -1719,6 +1900,7 @@ class _ActionPanelState extends State<ActionPanel>
                 ],
               );
         final bodyScrollable = SingleChildScrollView(
+          key: _glideScrollViewportKey,
           controller: _scrollCtrl,
           physics: _effectiveScrollPhysics,
           child: bodyColumn,
@@ -1969,6 +2151,7 @@ class _ActionPanelState extends State<ActionPanel>
       opacity: (t * widget.rowOpacity).clamp(0.0, 1.0),
       child: Transform.scale(
         scale: scale,
+        key: _glideRowKeys[i],
         child: _ActionRow(
           item: widget.items[i],
           chevronColumn: widget.chevronColumn,
@@ -2246,6 +2429,11 @@ class _ActionRowState extends State<_ActionRow> {
     // within it while every label starts after the same slot and 12 pt gap.
     final iconSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
     final iconSize = textScaler.scale(item.iconSize);
+    final iconInkHeight = item.iconBuilder != null
+        ? iconSize + textScaler.scale(4)
+        : textScaler.scale(item.iconSize - 2) * kLineHeight +
+              textScaler.scale(4);
+    final iconViewportSize = math.max(iconSlotSize, iconInkHeight);
     final Widget iconContent;
     if (item.iconBuilder != null) {
       iconContent = Transform.scale(
@@ -2260,12 +2448,16 @@ class _ActionRowState extends State<_ActionRow> {
         weight: item.iconWeight,
       );
     }
+    final iconInkCorrection = item.iconBuilder == null
+        ? skeddoMenuSfIconInkCorrection(item.icon) *
+              (textScaler.scale(20) / 20)
+        : Offset.zero;
     final icon = SizedBox(
       width: iconSlotSize,
-      height: iconSlotSize,
+      height: iconViewportSize,
       child: Center(
         child: Transform.translate(
-          offset: item.iconOffset,
+          offset: item.iconOffset + iconInkCorrection,
           child: iconContent,
         ),
       ),
@@ -2277,7 +2469,10 @@ class _ActionRowState extends State<_ActionRow> {
       icon: icon,
       isDestructive: item.isDestructive,
       isSelected: false,
-      iconSize: iconSlotSize,
+      // GlassMenuItem uses iconSize when computing the minimum row height.
+      // Pass the ink viewport, not only the horizontal slot, so the font's
+      // taller line box stays inside the row at large OS text scales.
+      iconSize: iconViewportSize,
       iconLabelGap: 12,
       height: item.subtitle == null
           ? ActionItem.rowHeight

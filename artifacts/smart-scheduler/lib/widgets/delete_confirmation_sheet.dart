@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/cupertino.dart';
@@ -545,19 +546,40 @@ class DiscardChangesPopoverAnchorState
             ),
             const SizedBox(height: kDiscardConfirmationMessageButtonGap),
             LayoutBuilder(
-              builder: (context, constraints) =>
-                  _DiscardConfirmationGlassButton(
-                width: constraints.maxWidth,
-                height: 57,
-                isVisible: _popoverOverlayVisible,
-                isClosing: _popoverOverlayClosing,
-                settings: skeddoPopoverButtonGlassSettingsFor(
-                  CupertinoTheme.brightnessOf(context),
-                  resolveThemeColor(kModalButtonBackground, context),
-                  sliderPosition: sliderPosition,
-                ),
-                onPressed: () => _acceptDiscard(closePopover),
-              ),
+              builder: (context, constraints) {
+                final buttonWidth = constraints.maxWidth;
+                final textScaler = MediaQuery.textScalerOf(context);
+                final buttonTextStyle = TextStyle(
+                  inherit: false,
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w500,
+                  color: CupertinoColors.destructiveRed,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                );
+                final textPainter = TextPainter(
+                  text: TextSpan(
+                    text: 'Discard Changes',
+                    style: buttonTextStyle,
+                  ),
+                  textDirection: Directionality.of(context),
+                  textScaler: textScaler,
+                )..layout(maxWidth: buttonWidth);
+                final buttonHeight = math.max(57.0, textPainter.height + 32.0);
+                return _DiscardConfirmationGlassButton(
+                  width: buttonWidth,
+                  height: buttonHeight,
+                  isVisible: _popoverOverlayVisible,
+                  isClosing: _popoverOverlayClosing,
+                  settings: skeddoPopoverButtonGlassSettingsFor(
+                    CupertinoTheme.brightnessOf(context),
+                    resolveThemeColor(kModalButtonBackground, context),
+                    sliderPosition: sliderPosition,
+                  ),
+                  onPressed: () => _acceptDiscard(closePopover),
+                );
+              },
             ),
           ],
         ),
@@ -721,22 +743,12 @@ class _DiscardConfirmationGlassButtonState
                   child: Text(
                     'Discard Changes',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      inherit: false,
-                      fontSize: 17,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w500,
-                      color: CupertinoColors.destructiveRed,
-                      letterSpacing: kTracking17,
-                      height: kLineHeight,
-                    ),
+                    style: _discardConfirmationButtonTextStyle,
                   ),
                 ),
               ),
-              builder: (context, isClosing, button) => IgnorePointer(
-                ignoring: isClosing,
-                child: button,
-              ),
+              builder: (context, isClosing, button) =>
+                  IgnorePointer(ignoring: isClosing, child: button),
             ),
           ),
         ),
@@ -752,6 +764,16 @@ class _DiscardConfirmationGlassButtonState
     );
   }
 }
+
+final TextStyle _discardConfirmationButtonTextStyle = TextStyle(
+  inherit: false,
+  fontSize: 17,
+  fontFamily: kSFProText,
+  fontWeight: FontWeight.w500,
+  color: CupertinoColors.destructiveRed,
+  letterSpacing: kTracking17,
+  height: kLineHeight,
+);
 
 class _DeleteConfirmationSheetOverlay extends StatelessWidget {
   final String title;
@@ -911,15 +933,15 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
                           labelColor: primary,
                           onTap: () => onResult(null),
                         ),
-                        ],
+                       ],
                       ),
-                    ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
+        ),
       ],
     );
   }

@@ -115,10 +115,7 @@ void main() {
       reason: 'The landscape popover should open 4px above and left of the X.',
     );
     expect(popover.barrierDismissible, isTrue);
-    expect(
-      popover.settings!.refractiveIndex,
-      1.59,
-    );
+    expect(popover.settings!.refractiveIndex, 1.59);
     expect(popover.settings!.thickness, 30);
     expect(popover.settings!.chromaticAberration, 0.3);
     expect(popover.settings!.blur, skeddoPopoverBlurForPosition(0.5));
@@ -309,6 +306,74 @@ void main() {
     expect(acceptedConfirmationFinished, isFalse);
     await tester.pumpAndSettle();
     expect(await acceptedConfirmation, isTrue);
+  });
+
+  testWidgets('discard action button grows with large system text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    late BuildContext pageContext;
+    final anchorKey = GlobalKey<DiscardChangesPopoverAnchorState>();
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppWindowContentScope(
+          horizontalInset: 0,
+          physicalWidth: 400,
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2.5)),
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
+        home: Builder(
+          builder: (context) {
+            pageContext = context;
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, top: 72),
+                child: DiscardChangesPopoverAnchor(
+                  key: anchorKey,
+                  child: CupertinoButton(
+                    onPressed: () {},
+                    child: const Icon(CupertinoIcons.xmark),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final confirmation = showDiscardChangesConfirmationSheet(
+      pageContext,
+      anchorKey: anchorKey,
+      entityLabel: 'event',
+      isNew: true,
+    );
+    await tester.pumpAndSettle();
+
+    final buttonFinder = find.ancestor(
+      of: find.text('Discard Changes'),
+      matching: find.byType(GlassButton),
+    );
+    expect(buttonFinder, findsOneWidget);
+    final buttonRect = tester.getRect(buttonFinder);
+    final labelRect = tester.getRect(find.text('Discard Changes'));
+    expect(buttonRect.height, greaterThan(57));
+    expect(labelRect.top, greaterThanOrEqualTo(buttonRect.top));
+    expect(labelRect.bottom, lessThanOrEqualTo(buttonRect.bottom));
+    expect(tester.takeException(), isNull);
+
+    await tester.tapAt(const Offset(390, 1390));
+    await tester.pumpAndSettle();
+    expect(await confirmation, isNull);
   });
 
   testWidgets('discard confirmation offset also applies in portrait', (

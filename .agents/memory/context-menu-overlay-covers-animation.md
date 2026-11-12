@@ -53,8 +53,8 @@ Context-menu action rows should use the shared `instantOnOpen` row behavior so e
 
 **How to apply:** Set `instantOnOpen` on every action in category, group, and event context menus. Use the shared tab-bar content clearance when computing the trigger's reveal alignment and the menu's available placement height.
 
-Context-menu GlassMenu-style rows should match `GlassBarItem.menu` geometry: center each glyph inside the shared 28 pt text-scaled leading slot, then use the shared 12 pt icon-to-label gap so labels have one common left edge. The larger slot leaves scaled ink room for variable SF Symbol bounds.
+Context-menu GlassMenu-style rows should match `GlassBarItem.menu` geometry: center each glyph inside the shared 28 pt text-scaled leading slot, then use the shared 12 pt icon-to-label gap so labels have one common left edge. Reuse the toolbar menu's per-symbol ink correction, including its scaled archive-box offset. When the long-press recognizer remains active after opening the overlay, forward its global movement into row hit-testing; scroll the bounded platter at its edges and activate the row under the pointer on release.
 
 **Why:** Sizing the slot to each individual glyph makes labels drift horizontally and icon centers vary from row to row.
 
-**How to apply:** Keep actual glyph dimensions and optical offsets per action, but wrap them in the same centered fixed-width slot and pass that slot width as the GlassMenuItem icon size.
+**How to apply:** Keep actual glyph dimensions and optical offsets per action, but wrap them in the same centered fixed-width slot and pass that slot width as the GlassMenuItem icon size. Keep the hit-test/scroll/release bridge inside the shared ActionPanel; do not replace the existing context overlay, long-press recognizer, or action callbacks.

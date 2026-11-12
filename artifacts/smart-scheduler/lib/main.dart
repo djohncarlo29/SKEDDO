@@ -1988,14 +1988,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   Offset _toolbarMenuSfIconInkCorrection(FixedSFIcon icon) {
-    final horizontal = icon.icon == SFIcons.sf_arrow_up_arrow_down
-        ? -1.75
-        : icon.icon == SFIcons.sf_eye || icon.icon == SFIcons.sf_eye_slash
-        ? -3.25
-        : icon.icon == SFIcons.sf_archivebox
-        ? -0.25
-        : 0.0;
-    return Offset(horizontal, 0);
+    return skeddoMenuSfIconInkCorrection(icon.icon);
   }
 
   Color _toolbarMenuDefaultLabelColor() {

@@ -20,7 +20,7 @@
 - [Overlay dismissal confirmation ownership](overlay-dismissal-confirmation-ownership.md) — an OverlayEntry confirmation must consume Back and guard the parent PopScope to prevent stacked copies.
 - [Vetoed sheet drag restoration](vetoed-sheet-drag-restoration.md) — after maybePop is blocked by unsaved edits, animate the route controller back to fully open before showing confirmation.
 - [Modal sheet drag scope](modal-sheet-header-drag-scope.md) — allow native-style down-drag across sheets while excluding editable controls from the route recognizer.
-- [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — defer row callbacks with _hide(then:) until the closing overlay is removed.
+- [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — defer actions until close; forward the held long-press into glide-selectable rows.
 - [TweenAnimationBuilder key type mismatch](tween-animation-builder-key-type-mismatch.md) — keep Animated* widget types stable at a key for the full transition.
 - [Drag-reorder long-press disambiguation](drag-reorder-long-press-disambiguation.md) — use a 150ms hold/move grace period to separate menu from reorder.
 - [Pinned grid lift geometry](pinned-grid-lift-geometry.md) — capture the tile’s actual width/height at lift; target-slot width changes wait until release and settling.
