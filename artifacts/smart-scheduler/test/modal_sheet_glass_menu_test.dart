@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassContainer,
         GlassMenu,
         GlassMenuController,
+        GlassMenuDivider,
         GlassMenuItem,
         GlassQuality,
         AdaptiveLiquidGlassLayer,
@@ -146,6 +147,7 @@ void main() {
                 ActionItem(
                   label: 'December',
                   icon: CupertinoIcons.circle,
+                  groupBreakAbove: true,
                   onTap: () {},
                 ),
               ],
@@ -174,7 +176,13 @@ void main() {
 
     final options = menu.items.whereType<GlassMenuItem>().toList();
     expect(options, hasLength(2));
+    expect(
+      menu.items.whereType<GlassMenuDivider>().single.indent,
+      8,
+      reason: 'The divider keeps its inset while all option rows lose theirs.',
+    );
     for (final option in options) {
+      expect(option.contentHorizontalInset, 0);
       expect(option.iconSize, 70);
       expect(option.iconLabelGap, 12);
       expect(option.allowTextWrapping, isTrue);
@@ -183,11 +191,13 @@ void main() {
       expect(iconSlot.width, 70);
       expect(iconSlot.height, 70);
     }
-    final checkmark =
-        ((options.first.icon! as SizedBox).child as Center).child as Icon;
+    final firstIconRow = (options.first.icon! as SizedBox).child as Row;
+    final firstCheckmarkSlot = firstIconRow.children.single as SizedBox;
+    final checkmark = (firstCheckmarkSlot.child as Center).child as Icon;
     expect(checkmark.icon, CupertinoIcons.checkmark);
     expect(checkmark.size, 42.5);
-    expect((options.last.icon! as SizedBox).child, isA<SizedBox>());
+    final lastIconRow = (options.last.icon! as SizedBox).child as Row;
+    expect((lastIconRow.children.single as SizedBox).child, isA<SizedBox>());
 
     final initialPosition = liquidGlassSliderPositionForOpacity(
       appLiquidGlassOpacityNotifier.value,
@@ -283,6 +293,79 @@ void main() {
         .first;
     expect(triggerOpacity, greaterThan(0));
   });
+
+  testWidgets(
+    'category picker options show checkmark, colored dot, then label',
+    (tester) async {
+      Widget categoryDot(Color color) => Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: ModalSheetGlassMenu(
+              trigger: const Text('Category'),
+              actions: [
+                ActionItem(
+                  label: 'Family',
+                  icon: CupertinoIcons.circle_fill,
+                  iconBuilder: categoryDot,
+                  showCategoryDotInPickerMenu: true,
+                  checkmark: true,
+                  checkmarkColor: const Color(0xffed5a50),
+                  onTap: () {},
+                ),
+                ActionItem(
+                  label: 'Work',
+                  icon: CupertinoIcons.circle_fill,
+                  iconBuilder: categoryDot,
+                  showCategoryDotInPickerMenu: true,
+                  groupBreakAbove: true,
+                  onTap: () {},
+                ),
+              ],
+              semanticLabel: 'Category',
+              builder: (context, menu, openMenu) => menu,
+            ),
+          ),
+        ),
+      );
+
+      final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
+      expect(menu.menuContentHorizontalInset, 12);
+      expect(
+        menu.items.whereType<GlassMenuDivider>().single.indent,
+        8,
+      );
+      final options = menu.items.whereType<GlassMenuItem>().toList();
+      expect(options, hasLength(2));
+      for (final option in options) {
+        expect(option.contentHorizontalInset, 0);
+        expect(option.iconLabelGap, 12);
+        final iconSlot = option.icon! as SizedBox;
+        expect(iconSlot.width, 58);
+        final iconRow = iconSlot.child! as Row;
+        expect(iconRow.children, hasLength(3));
+        expect(iconRow.children.first, isA<SizedBox>());
+        expect(iconRow.children[1], isA<SizedBox>());
+        expect(iconRow.children.last, isA<Container>());
+      }
+      final selectedIconSlot = options.first.icon! as SizedBox;
+      final selectedIconRow = selectedIconSlot.child! as Row;
+      final checkmarkSlot = selectedIconRow.children.first as SizedBox;
+      expect(
+        (checkmarkSlot.child as Center).child,
+        isA<Icon>(),
+      );
+      final unselectedIconSlot = options.last.icon! as SizedBox;
+      final unselectedIconRow = unselectedIconSlot.child! as Row;
+      final unselectedCheckmarkSlot =
+          unselectedIconRow.children.first as SizedBox;
+      expect(unselectedCheckmarkSlot.child, isA<SizedBox>());
+    },
+  );
 
   testWidgets(
     'picker dismissal retraces the opening radius transition',

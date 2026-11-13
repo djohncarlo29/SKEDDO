@@ -13398,6 +13398,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           shape: BoxShape.circle,
         ),
       ),
+      showCategoryDotInPickerMenu: true,
       checkmark: _categoryId == cat.id,
       checkmarkColor: renderCategoryColor(cat.color, context),
       onTap: () {
@@ -13445,6 +13446,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               shape: BoxShape.circle,
             ),
           ),
+          showCategoryDotInPickerMenu: true,
           checkmark: _categoryId == 'uncategorized',
           checkmarkColor: renderCategoryColor(_uncategorizedColor, context),
           onTap: () {

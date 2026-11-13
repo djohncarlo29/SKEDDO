@@ -593,6 +593,9 @@ class ActionItem {
   // When non-null, this builder is used instead of icon/iconSize.
   // Receives the resolved text colour so it can tint itself appropriately.
   final Widget Function(Color color)? iconBuilder;
+  // Preserves a category's colored circle after the selection mark in modal
+  // GlassMenu pickers, producing a checkmark → category dot → label layout.
+  final bool showCategoryDotInPickerMenu;
   // When non-null, replaces the auto-generated chevron in the left column so
   // callers can supply an animated (e.g. rotating) chevron widget.
   final Widget? chevronOverride;
@@ -637,6 +640,7 @@ class ActionItem {
     this.onTap,
     this.iconOffset = Offset.zero,
     this.iconBuilder,
+    this.showCategoryDotInPickerMenu = false,
     this.chevronOverride,
     this.strongSeparatorAbove = false,
     this.showTrailingIcon = true,
@@ -1022,8 +1026,8 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
           morphFromZero: false,
           suppressTriggerGlassBlob: true,
           triggerEntryImpactStrength: 0.35,
-          // Picker rows retain the standard platter inset; only explicitly
-          // checkmark-led Sort By submenu rows remove this extra 12pt.
+          // Keep the default inset for non-row content such as separators.
+          // Each selectable option row overrides it independently below.
           menuContentHorizontalInset: 12,
           menuPadding: const EdgeInsets.all(16),
           triggerImpactStrength: 1.15,
@@ -1065,18 +1069,33 @@ List<Widget> _glassMenuItemsForActions(
     final textScaler = MediaQuery.textScalerOf(context);
     final leadingSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
     final checkmarkSize = textScaler.scale(17);
+    final categoryDotWidth = action.showCategoryDotInPickerMenu ? 14.0 : 0.0;
+    final categoryDotGap = action.showCategoryDotInPickerMenu ? 16.0 : 0.0;
     final menuIcon = SizedBox(
-      width: leadingSlotSize,
+      width: leadingSlotSize + categoryDotGap + categoryDotWidth,
       height: leadingSlotSize,
-      child: action.checkmark
-          ? Center(
-              child: Icon(
-                CupertinoIcons.checkmark,
-                size: checkmarkSize,
-                color: checkColor,
-              ),
-            )
-          : const SizedBox.shrink(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: leadingSlotSize,
+            height: leadingSlotSize,
+            child: action.checkmark
+                ? Center(
+                    child: Icon(
+                      CupertinoIcons.checkmark,
+                      size: checkmarkSize,
+                      color: checkColor,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          if (action.showCategoryDotInPickerMenu) ...[
+            const SizedBox(width: 16),
+            action.iconBuilder?.call(labelColor) ?? const SizedBox.shrink(),
+          ],
+        ],
+      ),
     );
 
     items.add(
@@ -1087,6 +1106,10 @@ List<Widget> _glassMenuItemsForActions(
         iconSize: leadingSlotSize,
         iconLabelGap: 12,
         allowTextWrapping: true,
+        // Every option is selectable, so reserve the checkmark slot uniformly
+        // and remove the platter's extra inset for all rows, selected or not.
+        // Dividers are separate menu children and keep the default inset.
+        contentHorizontalInset: 0,
         isDestructive: action.isDestructive,
         titleStyle: TextStyle(
           color: labelColor,

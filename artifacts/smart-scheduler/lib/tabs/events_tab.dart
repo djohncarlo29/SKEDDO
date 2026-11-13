@@ -14316,6 +14316,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                     shape: BoxShape.circle,
                   ),
                 ),
+            showCategoryDotInPickerMenu: true,
             labelColor: lockedInOther ? kTertiaryLabel : null,
             checkmark: _selectedIds.contains(cat.id),
             checkmarkColor: cat.color,
