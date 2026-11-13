@@ -1114,10 +1114,9 @@ List<Widget> _glassMenuItemsForActions(
         iconSize: checkmarkSize,
         iconLabelGap: _modalPickerIconLabelGap,
         allowTextWrapping: true,
-        // Every option is selectable, so reserve the checkmark slot uniformly
-        // and remove the platter's extra inset for all rows, selected or not.
-        // Dividers are separate menu children and keep the default inset.
-        contentHorizontalInset: 0,
+        // Restore the standard option-row inset. Dividers are separate menu
+        // children and keep their own inset setting.
+        contentHorizontalInset: 12,
         isDestructive: action.isDestructive,
         titleStyle: TextStyle(
           color: labelColor,

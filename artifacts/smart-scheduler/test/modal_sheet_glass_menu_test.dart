@@ -179,10 +179,10 @@ void main() {
     expect(
       menu.items.whereType<GlassMenuDivider>().single.indent,
       8,
-      reason: 'The divider keeps its inset while all option rows lose theirs.',
+      reason: 'The divider keeps its existing inset independently of the rows.',
     );
     for (final option in options) {
-      expect(option.contentHorizontalInset, 0);
+      expect(option.contentHorizontalInset, 12);
       expect(option.iconSize, 42.5);
       expect(option.iconLabelGap, 16);
       expect(option.allowTextWrapping, isTrue);
@@ -342,7 +342,7 @@ void main() {
       final options = menu.items.whereType<GlassMenuItem>().toList();
       expect(options, hasLength(2));
       for (final option in options) {
-        expect(option.contentHorizontalInset, 0);
+        expect(option.contentHorizontalInset, 12);
         expect(option.iconLabelGap, 16);
         expect(option.iconSize, 17);
         final iconRow = option.icon! as Row;

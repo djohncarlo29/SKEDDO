@@ -3938,11 +3938,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             label: leadingActionLabel,
             background: navigation_glass.GlassBarItemBackground.shared,
             menuSettings: menuGlassSettings,
-            menuContentHorizontalInset:
-                configurationKey.startsWith('calendar-month-') ||
-                    configurationKey.startsWith('calendar-day-')
-                ? 0
-                : 12,
+            menuContentHorizontalInset: 12,
             icon: leadingActionIcon,
             menuItems: leadingActionMenuItems,
             menuWidth: leadingActionMenuWidth,
