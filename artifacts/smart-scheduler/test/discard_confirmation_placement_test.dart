@@ -8,6 +8,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassContainer,
         AdaptiveGlass,
         GlassMenuAlignment,
+        LiquidGlassBlendGroup,
         GlassPopover,
         GlassQuality,
         LiquidGlassLayer;
@@ -28,6 +29,7 @@ void main() {
       contentBuilder: (_, __) => const SizedBox.shrink(),
     );
     expect(popover.popoverOffset, Offset.zero);
+    expect(popover.anchorGrowthToTrigger, isFalse);
   });
 
   testWidgets('popover content stays at its destination during the morph', (
@@ -99,58 +101,63 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets(
-    'popover trigger ghost follows its target offset',
-    (tester) async {
-      tester.view.physicalSize = const Size(800, 600);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('discard popover grows without detaching below its trigger', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      final triggerKey = GlobalKey();
-      await tester.pumpWidget(
-        CupertinoApp(
-          home: Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 48, top: 88),
-              child: GlassPopover(
-                popoverWidth: 260,
-                popoverHeight: 160,
-                popoverOffset: const Offset(-4, -4),
-                autoAdjustToScreen: false,
-                triggerBuilder: (context, toggle) => SizedBox(
-                  key: triggerKey,
-                  width: 40,
-                  height: 40,
-                  child: GestureDetector(
-                    onTap: toggle,
-                    child: const Icon(CupertinoIcons.xmark),
-                  ),
+    final triggerKey = GlobalKey();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 48, top: 88),
+            child: GlassPopover(
+              popoverWidth: 260,
+              popoverHeight: 160,
+              popoverOffset: const Offset(-4, -4),
+              anchorGrowthToTrigger: true,
+              autoAdjustToScreen: false,
+              triggerBuilder: (context, toggle) => SizedBox(
+                key: triggerKey,
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  onTap: toggle,
+                  child: const Icon(CupertinoIcons.xmark),
                 ),
-                contentBuilder: (_, __) => const Text('Confirmation'),
               ),
+              contentBuilder: (_, __) => const Text('Confirmation'),
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final triggerCenter = tester.getCenter(find.byKey(triggerKey));
-      await tester.tap(find.byKey(triggerKey));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 60));
+    final triggerRect = tester.getRect(find.byKey(triggerKey));
+    await tester.tap(find.byKey(triggerKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
 
-      // Blob A is the first glass container in the two-blob morph stack.
-      final anchorBlob = find.byType(GlassContainer).first;
-      final anchorCenter = tester.getCenter(anchorBlob);
-      expect(anchorCenter.dx, lessThan(triggerCenter.dx));
-      expect(anchorCenter.dy, lessThan(triggerCenter.dy));
-      expect((triggerCenter.dx - anchorCenter.dx), lessThan(4.5));
-      expect((triggerCenter.dy - anchorCenter.dy), lessThan(4.5));
-      await tester.pumpAndSettle();
-    },
-  );
+    // The anchored reveal uses a single growing platter, not a detached
+    // trigger ghost plus a second moving surface.
+    expect(find.byType(GlassContainer), findsOneWidget);
+    final bodyBlob = tester.getRect(find.byType(GlassContainer));
+    expect((bodyBlob.left - triggerRect.left).abs(), lessThan(4.5));
+    expect((bodyBlob.top - triggerRect.top).abs(), lessThan(4.5));
+    expect(
+      tester.widget<LiquidGlassBlendGroup>(
+        find.byType(LiquidGlassBlendGroup),
+      ).blend,
+      0,
+    );
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('discard confirmation always uses the top-left placement', (
     tester,
@@ -217,6 +224,7 @@ void main() {
     final popover = tester.widget<GlassPopover>(popoverFinder);
     expect(popover.quality, GlassQuality.premium);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
+    expect(popover.anchorGrowthToTrigger, isTrue);
     expect(popover.popoverWidth, 400);
     expect(popover.popoverOffset, const Offset(-4, -4));
     expect(popover.screenPadding, const EdgeInsets.all(12));

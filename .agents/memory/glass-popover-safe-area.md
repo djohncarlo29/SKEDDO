@@ -15,8 +15,8 @@ description: Keep GlassPopover safe-area clamping and discard-only morph offsets
 
 **How to apply:** Set an explicit offset at the discard-sheet call site, never in package defaults or a shared wrapper.
 
-**Rule:** When a GlassPopover uses a target offset, move its trigger ghost by that same interpolated offset during the morph.
+**Rule:** For discard confirmation popovers, keep the expanding platter on the size curve instead of the detached J-curve path.
 
-**Why:** Moving only the expanding body separates the two glass shapes and can leave a detached crescent near the trigger.
+**Why:** The J-curve can pull a small glass surface down from the top-left close button while the popover is still growing, leaving a visible detached arc.
 
-**How to apply:** Keep the anchor and body trajectories synchronized for every nonzero `popoverOffset`; zero-offset popovers retain their existing path.
+**How to apply:** Opt in only from the shared discard-confirmation popover; other popovers retain the standard two-blob morph.

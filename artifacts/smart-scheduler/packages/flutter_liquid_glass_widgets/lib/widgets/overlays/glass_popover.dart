@@ -100,6 +100,7 @@ class GlassPopover extends StatefulWidget {
     this.popoverWidth = 280,
     this.popoverHeight,
     this.popoverOffset = Offset.zero,
+    this.anchorGrowthToTrigger = false,
     this.popoverBorderRadius = 24.0,
     this.alignment,
     this.autoAdjustToScreen = true,
@@ -183,6 +184,14 @@ class GlassPopover extends StatefulWidget {
   /// The offset is applied progressively during the morph. Defaults to
   /// [Offset.zero], preserving the normal trigger-aligned behavior.
   final Offset popoverOffset;
+
+  /// Keeps the growing popover surface anchored to its trigger instead of
+  /// using the detached J-curve travel path.
+  ///
+  /// This is useful when a popover grows from a corner trigger and a separate
+  /// traveling glass blob would appear as an unintended detached arc. Defaults
+  /// to false, preserving the standard liquid morph.
+  final bool anchorGrowthToTrigger;
 
   /// Border radius of the expanded popover.
   ///

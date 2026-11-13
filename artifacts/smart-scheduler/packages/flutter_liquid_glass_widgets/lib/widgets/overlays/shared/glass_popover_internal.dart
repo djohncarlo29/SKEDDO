@@ -647,17 +647,21 @@ class _GlassPopoverState extends State<GlassPopover>
           verticalOffset: _verticalOffset,
         );
 
+        final bodyDx = finalDx *
+            (widget.anchorGrowthToTrigger ? state.sizeT : state.pathT);
+        final bodyDy = finalDy *
+            (widget.anchorGrowthToTrigger ? state.sizeT : state.pathT);
         final currentHeight = lerpDouble(th, popoverHeight, state.sizeT)!;
         final currentWidth = lerpDouble(tw, popoverWidth, state.sizeT)!;
         final bodyLeft = _triggerGlobalPosition.dx +
             tw / 2.0 +
-            state.currentDx -
+            bodyDx -
             currentWidth / 2.0 +
             (widget.popoverOffset.dx * clampedValue) +
             (_horizontalOffset * clampedValue);
         final bodyTop = _triggerGlobalPosition.dy +
             th / 2.0 +
-            state.currentDy -
+            bodyDy -
             currentHeight / 2.0 +
             (widget.popoverOffset.dy * clampedValue) +
             (_verticalOffset * clampedValue);
@@ -713,7 +717,7 @@ class _GlassPopoverState extends State<GlassPopover>
                     quality: effectiveQuality,
                     isBlurProvidedByAncestor: false,
                     child: LiquidGlassBlendGroup(
-                      blend: state.blend,
+                      blend: widget.anchorGrowthToTrigger ? 0.0 : state.blend,
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -721,33 +725,25 @@ class _GlassPopoverState extends State<GlassPopover>
                           // Stays centred on the trigger and shrinks to 0
                           // over the first 40 % of the open animation,
                           // smoothly breaking the liquid bridge.
-                          Positioned(
-                            // Keep the trigger ghost aligned with Blob B's
-                            // progressively offset path. If the popover has a
-                            // non-zero target offset but this anchor stays at
-                            // the original X, the two glass shapes separate
-                            // during the morph and leave a detached crescent.
-                            left: _triggerGlobalPosition.dx +
-                                state.pushDx +
-                                widget.popoverOffset.dx * clampedValue,
-                            top: _triggerGlobalPosition.dy +
-                                state.pushDy +
-                                widget.popoverOffset.dy * clampedValue,
-                            child: Transform.scale(
-                              scale: state.anchorScale,
-                              child: GlassContainer(
-                                useOwnLayer: false,
-                                settings: rampedSettings,
-                                quality: effectiveQuality,
-                                width: tw,
-                                height: th,
-                                shape: LiquidRoundedRectangle(
-                                  borderRadius: _triggerBorderRadius ??
-                                      _triggerSize!.shortestSide / 2.0,
+                          if (!widget.anchorGrowthToTrigger)
+                            Positioned(
+                              left: _triggerGlobalPosition.dx + state.pushDx,
+                              top: _triggerGlobalPosition.dy + state.pushDy,
+                              child: Transform.scale(
+                                scale: state.anchorScale,
+                                child: GlassContainer(
+                                  useOwnLayer: false,
+                                  settings: rampedSettings,
+                                  quality: effectiveQuality,
+                                  width: tw,
+                                  height: th,
+                                  shape: LiquidRoundedRectangle(
+                                    borderRadius: _triggerBorderRadius ??
+                                        _triggerSize!.shortestSide / 2.0,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
 
                           // ── Blob B: Popover body ─────────────────────────
                           Positioned(

@@ -609,6 +609,7 @@ class DiscardChangesPopoverAnchorState
         // Keep the app-specific offset here so regular/future GlassPopovers
         // remain exactly trigger-aligned by default.
         popoverOffset: const Offset(-4, -4),
+        anchorGrowthToTrigger: true,
         popoverBorderRadius: isPresentedOverModalSheet
             ? kModalConfirmationSheetCornerRadius
             : kConfirmationSheetCornerRadius,
