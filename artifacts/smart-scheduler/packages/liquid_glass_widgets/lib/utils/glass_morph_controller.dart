@@ -225,6 +225,7 @@ class GlassMorphController extends ChangeNotifier {
 
   final AnimationController _animationController;
   bool _isClosing = false;
+  bool _reverseOpeningOnClose = false;
   bool _hasHandedOff = false;
 
   /// Whether the reduced-motion accessibility flag is currently active.
@@ -264,6 +265,9 @@ class GlassMorphController extends ChangeNotifier {
 
   /// Whether the controller is in the closing phase.
   bool get isClosing => _isClosing;
+
+  /// Whether closing is playing the opening trajectory in reverse.
+  bool get isReverseClosing => _isClosing && _reverseOpeningOnClose;
 
   /// Whether the anchor blob has handed off back to the real trigger.
   ///
@@ -307,17 +311,23 @@ class GlassMorphController extends ChangeNotifier {
   /// Safe to call while the close animation is still running.
   void open() {
     _isClosing = false;
+    _reverseOpeningOnClose = false;
     _hasHandedOff = false;
     _runSpring(1.0, velocityHint: 0.0);
   }
 
-  /// Closes the morph animation with the iOS 26 rubber-band bounce.
+  /// Closes the morph animation.
   ///
-  /// Injects [LiquidMorphPhysics.closeVelocityHint] to immediately drive the
-  /// spring toward zero with momentum, creating the satisfying "snap-back" feel.
-  void close() {
+  /// By default, uses the native snappier close spring. Set [reverseOpen] to
+  /// replay the opening spring from its current value back toward zero, with no
+  /// extra closing impulse. Menus that need an exact reverse use this mode.
+  void close({bool reverseOpen = false}) {
     _isClosing = true;
-    _runSpring(0.0, velocityHint: LiquidMorphPhysics.closeVelocityHint);
+    _reverseOpeningOnClose = reverseOpen;
+    _runSpring(
+      0.0,
+      velocityHint: reverseOpen ? 0.0 : LiquidMorphPhysics.closeVelocityHint,
+    );
   }
 
   /// Immediately resets the controller to its resting closed state (value = 0.0,
@@ -325,6 +335,7 @@ class GlassMorphController extends ChangeNotifier {
   void reset() {
     _animationController.stop();
     _isClosing = false;
+    _reverseOpeningOnClose = false;
     _hasHandedOff = false;
     _animationController.value = 0.0;
     notifyListeners();
@@ -365,7 +376,7 @@ class GlassMorphController extends ChangeNotifier {
       verticalOffset: verticalOffset,
       scaleDelta: scaleDelta,
       adaptiveDamping: adaptiveDamping,
-      isClosing: isClosing ?? _isClosing,
+      isClosing: isClosing ?? (_isClosing && !_reverseOpeningOnClose),
     );
   }
 
@@ -397,7 +408,7 @@ class GlassMorphController extends ChangeNotifier {
     switch (_speed) {
       case MorphSpeed.slow:
         // ω₀ ≈ 7.7 rad/s open, ω₀ ≈ 10.0 rad/s close
-        return _isClosing
+        return _isClosing && !_reverseOpeningOnClose
             ? const SpringDescription(
                 mass: 1.0, stiffness: 100.0, damping: 14.6)
             : const SpringDescription(
@@ -406,12 +417,12 @@ class GlassMorphController extends ChangeNotifier {
         // iOS 26 native asymmetric springs:
         // Open: ω₀ ≈ 11.0 rad/s, ζ ≈ 0.73 — buoyant, lush fluid expansion (~350 ms)
         // Close: ω₀ ≈ 14.1 rad/s, ζ ≈ 0.74 — snappy, crisp magnetic retraction (~240 ms)
-        return _isClosing
+        return _isClosing && !_reverseOpeningOnClose
             ? LiquidMorphPhysics.closeSpring
             : LiquidMorphPhysics.openSpring;
       case MorphSpeed.fast:
         // ω₀ ≈ 14.1 rad/s open, ω₀ ≈ 17.3 rad/s close
-        return _isClosing
+        return _isClosing && !_reverseOpeningOnClose
             ? const SpringDescription(
                 mass: 1.0, stiffness: 300.0, damping: 25.1)
             : const SpringDescription(

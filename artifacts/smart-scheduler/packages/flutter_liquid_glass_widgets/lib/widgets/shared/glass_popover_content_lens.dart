@@ -15,7 +15,7 @@ class GlassPopoverContentLens extends StatefulWidget {
   static const double foregroundRefractiveIndex = 1.30;
 
   /// Channel separation strength for the foreground edge response.
-  static const double foregroundChromaticAberration = 0.40;
+  static const double foregroundChromaticAberration = 0.06;
 
   const GlassPopoverContentLens({
     required this.child,

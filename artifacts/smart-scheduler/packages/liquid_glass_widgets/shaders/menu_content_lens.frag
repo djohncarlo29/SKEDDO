@@ -57,10 +57,9 @@ void main() {
       fragment_position - half_size, half_size, radius);
   float lens_depth = u_thickness_fraction * short_side;
   float displacement =
-      lens_depth * max(u_refractive_index - 1.0, 0.0) * 3.0 * contact;
-  vec2 refract_offset = normal * displacement / u_size;
-  vec2 colour_offset =
-      normal * displacement * u_chromatic_aberration / u_size;
+      lens_depth * max(u_refractive_index - 1.0, 0.0) * 1.8;
+  vec2 refract_offset = normal * displacement * contact / u_size;
+  vec2 colour_offset = refract_offset * u_chromatic_aberration;
 
   vec2 green_uv = clamp(uv + refract_offset, vec2(0.001), vec2(0.999));
   vec2 red_uv = clamp(
@@ -72,5 +71,7 @@ void main() {
   vec4 blue_sample = texture(u_texture, blue_uv);
   vec4 refracted = vec4(
       red_sample.r, green_sample.g, blue_sample.b, green_sample.a);
-  frag_color = mix(original, refracted, contact);
+  // Filter the source image itself. Mixing the original image back in here
+  // creates a second, sharp copy of every glyph near the glass edge.
+  frag_color = refracted;
 }

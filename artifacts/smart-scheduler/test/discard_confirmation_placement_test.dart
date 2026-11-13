@@ -197,7 +197,7 @@ void main() {
     );
     expect(foregroundLens.thickness, 30);
     expect(foregroundLens.refractiveIndex, 1.30);
-    expect(foregroundLens.chromaticAberration, 0.40);
+    expect(foregroundLens.chromaticAberration, 0.06);
     final morphLayerFinder = find.byType(LiquidGlassLayer);
     expect(morphLayerFinder, findsOneWidget);
     final morphLayer = tester.widget<LiquidGlassLayer>(morphLayerFinder);
@@ -266,8 +266,24 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.ancestor(of: discardButtonFinder, matching: find.byType(ClipPath)),
-      findsNothing,
+      find.ancestor(
+        of: discardButtonFinder,
+        matching: find.byType(GlassPopoverContentLens),
+      ),
+      findsOneWidget,
+    );
+    final buttonGlassAncestors = find.ancestor(
+      of: discardButtonFinder,
+      matching: find.byType(GlassContainer),
+    );
+    expect(buttonGlassAncestors, findsWidgets);
+    expect(
+      buttonGlassAncestors.evaluate().any(
+            (element) =>
+                (element.widget as GlassContainer).clipBehavior ==
+                Clip.antiAlias,
+          ),
+      isTrue,
     );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
     expect(

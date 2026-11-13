@@ -1498,6 +1498,9 @@ class _ActionPanelState extends State<ActionPanel>
   bool _isClosingNow = false;
   late List<GlobalKey> _glideRowKeys;
   final GlobalKey _glideScrollViewportKey = GlobalKey();
+  final GlobalKey _glassMenuSurfaceSizeKey = GlobalKey();
+  Size? _glassMenuSurfaceSize;
+  bool _glassMenuSurfaceMeasureScheduled = false;
   int? _glideIndex;
   Offset? _lastGlidePosition;
   int? _menuPointer;
@@ -1520,13 +1523,18 @@ class _ActionPanelState extends State<ActionPanel>
   static Duration _openDuration(int count) =>
       Duration(milliseconds: (600 - (count - 2) * 50).clamp(500, 700));
 
-  // Close: 65 % of open duration — reverse of open but slightly snappier.
+  // Legacy action panels retain their snappier close. Glass-menu-style
+  // context panels use the opening duration in reverse.
   static Duration _closeDuration(int count) => Duration(
     milliseconds: (((600 - (count - 2) * 50).clamp(500, 700)) * 0.65).round(),
   );
 
   Duration get _effectiveCloseDuration => widget.closeDurationOverrideMs != null
       ? Duration(milliseconds: widget.closeDurationOverrideMs!)
+      : widget.useGlassMenuStyle && widget.openDurationOverrideMs != null
+      ? Duration(milliseconds: widget.openDurationOverrideMs!)
+      : widget.useGlassMenuStyle
+      ? _openDuration(widget.items.length)
       : _closeDuration(widget.items.length);
 
   // The pill is deliberately gone in the first ~18% of the panel close.
@@ -1743,6 +1751,26 @@ class _ActionPanelState extends State<ActionPanel>
     });
   }
 
+  void _scheduleGlassMenuSurfaceMeasure() {
+    if (_glassMenuSurfaceMeasureScheduled) return;
+    _glassMenuSurfaceMeasureScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _glassMenuSurfaceMeasureScheduled = false;
+      if (!mounted || !widget.useGlassMenuStyle) return;
+      final renderBox =
+          _glassMenuSurfaceSizeKey.currentContext?.findRenderObject();
+      if (renderBox is! RenderBox || !renderBox.hasSize) return;
+      if (_glassMenuSurfaceSize != renderBox.size) {
+        setState(() => _glassMenuSurfaceSize = renderBox.size);
+      }
+    });
+  }
+
+  bool _onGlassMenuSurfaceSizeChanged(SizeChangedLayoutNotification _) {
+    _scheduleGlassMenuSurfaceMeasure();
+    return false;
+  }
+
   void _onScrollPositionChanged() {
     if (!mounted || _isClosingNow || widget.isClosing.value) return;
     if (!_scrollCtrl.hasClients) return;
@@ -1808,6 +1836,9 @@ class _ActionPanelState extends State<ActionPanel>
   @override
   void didUpdateWidget(covariant ActionPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.useGlassMenuStyle != widget.useGlassMenuStyle) {
+      _glassMenuSurfaceSize = null;
+    }
     if (oldWidget.externalGlideController !=
         widget.externalGlideController) {
       oldWidget.externalGlideController?.removeListener(
@@ -1869,6 +1900,9 @@ class _ActionPanelState extends State<ActionPanel>
   @override
   Widget build(BuildContext context) {
     _scheduleScrollabilityCheck();
+    if (widget.useGlassMenuStyle && _glassMenuSurfaceSize == null) {
+      _scheduleGlassMenuSurfaceMeasure();
+    }
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
@@ -2195,9 +2229,16 @@ class _ActionPanelState extends State<ActionPanel>
         // Native iOS/Android renderers continue through the real Liquid Glass
         // composition below.
         final panelCard = widget.useGlassMenuStyle
-            ? _GlassMenuStyleActionPanelCard(
-                progress: gt,
-                child: glassMenuStyleContent,
+            ? NotificationListener<SizeChangedLayoutNotification>(
+                onNotification: _onGlassMenuSurfaceSizeChanged,
+                child: SizeChangedLayoutNotifier(
+                  key: _glassMenuSurfaceSizeKey,
+                  child: _GlassMenuStyleActionPanelCard(
+                    progress: gt,
+                    surfaceSize: _glassMenuSurfaceSize ?? Size.zero,
+                    child: glassMenuStyleContent,
+                  ),
+                ),
               )
             : widget.useLiquidGlass && !kIsWeb
             ? _LiquidGlassActionPanelCard(
@@ -3051,10 +3092,12 @@ class _ExpandableRowSharedContentState
 class _GlassMenuStyleActionPanelCard extends StatelessWidget {
   const _GlassMenuStyleActionPanelCard({
     required this.progress,
+    required this.surfaceSize,
     required this.child,
   });
 
   final double progress;
+  final Size surfaceSize;
   final Widget child;
 
   @override
@@ -3073,7 +3116,7 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
         );
 
         return GlassInteractiveContainer(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           useOwnLayer: true,
           settings: settings,
           quality: GlassQuality.premium,
@@ -3087,7 +3130,20 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
           allowNegativeX: true,
           glowRadius: 0.6,
           glowBlurRadius: 40,
-          child: child,
+          child: GlassMenuContentLens(
+            progress: progress,
+            size: surfaceSize,
+            cornerRadius: 32,
+            thickness: GlassMenuContentLens.foregroundThickness,
+            refractiveIndex:
+                GlassMenuContentLens.foregroundRefractiveIndex,
+            chromaticAberration:
+                GlassMenuContentLens.foregroundChromaticAberration,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: child,
+            ),
+          ),
         );
       },
     );

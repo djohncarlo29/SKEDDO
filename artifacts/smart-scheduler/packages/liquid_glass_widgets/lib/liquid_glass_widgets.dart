@@ -56,6 +56,8 @@ export 'widgets/shared/glass_edit_scope.dart';
 export 'widgets/shared/inherited_liquid_glass.dart';
 export 'widgets/shared/glass_solid_surface.dart';
 export 'widgets/shared/lightweight_liquid_glass.dart';
+export 'widgets/shared/glass_menu_content_lens.dart'
+    show GlassMenuContentLens;
 
 // Utils — for advanced / custom widget authors
 export 'utils/glass_morph_controller.dart'

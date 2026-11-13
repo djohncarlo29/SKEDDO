@@ -130,6 +130,7 @@ class GlassMorphController extends ChangeNotifier {
 
   final AnimationController _animationController;
   bool _isClosing = false;
+  bool _reverseOpeningOnClose = false;
   bool _hasHandedOff = false;
 
   /// Whether the reduced-motion accessibility flag is currently active.
@@ -169,6 +170,9 @@ class GlassMorphController extends ChangeNotifier {
 
   /// Whether the controller is in the closing phase.
   bool get isClosing => _isClosing;
+
+  /// Whether closing is replaying the opening trajectory in reverse.
+  bool get isReverseClosing => _isClosing && _reverseOpeningOnClose;
 
   /// Whether the anchor blob has handed off back to the real trigger.
   ///
@@ -212,17 +216,22 @@ class GlassMorphController extends ChangeNotifier {
   /// Safe to call while the close animation is still running.
   void open() {
     _isClosing = false;
+    _reverseOpeningOnClose = false;
     _hasHandedOff = false;
     _runSpring(1.0, velocityHint: 0.0);
   }
 
-  /// Closes the morph animation with the iOS 26 rubber-band bounce.
+  /// Closes the morph animation.
   ///
-  /// Injects [LiquidMorphPhysics.closeVelocityHint] to immediately drive the
-  /// spring toward zero with momentum, creating the satisfying "snap-back" feel.
-  void close() {
+  /// [reverseOpen] replays the opening spring toward zero without an extra
+  /// closing impulse, for overlays whose dismissal should reverse their entry.
+  void close({bool reverseOpen = false}) {
     _isClosing = true;
-    _runSpring(0.0, velocityHint: LiquidMorphPhysics.closeVelocityHint);
+    _reverseOpeningOnClose = reverseOpen;
+    _runSpring(
+      0.0,
+      velocityHint: reverseOpen ? 0.0 : LiquidMorphPhysics.closeVelocityHint,
+    );
   }
 
   // ─── Physics computation ──────────────────────────────────────────────────

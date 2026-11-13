@@ -11,6 +11,7 @@ import '../../constants/glass_defaults.dart';
 import '../../types/glass_quality.dart';
 import '../containers/glass_container.dart';
 import '../shared/inherited_liquid_glass.dart';
+import '../shared/glass_menu_content_lens.dart';
 import 'glass_menu.dart' show GlassMenuAlignment;
 import '../../theme/glass_theme_helpers.dart';
 import '../../theme/glass_theme.dart';

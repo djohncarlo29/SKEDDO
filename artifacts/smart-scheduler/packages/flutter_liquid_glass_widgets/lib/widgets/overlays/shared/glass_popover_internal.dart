@@ -230,8 +230,17 @@ class _GlassPopoverState extends State<GlassPopover>
         // and inherits the liquid momentum from the collapsing blob.
         final isHandoff =
             _morphController.isClosing && _morphController.hasHandedOff;
-        final triggerOpacity =
-            (_overlayController.isShowing && !isHandoff) ? 0.0 : 1.0;
+        final clampedValue = rawValue.clamp(0.0, 1.0);
+        final double triggerOpacity;
+        if (!_overlayController.isShowing || isHandoff) {
+          triggerOpacity = 1.0;
+        } else if (!_morphController.isClosing ||
+            _morphController.isReverseClosing) {
+          triggerOpacity =
+              1.0 - (clampedValue / 0.20).clamp(0.0, 1.0);
+        } else {
+          triggerOpacity = 0.0;
+        }
 
         // Push vector: the trigger physically recoils as the popover snaps shut.
         // These values mirror _buildMorphingOverlay's finalDx/finalDy so the
@@ -240,10 +249,10 @@ class _GlassPopoverState extends State<GlassPopover>
         final th = _triggerSize?.height ?? 44.0;
         final dxMag = (widget.popoverWidth - tw) / 2.0;
         final dyMag = (_effectivePopoverHeight() - th) / 2.0;
-        final double pushDx = isHandoff
+        final double pushDx = isHandoff && !_morphController.isReverseClosing
             ? (-_morphAlignment.x * dxMag + _horizontalOffset) * rawValue
             : 0.0;
-        final double pushDy = isHandoff
+        final double pushDy = isHandoff && !_morphController.isReverseClosing
             ? (-_morphAlignment.y * dyMag + _verticalOffset) * rawValue
             : 0.0;
 
@@ -355,15 +364,15 @@ class _GlassPopoverState extends State<GlassPopover>
 
   void _closePopover() {
     if (!mounted) return;
-    // Freeze the blur where it is for the collapse. Ramping it back down here
-    // would race the morph and read as the blur "popping off" while the blob is
-    // still visibly shrinking; holding it keeps the close visually coherent.
-    // It is reset to 0 when the overlay finally hides (see the initState
-    // listener), so the next open still ramps from sharp.
-    _blurRamp.stop();
-    // GlassMorphController.close() injects the −2.5 velocity hint internally,
-    // maximising the rubber-band bounce amplitude on close.
-    _morphController.close();
+    // Reverse the opening blur ramp and spring so dismissal retraces entry.
+    if (_morphController.disableAnimations) {
+      _blurRamp
+        ..stop()
+        ..value = 0.0;
+    } else {
+      _blurRamp.reverse();
+    }
+    _morphController.close(reverseOpen: true);
     widget.onClose?.call();
   }
 

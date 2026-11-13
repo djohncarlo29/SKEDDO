@@ -484,7 +484,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         final clampedValue = rawValue.clamp(0.0, 1.0);
         if (!_overlayController.isShowing || isHandoff) {
           triggerOpacity = 1.0;
-        } else if (!_morphController.isClosing) {
+        } else if (!_morphController.isClosing ||
+            _morphController.isReverseClosing) {
           final detachT = (clampedValue / 0.20).clamp(0.0, 1.0);
           triggerOpacity = 1.0 - detachT;
         } else {
@@ -1410,23 +1411,33 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             glowRadius: widget.glowRadius,
             glowBlurRadius: 40,
             clipper: ShapeBorderClipper(shape: shape),
-            child: OverflowBox(
-              alignment: Alignment.topLeft,
-              minWidth: widget.menuWidth,
-              maxWidth: widget.menuWidth,
-              minHeight: settledRect.height,
-              maxHeight: settledRect.height,
-              child: Transform.translate(
-                offset: contentOffset,
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(
-                    sigmaX: contentSigma,
-                    sigmaY: contentSigma,
-                  ),
-                  child: Transform.scale(
-                    scale: isTop ? contentScale : 1.0,
-                    alignment: Alignment(0, _growsDown ? -1 : 1),
-                    child: cardContent,
+            child: GlassMenuContentLens(
+              progress: isTop ? contentMotionProgress : 1.0,
+              size: Size(widget.menuWidth.toDouble(), flightRect.height),
+              cornerRadius: widget.menuBorderRadius,
+              thickness: GlassMenuContentLens.foregroundThickness,
+              refractiveIndex:
+                  GlassMenuContentLens.foregroundRefractiveIndex,
+              chromaticAberration:
+                  GlassMenuContentLens.foregroundChromaticAberration,
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                minWidth: widget.menuWidth,
+                maxWidth: widget.menuWidth,
+                minHeight: settledRect.height,
+                maxHeight: settledRect.height,
+                child: Transform.translate(
+                  offset: contentOffset,
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: contentSigma,
+                      sigmaY: contentSigma,
+                    ),
+                    child: Transform.scale(
+                      scale: isTop ? contentScale : 1.0,
+                      alignment: Alignment(0, _growsDown ? -1 : 1),
+                      child: cardContent,
+                    ),
                   ),
                 ),
               ),
@@ -1919,10 +1930,16 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       widget.onClose?.call();
       return;
     }
-    // GlassMorphController.close() injects the -2.5 velocity hint internally,
-    // maximising the rubber-band bounce amplitude at close.
-    _blurRamp.stop();
-    _morphController.close();
+    // Replay the opening spring and blur ramp in reverse so the platter and
+    // its foreground return along the same transition they used to enter.
+    if (_morphController.disableAnimations) {
+      _blurRamp
+        ..stop()
+        ..value = 0.0;
+    } else {
+      _blurRamp.reverse();
+    }
+    _morphController.close(reverseOpen: true);
     widget.onClose?.call();
   }
 
@@ -2068,7 +2085,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final maxRadius = math.min(currentWidth, currentHeight) / 2.0;
     final double radiusT =
         Curves.easeInExpo.transform(state.sizeT.clamp(0.0, 1.0));
-    final currentRadius = _morphController.isClosing
+    final currentRadius =
+        _morphController.isClosing && !_morphController.isReverseClosing
         // Keep the fully-open menu radius through the reverse morph. Only
         // reduce it once the shrinking bounds cannot contain it; from there
         // the radius follows half of the short side, forming a stadium.
@@ -2077,7 +2095,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
     final double effectiveDx;
     final double effectiveDy;
-    if (_morphController.isClosing) {
+    if (_morphController.isClosing &&
+        !_morphController.isReverseClosing) {
       if (isPremium) {
         // On close (premium): the droplet separates from the open bounds and travels along
         // the centroid trajectory directly to the trigger center, creating a visible
@@ -2183,7 +2202,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                       // the single collapsing menu container is visible (preventing double-button overlap).
                       if (!widget.morphFromZero &&
                           !widget.suppressTriggerGlassBlob &&
-                          (!_morphController.isClosing || isPremium))
+                          (!_morphController.isClosing ||
+                              _morphController.isReverseClosing ||
+                              isPremium))
                         Positioned(
                           left: _triggerOverlayPosition.dx +
                               _followOffset.dx +

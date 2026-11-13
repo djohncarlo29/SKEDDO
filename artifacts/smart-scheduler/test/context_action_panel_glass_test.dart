@@ -6,6 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassContainer,
         GlassGlow,
         GlassInteractiveContainer,
+        GlassMenuContentLens,
         GlassMenuItem,
         GlassQuality;
 import 'package:smart_scheduler/app_theme.dart'
@@ -63,6 +64,16 @@ void main() {
         expect(surface.settings!.refractiveIndex, 1.59);
         expect(surface.settings!.chromaticAberration, 0.3);
         expect(surface.settings!.visibility, 1);
+        final foregroundLens = tester.widget<GlassMenuContentLens>(
+          find.byType(GlassMenuContentLens),
+        );
+        expect(foregroundLens.thickness, 30);
+        expect(foregroundLens.refractiveIndex, 1.30);
+        expect(foregroundLens.chromaticAberration, 0.06);
+        expect(
+          foregroundLens.size,
+          tester.getSize(find.byType(GlassContainer)),
+        );
 
         final rows = tester.widgetList<GlassMenuItem>(
           find.byType(GlassMenuItem),

@@ -374,7 +374,8 @@ class _GlassPopoverState extends State<GlassPopover>
         final clampedValue = rawValue.clamp(0.0, 1.0);
         if (!_overlayController.isShowing || isHandoff) {
           triggerOpacity = 1.0;
-        } else if (!_morphController.isClosing) {
+        } else if (!_morphController.isClosing ||
+            _morphController.isReverseClosing) {
           final detachT = (clampedValue / 0.20).clamp(0.0, 1.0);
           triggerOpacity = 1.0 - detachT;
         } else {
@@ -391,10 +392,10 @@ class _GlassPopoverState extends State<GlassPopover>
         final th = _triggerSize?.height ?? 44.0;
         final dxMag = (widget.popoverWidth - tw) / 2.0;
         final dyMag = (_effectivePopoverHeight() - th) / 2.0;
-        final double pushDx = isHandoff
+        final double pushDx = isHandoff && !_morphController.isReverseClosing
             ? (-_morphAlignment.x * dxMag + _horizontalOffset) * rawValue
             : 0.0;
-        final double pushDy = isHandoff
+        final double pushDy = isHandoff && !_morphController.isReverseClosing
             ? (-_morphAlignment.y * dyMag + _verticalOffset) * rawValue
             : 0.0;
 
@@ -527,15 +528,15 @@ class _GlassPopoverState extends State<GlassPopover>
 
   void _closePopover() {
     if (!mounted || !_overlayController.isShowing) return;
-    // Freeze the blur where it is for the collapse. Ramping it back down here
-    // would race the morph and read as the blur "popping off" while the blob is
-    // still visibly shrinking; holding it keeps the close visually coherent.
-    // It is reset to 0 when the overlay finally hides (see the initState
-    // listener), so the next open still ramps from sharp.
-    _blurRamp.stop();
-    // GlassMorphController.close() injects the −2.5 velocity hint internally,
-    // maximising the rubber-band bounce amplitude on close.
-    _morphController.close();
+    // Reverse the opening blur ramp and spring so dismissal retraces entry.
+    if (_morphController.disableAnimations) {
+      _blurRamp
+        ..stop()
+        ..value = 0.0;
+    } else {
+      _blurRamp.reverse();
+    }
+    _morphController.close(reverseOpen: true);
     widget.onClose?.call();
   }
 
@@ -837,7 +838,8 @@ class _GlassPopoverState extends State<GlassPopover>
 
         final double effectiveDx;
         final double effectiveDy;
-        if (_morphController.isClosing) {
+        if (_morphController.isClosing &&
+            !_morphController.isReverseClosing) {
           if (isPremium) {
             effectiveDx = finalDx * state.pathT;
             effectiveDy = finalDy * state.pathT;
@@ -1012,7 +1014,8 @@ class _GlassPopoverState extends State<GlassPopover>
         Curves.easeInExpo.transform(state.sizeT.clamp(0.0, 1.0));
     final bool isPremium = effectiveQuality == GlassQuality.premium &&
         ImageFilter.isShaderFilterSupported;
-    final currentRadius = _morphController.isClosing
+    final currentRadius =
+        _morphController.isClosing && !_morphController.isReverseClosing
         ? (isPremium
             ? maxRadius
             : lerpDouble(
@@ -1065,10 +1068,20 @@ class _GlassPopoverState extends State<GlassPopover>
             children: [
               // Content remains at the settled destination while the platter
               // travels from/to its trigger; the current shape clips the group.
-              _buildContentWithMeasurement(
-                clampedValue,
-                targetHeight,
-                contentOffset,
+              GlassMenuContentLens(
+                progress: clampedValue,
+                size: Size(currentWidth, currentHeight),
+                cornerRadius: currentRadius,
+                thickness: GlassMenuContentLens.foregroundThickness,
+                refractiveIndex:
+                    GlassMenuContentLens.foregroundRefractiveIndex,
+                chromaticAberration:
+                    GlassMenuContentLens.foregroundChromaticAberration,
+                child: _buildContentWithMeasurement(
+                  clampedValue,
+                  targetHeight,
+                  contentOffset,
+                ),
               ),
             ],
           ),

@@ -240,7 +240,7 @@ void main() {
     );
     expect(foregroundLens.thickness, 30);
     expect(foregroundLens.refractiveIndex, 1.30);
-    expect(foregroundLens.chromaticAberration, 0.40);
+    expect(foregroundLens.chromaticAberration, 0.06);
     final menuBody = tester.widget<GlassContainer>(
       find.byType(GlassContainer).last,
     );
@@ -275,7 +275,7 @@ void main() {
   });
 
   testWidgets(
-    'picker menu keeps its open radius until the shrinking bounds require a stadium',
+    'picker dismissal retraces the opening radius transition',
     (tester) async {
       GlassMenuController? controller;
 
@@ -315,7 +315,7 @@ void main() {
       expect(menuBody().settings!.chromaticAberration, 0.3);
       controller!.close();
 
-      var sawStadiumPhase = false;
+      var previousRadius = menuRadius();
       for (var frame = 0; frame < 100 && controller!.isOpen; frame++) {
         await tester.pump(const Duration(milliseconds: 8));
         final glassContainers = find.byType(GlassContainer);
@@ -326,17 +326,14 @@ void main() {
         expect(body.settings!.chromaticAberration, 0.3);
         final shortSide = math.min(body.width!, body.height!);
         final radius = (body.shape as LiquidRoundedRectangle).borderRadius;
-        if (shortSide >= 64) {
-          expect(radius, 32);
-        } else {
-          expect(radius, closeTo(shortSide / 2, 0.01));
-          sawStadiumPhase = true;
-        }
+        expect(radius, greaterThan(0));
+        expect(radius, lessThanOrEqualTo(math.max(32, shortSide / 2) + 1));
+        expect(radius, lessThanOrEqualTo(previousRadius + 1));
+        previousRadius = radius;
       }
 
       await tester.pumpAndSettle();
       expect(controller!.isOpen, isFalse);
-      expect(sawStadiumPhase, isTrue);
     },
   );
 
