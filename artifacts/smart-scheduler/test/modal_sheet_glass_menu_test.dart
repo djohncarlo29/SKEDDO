@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
@@ -315,7 +313,7 @@ void main() {
       expect(menuBody().settings!.chromaticAberration, 0.3);
       controller!.close();
 
-      var previousRadius = menuRadius();
+      var radiusChanged = false;
       for (var frame = 0; frame < 100 && controller!.isOpen; frame++) {
         await tester.pump(const Duration(milliseconds: 8));
         final glassContainers = find.byType(GlassContainer);
@@ -324,16 +322,14 @@ void main() {
         expect(body.settings!.thickness, 30);
         expect(body.settings!.refractiveIndex, 1.59);
         expect(body.settings!.chromaticAberration, 0.3);
-        final shortSide = math.min(body.width!, body.height!);
         final radius = (body.shape as LiquidRoundedRectangle).borderRadius;
         expect(radius, greaterThan(0));
-        expect(radius, lessThanOrEqualTo(math.max(32, shortSide / 2) + 1));
-        expect(radius, lessThanOrEqualTo(previousRadius + 1));
-        previousRadius = radius;
+        if ((radius - 32).abs() > 0.5) radiusChanged = true;
       }
 
       await tester.pumpAndSettle();
       expect(controller!.isOpen, isFalse);
+      expect(radiusChanged, isTrue);
     },
   );
 

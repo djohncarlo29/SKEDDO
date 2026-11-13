@@ -226,12 +226,12 @@ class GlassMorphController extends ChangeNotifier {
   /// [reverseOpen] replays the opening spring toward zero without an extra
   /// closing impulse, for overlays whose dismissal should reverse their entry.
   void close({bool reverseOpen = false}) {
+    final velocityHint = reverseOpen
+        ? -_animationController.velocity
+        : LiquidMorphPhysics.closeVelocityHint;
     _isClosing = true;
     _reverseOpeningOnClose = reverseOpen;
-    _runSpring(
-      0.0,
-      velocityHint: reverseOpen ? 0.0 : LiquidMorphPhysics.closeVelocityHint,
-    );
+    _runSpring(0.0, velocityHint: velocityHint);
   }
 
   // ─── Physics computation ──────────────────────────────────────────────────
