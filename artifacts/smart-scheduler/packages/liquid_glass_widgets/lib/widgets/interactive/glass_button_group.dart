@@ -72,7 +72,8 @@ class GlassButtonGroupItem {
         menuItems = null,
         menuAlignment = null,
         menuWidth = 200,
-        menuHeight = null;
+        menuHeight = null,
+        menuContentHorizontalInset = 12;
 
   /// Creates a group item that opens a [GlassMenu] pull-down when tapped.
   ///
@@ -95,6 +96,7 @@ class GlassButtonGroupItem {
     this.menuAlignment,
     this.menuWidth = 200,
     this.menuHeight,
+    this.menuContentHorizontalInset = 12,
     this.label,
   })  : onTap = _noOp,
         enabled = true;
@@ -148,6 +150,11 @@ class GlassButtonGroupItem {
 
   /// Optional fixed height for the expanded menu panel in logical pixels.
   final double? menuHeight;
+
+  /// Horizontal inset between the menu surface and its row viewport.
+  ///
+  /// Defaults to 12, matching [GlassMenu].
+  final double menuContentHorizontalInset;
 }
 
 // =============================================================================
@@ -359,6 +366,7 @@ class GlassButtonGroup extends StatelessWidget {
           menuAlignment: menuItem.menuAlignment,
           menuWidth: menuItem.menuWidth,
           menuHeight: menuItem.menuHeight,
+          menuContentHorizontalInset: menuItem.menuContentHorizontalInset,
           autoAdjustToScreen: true,
           items: menuItem.menuItems!,
           triggerBuilder: (context, toggleMenu) =>

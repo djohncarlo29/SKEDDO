@@ -64,7 +64,8 @@ export 'utils/glass_morph_controller.dart'
         MorphSpeed,
         MorphStyle,
         LiquidMorphState,
-        MorphPhase;
+        MorphPhase,
+        GlassMorphContentMotion;
 export 'utils/glass_spring.dart';
 export 'utils/glass_performance_monitor.dart'
     show GlassPerformanceMonitor; // PremiumGlassTracker is internal

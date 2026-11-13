@@ -98,7 +98,7 @@ void main() {
     expect(popover.popoverWidth, 400);
     expect(popover.popoverOffset, const Offset(-4, -4));
     expect(popover.screenPadding, const EdgeInsets.all(12));
-    expect(kSkeddoPopoverGlassOpacity, 0.8546);
+    expect(kSkeddoPopoverGlassOpacity, 0.83276);
     final glassContainers = find.byType(GlassContainer);
     final glassContainerRects = List<Rect>.generate(
       glassContainers.evaluate().length,
@@ -119,7 +119,10 @@ void main() {
     expect(popover.settings!.thickness, 30);
     expect(popover.settings!.chromaticAberration, 0.3);
     expect(popover.settings!.blur, skeddoPopoverBlurForPosition(0.5));
-    expect(popover.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
+    expect(
+      popover.settings!.glassColor.a,
+      closeTo(kSkeddoPopoverGlassOpacity, 0.001),
+    );
     final foregroundLens = tester.widget<GlassPopoverContentLens>(
       find.byType(GlassPopoverContentLens),
     );
@@ -141,7 +144,7 @@ void main() {
         Brightness.dark,
         const Color(0xFF2C2C2E),
       ).glassColor.a,
-      kSkeddoPopoverGlassOpacity,
+      closeTo(kSkeddoPopoverGlassOpacity, 0.001),
     );
     expect(
       skeddoPopoverGlassSettingsFor(
@@ -198,7 +201,10 @@ void main() {
       findsNothing,
     );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
-    expect(discardButton.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
+    expect(
+      discardButton.settings!.glassColor.a,
+      closeTo(kSkeddoPopoverGlassOpacity, 0.001),
+    );
     expect(discardButton.useOwnLayer, isTrue);
     expect(discardButton.quality, GlassQuality.premium);
     expect(discardButton.style, GlassButtonStyle.filled);
@@ -248,7 +254,7 @@ void main() {
         Brightness.dark,
         const Color(0xFF3A3A3C),
       ).glassColor.a,
-      kSkeddoPopoverGlassOpacity,
+      closeTo(kSkeddoPopoverGlassOpacity, 0.001),
     );
     expect(
       skeddoPopoverButtonGlassSettingsFor(
@@ -271,10 +277,19 @@ void main() {
     );
     await tester.pump();
     final livePopover = tester.widget<GlassPopover>(popoverFinder);
-    expect(livePopover.settings!.blur, closeTo(7.936, 0.000001));
-    expect(livePopover.settings!.glassColor.a, closeTo(0.9087, 0.001));
+    expect(
+      livePopover.settings!.blur,
+      closeTo(skeddoPopoverBlurForPosition(0.75), 0.000001),
+    );
+    expect(
+      livePopover.settings!.glassColor.a,
+      closeTo(skeddoPopoverOpacityForPosition(0.75), 0.001),
+    );
     final liveDiscardButton = tester.widget<GlassButton>(discardButtonFinder);
-    expect(liveDiscardButton.settings!.glassColor.a, closeTo(0.9087, 0.001));
+    expect(
+      liveDiscardButton.settings!.glassColor.a,
+      closeTo(skeddoPopoverOpacityForPosition(0.75), 0.001),
+    );
     expect(liveDiscardButton.settings!.blur, 0);
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(

@@ -41,11 +41,14 @@ enum MorphStyle {
   bloom,
 }
 
-/// Shared opacity and scale profile for content entering/leaving a liquid
-/// morph surface. Popovers and menus use this same profile so their contents
-/// appear and disappear in sync with the glass geometry.
+/// Shared opacity, scale, and blur profile for content entering/leaving a
+/// liquid morph surface. Popovers and menus use it in sync with glass geometry.
 class GlassMorphContentMotion {
   const GlassMorphContentMotion._();
+
+  /// Initial visual overshoot applied to menu content while the glass platter
+  /// is still opening, expressed as a fraction of its settled size.
+  static const double contentOvershoot = 0.12;
 
   /// The morph progress at which content first becomes visible.
   static const double openVisibilityStart = 0.3;
@@ -77,15 +80,73 @@ class GlassMorphContentMotion {
               .clamp(0.0, 1.0)
               .toDouble();
 
-  /// Returns the shared content scale for the current morph frame.
-  static double scale(double progress) {
-    final t = Curves.easeOut
-        .transform(
-          ((progress - openVisibilityStart) / 0.7)
-              .clamp(0.0, 1.0)
-              .toDouble(),
-        );
-    return 0.5 + 0.5 * t;
+  /// Normalized content-motion progress for the current root morph frame.
+  ///
+  /// The open and close windows are intentionally asymmetric: content enters
+  /// after the shape begins forming, and exits before the shape disappears.
+  static double phaseProgress({
+    required double progress,
+    required bool isClosing,
+  }) =>
+      isClosing
+          ? ((1.0 - progress) / (1.0 - closeVisibilityStart))
+                .clamp(0.0, 1.0)
+                .toDouble()
+          : ((progress - openVisibilityStart) /
+                    (1.0 - openVisibilityStart))
+                .clamp(0.0, 1.0)
+                .toDouble();
+
+  /// Returns the shared content scale for a normalized transition phase.
+  ///
+  /// Contents begin larger than their settled size, then pass just below it
+  /// before springing to 1.0. Closing walks that motion in reverse.
+  static double scaleForPhase(
+    double phase, {
+    required bool isClosing,
+  }) {
+    final spring = Curves.easeOutBack.transform(
+      phase.clamp(0.0, 1.0).toDouble(),
+    );
+    return isClosing
+        ? 1.0 + contentOvershoot * spring
+        : 1.0 + contentOvershoot * (1.0 - spring);
+  }
+
+  /// Returns the shared content scale for the open morph's current frame.
+  ///
+  /// Retains the original positional helper signature for callers that only
+  /// need the open transition.
+  static double scale(double progress) => scaleForMorph(
+    progress: progress,
+    isClosing: false,
+  );
+
+  /// Returns the shared content scale for the current root morph frame.
+  static double scaleForMorph({
+    required double progress,
+    required bool isClosing,
+  }) => scaleForPhase(
+    phaseProgress(progress: progress, isClosing: isClosing),
+    isClosing: isClosing,
+  );
+
+  /// Returns the subtle content blur for the current root morph frame.
+  static double blurSigma({
+    required double progress,
+    required bool isClosing,
+  }) => blurSigmaForPhase(
+    phaseProgress(progress: progress, isClosing: isClosing),
+    isClosing: isClosing,
+  );
+
+  /// Returns the subtle content blur for a normalized transition phase.
+  static double blurSigmaForPhase(
+    double phase, {
+    required bool isClosing,
+  }) {
+    final t = phase.clamp(0.0, 1.0).toDouble();
+    return 2.0 * (isClosing ? t : 1.0 - t);
   }
 }
 

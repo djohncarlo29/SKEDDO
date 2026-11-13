@@ -36,6 +36,7 @@ class GlassMenuItem extends StatefulWidget {
     this.closeDelay,
     this.closeOnTap = true,
     this.submenu,
+    this.submenuContentHorizontalInset,
   });
 
   /// The primary text of the item.
@@ -158,6 +159,13 @@ class GlassMenuItem extends StatefulWidget {
   ///
   /// When [trailing] is null a submenu item shows a chevron.
   final List<Widget>? submenu;
+
+  /// Optional horizontal content inset for this item's submenu card.
+  ///
+  /// This can align a submenu whose first leading glyph is a checkmark to
+  /// the same 16px row inset used by the main menu, without changing the
+  /// parent menu or other submenu levels.
+  final double? submenuContentHorizontalInset;
 
   @override
   State<GlassMenuItem> createState() => _GlassMenuItemState();

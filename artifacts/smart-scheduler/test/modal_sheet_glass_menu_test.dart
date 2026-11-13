@@ -170,7 +170,7 @@ void main() {
     expect(menu.quality, GlassQuality.premium);
     expect(menu.keepTriggerAnchorOnOverflow, isTrue);
     expect(menu.showItemInteractionHighlight, isFalse);
-    expect(menu.menuContentHorizontalInset, 12);
+    expect(menu.menuContentHorizontalInset, 0);
     expect(find.text('October'), findsOneWidget);
 
     final options = menu.items.whereType<GlassMenuItem>().toList();

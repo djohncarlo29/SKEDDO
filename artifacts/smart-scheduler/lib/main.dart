@@ -222,6 +222,9 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     widget.onDismissThen(widget.onEditSectionsTriggered);
   }
 
+  String _sortByDisplayName(String value) =>
+      value == 'Deadline' ? 'Due Date' : value;
+
   // Sort By's position must be measured from the same scaled rows that the
   // main ActionPanel renders.  The old fixed 217.5 px value only matched the
   // default text size; at an accessibility text size, any wrapped row above
@@ -333,7 +336,9 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       label: 'Sort By',
       icon: SFIcons.sf_arrow_up_arrow_down,
       hasChevron: true,
-      subtitle: widget.isUtilityCategory ? _sortDir : _sortBy,
+      subtitle: widget.isUtilityCategory
+          ? _sortDir
+          : _sortByDisplayName(_sortBy),
       contentOpacity: expandedTriggerId == 'sortBy' ? 0.0 : 1.0,
       onTap: () => onTriggerTap('sortBy'),
     ),
@@ -391,11 +396,11 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     return [
       for (int i = 0; i < _kSortOptions.length; i++)
         ActionItem(
-          label: _kSortOptions[i],
+          label: _sortByDisplayName(_kSortOptions[i]),
           icon: SFIcons.sf_checkmark,
           checkmark: _kSortOptions[i] == _sortBy,
           primaryCheckmark: true,
-          iconBuilder: (_) => const SizedBox(width: 20),
+          showTrailingIcon: false,
           groupBreakAbove: i == 0,
           onTap: () => _selectSort(_kSortOptions[i]),
         ),
@@ -418,15 +423,16 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     ActionItem(
       label: 'New Section',
       icon: SFIcons.sf_list_bullet,
-      iconOffset: const Offset(-7.0, 0),
-      iconBuilder: (_) => const SizedBox.shrink(),
+      useLeadingSlot: false,
+      showTrailingIcon: false,
       groupBreakAbove: true,
       onTap: _onSectionOptionTap,
     ),
     ActionItem(
       label: 'Edit Sections',
       icon: SFIcons.sf_pencil,
-      iconBuilder: (_) => const SizedBox.shrink(),
+      useLeadingSlot: false,
+      showTrailingIcon: false,
       groupBreakAbove: false,
       onTap: _onEditSectionsTap,
     ),
@@ -454,7 +460,9 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
         rowTop: _sortByTop(context),
         rowHeight: _rowHeight(context, 'Sort By'),
         label: 'Sort By',
-        subtitle: widget.isUtilityCategory ? _sortDir : _sortBy,
+        subtitle: widget.isUtilityCategory
+            ? _sortDir
+            : _sortByDisplayName(_sortBy),
         icon: SFIcons.sf_arrow_up_arrow_down,
         subItems: _sortOptionItems(),
       ),
@@ -1958,6 +1966,63 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
+  Widget _calendarModeLeadingIcon({
+    required Widget icon,
+    required bool selected,
+    required Color accent,
+    Offset iconCorrection = Offset.zero,
+  }) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final checkmarkSize = textScaler.scale(17);
+    final gap = textScaler.scale(16);
+    final modeIconSize = textScaler.scale(24);
+    final slotSize = _calendarModeLeadingIconSlotSize();
+    return SizedBox(
+      width: slotSize.width,
+      height: slotSize.height,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: checkmarkSize,
+            height: modeIconSize,
+            child: selected
+                ? Center(
+                    child: Icon(
+                      CupertinoIcons.checkmark,
+                      size: checkmarkSize,
+                      color: resolveThemeColor(accent, context),
+                    ),
+                  )
+                : null,
+          ),
+          SizedBox(width: gap),
+          SizedBox(
+            width: modeIconSize,
+            height: modeIconSize,
+            child: Center(
+              child: Transform.translate(
+                offset: iconCorrection * (modeIconSize / 24),
+                child: Transform.scale(
+                  scale: modeIconSize / 24,
+                  child: icon,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Size _calendarModeLeadingIconSlotSize() {
+    final textScaler = MediaQuery.textScalerOf(context);
+    return Size(
+      textScaler.scale(17) + textScaler.scale(16) + textScaler.scale(24),
+      textScaler.scale(24),
+    );
+  }
+
   Widget _toolbarMenuSfIcon(
     IconData icon,
     Color color, {
@@ -1999,11 +2064,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required String title,
     required VoidCallback onTap,
     Widget? icon,
+    bool scaleIconContent = true,
+    bool reserveIconSlot = true,
+    double iconSlotBaseSize = kGlassMenuIconSlotBaseSize,
+    Size? iconSlotSizeOverride,
+    double? iconSizeOverride,
+    double iconLabelGap = 12,
     Widget? trailing,
     double? trailingWidth,
     Widget Function(BuildContext context, bool submenuOpen)? trailingBuilder,
     String? subtitle,
     List<Widget>? submenu,
+    double? submenuContentHorizontalInset,
     bool isDestructive = false,
     Color? labelColor,
     Offset iconInkCorrection = Offset.zero,
@@ -2015,7 +2087,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       context,
     );
     final textScaler = MediaQuery.textScalerOf(context);
-    final iconSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
+    final iconSlotSize =
+        iconSlotSizeOverride?.width ?? textScaler.scale(iconSlotBaseSize);
+    final iconSlotHeight = iconSlotSizeOverride?.height ?? iconSlotSize;
     final iconVisualScale = textScaler.scale(24) / 24;
     final iconInkScale = icon is FixedSFIcon
         ? textScaler.scale(20) / 20
@@ -2024,10 +2098,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ? const SizedBox.shrink()
         : icon is FixedSFIcon
         ? Center(child: icon)
-        : Transform.scale(
+        : scaleIconContent
+        ? Transform.scale(
             scale: iconVisualScale,
             child: Center(child: icon),
-          );
+          )
+        : Center(child: icon);
     return GlassMenuItem(
       title: title,
       titleStyle: TextStyle(
@@ -2036,22 +2112,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         fontWeight: FontWeight.w400,
       ),
       iconColor: resolvedLabelColor,
-      icon: SizedBox(
-        width: iconSlotSize,
-        height: iconSlotSize,
-        child: icon == null
-            ? const SizedBox.shrink()
-            : Transform.translate(
-                offset:
-                    _toolbarMenuIconInkCorrection(
-                      icon,
-                      additionalCorrection: iconInkCorrection,
-                    ) *
-                    iconInkScale,
-                child: iconContent,
-              ),
-      ),
-      iconSize: iconSlotSize,
+      icon: reserveIconSlot
+          ? SizedBox(
+              width: iconSlotSize,
+              height: iconSlotHeight,
+              child: icon == null
+                  ? const SizedBox.shrink()
+                  : Transform.translate(
+                      offset:
+                          _toolbarMenuIconInkCorrection(
+                            icon,
+                            additionalCorrection: iconInkCorrection,
+                          ) *
+                          iconInkScale,
+                      child: iconContent,
+                    ),
+            )
+          : null,
+      iconSize: iconSizeOverride ?? iconSlotSize,
+      iconLabelGap: textScaler.scale(iconLabelGap),
       trailing: trailing,
       trailingWidth: trailing == null && trailingBuilder == null
           ? null
@@ -2060,6 +2139,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       subtitle: subtitle,
       allowTextWrapping: true,
       submenu: submenu,
+      submenuContentHorizontalInset: submenuContentHorizontalInset,
       isDestructive: isDestructive,
       onTap: onTap,
     );
@@ -2069,6 +2149,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final current =
         _calendarTabKey.currentState?.viewMode ?? CalendarViewMode.list;
     final labelColor = _toolbarMenuDefaultLabelColor();
+    final modeIconSlotSize = _calendarModeLeadingIconSlotSize();
     void select(CalendarViewMode mode) {
       _calendarTabKey.currentState?.setViewMode(mode);
       setState(() => _activeViewMode = mode);
@@ -2076,48 +2157,70 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       if (_selectedIndex == 1) _syncToolbarDestination();
     }
 
-    Widget check(bool selected) =>
-        _toolbarMenuCheckmark(accent, selected: selected);
     return [
       _toolbarMenuItem(
         title: 'Compact',
-        icon: CompactViewIcon(
-          color: current == CalendarViewMode.compact ? accent : labelColor,
-          size: 24,
+        icon: _calendarModeLeadingIcon(
+          icon: CompactViewIcon(
+            color: current == CalendarViewMode.compact ? accent : labelColor,
+            size: 24,
+          ),
+          selected: current == CalendarViewMode.compact,
+          accent: accent,
         ),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == CalendarViewMode.compact ? accent : labelColor,
-        trailing: check(current == CalendarViewMode.compact),
         onTap: () => select(CalendarViewMode.compact),
       ),
       _toolbarMenuItem(
         title: 'Stacked',
-        icon: StackedViewIcon(
-          color: current == CalendarViewMode.stacked ? accent : labelColor,
-          size: 24,
+        icon: _calendarModeLeadingIcon(
+          icon: StackedViewIcon(
+            color: current == CalendarViewMode.stacked ? accent : labelColor,
+            size: 24,
+          ),
+          selected: current == CalendarViewMode.stacked,
+          accent: accent,
         ),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == CalendarViewMode.stacked ? accent : labelColor,
-        trailing: check(current == CalendarViewMode.stacked),
         onTap: () => select(CalendarViewMode.stacked),
       ),
       _toolbarMenuItem(
         title: 'Details',
-        icon: DetailsViewIcon(
-          color: current == CalendarViewMode.details ? accent : labelColor,
-          size: 24,
+        icon: _calendarModeLeadingIcon(
+          icon: DetailsViewIcon(
+            color: current == CalendarViewMode.details ? accent : labelColor,
+            size: 24,
+          ),
+          selected: current == CalendarViewMode.details,
+          accent: accent,
         ),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == CalendarViewMode.details ? accent : labelColor,
-        trailing: check(current == CalendarViewMode.details),
         onTap: () => select(CalendarViewMode.details),
       ),
       const GlassMenuDivider(height: 8),
       _toolbarMenuItem(
         title: 'List',
-        icon: ListViewIcon(
-          color: current == CalendarViewMode.list ? accent : labelColor,
-          size: 24,
+        icon: _calendarModeLeadingIcon(
+          icon: ListViewIcon(
+            color: current == CalendarViewMode.list ? accent : labelColor,
+            size: 24,
+          ),
+          selected: current == CalendarViewMode.list,
+          accent: accent,
         ),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == CalendarViewMode.list ? accent : labelColor,
-        trailing: check(current == CalendarViewMode.list),
         onTap: () => select(CalendarViewMode.list),
       ),
     ];
@@ -2126,6 +2229,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   List<Widget> _calendarDayModeMenuItems(Color accent) {
     final current = _activeDaySubMode;
     final labelColor = _toolbarMenuDefaultLabelColor();
+    final modeIconSlotSize = _calendarModeLeadingIconSlotSize();
     void select(DayViewSubMode mode) {
       _calendarListDayHeaderScrollPosition = null;
       setState(() => _activeDaySubMode = mode);
@@ -2148,38 +2252,54 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         BlendMode.srcIn,
       ),
     );
-    Widget check(bool selected) =>
-        _toolbarMenuCheckmark(accent, selected: selected);
     return [
       _toolbarMenuItem(
         title: 'Single Day',
-        icon: modeIcon(
-          'assets/icons/day_view_single_day.svg',
-          current == DayViewSubMode.singleDay ? accent : labelColor,
+        icon: _calendarModeLeadingIcon(
+          icon: modeIcon(
+            'assets/icons/day_view_single_day.svg',
+            current == DayViewSubMode.singleDay ? accent : labelColor,
+          ),
+          selected: current == DayViewSubMode.singleDay,
+          accent: accent,
         ),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == DayViewSubMode.singleDay ? accent : labelColor,
-        trailing: check(current == DayViewSubMode.singleDay),
         onTap: () => select(DayViewSubMode.singleDay),
       ),
       _toolbarMenuItem(
         title: 'Multi Day',
-        icon: modeIcon(
-          'assets/icons/day_view_multi_day.svg',
-          current == DayViewSubMode.multiDay ? accent : labelColor,
+        icon: _calendarModeLeadingIcon(
+          icon: modeIcon(
+            'assets/icons/day_view_multi_day.svg',
+            current == DayViewSubMode.multiDay ? accent : labelColor,
+          ),
+          selected: current == DayViewSubMode.multiDay,
+          accent: accent,
         ),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == DayViewSubMode.multiDay ? accent : labelColor,
-        trailing: check(current == DayViewSubMode.multiDay),
         onTap: () => select(DayViewSubMode.multiDay),
       ),
       _toolbarMenuItem(
         title: 'List',
-        icon: modeIcon(
-          'assets/icons/day_view_list.svg',
-          current == DayViewSubMode.list ? accent : labelColor,
+        icon: _calendarModeLeadingIcon(
+          icon: modeIcon(
+            'assets/icons/day_view_list.svg',
+            current == DayViewSubMode.list ? accent : labelColor,
+          ),
+          selected: current == DayViewSubMode.list,
+          accent: accent,
+          iconCorrection: const Offset(0.5, 0),
         ),
-        iconInkCorrection: const Offset(0.5, 0),
+        scaleIconContent: false,
+        iconSlotSizeOverride: modeIconSlotSize,
+        iconSizeOverride: modeIconSlotSize.height,
         labelColor: current == DayViewSubMode.list ? accent : labelColor,
-        trailing: check(current == DayViewSubMode.list),
         onTap: () => select(DayViewSubMode.list),
       ),
     ];
@@ -2270,7 +2390,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               curve: Curves.easeInOut,
               child: FixedSFIcon(
                 SFIcons.sf_chevron_right,
-                fontSize: textScaler.scale(17),
+                fontSize: textScaler.scale(15.5),
                 fontWeight: FontWeight.w500,
                 color: resolveThemeColor(labelColor, context),
               ),
@@ -2282,7 +2402,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     double modeSubmenuIconWidth(bool selected) =>
-        MediaQuery.textScalerOf(context).scale(selected ? 40 : 17);
+        MediaQuery.textScalerOf(context).scale(selected ? 38.5 : 15.5);
 
     final sortItems = <Widget>[];
     if (isUtilityCategory) {
@@ -2290,7 +2410,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         sortItems.add(
           _toolbarMenuItem(
             title: direction,
-            trailing: check(sortDir == direction),
+            icon: check(sortDir == direction),
+            iconSlotBaseSize: 24,
             onTap: () => saveSort('Creation Date', direction: direction),
           ),
         );
@@ -2304,34 +2425,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         'Title',
       ];
       for (final option in sortOptions) {
-        final optionDirections = directions[option];
-        if (optionDirections == null) {
+        sortItems.add(
+          _toolbarMenuItem(
+            title: option == 'Deadline' ? 'Due Date' : option,
+            icon: check(sortBy == option),
+            iconSlotBaseSize: 24,
+            onTap: () => saveSort(option),
+          ),
+        );
+      }
+      final activeDirections = directions[sortBy];
+      if (activeDirections != null) {
+        sortItems.add(const GlassMenuDivider(height: 8));
+        for (final direction in activeDirections) {
           sortItems.add(
             _toolbarMenuItem(
-              title: option,
-              trailing: modeSubmenuIcon(sortBy == option, hasChevron: false),
-              trailingWidth: modeSubmenuIconWidth(sortBy == option),
-              onTap: () => saveSort(option),
-            ),
-          );
-        } else {
-          final selected = sortBy == option;
-          sortItems.add(
-            _toolbarMenuItem(
-              title: option,
-              subtitle: selected ? sortDir : null,
-              trailingBuilder: (context, isOpen) =>
-                  modeSubmenuIcon(selected, isOpen: isOpen),
-              trailingWidth: modeSubmenuIconWidth(selected),
-              submenu: [
-                for (final direction in optionDirections)
-                  _toolbarMenuItem(
-                    title: direction,
-                    trailing: check(selected && sortDir == direction),
-                    onTap: () => saveSort(option, direction: direction),
-                  ),
-              ],
-              onTap: () {},
+              title: direction,
+              icon: check(sortDir == direction),
+              iconSlotBaseSize: 24,
+              onTap: () => saveSort(sortBy, direction: direction),
             ),
           );
         }
@@ -2373,11 +2485,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             submenu: [
               _toolbarMenuItem(
                 title: 'New Section',
+                reserveIconSlot: false,
                 onTap: () =>
                     _eventsTabKey.currentState?.addDcvSection(category),
               ),
               _toolbarMenuItem(
                 title: 'Edit Sections',
+                reserveIconSlot: false,
                 onTap: () => _eventsTabKey.currentState?.editDcvSections(
                   category,
                   _dcvColor ?? accent,
@@ -2398,13 +2512,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           ),
       _toolbarMenuItem(
         title: 'Sort By',
-        subtitle: isUtilityCategory ? sortDir : sortBy,
+        subtitle: isUtilityCategory
+            ? sortDir
+            : (sortBy == 'Deadline' ? 'Due Date' : sortBy),
         icon: sf(SFIcons.sf_arrow_up_arrow_down),
         labelColor: labelColor,
         trailingBuilder: (context, isOpen) =>
             modeSubmenuIcon(false, isOpen: isOpen),
         trailingWidth: modeSubmenuIconWidth(false),
         submenu: sortItems,
+        submenuContentHorizontalInset: 0,
         onTap: () {},
       ),
       if (isUtilityCategory)
@@ -3800,6 +3917,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             label: leadingActionLabel,
             background: navigation_glass.GlassBarItemBackground.shared,
             menuSettings: menuGlassSettings,
+            menuContentHorizontalInset:
+                configurationKey.startsWith('calendar-month-') ||
+                    configurationKey.startsWith('calendar-day-')
+                ? 0
+                : 12,
             icon: leadingActionIcon,
             menuItems: leadingActionMenuItems,
             menuWidth: leadingActionMenuWidth,

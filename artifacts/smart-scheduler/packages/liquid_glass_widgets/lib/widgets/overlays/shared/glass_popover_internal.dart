@@ -1048,8 +1048,8 @@ class _GlassPopoverState extends State<GlassPopover>
               alignment: _morphAlignment,
               clipBehavior: Clip.none,
               children: [
-                // Content enters at 30 % morph progress and scales 0.5 → 1.0.
-                // On close the reverse plays, matching GlassMenu behaviour.
+                // Content stays full-sized, briefly overshoots, and sharpens
+                // as the platter settles; close reverses that motion.
                 if (GlassMorphContentMotion.isVisible(
                   progress: clampedValue,
                   isClosing: _morphController.isClosing,
@@ -1070,7 +1070,14 @@ class _GlassPopoverState extends State<GlassPopover>
       progress: clampedValue,
       isClosing: _morphController.isClosing,
     );
-    final contentScale = GlassMorphContentMotion.scale(clampedValue);
+    final contentScale = GlassMorphContentMotion.scaleForMorph(
+      progress: clampedValue,
+      isClosing: _morphController.isClosing,
+    );
+    final contentSigma = GlassMorphContentMotion.blurSigma(
+      progress: clampedValue,
+      isClosing: _morphController.isClosing,
+    );
 
     // _cachedContent was set in _openPopover (or refreshed in didUpdateWidget).
     // The null-coalesce is a last-resort safety net only.
@@ -1118,9 +1125,15 @@ class _GlassPopoverState extends State<GlassPopover>
       maxHeight: widget.popoverHeight ?? _getMaxPopoverHeight(),
       child: Opacity(
         opacity: contentOpacity,
-        child: Transform.scale(
-          scale: contentScale,
-          child: measuredContent,
+        child: ImageFiltered(
+          imageFilter: ImageFilter.blur(
+            sigmaX: contentSigma,
+            sigmaY: contentSigma,
+          ),
+          child: Transform.scale(
+            scale: contentScale,
+            child: measuredContent,
+          ),
         ),
       ),
     );

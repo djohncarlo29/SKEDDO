@@ -167,6 +167,7 @@ sealed class GlassBarItem {
     GlassMenuAlignment? menuAlignment,
     double menuWidth,
     double? menuHeight,
+    double menuContentHorizontalInset,
     LiquidGlassSettings? menuSettings,
     Object? id,
     String? label,
@@ -382,6 +383,7 @@ final class GlassBarMenuItem extends GlassBarActionItem {
     this.menuAlignment,
     this.menuWidth = 200,
     this.menuHeight,
+    this.menuContentHorizontalInset = 12,
     this.menuSettings,
     super.id,
     super.label,
@@ -408,6 +410,12 @@ final class GlassBarMenuItem extends GlassBarActionItem {
 
   /// Optional fixed height for the menu panel, in logical pixels.
   final double? menuHeight;
+
+  /// Horizontal inset between the menu surface and its row viewport.
+  ///
+  /// Defaults to 12, matching [GlassMenu]. Set to zero when the menu's row
+  /// padding alone should define a 16px edge gap.
+  final double menuContentHorizontalInset;
 
   /// Glass optics used by the expanded menu surface, independent of the
   /// toolbar capsule that triggers it.

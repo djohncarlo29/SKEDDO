@@ -25,7 +25,7 @@ const double kSkeddoLightBottomBarOpacity = 0.528;
 const double kSkeddoDarkBottomBarOpacity = 0.628;
 
 /// GlassPopover card and button opacity at the new 50% slider mark.
-const double kSkeddoPopoverGlassOpacity = 0.8546;
+const double kSkeddoPopoverGlassOpacity = 0.83276;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -281,13 +281,26 @@ double skeddoActiveTabIndicatorOpacityScaleForPosition(
     skeddoSharedGlassOpacityForPosition(0.5, brightness);
 
 /// Shared Popover/menu opacity curve, linearly interpolated between the
-/// specified slider anchors.
+/// specified slider anchors. The old 40% value is now the 50% value; the
+/// original 0% and 100% endpoints remain fixed.
+double _popoverCurvePositionForSliderPosition(double position) {
+  final normalized = position.clamp(0.0, 1.0).toDouble();
+  if (normalized <= 0.5) return normalized * 0.8;
+  return 0.4 + (normalized - 0.5) * 1.2;
+}
+
 double skeddoPopoverOpacityForPosition(double position) =>
-    _interpolateSliderAnchors(position, _kPopoverOpacityAnchors);
+    _interpolateSliderAnchors(
+      _popoverCurvePositionForSliderPosition(position),
+      _kPopoverOpacityAnchors,
+    );
 
 /// Independent blur curve used by GlassPopover and pinned GlassMenu surfaces.
 double skeddoPopoverBlurForPosition(double position) =>
-    _interpolateSliderAnchors(position, _kPopoverBlurAnchors);
+    _interpolateSliderAnchors(
+      _popoverCurvePositionForSliderPosition(position),
+      _kPopoverBlurAnchors,
+    );
 
 LiquidGlassSettings _settingsForSharedGlassPosition(
   Brightness brightness,

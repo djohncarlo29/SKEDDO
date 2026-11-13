@@ -2743,6 +2743,8 @@ class _PinnedGroupState extends State<_PinnedGroup> {
               // trigger to open one. It matches GlassMenu's own default.
               menuWidth: menuItem?.menuWidth ?? 200,
               menuHeight: menuItem?.menuHeight,
+              menuContentHorizontalInset:
+                  menuItem?.menuContentHorizontalInset ?? 12,
               settings: menuItem?.menuSettings,
               // Match the package's premium iOS-style bar-menu material.
               quality: GlassQuality.premium,

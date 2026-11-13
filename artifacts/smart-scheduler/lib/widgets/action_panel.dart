@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -67,6 +68,7 @@ class _ActionPanelSFIcon extends StatelessWidget {
 
 const double _actionPanelCheckmarkBaseSize = 18.0;
 const double _actionPanelCheckmarkOptionGap = 16.0;
+const double _glassMenuIconLabelGap = 12.0;
 const double _actionPanelLeadingGlyphBoxPadding = 3.0;
 const double _actionPanelHorizontalInset = 16.0;
 const double _actionPanelLabelTrailingIconGap = 16.0;
@@ -577,6 +579,9 @@ class ActionItem {
   // chevron_right — used by the Sort By row when its sub-panel is open.
   final bool chevronDown;
   final bool checkmark;
+  // When false, the row label starts at the normal outer inset without a
+  // reserved leading-glyph column. Used by text-only nested menu options.
+  final bool useLeadingSlot;
   // When true, checkmark + label use the dark primary colour instead of the
   // blue accent — suitable for sort/filter option lists.
   final bool primaryCheckmark;
@@ -628,6 +633,7 @@ class ActionItem {
     this.hasChevron = false,
     this.chevronDown = false,
     this.checkmark = false,
+    this.useLeadingSlot = true,
     this.primaryCheckmark = false,
     this.subtitle,
     this.onTap,
@@ -710,12 +716,14 @@ class ActionItem {
     bool chevronColumn = false,
     double labelFontSize = 16,
     bool enforceTrailingIconSpacing = true,
+    double leadingIconLabelGap = _actionPanelCheckmarkOptionGap,
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
     final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
     final leftWidth = chevronColumn
-        ? _actionPanelLeadingColumnWidth(context) +
-              _actionPanelCheckmarkOptionGap
+        ? (item.useLeadingSlot
+              ? _actionPanelLeadingColumnWidth(context) + leadingIconLabelGap
+              : 0.0)
         : (item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0);
     final rightWidth = _actionPanelRightIconWidth(context, item);
     final trailingGap = enforceTrailingIconSpacing
@@ -779,6 +787,7 @@ class ActionItem {
     bool chevronColumn = false,
     double labelFontSize = 16,
     bool enforceTrailingIconSpacing = true,
+    double leadingIconLabelGap = _actionPanelCheckmarkOptionGap,
   }) {
     if (items.isEmpty) return 0;
     double h = 0;
@@ -793,6 +802,7 @@ class ActionItem {
               chevronColumn: chevronColumn,
               labelFontSize: labelFontSize,
               enforceTrailingIconSpacing: enforceTrailingIconSpacing,
+              leadingIconLabelGap: leadingIconLabelGap,
             );
     }
     return h;
@@ -811,6 +821,7 @@ class ActionItem {
     bool chevronColumn = false,
     double labelFontSize = 16,
     bool enforceTrailingIconSpacing = true,
+    double leadingIconLabelGap = _actionPanelCheckmarkOptionGap,
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
     final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
@@ -832,8 +843,9 @@ class ActionItem {
 
     for (final item in items) {
       final leftWidth = chevronColumn
-          ? _actionPanelLeadingColumnWidth(context) +
-                _actionPanelCheckmarkOptionGap
+          ? (item.useLeadingSlot
+                ? _actionPanelLeadingColumnWidth(context) + leadingIconLabelGap
+                : 0.0)
           : (item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0.0);
       final trailingGap = enforceTrailingIconSpacing
           ? _actionPanelLabelTrailingIconGap
@@ -1012,8 +1024,9 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
           morphFromZero: false,
           suppressTriggerGlassBlob: true,
           triggerEntryImpactStrength: 0.35,
-          // Calendar menus use a 12pt platter inset plus the row's 16pt inset.
-          menuContentHorizontalInset: 12,
+          // Picker options lead with a checkmark; the row's own 16pt inset is
+          // the full edge gap, matching checkmark-led Calendar and Sort By menus.
+          menuContentHorizontalInset: 0,
           menuPadding: const EdgeInsets.all(16),
           triggerImpactStrength: 1.15,
           onClose: _notifyClosedAfterMorph,
@@ -1156,6 +1169,10 @@ class ActionPanel extends StatefulWidget {
   // Standard action panels keep a fixed 16 px label-to-trailing-icon gap.
   // Modal picker mini-panels opt out to preserve their compact legacy layout.
   final bool enforceTrailingIconSpacing;
+  // Gap after the leading checkmark/icon column. Nested options can match the
+  // 12 px spacing used by package GlassMenu rows.
+  final double leadingIconLabelGap;
+
   /// Receives movement and release events from an owning long-press gesture.
   /// This lets a context-menu trigger keep the original pointer and still
   /// glide-select options after the overlay has opened.
@@ -1180,6 +1197,7 @@ class ActionPanel extends StatefulWidget {
     this.useGlassMenuStyle = false,
     this.scaleAlignment = Alignment.topCenter,
     this.enforceTrailingIconSpacing = true,
+    this.leadingIconLabelGap = _actionPanelCheckmarkOptionGap,
     this.externalGlideController,
   });
 
@@ -1914,6 +1932,7 @@ class _ActionPanelState extends State<ActionPanel>
                     labelFontSize: widget.labelFontSize,
                     enforceTrailingIconSpacing:
                         widget.enforceTrailingIconSpacing,
+                    leadingIconLabelGap: widget.leadingIconLabelGap,
                   ) +
                   (hasPinnedSeparator
                       ? (widget.items[pinnedCount].groupBreakAbove
@@ -2145,6 +2164,11 @@ class _ActionPanelState extends State<ActionPanel>
         final fillOpacity = widget.useLiquidGlass
             ? 0.80
             : (isDark && !widget.bouncingScroll ? 0.75 : 0.65);
+        final glassMenuStyleContent = Transform.scale(
+          scale: 1.0 / panelScale,
+          alignment: widget.scaleAlignment,
+          child: panelContent,
+        );
 
         // liquid_glass_easy intentionally paints no lens when its shader
         // cannot load. The web preview can run in a CPU-only renderer, so
@@ -2152,7 +2176,10 @@ class _ActionPanelState extends State<ActionPanel>
         // Native iOS/Android renderers continue through the real Liquid Glass
         // composition below.
         final panelCard = widget.useGlassMenuStyle
-            ? _GlassMenuStyleActionPanelCard(progress: gt, child: panelContent)
+            ? _GlassMenuStyleActionPanelCard(
+                progress: gt,
+                child: glassMenuStyleContent,
+              )
             : widget.useLiquidGlass && !kIsWeb
             ? _LiquidGlassActionPanelCard(
                 progress: gt,
@@ -2192,28 +2219,58 @@ class _ActionPanelState extends State<ActionPanel>
   }
 
   Widget _buildRow(int i) {
-    // instantOnOpen: row renders at full progress from frame 0 during the open
-    // phase so it appears to "stay in place" (shared-element feel).
-    // During close (_isClosingNow) it fades out normally with the panel.
-    final t = (widget.items[i].instantOnOpen && !_isClosingNow)
+    // The glass-menu-style context panel keeps every option on one shared
+    // timeline; other action panels retain their established row stagger.
+    final t = widget.useGlassMenuStyle
+        ? (_isClosingNow ? _panelT : 1.0)
+        : (widget.items[i].instantOnOpen && !_isClosingNow)
         ? 1.0
         : _rowT(i);
-    // Starting from 0.76 gives each row a more pronounced easeOutBack pop.
-    final scale = 0.76 + 0.24 * Curves.easeOutBack.transform(t);
+    final phase = _isClosingNow ? 1.0 - _panelT : _panelT;
+    final contentScale = GlassMorphContentMotion.scaleForPhase(
+      phase,
+      isClosing: _isClosingNow,
+    );
+    final contentSigma = 2.0 * (_isClosingNow ? phase : 1.0 - phase);
+    // Glass menu rows start full-sized inside the clipped platter, with a
+    // subtle overshoot and 2 px blur that settles away as the platter opens.
+    final rowScale = widget.useGlassMenuStyle
+        ? 1.0
+        : 0.76 + 0.24 * Curves.easeOutBack.transform(t);
     // Multiply t (open/close anim) by rowOpacity (content dim) so only row
     // content dims — the FrostedGlassCard background is outside this Opacity.
     return Opacity(
       opacity: (t * widget.rowOpacity).clamp(0.0, 1.0),
       child: Transform.scale(
-        scale: scale,
+        scale: rowScale,
         key: _glideRowKeys[i],
-        child: _ActionRow(
-          item: widget.items[i],
-          chevronColumn: widget.chevronColumn,
-          labelFontSize: widget.labelFontSize,
-          enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
-          useGlassMenuStyle: widget.useGlassMenuStyle,
-        ),
+        child: widget.useGlassMenuStyle
+            ? ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: contentSigma,
+                  sigmaY: contentSigma,
+                ),
+                child: Transform.scale(
+                  scale: contentScale,
+                  child: _ActionRow(
+                    item: widget.items[i],
+                    chevronColumn: widget.chevronColumn,
+                    labelFontSize: widget.labelFontSize,
+                    leadingIconLabelGap: widget.leadingIconLabelGap,
+                    enforceTrailingIconSpacing:
+                        widget.enforceTrailingIconSpacing,
+                    useGlassMenuStyle: widget.useGlassMenuStyle,
+                  ),
+                ),
+              )
+            : _ActionRow(
+                item: widget.items[i],
+                chevronColumn: widget.chevronColumn,
+                labelFontSize: widget.labelFontSize,
+                leadingIconLabelGap: widget.leadingIconLabelGap,
+                enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
+                useGlassMenuStyle: widget.useGlassMenuStyle,
+              ),
       ),
     );
   }
@@ -2253,12 +2310,14 @@ class _ActionRow extends StatefulWidget {
   final ActionItem item;
   final bool chevronColumn;
   final double labelFontSize;
+  final double leadingIconLabelGap;
   final bool enforceTrailingIconSpacing;
   final bool useGlassMenuStyle;
   const _ActionRow({
     required this.item,
     required this.chevronColumn,
     this.labelFontSize = 16,
+    this.leadingIconLabelGap = _actionPanelCheckmarkOptionGap,
     this.enforceTrailingIconSpacing = true,
     this.useGlassMenuStyle = false,
   });
@@ -2308,7 +2367,9 @@ class _ActionRowState extends State<_ActionRow> {
 
     // Left column priority: chevronOverride > checkmark > chevron > empty.
     final leadingColumnWidth = widget.chevronColumn
-        ? _actionPanelLeadingColumnWidth(context)
+        ? (item.useLeadingSlot
+              ? _actionPanelLeadingColumnWidth(context)
+              : 0.0)
         : _chevW;
     final leftWidget = SizedBox(
       width: leadingColumnWidth,
@@ -2416,8 +2477,10 @@ class _ActionRowState extends State<_ActionRow> {
     // In standard mode the chevron (if any) sits inline before the label.
     final List<Widget> rowChildren = widget.chevronColumn
         ? [
-            leftWidget,
-            const SizedBox(width: _actionPanelCheckmarkOptionGap),
+            if (item.useLeadingSlot) ...[
+              leftWidget,
+              SizedBox(width: widget.leadingIconLabelGap),
+            ],
             Expanded(child: labelBlock),
             if (item.showTrailingIcon && widget.enforceTrailingIconSpacing)
               const SizedBox(width: _actionPanelLabelTrailingIconGap),
@@ -2861,6 +2924,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                   bouncingScroll: true,
                   pinnedTopItemCount: 1,
                   pinSeparatorAfterTop: true,
+                  leadingIconLabelGap: _glassMenuIconLabelGap,
                 ),
               );
             },

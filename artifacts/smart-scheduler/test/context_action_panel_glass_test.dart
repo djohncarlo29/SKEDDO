@@ -140,6 +140,22 @@ void main() {
         ),
       ),
     );
+    final initialRowTransforms = tester
+        .widgetList<Transform>(
+          find.ancestor(
+            of: find.text(labels.first),
+            matching: find.byType(Transform),
+          ),
+        )
+        .map((transform) => transform.transform.getMaxScaleOnAxis());
+    expect(initialRowTransforms, contains(closeTo(1.12, 0.001)));
+    expect(
+      find.ancestor(
+        of: find.text(labels.first),
+        matching: find.byType(ImageFiltered),
+      ),
+      findsOneWidget,
+    );
     await tester.pump(const Duration(milliseconds: 16));
 
     for (final label in labels) {

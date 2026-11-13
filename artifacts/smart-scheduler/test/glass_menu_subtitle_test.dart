@@ -13,7 +13,7 @@ void main() {
     expect(menu.keepTriggerAnchorOnOverflow, isFalse);
   });
 
-  test('menu and popover content share the same morph fade and scale', () {
+  test('menu and popover content share the same fade and spring motion', () {
     expect(
       GlassMorphContentMotion.isVisible(progress: 0.29, isClosing: false),
       isFalse,
@@ -30,8 +30,22 @@ void main() {
       GlassMorphContentMotion.opacity(progress: 0.5, isClosing: false),
       closeTo(0.5, 0.001),
     );
-    expect(GlassMorphContentMotion.scale(0.3), 0.5);
-    expect(GlassMorphContentMotion.scale(1.0), 1.0);
+    expect(
+      GlassMorphContentMotion.scale(0.3),
+      1.12,
+    );
+    expect(
+      GlassMorphContentMotion.scale(1.0),
+      1.0,
+    );
+    expect(
+      GlassMorphContentMotion.blurSigma(progress: 0.3, isClosing: false),
+      2.0,
+    );
+    expect(
+      GlassMorphContentMotion.blurSigma(progress: 1.0, isClosing: false),
+      0.0,
+    );
     expect(
       GlassMorphContentMotion.opacity(progress: 0.85, isClosing: true),
       0.0,
@@ -40,6 +54,72 @@ void main() {
       GlassMorphContentMotion.opacity(progress: 0.925, isClosing: true),
       closeTo(0.5, 0.001),
     );
+    expect(
+      GlassMorphContentMotion.scaleForMorph(
+        progress: 1.0,
+        isClosing: true,
+      ),
+      1.0,
+    );
+    expect(
+      GlassMorphContentMotion.scaleForMorph(
+        progress: 0.85,
+        isClosing: true,
+      ),
+      1.12,
+    );
+  });
+
+  testWidgets('submenu can align a leading checkmark to its 16px inset', (
+    tester,
+  ) async {
+    final controller = GlassMenuController();
+    const leadingSlotKey = ValueKey('sort-selected-leading-slot');
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Center(
+            child: GlassMenu(
+              controller: controller,
+              menuWidth: 260,
+              items: [
+                GlassMenuItem(
+                  title: 'Sort By',
+                  submenuContentHorizontalInset: 0,
+                  submenu: [
+                    GlassMenuItem(
+                      title: 'Manual',
+                      icon: const SizedBox(
+                        key: leadingSlotKey,
+                        width: 24,
+                        height: 24,
+                      ),
+                      iconSize: 24,
+                      onTap: () {},
+                    ),
+                  ],
+                  onTap: () {},
+                ),
+              ],
+              triggerBuilder: (context, toggle) =>
+                  CupertinoButton(onPressed: toggle, child: const Text('Menu')),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    controller.open();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sort By'));
+    await tester.pumpAndSettle();
+
+    final cardRect = tester.getRect(
+      find.byKey(const ValueKey('glass-menu-submenu-card-0')),
+    );
+    final leadingSlotRect = tester.getRect(find.byKey(leadingSlotKey));
+    expect(leadingSlotRect.left - cardRect.left, 16);
   });
 
   testWidgets('menu row centers leading and trailing controls with its label', (
