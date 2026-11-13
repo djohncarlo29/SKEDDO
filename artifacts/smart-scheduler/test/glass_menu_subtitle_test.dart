@@ -79,51 +79,44 @@ void main() {
       GlassMorphContentMotion.isVisible(progress: 0.0, isClosing: false),
       isTrue,
     );
+    expect(GlassMorphContentMotion.opacity(progress: 0.0, isClosing: false), 0);
     expect(
-      GlassMorphContentMotion.opacity(progress: 0.0, isClosing: false),
-      1.0,
+      GlassMorphContentMotion.opacity(progress: 0.075, isClosing: false),
+      closeTo(0.5, 0.001),
     );
     expect(
       GlassMorphContentMotion.opacity(progress: 0.5, isClosing: false),
       1.0,
     );
     expect(
-      GlassMorphContentMotion.isVisible(progress: 0.0, isClosing: true),
-      isTrue,
-    );
-    expect(
-      GlassMorphContentMotion.scale(0.0),
-      1.12,
-    );
-    expect(
-      GlassMorphContentMotion.scale(1.0),
+      GlassMorphContentMotion.opacity(progress: 0.0, isClosing: true),
       1.0,
     );
     expect(
+      GlassMorphContentMotion.opacity(progress: 0.925, isClosing: true),
+      closeTo(0.5, 0.001),
+    );
+    expect(
+      GlassMorphContentMotion.isVisible(progress: 0.0, isClosing: true),
+      isTrue,
+    );
+    expect(GlassMorphContentMotion.scale(0.0), 1.25);
+    expect(GlassMorphContentMotion.scale(1.0), 1.0);
+    expect(
       GlassMorphContentMotion.blurSigma(progress: 0.0, isClosing: false),
-      2.0,
+      4.0,
     );
     expect(
       GlassMorphContentMotion.blurSigma(progress: 1.0, isClosing: false),
       0.0,
     );
     expect(
-      GlassMorphContentMotion.opacity(progress: 0.0, isClosing: true),
+      GlassMorphContentMotion.scaleForMorph(progress: 1.0, isClosing: true),
       1.0,
     );
     expect(
-      GlassMorphContentMotion.scaleForMorph(
-        progress: 1.0,
-        isClosing: true,
-      ),
-      1.0,
-    );
-    expect(
-      GlassMorphContentMotion.scaleForMorph(
-        progress: 0.0,
-        isClosing: true,
-      ),
-      1.12,
+      GlassMorphContentMotion.scaleForMorph(progress: 0.0, isClosing: true),
+      1.25,
     );
   });
 

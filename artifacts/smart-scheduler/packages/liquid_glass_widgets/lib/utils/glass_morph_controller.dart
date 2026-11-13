@@ -41,27 +41,38 @@ enum MorphStyle {
   bloom,
 }
 
-/// Shared scale and blur profile for content entering/leaving a liquid morph
-/// surface. The live glass clip, not an alpha fade, reveals the content.
+/// Shared scale, blur, and edge-fade profile for content entering/leaving a
+/// liquid morph surface. The live glass clip reveals the group as it fades.
 class GlassMorphContentMotion {
   const GlassMorphContentMotion._();
 
   /// Initial visual overshoot applied to menu content while the glass platter
   /// is still opening, expressed as a fraction of its settled size.
-  static const double contentOvershoot = 0.12;
+  static const double contentOvershoot = 0.25;
 
-  /// Content is present from the first morph frame and revealed by the
-  /// growing/clipping platter, rather than by a delayed visibility gate.
+  /// Maximum Gaussian blur applied to menu content at the start of a morph.
+  static const double contentPeakBlurSigma = 4.0;
+
+  /// Fraction of the transition used for the content fade at either end.
+  static const double contentFadeFraction = 0.15;
+
+  /// Content remains mounted from the first morph frame; the platter clip and
+  /// short opacity ramp reveal it together.
   static bool isVisible({
     required double progress,
     required bool isClosing,
   }) => true;
 
-  /// Content remains opaque; the glass boundary reveals and clips it.
+  /// Content fades in at the start of opening, and fades out at the end of
+  /// closing. [progress] is normalized transition time (0 → 1).
   static double opacity({
     required double progress,
     required bool isClosing,
-  }) => 1.0;
+  }) {
+    final t = progress.clamp(0.0, 1.0).toDouble();
+    final visibleProgress = isClosing ? 1.0 - t : t;
+    return (visibleProgress / contentFadeFraction).clamp(0.0, 1.0);
+  }
 
   /// Normalized content-motion progress for the current root morph frame.
   /// Opening runs from oversized/blurred to settled; closing reverses it.
@@ -75,7 +86,7 @@ class GlassMorphContentMotion {
 
   /// Returns the shared group scale for a normalized transition phase.
   ///
-  /// The complete content group starts 12% larger at its settled position;
+  /// The complete content group starts 25% larger at its settled position;
   /// the platter clips the overflow while the group springs to 1.0.
   static double scaleForPhase(
     double phase, {
@@ -107,7 +118,7 @@ class GlassMorphContentMotion {
     isClosing: isClosing,
   );
 
-  /// Returns the subtle content blur for the current root morph frame.
+  /// Returns the transition blur for the current root morph frame.
   static double blurSigma({
     required double progress,
     required bool isClosing,
@@ -116,13 +127,13 @@ class GlassMorphContentMotion {
     isClosing: isClosing,
   );
 
-  /// Returns the subtle content blur for a normalized transition phase.
+  /// Returns the content blur for a normalized transition phase.
   static double blurSigmaForPhase(
     double phase, {
     required bool isClosing,
   }) {
     final t = phase.clamp(0.0, 1.0).toDouble();
-    return 2.0 * (isClosing ? t : 1.0 - t);
+    return contentPeakBlurSigma * (isClosing ? t : 1.0 - t);
   }
 }
 

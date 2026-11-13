@@ -526,12 +526,10 @@ class _NewSectionIconPainter extends CustomPainter {
 //     child: ActionPanel(items: _items, isClosing: _isClosingNotifier),
 //   )
 //
-// Duration policy (the rule applied to EVERY context menu in the app):
-//   Fewer options → slower open/close so the gel animation stays visible.
-//   More  options → faster open/close because the larger card is already rich.
-//
-//   openMs = closeMs = 600 − (count − 2) × 50   →  2: 600  3: 550  4+: 500
-//   Close is the exact time-reverse of open (same duration, easeIn vs easeOut).
+// Duration policy:
+//   • Legacy action panels use a count-based open/close duration.
+//   • Glass-menu-style long-press panels use a fixed 350 ms transition to
+//     match the normal toolbar-menu spring pace.
 //
 // Layout policy:
 //   • Panel width is set by the caller via a Positioned/SizedBox.
@@ -1519,12 +1517,24 @@ class _ActionPanelState extends State<ActionPanel>
   Timer? _pillHideTimer;
   bool _pillVisible = false;
 
-  // Open: 500–700 ms. Fewer items → slower (gel animation more perceptible).
+  // Legacy action panels: 500–700 ms. Fewer items → slower.
   static Duration _openDuration(int count) =>
       Duration(milliseconds: (600 - (count - 2) * 50).clamp(500, 700));
 
-  // Legacy action panels retain their snappier close. Glass-menu-style
-  // context panels use the opening duration in reverse.
+  // The package's bar-item menu uses its normal spring profile (~350 ms to
+  // settle). Match that pace for the glass-menu-style long-press panels.
+  static const Duration _glassMenuTransitionDuration = Duration(
+    milliseconds: 350,
+  );
+
+  Duration get _effectiveOpenDuration => widget.openDurationOverrideMs != null
+      ? Duration(milliseconds: widget.openDurationOverrideMs!)
+      : widget.useGlassMenuStyle
+      ? _glassMenuTransitionDuration
+      : _openDuration(widget.items.length);
+
+  // Legacy action panels retain their established close timing. Glass-menu
+  // context panels use the same 350 ms duration in reverse.
   static Duration _closeDuration(int count) => Duration(
     milliseconds: (((600 - (count - 2) * 50).clamp(500, 700)) * 0.65).round(),
   );
@@ -1534,7 +1544,7 @@ class _ActionPanelState extends State<ActionPanel>
       : widget.useGlassMenuStyle && widget.openDurationOverrideMs != null
       ? Duration(milliseconds: widget.openDurationOverrideMs!)
       : widget.useGlassMenuStyle
-      ? _openDuration(widget.items.length)
+      ? _glassMenuTransitionDuration
       : _closeDuration(widget.items.length);
 
   // The pill is deliberately gone in the first ~18% of the panel close.
@@ -1561,9 +1571,7 @@ class _ActionPanelState extends State<ActionPanel>
     widget.externalGlideController?.addListener(_onExternalGlideEvent);
     _ctrl.animateTo(
       1.0,
-      duration: widget.openDurationOverrideMs != null
-          ? Duration(milliseconds: widget.openDurationOverrideMs!)
-          : _openDuration(widget.items.length),
+      duration: _effectiveOpenDuration,
       curve: Curves.easeOut,
     );
     // Scrollable mode: after first layout, check if content actually overflows
@@ -1918,6 +1926,10 @@ class _ActionPanelState extends State<ActionPanel>
           contentPhase,
           isClosing: _isClosingNow,
         );
+        final contentOpacity = GlassMorphContentMotion.opacity(
+          progress: contentPhase,
+          isClosing: _isClosingNow,
+        );
         // easeOutBack: peaks at ~1.07 before settling —
         // starting from 0.60 makes the gel bloom visually pronounced.
         // On close (pt 1→0) this naturally behaves like easeInBack.
@@ -2207,18 +2219,21 @@ class _ActionPanelState extends State<ActionPanel>
         final fillOpacity = widget.useLiquidGlass
             ? 0.80
             : (isDark && !widget.bouncingScroll ? 0.75 : 0.65);
-        final glassMenuStyleContent = Transform.scale(
-          scale: contentScale,
-          alignment: widget.scaleAlignment,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: contentSigma,
-              sigmaY: contentSigma,
-            ),
-            child: Transform.scale(
-              scale: 1.0 / panelScale,
-              alignment: widget.scaleAlignment,
-              child: panelContent,
+        final glassMenuStyleContent = Opacity(
+          opacity: contentOpacity,
+          child: Transform.scale(
+            scale: contentScale,
+            alignment: widget.scaleAlignment,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(
+                sigmaX: contentSigma,
+                sigmaY: contentSigma,
+              ),
+              child: Transform.scale(
+                scale: 1.0 / panelScale,
+                alignment: widget.scaleAlignment,
+                child: panelContent,
+              ),
             ),
           ),
         );
@@ -2282,7 +2297,7 @@ class _ActionPanelState extends State<ActionPanel>
     // The glass-menu-style context panel keeps every option on one shared
     // timeline; other action panels retain their established row stagger.
     final t = widget.useGlassMenuStyle
-        ? (_isClosingNow ? _panelT : 1.0)
+        ? 1.0
         : (widget.items[i].instantOnOpen && !_isClosingNow)
         ? 1.0
         : _rowT(i);

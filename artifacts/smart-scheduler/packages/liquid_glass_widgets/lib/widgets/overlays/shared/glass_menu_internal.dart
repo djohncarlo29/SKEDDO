@@ -1352,6 +1352,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     );
     final glassFade = isTop ? _cardGlassFade() : 1.0;
     final contentMotionProgress = _morphStage(0.0, 0.3);
+    final contentOpacity = GlassMorphContentMotion.opacity(
+      progress: contentMotionProgress,
+      isClosing: _levelMorphPopping,
+    );
     final contentScale = GlassMorphContentMotion.scaleForPhase(
       contentMotionProgress,
       isClosing: _levelMorphPopping,
@@ -1433,10 +1437,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                       sigmaX: contentSigma,
                       sigmaY: contentSigma,
                     ),
-                    child: Transform.scale(
-                      scale: isTop ? contentScale : 1.0,
-                      alignment: Alignment(0, _growsDown ? -1 : 1),
-                      child: cardContent,
+                    child: Opacity(
+                      opacity: isTop ? contentOpacity : 1.0,
+                      child: Transform.scale(
+                        scale: isTop ? contentScale : 1.0,
+                        alignment: Alignment(0, _growsDown ? -1 : 1),
+                        child: cardContent,
+                      ),
                     ),
                   ),
                 ),
@@ -2558,6 +2565,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       contentMotionProgress,
       isClosing: _morphController.isClosing,
     );
+    final contentOpacity = GlassMorphContentMotion.opacity(
+      progress: GlassMorphContentMotion.phaseProgress(
+        progress: clampedValue,
+        isClosing: _morphController.isClosing,
+      ),
+      isClosing: _morphController.isClosing,
+    );
     final contentSigma = GlassMorphContentMotion.blurSigmaForPhase(
       contentMotionProgress,
       isClosing: _morphController.isClosing,
@@ -2591,18 +2605,21 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                   sigmaX: contentSigma,
                   sigmaY: contentSigma,
                 ),
-                child: Transform.scale(
-                  scale: contentScale,
-                  alignment: Alignment.center,
-                  child: _buildListContent(
-                    widget.items,
-                    interactive: interactive,
-                    dimmed: !interactive,
-                    coveredDepth: interactive ? null : 0,
-                    coverProgress: _bodyRecede,
-                    viewportHeight: _targetBodyHeight(),
-                    scrollDepth: 0,
-                    scrollController: _rootScrollController,
+                child: Opacity(
+                  opacity: contentOpacity,
+                  child: Transform.scale(
+                    scale: contentScale,
+                    alignment: Alignment.center,
+                    child: _buildListContent(
+                      widget.items,
+                      interactive: interactive,
+                      dimmed: !interactive,
+                      coveredDepth: interactive ? null : 0,
+                      coverProgress: _bodyRecede,
+                      viewportHeight: _targetBodyHeight(),
+                      scrollDepth: 0,
+                      scrollController: _rootScrollController,
+                    ),
                   ),
                 ),
               ),

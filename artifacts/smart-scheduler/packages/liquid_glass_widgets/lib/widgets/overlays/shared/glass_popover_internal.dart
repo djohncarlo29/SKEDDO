@@ -1095,10 +1095,13 @@ class _GlassPopoverState extends State<GlassPopover>
     double targetHeight,
     Offset contentOffset,
   ) {
-    // Keep content opaque; the live glass boundary reveals the oversized,
-    // lightly blurred group as the popover morphs.
+    // The live glass boundary clips the oversized group while its shared
+    // first/last-15% opacity ramp fades it in and out.
     final contentOpacity = GlassMorphContentMotion.opacity(
-      progress: clampedValue,
+      progress: GlassMorphContentMotion.phaseProgress(
+        progress: clampedValue,
+        isClosing: _morphController.isClosing,
+      ),
       isClosing: _morphController.isClosing,
     );
     final contentScale = GlassMorphContentMotion.scaleForMorph(

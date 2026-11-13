@@ -159,7 +159,7 @@ void main() {
           ),
         )
         .map((transform) => transform.transform.getMaxScaleOnAxis());
-    expect(initialRowTransforms, contains(closeTo(1.12, 0.001)));
+    expect(initialRowTransforms, contains(closeTo(1.25, 0.001)));
     expect(
       find.ancestor(
         of: find.text(labels.first),
