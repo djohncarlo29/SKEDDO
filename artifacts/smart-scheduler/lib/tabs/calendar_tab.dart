@@ -13249,13 +13249,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
         value: _categoryName,
         style: _kRowValueStyle,
         chevronColor: resolveThemeColor(kSecondaryLabel, context),
-        valuePrefix: Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: renderCategoryColor(_categoryColor, context),
-            shape: BoxShape.circle,
-          ),
+        valuePrefix: modalPickerCategoryDot(
+          renderCategoryColor(_categoryColor, context),
         ),
       ),
       actions: _categoryItems(),
@@ -13435,14 +13430,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     ActionItem itemFor(_NewEventCategory cat) => ActionItem(
       label: cat.name,
       icon: CupertinoIcons.circle_fill,
-      iconBuilder: (_) => Container(
-        width: 14,
-        height: 14,
-        decoration: BoxDecoration(
-          color: renderCategoryColor(cat.color, context),
-          shape: BoxShape.circle,
-        ),
-      ),
+          iconBuilder: (_) => modalPickerCategoryDot(
+            renderCategoryColor(cat.color, context),
+          ),
       showCategoryDotInPickerMenu: true,
       checkmark: _categoryId == cat.id,
       checkmarkColor: renderCategoryColor(cat.color, context),
@@ -13483,13 +13473,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
         ActionItem(
           label: 'Uncategorized',
           icon: CupertinoIcons.circle_fill,
-          iconBuilder: (_) => Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              color: renderCategoryColor(_uncategorizedColor, context),
-              shape: BoxShape.circle,
-            ),
+          iconBuilder: (_) => modalPickerCategoryDot(
+            renderCategoryColor(_uncategorizedColor, context),
           ),
           showCategoryDotInPickerMenu: true,
           checkmark: _categoryId == 'uncategorized',

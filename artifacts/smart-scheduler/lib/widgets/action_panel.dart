@@ -549,6 +549,17 @@ class _NewSectionIconPainter extends CustomPainter {
 /// Width of the mini picker panel.
 const double kPickerPanelWidth = 250.0;
 
+/// Diameter shared by the Event sheet's trailing category marker and picker
+/// menu category dots.
+const double kModalPickerCategoryDotSize = 10.0;
+
+Widget modalPickerCategoryDot(Color color) => SizedBox.square(
+  dimension: kModalPickerCategoryDotSize,
+  child: DecoratedBox(
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  ),
+);
+
 /// When the panel appears ABOVE the row, its bottom edge is placed at
 /// (buttonRect.bottom − kPickerPanelAboveAnchorInset).
 /// 0.0 = flush with the row's bottom edge.

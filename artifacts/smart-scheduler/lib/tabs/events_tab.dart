@@ -14302,15 +14302,11 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
           return ActionItem(
             label: cat.name,
             icon: SFIcons.sf_circle,
-            iconBuilder:
-                (color) => Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: lockedInOther ? kTertiaryLabel : cat.color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+            iconBuilder: (_) => modalPickerCategoryDot(
+              lockedInOther
+                  ? CupertinoDynamicColor.resolve(kTertiaryLabel, context)
+                  : cat.color,
+            ),
             showCategoryDotInPickerMenu: true,
             labelColor: lockedInOther ? kTertiaryLabel : null,
             checkmark: _selectedIds.contains(cat.id),

@@ -17,3 +17,5 @@ A glass container's refraction affects the backdrop; its own descendants are int
 **Why:** A premium backdrop capture does not by itself refract the menu's own content, which can make the foreground appear optically flat while the glass shape morphs.
 
 **How to apply:** When adding or changing morphing glass menus, inspect both the backdrop material and the foreground child tree. Test transition behavior separately from the settled state, and never lower the package quality to approximate a foreground lens.
+
+Category picker dots must match the 10pt marker beside the Event sheet's trailing Category value. Reuse the same dot builder for menu options and the trigger value so they cannot drift apart.

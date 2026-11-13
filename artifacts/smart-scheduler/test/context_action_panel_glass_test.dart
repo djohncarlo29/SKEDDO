@@ -16,9 +16,27 @@ import 'package:smart_scheduler/widgets/action_panel.dart'
         ActionItem,
         ActionPanel,
         ActionPanelGlideController,
-        GlassMenuRimOutline;
+        GlassMenuRimOutline,
+        kModalPickerCategoryDotSize,
+        modalPickerCategoryDot;
 
 void main() {
+  testWidgets('picker menu category dot matches its trailing value size', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(child: modalPickerCategoryDot(CupertinoColors.activeBlue)),
+      ),
+    );
+
+    expect(kModalPickerCategoryDotSize, 10);
+    expect(
+      tester.getSize(find.byWidgetPredicate((widget) => widget is SizedBox)),
+      const Size(10, 10),
+    );
+  });
+
   testWidgets('lifted tile paints a rim without a glass surface or blur', (
     tester,
   ) async {
