@@ -2431,7 +2431,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             title: direction,
             icon: check(sortDir == direction),
             iconSlotBaseSize: 24,
-            contentHorizontalInset: 0,
+            contentHorizontalInset: 12,
             onTap: () => saveSort('Creation Date', direction: direction),
           ),
         );
@@ -2450,7 +2450,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             title: option == 'Deadline' ? 'Due Date' : option,
             icon: check(sortBy == option),
             iconSlotBaseSize: 24,
-            contentHorizontalInset: 0,
+            contentHorizontalInset: 12,
             onTap: () => saveSort(option),
           ),
         );
@@ -2464,7 +2464,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               title: direction,
               icon: check(sortDir == direction),
               iconSlotBaseSize: 24,
-              contentHorizontalInset: 0,
+              contentHorizontalInset: 12,
               onTap: () => saveSort(sortBy, direction: direction),
             ),
           );
