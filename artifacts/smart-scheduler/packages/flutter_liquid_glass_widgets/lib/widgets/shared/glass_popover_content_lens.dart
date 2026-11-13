@@ -7,6 +7,16 @@ import 'package:flutter/widgets.dart';
 /// Applies the menu lens response to popover foreground content while it
 /// crosses the moving glass edge. The settled content remains unfiltered.
 class GlassPopoverContentLens extends StatefulWidget {
+  /// Foreground optics used while popover content crosses the moving glass edge.
+  /// Thickness in logical pixels.
+  static const double foregroundThickness = 30.0;
+
+  /// Refractive index for the foreground edge response.
+  static const double foregroundRefractiveIndex = 1.30;
+
+  /// Channel separation strength for the foreground edge response.
+  static const double foregroundChromaticAberration = 0.40;
+
   const GlassPopoverContentLens({
     required this.child,
     required this.progress,

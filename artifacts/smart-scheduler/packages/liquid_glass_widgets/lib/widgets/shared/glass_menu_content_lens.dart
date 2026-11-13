@@ -10,6 +10,16 @@ import 'package:flutter/widgets.dart';
 /// pass makes the menu's own foreground content respond as it crosses the
 /// moving rounded edge, then leaves the settled menu untouched.
 class GlassMenuContentLens extends StatefulWidget {
+  /// Foreground optics used while menu content crosses the moving platter edge.
+  /// Thickness in logical pixels.
+  static const double foregroundThickness = 30.0;
+
+  /// Refractive index for the foreground edge response.
+  static const double foregroundRefractiveIndex = 1.30;
+
+  /// Channel separation strength for the foreground edge response.
+  static const double foregroundChromaticAberration = 0.40;
+
   /// Creates a transition lens for glass menu content.
   const GlassMenuContentLens({
     required this.child,

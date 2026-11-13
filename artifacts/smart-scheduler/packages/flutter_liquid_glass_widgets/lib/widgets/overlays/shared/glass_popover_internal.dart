@@ -640,6 +640,34 @@ class _GlassPopoverState extends State<GlassPopover>
 
         final currentHeight = lerpDouble(th, popoverHeight, state.sizeT)!;
         final currentWidth = lerpDouble(tw, popoverWidth, state.sizeT)!;
+        final bodyLeft = _triggerGlobalPosition.dx +
+            tw / 2.0 +
+            state.currentDx -
+            currentWidth / 2.0 +
+            (widget.popoverOffset.dx * clampedValue) +
+            (_horizontalOffset * clampedValue);
+        final bodyTop = _triggerGlobalPosition.dy +
+            th / 2.0 +
+            state.currentDy -
+            currentHeight / 2.0 +
+            (widget.popoverOffset.dy * clampedValue) +
+            (_verticalOffset * clampedValue);
+        final settledBodyLeft = _triggerGlobalPosition.dx +
+            tw / 2.0 +
+            finalDx -
+            popoverWidth / 2.0 +
+            widget.popoverOffset.dx +
+            _horizontalOffset;
+        final settledBodyTop = _triggerGlobalPosition.dy +
+            th / 2.0 +
+            finalDy -
+            popoverHeight / 2.0 +
+            widget.popoverOffset.dy +
+            _verticalOffset;
+        final contentOffset = Offset(
+          settledBodyLeft - bodyLeft,
+          settledBodyTop - bodyTop,
+        );
 
         return Stack(
           children: [
@@ -705,18 +733,8 @@ class _GlassPopoverState extends State<GlassPopover>
 
                           // ── Blob B: Popover body ─────────────────────────
                           Positioned(
-                            left: _triggerGlobalPosition.dx +
-                                tw / 2.0 +
-                                state.currentDx -
-                                currentWidth / 2.0 +
-                                (widget.popoverOffset.dx * clampedValue) +
-                                (_horizontalOffset * clampedValue),
-                            top: _triggerGlobalPosition.dy +
-                                th / 2.0 +
-                                state.currentDy -
-                                currentHeight / 2.0 +
-                                (widget.popoverOffset.dy * clampedValue) +
-                                (_verticalOffset * clampedValue),
+                            left: bodyLeft,
+                            top: bodyTop,
                             child: IgnorePointer(
                               ignoring: clampedValue < 0.8,
                               child: _buildPopoverContainer(
@@ -728,6 +746,7 @@ class _GlassPopoverState extends State<GlassPopover>
                                 effectiveQuality,
                                 isDark,
                                 popoverHeight,
+                                contentOffset,
                               ),
                             ),
                           ),
@@ -753,6 +772,7 @@ class _GlassPopoverState extends State<GlassPopover>
     GlassQuality effectiveQuality,
     bool isDark,
     double targetHeight,
+    Offset contentOffset,
   ) {
     // Morph border radius from pill → target corner radius.
     final maxRadius = math.min(currentWidth, currentHeight) / 2.0;
@@ -798,54 +818,49 @@ class _GlassPopoverState extends State<GlassPopover>
           glowRadius: widget.glowRadius,
           glowBlurRadius: 40,
           clipper: ShapeBorderClipper(shape: teardropShape),
-          child: Transform.scale(
-            scale: state.containerScale,
-            alignment: Alignment.center,
-            child: Stack(
-              alignment: _morphAlignment,
-              clipBehavior: Clip.none,
-              children: [
-                // Content enters at 30 % morph progress and scales 0.5 → 1.0.
-                // On close the reverse plays, matching GlassMenu behaviour.
-                if (clampedValue > 0.3)
-                  GlassPopoverContentLens(
-                    key: const ValueKey<String>(
-                      'glass-popover-content-lens-wrapper',
-                    ),
-                    progress: clampedValue,
-                    size: Size(currentWidth, currentHeight),
-                    cornerRadius: currentRadius,
-                    // Keep the content-only transition lens independent of
-                    // the popover surface's stronger toolbar-matched optics.
-                    thickness: 20,
-                    refractiveIndex: 1.10,
-                    chromaticAberration: 0.20,
-                    child: _buildContentWithMeasurement(
-                      clampedValue,
-                      targetHeight,
-                    ),
-                  ),
-              ],
-            ),
+          child: Stack(
+            alignment: Alignment.topLeft,
+            clipBehavior: Clip.none,
+            children: [
+              // Keep content at the settled destination while only the glass
+              // platter travels between that position and its trigger.
+              GlassPopoverContentLens(
+                key: const ValueKey<String>(
+                  'glass-popover-content-lens-wrapper',
+                ),
+                progress: clampedValue,
+                size: Size(currentWidth, currentHeight),
+                cornerRadius: currentRadius,
+                // Keep the content-only transition lens independent of
+                // the popover surface's stronger toolbar-matched optics.
+                thickness: GlassPopoverContentLens.foregroundThickness,
+                refractiveIndex:
+                    GlassPopoverContentLens.foregroundRefractiveIndex,
+                chromaticAberration:
+                    GlassPopoverContentLens.foregroundChromaticAberration,
+                child: _buildContentWithMeasurement(
+                  clampedValue,
+                  targetHeight,
+                  contentOffset,
+                ),
+              ),
+            ],
+          ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildContentWithMeasurement(
-      double clampedValue, double targetHeight) {
-    // Fade in smoothly: fully opaque by 70 % morph progress.
-    final contentOpacity = ((clampedValue - 0.3) / 0.4).clamp(0.0, 1.0);
-
-    // Scale 0.5 → 1.0 with easeOut, in sync with the expanding container.
-    final contentScale = lerpDouble(
-      0.5,
-      1.0,
-      Curves.easeOut.transform(
-        ((clampedValue - 0.3) / 0.7).clamp(0.0, 1.0),
-      ),
-    )!;
+    double clampedValue,
+    double targetHeight,
+    Offset contentOffset,
+  ) {
+    // Content is already at its target layout; scale and blur settle
+    // independently of the platter's travel from its trigger.
+    final contentScale =
+        1.0 + 0.12 * (1.0 - Curves.easeOutBack.transform(clampedValue));
+    final contentBlur = 2.0 * (1.0 - clampedValue);
 
     // _cachedContent was set in _openPopover (or refreshed in didUpdateWidget).
     // The null-coalesce is a last-resort safety net only.
@@ -878,12 +893,11 @@ class _GlassPopoverState extends State<GlassPopover>
       );
     }
 
-    // OverflowBox provides the full target size to the content during layout
-    // while the container is still morphing. The visual illusion is maintained
-    // by the Transform.scale above; GlassContainer's Clip.antiAlias clips
-    // anything outside the current morph boundary.
+    // Keep a full target-sized layout behind the moving glass clip. The
+    // translation counteracts Blob B's flight, so content never travels from
+    // the trigger along with the platter.
     return OverflowBox(
-      alignment: Alignment.center,
+      alignment: Alignment.topLeft,
       minWidth: widget.popoverWidth,
       maxWidth: widget.popoverWidth,
       minHeight: 0,
@@ -891,11 +905,18 @@ class _GlassPopoverState extends State<GlassPopover>
       // so the content can re-layout to a new natural height and the
       // SizeChangedLayoutNotifier above can report it for re-measurement.
       maxHeight: widget.popoverHeight ?? _getMaxPopoverHeight(),
-      child: Opacity(
-        opacity: contentOpacity,
-        child: Transform.scale(
-          scale: contentScale,
-          child: measuredContent,
+      child: Transform.translate(
+        offset: contentOffset,
+        child: ImageFiltered(
+          imageFilter: ImageFilter.blur(
+            sigmaX: contentBlur,
+            sigmaY: contentBlur,
+          ),
+          child: Transform.scale(
+            scale: contentScale,
+            alignment: Alignment.center,
+            child: measuredContent,
+          ),
         ),
       ),
     );

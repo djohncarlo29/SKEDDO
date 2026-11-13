@@ -243,6 +243,12 @@ class GlassMenu extends StatefulWidget {
   /// Defaults to 12.0 logical pixels.
   final double menuContentHorizontalInset;
 
+  /// Horizontal inset for separator lines, independent of row-content inset.
+  ///
+  /// Defaults to 12.0 logical pixels so dividers retain their standard
+  /// breathing room even when option rows use a zero extra inset.
+  final double menuDividerHorizontalInset;
+
   /// Called when the menu begins closing.
   ///
   /// Fires immediately when a close is triggered — tap outside the barrier,
@@ -402,6 +408,7 @@ class GlassMenu extends StatefulWidget {
     this.maxStackHeight,
     this.menuPadding = EdgeInsets.zero,
     this.menuContentHorizontalInset = 12.0,
+    this.menuDividerHorizontalInset = 12.0,
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = false,
     this.glowColor,

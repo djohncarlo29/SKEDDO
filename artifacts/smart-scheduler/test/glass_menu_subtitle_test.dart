@@ -13,6 +13,67 @@ void main() {
     expect(menu.keepTriggerAnchorOnOverflow, isFalse);
   });
 
+  testWidgets('menu content stays at its destination during the morph', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = GlassMenuController();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 48, top: 88),
+              child: GlassMenu(
+                controller: controller,
+                menuWidth: 260,
+                items: [
+                  GlassMenuItem(title: 'Anchored option', onTap: () {}),
+                ],
+                triggerBuilder: (context, toggle) => CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Open menu'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open menu'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final openingRect = tester.getRect(find.text('Anchored option'));
+
+    await tester.pumpAndSettle();
+    final settledRect = tester.getRect(find.text('Anchored option'));
+    expect(
+      (openingRect.center - settledRect.center).distance,
+      lessThan(40),
+      reason: 'The content should scale in place, not travel from the trigger.',
+    );
+
+    controller.close();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final closingRect = tester.getRect(find.text('Anchored option'));
+    expect(
+      (closingRect.center - settledRect.center).distance,
+      lessThan(40),
+      reason: 'The content should stay put while the platter returns.',
+    );
+    await tester.pumpAndSettle();
+  });
+
   test('menu content starts oversized and clipped by the surface morph', () {
     expect(
       GlassMorphContentMotion.isVisible(progress: 0.0, isClosing: false),
@@ -129,6 +190,54 @@ void main() {
       expect(leadingSlotRect.left - cardRect.left, 16);
       final separatorRect = tester.getRect(find.byKey(separatorKey));
       expect(separatorRect.left - cardRect.left, closeTo(12, 0.01));
+    },
+  );
+
+  testWidgets(
+    'separator keeps 12pt inset when option rows use no extra inset',
+    (tester) async {
+      final controller = GlassMenuController();
+      const dividerKey = ValueKey('zero-row-inset-menu-divider');
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: Center(
+              child: GlassMenu(
+                controller: controller,
+                menuWidth: 260,
+                menuContentHorizontalInset: 0,
+                items: [
+                  GlassMenuItem(
+                    title: 'Compact',
+                    contentHorizontalInset: 0,
+                    onTap: () {},
+                  ),
+                  const GlassMenuDivider(key: dividerKey, height: 8),
+                  GlassMenuItem(
+                    title: 'List',
+                    contentHorizontalInset: 0,
+                    onTap: () {},
+                  ),
+                ],
+                triggerBuilder: (context, toggle) => CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Menu'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      controller.open();
+      await tester.pumpAndSettle();
+
+      final surfaceRect = tester.getRect(
+        find.byKey(const ValueKey('glass-menu-scroll-surface-0')),
+      );
+      final dividerRect = tester.getRect(find.byKey(dividerKey));
+      expect(dividerRect.left - surfaceRect.left, closeTo(12, 0.01));
     },
   );
 

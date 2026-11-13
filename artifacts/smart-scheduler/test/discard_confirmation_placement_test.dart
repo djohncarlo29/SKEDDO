@@ -30,6 +30,75 @@ void main() {
     expect(popover.popoverOffset, Offset.zero);
   });
 
+  testWidgets('popover content stays at its destination during the morph', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 48, top: 88),
+              child: GlassPopover(
+                popoverWidth: 260,
+                popoverHeight: 160,
+                autoAdjustToScreen: false,
+                triggerBuilder: (context, toggle) => CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Open popover'),
+                ),
+                contentBuilder: (_, __) => const Text(
+                  'Anchored popover content',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open popover'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final contentFinder = find.text(
+      'Anchored popover content',
+      skipOffstage: false,
+    );
+    expect(contentFinder, findsOneWidget);
+    final openingRect = tester.getRect(contentFinder);
+
+    await tester.pumpAndSettle();
+    final settledRect = tester.getRect(
+      contentFinder,
+    );
+    expect(
+      (openingRect.center - settledRect.center).distance,
+      lessThan(40),
+      reason: 'The content should scale in place, not travel from the trigger.',
+    );
+
+    await tester.tapAt(const Offset(760, 560));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final closingRect = tester.getRect(contentFinder);
+    expect(
+      (closingRect.center - settledRect.center).distance,
+      lessThan(40),
+      reason: 'The content should stay put while the platter returns.',
+    );
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('discard confirmation always uses the top-left placement', (
     tester,
   ) async {
@@ -126,9 +195,9 @@ void main() {
     final foregroundLens = tester.widget<GlassPopoverContentLens>(
       find.byType(GlassPopoverContentLens),
     );
-    expect(foregroundLens.thickness, 20);
-    expect(foregroundLens.refractiveIndex, 1.10);
-    expect(foregroundLens.chromaticAberration, 0.20);
+    expect(foregroundLens.thickness, 30);
+    expect(foregroundLens.refractiveIndex, 1.30);
+    expect(foregroundLens.chromaticAberration, 0.40);
     final morphLayerFinder = find.byType(LiquidGlassLayer);
     expect(morphLayerFinder, findsOneWidget);
     final morphLayer = tester.widget<LiquidGlassLayer>(morphLayerFinder);

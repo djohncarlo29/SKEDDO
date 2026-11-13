@@ -238,9 +238,9 @@ void main() {
     final foregroundLens = tester.widget<GlassMenuContentLens>(
       find.byType(GlassMenuContentLens),
     );
-    expect(foregroundLens.thickness, 20);
-    expect(foregroundLens.refractiveIndex, 1.10);
-    expect(foregroundLens.chromaticAberration, 0.20);
+    expect(foregroundLens.thickness, 30);
+    expect(foregroundLens.refractiveIndex, 1.30);
+    expect(foregroundLens.chromaticAberration, 0.40);
     final menuBody = tester.widget<GlassContainer>(
       find.byType(GlassContainer).last,
     );

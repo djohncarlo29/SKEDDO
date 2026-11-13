@@ -1338,6 +1338,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     GlassQuality quality,
   ) {
     final level = _submenuStack[levelIndex];
+    final settledRect = _cardRect(levelIndex);
+    final flightRect = _cardFlightRect(levelIndex);
+    final contentOffset = Offset(
+      settledRect.left - flightRect.left,
+      settledRect.top - flightRect.top,
+    );
     final isTop = levelIndex == _submenuStack.length - 1;
     final dimmed = !isTop;
     final shape = LiquidRoundedRectangle(
@@ -1391,7 +1397,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           quality: quality,
           platformViewBackdrop: widget.platformViewBackdrop,
           width: widget.menuWidth.toDouble(),
-          height: _cardFlightRect(levelIndex).height,
+          height: flightRect.height,
           shape: shape,
           clipBehavior: Clip.antiAlias,
           glowIntensity: widget.glowIntensity,
@@ -1405,18 +1411,23 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             glowBlurRadius: 40,
             clipper: ShapeBorderClipper(shape: shape),
             child: OverflowBox(
-              alignment: Alignment.topCenter,
-              minHeight: _cardRect(levelIndex).height,
-              maxHeight: _cardRect(levelIndex).height,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(
-                  sigmaX: contentSigma,
-                  sigmaY: contentSigma,
-                ),
-                child: Transform.scale(
-                  scale: isTop ? contentScale : 1.0,
-                  alignment: Alignment(0, _growsDown ? -1 : 1),
-                  child: cardContent,
+              alignment: Alignment.topLeft,
+              minWidth: widget.menuWidth,
+              maxWidth: widget.menuWidth,
+              minHeight: settledRect.height,
+              maxHeight: settledRect.height,
+              child: Transform.translate(
+                offset: contentOffset,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(
+                    sigmaX: contentSigma,
+                    sigmaY: contentSigma,
+                  ),
+                  child: Transform.scale(
+                    scale: isTop ? contentScale : 1.0,
+                    alignment: Alignment(0, _growsDown ? -1 : 1),
+                    child: cardContent,
+                  ),
                 ),
               ),
             ),
@@ -2099,6 +2110,22 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         effectiveDy -
         currentHeight / 2.0 +
         (_verticalOffset * clampedValue);
+    final settledBodyLeft = _triggerOverlayPosition.dx +
+        _followOffset.dx +
+        tw / 2.0 +
+        finalDx -
+        menuWidth / 2.0 +
+        _horizontalOffset;
+    final settledBodyTop = _triggerOverlayPosition.dy +
+        _followOffset.dy +
+        th / 2.0 +
+        finalDy -
+        menuHeight / 2.0 +
+        _verticalOffset;
+    final contentOffset = Offset(
+      settledBodyLeft - blobBLeft,
+      settledBodyTop - blobBTop,
+    );
 
     // Solid overlay during flight and metaball fusion.
     // Handoff to the real trigger button occurs cleanly when hasHandedOff fires (rawValue <= 0.0).
@@ -2196,6 +2223,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                             currentWidth,
                             currentHeight,
                             currentRadius,
+                            contentOffset,
                           ),
                         ),
                       ),
@@ -2360,8 +2388,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     return referenceTravel / actualTravel;
   }
 
-  Widget _buildMorphingContainer(LiquidMorphState state, double clampedValue,
-      double currentWidth, double currentHeight, double currentRadius) {
+  Widget _buildMorphingContainer(
+    LiquidMorphState state,
+    double clampedValue,
+    double currentWidth,
+    double currentHeight,
+    double currentRadius,
+    Offset contentOffset,
+  ) {
     // Sub-pixel blob registers no blend-group shape: skip it so the premium
     // Impeller geometry never rasterizes a 0-area matte (Invalid image dimensions).
     // The 1.0 logical-px floor is provably safe at every devicePixelRatio: a
@@ -2461,14 +2495,16 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           cornerRadius: currentRadius,
           // Keep the content-only transition lens independent of the menu
           // surface, which retains the stronger toolbar-matched glass optics.
-          thickness: 20,
-          refractiveIndex: 1.10,
-          chromaticAberration: 0.20,
+          thickness: GlassMenuContentLens.foregroundThickness,
+          refractiveIndex: GlassMenuContentLens.foregroundRefractiveIndex,
+          chromaticAberration:
+              GlassMenuContentLens.foregroundChromaticAberration,
           child: _buildBodyContent(
             effectiveSettings,
             effectiveQuality,
             clampedValue,
             teardropShape,
+            contentOffset,
           ),
         ),
       ), // GlassContainer
@@ -2482,15 +2518,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     );
   }
 
-  /// The menu body's content: the interactive root list, or the same rows
-  /// dimmed and inert while a submenu card covers them. The inverse surface
-  /// scale keeps row centers at their settled positions as the platter grows;
-  /// the per-row scale supplies only the brief content overshoot.
+  /// The menu body's content stays at the settled screen position while the
+  /// glass platter travels between the trigger and destination.
   Widget _buildBodyContent(
     LiquidGlassSettings settings,
     GlassQuality quality,
     double clampedValue,
     LiquidRoundedRectangle teardropShape,
+    Offset contentOffset,
   ) {
     final isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
     final interactive = _submenuStack.isEmpty;
@@ -2519,32 +2554,35 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       glowBlurRadius: 40,
       clipper: ShapeBorderClipper(shape: teardropShape),
       child: Stack(
-        alignment: _morphAlignment,
+        alignment: Alignment.topLeft,
         clipBehavior: Clip.none,
         children: [
           OverflowBox(
-            alignment: Alignment.center,
+            alignment: Alignment.topLeft,
             minWidth: widget.menuWidth,
             maxWidth: widget.menuWidth,
             minHeight: 0.0,
             maxHeight: double.infinity,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(
-                sigmaX: contentSigma,
-                sigmaY: contentSigma,
-              ),
-              child: Transform.scale(
-                scale: contentScale,
-                alignment: Alignment.center,
-                child: _buildListContent(
-                  widget.items,
-                  interactive: interactive,
-                  dimmed: !interactive,
-                  coveredDepth: interactive ? null : 0,
-                  coverProgress: _bodyRecede,
-                  viewportHeight: _targetBodyHeight(),
-                  scrollDepth: 0,
-                  scrollController: _rootScrollController,
+            child: Transform.translate(
+              offset: contentOffset,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: contentSigma,
+                  sigmaY: contentSigma,
+                ),
+                child: Transform.scale(
+                  scale: contentScale,
+                  alignment: Alignment.center,
+                  child: _buildListContent(
+                    widget.items,
+                    interactive: interactive,
+                    dimmed: !interactive,
+                    coveredDepth: interactive ? null : 0,
+                    coverProgress: _bodyRecede,
+                    viewportHeight: _targetBodyHeight(),
+                    scrollDepth: 0,
+                    scrollController: _rootScrollController,
+                  ),
                 ),
               ),
             ),
@@ -2599,6 +2637,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                 horizontal: items[i] is GlassMenuItem
                     ? (items[i] as GlassMenuItem).contentHorizontalInset ??
                           widget.menuContentHorizontalInset
+                    : items[i] is GlassMenuDivider
+                    ? widget.menuDividerHorizontalInset
                     : widget.menuContentHorizontalInset,
               ),
               child: interactive

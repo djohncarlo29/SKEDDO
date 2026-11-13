@@ -849,6 +849,30 @@ class _GlassPopoverState extends State<GlassPopover>
           effectiveDx = state.currentDx;
           effectiveDy = state.currentDy;
         }
+        final bodyLeft = _triggerOverlayPosition.dx +
+            tw / 2.0 +
+            effectiveDx -
+            currentWidth / 2.0 +
+            (_horizontalOffset * clampedValue);
+        final bodyTop = _triggerOverlayPosition.dy +
+            th / 2.0 +
+            effectiveDy -
+            currentHeight / 2.0 +
+            (_verticalOffset * clampedValue);
+        final settledBodyLeft = _triggerOverlayPosition.dx +
+            tw / 2.0 +
+            finalDx -
+            popoverWidth / 2.0 +
+            _horizontalOffset;
+        final settledBodyTop = _triggerOverlayPosition.dy +
+            th / 2.0 +
+            finalDy -
+            popoverHeight / 2.0 +
+            _verticalOffset;
+        final contentOffset = Offset(
+          settledBodyLeft - bodyLeft,
+          settledBodyTop - bodyTop,
+        );
 
         // Solid overlay during flight and metaball fusion.
         // Handoff to the real trigger button occurs cleanly when hasHandedOff fires (rawValue <= 0.0).
@@ -928,16 +952,8 @@ class _GlassPopoverState extends State<GlassPopover>
 
                             // ── Blob B: Popover body ─────────────────────────
                             Positioned(
-                              left: _triggerOverlayPosition.dx +
-                                  tw / 2.0 +
-                                  effectiveDx -
-                                  currentWidth / 2.0 +
-                                  (_horizontalOffset * clampedValue),
-                              top: _triggerOverlayPosition.dy +
-                                  th / 2.0 +
-                                  effectiveDy -
-                                  currentHeight / 2.0 +
-                                  (_verticalOffset * clampedValue),
+                              left: bodyLeft,
+                              top: bodyTop,
                               child: IgnorePointer(
                                 ignoring: clampedValue < 0.8,
                                 child: _buildPopoverContainer(
@@ -949,6 +965,7 @@ class _GlassPopoverState extends State<GlassPopover>
                                   effectiveQuality,
                                   isDark,
                                   popoverHeight,
+                                  contentOffset,
                                 ),
                               ),
                             ),
@@ -987,6 +1004,7 @@ class _GlassPopoverState extends State<GlassPopover>
     GlassQuality effectiveQuality,
     bool isDark,
     double targetHeight,
+    Offset contentOffset,
   ) {
     // Morph border radius from pill → target corner radius.
     final maxRadius = math.min(currentWidth, currentHeight) / 2.0;
@@ -1041,22 +1059,18 @@ class _GlassPopoverState extends State<GlassPopover>
           glowRadius: widget.glowRadius,
           glowBlurRadius: 40,
           clipper: ShapeBorderClipper(shape: teardropShape),
-          child: Transform.scale(
-            scale: state.containerScale,
-            alignment: Alignment.center,
-            child: Stack(
-              alignment: _morphAlignment,
-              clipBehavior: Clip.none,
-              children: [
-                // Content stays full-sized, briefly overshoots, and sharpens
-                // as the platter settles; close reverses that motion.
-                if (GlassMorphContentMotion.isVisible(
-                  progress: clampedValue,
-                  isClosing: _morphController.isClosing,
-                ))
-                  _buildContentWithMeasurement(clampedValue, targetHeight),
-              ],
-            ),
+          child: Stack(
+            alignment: Alignment.topLeft,
+            clipBehavior: Clip.none,
+            children: [
+              // Content remains at the settled destination while the platter
+              // travels from/to its trigger; the current shape clips the group.
+              _buildContentWithMeasurement(
+                clampedValue,
+                targetHeight,
+                contentOffset,
+              ),
+            ],
           ),
         ),
       ),
@@ -1064,7 +1078,10 @@ class _GlassPopoverState extends State<GlassPopover>
   }
 
   Widget _buildContentWithMeasurement(
-      double clampedValue, double targetHeight) {
+    double clampedValue,
+    double targetHeight,
+    Offset contentOffset,
+  ) {
     // Keep content opaque; the live glass boundary reveals the oversized,
     // lightly blurred group as the popover morphs.
     final contentOpacity = GlassMorphContentMotion.opacity(
@@ -1116,7 +1133,7 @@ class _GlassPopoverState extends State<GlassPopover>
     // by the Transform.scale above; GlassContainer's Clip.antiAlias clips
     // anything outside the current morph boundary.
     return OverflowBox(
-      alignment: Alignment.center,
+      alignment: Alignment.topLeft,
       minWidth: widget.popoverWidth,
       maxWidth: widget.popoverWidth,
       minHeight: 0,
@@ -1124,16 +1141,20 @@ class _GlassPopoverState extends State<GlassPopover>
       // so the content can re-layout to a new natural height and the
       // SizeChangedLayoutNotifier above can report it for re-measurement.
       maxHeight: widget.popoverHeight ?? _getMaxPopoverHeight(),
-      child: Opacity(
-        opacity: contentOpacity,
-        child: ImageFiltered(
-          imageFilter: ImageFilter.blur(
-            sigmaX: contentSigma,
-            sigmaY: contentSigma,
-          ),
-          child: Transform.scale(
-            scale: contentScale,
-            child: measuredContent,
+      child: Transform.translate(
+        offset: contentOffset,
+        child: Opacity(
+          opacity: contentOpacity,
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: contentSigma,
+              sigmaY: contentSigma,
+            ),
+            child: Transform.scale(
+              scale: contentScale,
+              alignment: Alignment.center,
+              child: measuredContent,
+            ),
           ),
         ),
       ),
