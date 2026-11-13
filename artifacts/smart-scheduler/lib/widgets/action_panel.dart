@@ -3214,21 +3214,21 @@ LiquidGlassSettings _glassMenuSurfaceSettingsFor(
   return skeddoNavigationGlassSettingsFromShared(sharedSettings);
 }
 
-/// Paints a menu-matched rim around a lifted ordinary tile.
+/// Reuses the menu's glass shader for the rim while leaving the tile face intact.
 ///
-/// This is deliberately an edge painter, not a glass surface. The tile stays
-/// painted once with its normal fill and content; no backdrop sampling or blur
-/// is applied to the tile face.
+/// The glass pass has an identity, transparent body: no tint, blur, refraction,
+/// chromatic aberration, whitening, or saturation change. Only its normal
+/// Fresnel/specular/rim-shade terms remain active, matching the menu renderer.
 class GlassMenuRimOutline extends StatelessWidget {
   const GlassMenuRimOutline({
     super.key,
     required this.child,
-    required this.outlineShape,
+    required this.shape,
     this.rimOpacity = 1,
   });
 
   final Widget child;
-  final ShapeBorder outlineShape;
+  final LiquidShape shape;
   final double rimOpacity;
 
   @override
@@ -3248,14 +3248,24 @@ class GlassMenuRimOutline extends StatelessWidget {
                   sliderPosition: liquidGlassSliderPositionForOpacity(
                     opacity,
                   ),
-                  visibility: 1,
+                  visibility: rimOpacity.clamp(0.0, 1.0).toDouble(),
+                ).copyWith(
+                  glassColor: const Color(0x00FFFFFF),
+                  blur: 0,
+                  refractiveIndex: 1,
+                  chromaticAberration: 0,
+                  saturation: 1,
+                  whitenStrength: 0,
+                  bodyShade: 0,
+                  bodyMode: GlassBodyMode.clear,
                 );
-                return CustomPaint(
-                  painter: _GlassMenuRimPainter(
-                    shape: outlineShape,
-                    settings: menuSettings,
-                    opacity: rimOpacity,
-                  ),
+                return GlassContainer(
+                  padding: EdgeInsets.zero,
+                  useOwnLayer: true,
+                  settings: menuSettings,
+                  quality: GlassQuality.premium,
+                  shape: shape,
+                  child: const SizedBox.expand(),
                 );
               },
             ),
@@ -3264,48 +3274,6 @@ class GlassMenuRimOutline extends StatelessWidget {
       ],
     );
   }
-}
-
-class _GlassMenuRimPainter extends CustomPainter {
-  const _GlassMenuRimPainter({
-    required this.shape,
-    required this.settings,
-    required this.opacity,
-  });
-
-  final ShapeBorder shape;
-  final LiquidGlassSettings settings;
-  final double opacity;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (opacity <= 0 || size.isEmpty) return;
-    final path = shape.getOuterPath(Offset.zero & size);
-    final strength = (0.22 +
-            settings.effectiveFresnelStrength * 0.10 +
-            settings.effectiveRimLight * 0.06 +
-            settings.effectiveAmbientRim * 0.04)
-        .clamp(0.22, 0.42)
-        .toDouble();
-
-    // Keep the lift treatment to a uniform white contour. A directional fill
-    // band can read as a large light-to-dark wash on ordinary tile surfaces,
-    // and a dark stroke incorrectly makes Light Mode tiles look grey-edged.
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = Color.fromRGBO(255, 255, 255, strength * opacity)
-        ..isAntiAlias = true,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _GlassMenuRimPainter oldDelegate) =>
-      shape != oldDelegate.shape ||
-      settings != oldDelegate.settings ||
-      opacity != oldDelegate.opacity;
 }
 
 // ── Liquid-glass action-panel surface ─────────────────────────────────────────

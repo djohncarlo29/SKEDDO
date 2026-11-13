@@ -3,14 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_sficon/flutter_sficon.dart' show SFIcons;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show
+        GlassBodyMode,
         GlassContainer,
         GlassGlow,
         GlassInteractiveContainer,
         GlassMenuContentLens,
         GlassMenuItem,
-        GlassQuality;
+        GlassQuality,
+        LiquidRoundedSuperellipse;
 import 'package:smart_scheduler/app_theme.dart'
-    show BoundedSquircleStadiumBorder, kPrimaryLabel, resolveThemeColor;
+    show kPrimaryLabel, resolveThemeColor;
 import 'package:smart_scheduler/widgets/action_panel.dart'
     show
         ActionItem,
@@ -37,7 +39,7 @@ void main() {
     );
   });
 
-  testWidgets('lifted tile paints a rim without a glass surface or blur', (
+  testWidgets('lifted tile reuses the premium rim with an identity body', (
     tester,
   ) async {
     const contentLabel = 'Lifted tile content stays sharp';
@@ -48,12 +50,8 @@ void main() {
             width: 220,
             height: 76,
             child: GlassMenuRimOutline(
-                outlineShape: const BoundedSquircleStadiumBorder(
-                  radius: 24,
-                ),
-                child: const Center(
-                  child: Text(contentLabel),
-                ),
+              shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+              child: const Center(child: Text(contentLabel)),
             ),
           ),
         ),
@@ -61,17 +59,27 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(GlassContainer), findsNothing);
-    final rimPainter = find.byWidgetPredicate(
-      (widget) =>
-          widget is CustomPaint && widget.painter != null && widget.child == null,
+    final glassRim = tester.widget<GlassContainer>(
+      find.byType(GlassContainer),
     );
-    expect(rimPainter, findsOneWidget);
+    expect(glassRim.quality, GlassQuality.premium);
+    expect(glassRim.settings!.blur, 0);
+    expect(glassRim.settings!.glassColor.alpha, 0);
+    expect(glassRim.settings!.refractiveIndex, 1);
+    expect(glassRim.settings!.chromaticAberration, 0);
+    expect(glassRim.settings!.saturation, 1);
+    expect(glassRim.settings!.bodyMode, GlassBodyMode.clear);
+    expect(glassRim.settings!.fresnelStrength, greaterThan(0));
+    expect(glassRim.settings!.lightIntensity, greaterThan(0));
+    expect(glassRim.settings!.thickness, greaterThan(0));
+    expect(glassRim.shape, const LiquidRoundedSuperellipse(borderRadius: 24));
     expect(
-      find.descendant(of: rimPainter, matching: find.text(contentLabel)),
+      find.descendant(
+        of: find.byType(GlassContainer),
+        matching: find.text(contentLabel),
+      ),
       findsNothing,
     );
-    expect(find.byType(BackdropFilter), findsNothing);
     expect(find.byType(ImageFiltered), findsNothing);
   });
 

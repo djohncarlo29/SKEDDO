@@ -1161,8 +1161,8 @@ class _LiftedTileRimOutline extends StatelessWidget {
     return GlassMenuRimOutline(
       child: child,
       rimOpacity: rimOpacity,
-      outlineShape: const BoundedSquircleStadiumBorder(
-        radius: _kCornerRadius,
+      shape: const LiquidRoundedSuperellipse(
+        borderRadius: _kCornerRadius,
       ),
     );
   }

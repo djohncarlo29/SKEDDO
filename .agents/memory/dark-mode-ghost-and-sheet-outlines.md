@@ -4,11 +4,11 @@ description: Lifted category and event tiles use shared Light/Dark rim contours;
 ---
 
 Lifted category and event tile ghosts remain ordinary surfaces; paint the shared
-menu-style rim as a separate edge-only overlay. Do not put a glass renderer,
-gradient band, or opacity layer over the tile face: those either add an
-unrequested wash, soften the tile, or wash out its contents. Use a uniform white
-contour in both themes; do not add a grey outline in Light Mode. Apply it to
-context-menu previews and all reorder paths, including pinned-grid drags.
+menu-style rim as a separate edge-only overlay. Reuse the menu's premium shader
+rim terms while setting the glass body to identity/transparent: do not blur,
+refract, tint, or broadly gradient-fill the tile face. Do not substitute a
+uniform stroke or add a grey Light Mode outline. Apply it to context-menu
+previews and all reorder paths, including pinned-grid drags.
 Overlay-sheet outlines retain their separate treatment. The category-grouping
 snap glow is separate from elevation shadows and must remain visible in Dark
 Mode.
@@ -19,8 +19,9 @@ surfaces. A hairline border was too weak in the web preview. The grouping glow
 communicates an active drop target rather than elevation and should not be
 removed by app-wide Dark Mode shadow suppression.
 
-**How to apply:** Keep the tile face fully opaque and draw only a thin,
-uniform-color contour, with strength tied to the long-press menu's shared rim
-settings. Fade the rim independently from the tile. Do not suppress the rim for
-any reorder path. Paint grouping glow directly rather than through the normal
-shadow resolver, using the stationary destination category's resolved color.
+**How to apply:** Keep the tile face fully opaque, pass the menu's actual
+Fresnel/specular/rim-light settings to an edge-only shader layer, and disable
+body blur, refraction, tint, and color grading. Fade the rim independently from
+the tile. Do not suppress the rim for any reorder path. Paint grouping glow
+directly rather than through the normal shadow resolver, using the stationary
+destination category's resolved color.
