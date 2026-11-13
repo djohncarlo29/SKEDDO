@@ -3234,12 +3234,21 @@ class GlassMenuRimOutline extends StatelessWidget {
             child: ValueListenableBuilder<double>(
               valueListenable: appLiquidGlassOpacityNotifier,
               builder: (context, opacity, _) {
-                final settings = _glassMenuSurfaceSettingsFor(
+                final menuSettings = _glassMenuSurfaceSettingsFor(
                   context,
                   sliderPosition: liquidGlassSliderPositionForOpacity(
                     opacity,
                   ),
                   visibility: 1,
+                );
+                // A lifted content tile is not itself a glass surface. Keep
+                // the menu-matched optical rim, but do not frost or tint the
+                // tile that sits beneath this narrow edge band.
+                final settings = menuSettings.copyWith(
+                  blur: 0,
+                  frost: 0,
+                  frostOpacity: 0,
+                  glassColor: menuSettings.glassColor.withValues(alpha: 0),
                 );
                 return ClipPath(
                   clipBehavior: Clip.antiAlias,

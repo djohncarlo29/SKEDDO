@@ -1068,9 +1068,9 @@ class _ContextMenuOverlay extends StatelessWidget {
         return Stack(
           children: [
             // ① Below-scrim tile — painted before the scrim and kept sharp in
-            //   the source hole while the lifted copy animates above it.
-            //   Scales and fades in sync with the card copy above, making
-            //   the original tile appear to lift and magnify with the menu.
+            //   the source hole while the lifted copy animates above it. This
+            //   is the clear source copy; only the foreground lifted copy gets
+            //   the glass rim so two refractive layers cannot soften its text.
             Positioned(
               left: originalOffset.dx,
               top: originalOffset.dy,
@@ -1079,7 +1079,7 @@ class _ContextMenuOverlay extends StatelessWidget {
               child: IgnorePointer(
                 child: Transform.scale(
                   scale: cardScale,
-                  child: _LiftedTileRimOutline(child: previewBuilder(context)),
+                  child: previewBuilder(context),
                 ),
               ),
             ),

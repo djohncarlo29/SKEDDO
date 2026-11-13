@@ -19,7 +19,7 @@ import 'package:smart_scheduler/widgets/action_panel.dart'
         GlassMenuRimOutline;
 
 void main() {
-  testWidgets('lifted tile rim uses the context menu glass treatment', (
+  testWidgets('lifted tile rim preserves the edge without frosting its body', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -31,9 +31,8 @@ void main() {
             child: GlassMenuRimOutline(
               radius: 24,
               outlineShape: const BoundedSquircleStadiumBorder(radius: 24),
-              child: const ColoredBox(
-                color: CupertinoColors.systemGrey,
-                child: SizedBox.expand(),
+              child: const Center(
+                child: Text('Lifted tile content stays sharp'),
               ),
             ),
           ),
@@ -48,7 +47,21 @@ void main() {
     expect(surface.settings!.refractiveIndex, 1.59);
     expect(surface.settings!.chromaticAberration, 0.3);
     expect(surface.settings!.visibility, 1);
-    expect(find.byType(ClipPath), findsWidgets);
+    expect(surface.settings!.blur, 0);
+    expect(surface.settings!.frost, 0);
+    expect(surface.settings!.frostOpacity, 0);
+    expect(surface.settings!.glassColor.a, 0);
+
+    final rimClip = tester.widget<ClipPath>(
+      find.ancestor(
+        of: find.byType(GlassContainer),
+        matching: find.byType(ClipPath),
+      ).first,
+    );
+    final size = tester.getSize(find.byType(GlassContainer));
+    final rimPath = rimClip.clipper!.getClip(size);
+    expect(rimPath.contains(Offset(size.width / 2, size.height / 2)), isFalse);
+    expect(rimPath.contains(Offset(size.width / 2, 1)), isTrue);
   });
 
   for (final brightness in Brightness.values) {
