@@ -99,6 +99,59 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets(
+    'popover trigger ghost follows its target offset',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final triggerKey = GlobalKey();
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 48, top: 88),
+              child: GlassPopover(
+                popoverWidth: 260,
+                popoverHeight: 160,
+                popoverOffset: const Offset(-4, -4),
+                autoAdjustToScreen: false,
+                triggerBuilder: (context, toggle) => SizedBox(
+                  key: triggerKey,
+                  width: 40,
+                  height: 40,
+                  child: GestureDetector(
+                    onTap: toggle,
+                    child: const Icon(CupertinoIcons.xmark),
+                  ),
+                ),
+                contentBuilder: (_, __) => const Text('Confirmation'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final triggerCenter = tester.getCenter(find.byKey(triggerKey));
+      await tester.tap(find.byKey(triggerKey));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+
+      // Blob A is the first glass container in the two-blob morph stack.
+      final anchorBlob = find.byType(GlassContainer).first;
+      final anchorCenter = tester.getCenter(anchorBlob);
+      expect(anchorCenter.dx, lessThan(triggerCenter.dx));
+      expect(anchorCenter.dy, lessThan(triggerCenter.dy));
+      expect((triggerCenter.dx - anchorCenter.dx), lessThan(4.5));
+      expect((triggerCenter.dy - anchorCenter.dy), lessThan(4.5));
+      await tester.pumpAndSettle();
+    },
+  );
+
   testWidgets('discard confirmation always uses the top-left placement', (
     tester,
   ) async {

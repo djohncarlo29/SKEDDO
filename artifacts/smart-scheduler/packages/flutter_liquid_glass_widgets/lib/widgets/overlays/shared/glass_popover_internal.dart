@@ -722,8 +722,17 @@ class _GlassPopoverState extends State<GlassPopover>
                           // over the first 40 % of the open animation,
                           // smoothly breaking the liquid bridge.
                           Positioned(
-                            left: _triggerGlobalPosition.dx + state.pushDx,
-                            top: _triggerGlobalPosition.dy + state.pushDy,
+                            // Keep the trigger ghost aligned with Blob B's
+                            // progressively offset path. If the popover has a
+                            // non-zero target offset but this anchor stays at
+                            // the original X, the two glass shapes separate
+                            // during the morph and leave a detached crescent.
+                            left: _triggerGlobalPosition.dx +
+                                state.pushDx +
+                                widget.popoverOffset.dx * clampedValue,
+                            top: _triggerGlobalPosition.dy +
+                                state.pushDy +
+                                widget.popoverOffset.dy * clampedValue,
                             child: Transform.scale(
                               scale: state.anchorScale,
                               child: GlassContainer(

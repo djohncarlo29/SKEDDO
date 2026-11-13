@@ -14,3 +14,9 @@ description: Keep GlassPopover safe-area clamping and discard-only morph offsets
 **Why:** The user wants this placement adjustment only for the discard sheet; future and unrelated popovers must remain trigger-aligned.
 
 **How to apply:** Set an explicit offset at the discard-sheet call site, never in package defaults or a shared wrapper.
+
+**Rule:** When a GlassPopover uses a target offset, move its trigger ghost by that same interpolated offset during the morph.
+
+**Why:** Moving only the expanding body separates the two glass shapes and can leave a detached crescent near the trigger.
+
+**How to apply:** Keep the anchor and body trajectories synchronized for every nonzero `popoverOffset`; zero-offset popovers retain their existing path.
