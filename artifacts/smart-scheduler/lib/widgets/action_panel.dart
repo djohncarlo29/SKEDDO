@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -1482,6 +1482,9 @@ class _ActionPanelState extends State<ActionPanel>
   final GlobalKey _glideScrollViewportKey = GlobalKey();
   int? _glideIndex;
   Offset? _lastGlidePosition;
+  int? _menuPointer;
+  Offset? _menuPointerStart;
+  bool _menuPointerExceededSlop = false;
 
   // Scroll state — only active when widget.maxHeight != null.
   final _scrollCtrl = ScrollController();
@@ -1566,14 +1569,14 @@ class _ActionPanelState extends State<ActionPanel>
 
   void _updateExternalGlide(Offset globalPosition) {
     _scrollForExternalGlide(globalPosition);
-    final nextIndex = _actionIndexAt(globalPosition);
-    if (nextIndex != _glideIndex) {
-      _glideIndex = nextIndex;
-      if (nextIndex != null) {
-        unawaited(HapticFeedback.selectionClick());
-      }
-    }
+    _updateGlideSelection(globalPosition);
     _lastGlidePosition = globalPosition;
+  }
+
+  void _updateGlideSelection(Offset globalPosition) {
+    // Context-menu gliding is intentionally silent: unlike the package's
+    // toolbar/picker menus, scanning these actions must not vibrate.
+    _glideIndex = _actionIndexAt(globalPosition);
   }
 
   void _endExternalGlide(Offset globalPosition) {
@@ -1586,6 +1589,48 @@ class _ActionPanelState extends State<ActionPanel>
   void _clearExternalGlide() {
     _glideIndex = null;
     _lastGlidePosition = null;
+  }
+
+  void _onMenuPointerDown(PointerDownEvent event) {
+    if (_menuPointer != null) return;
+    _menuPointer = event.pointer;
+    _menuPointerStart = event.position;
+    _menuPointerExceededSlop = false;
+  }
+
+  void _onMenuPointerMove(PointerMoveEvent event) {
+    if (_menuPointer != event.pointer) return;
+    final start = _menuPointerStart;
+    if (start == null) return;
+    if (!_menuPointerExceededSlop &&
+        (event.position - start).distance > kTouchSlop) {
+      _menuPointerExceededSlop = true;
+    }
+    if (_menuPointerExceededSlop) {
+      _updateGlideSelection(event.position);
+    }
+  }
+
+  void _onMenuPointerUp(PointerUpEvent event) {
+    if (_menuPointer != event.pointer) return;
+    final shouldGlideSelect = _menuPointerExceededSlop;
+    final index = shouldGlideSelect ? _actionIndexAt(event.position) : null;
+    _clearMenuPointer();
+    if (index != null && index >= 0 && index < widget.items.length) {
+      widget.items[index].onTap?.call();
+    }
+  }
+
+  void _onMenuPointerCancel(PointerCancelEvent event) {
+    if (_menuPointer != event.pointer) return;
+    _clearMenuPointer();
+  }
+
+  void _clearMenuPointer() {
+    _menuPointer = null;
+    _menuPointerStart = null;
+    _menuPointerExceededSlop = false;
+    _glideIndex = null;
   }
 
   int? _actionIndexAt(Offset globalPosition) {
@@ -2127,11 +2172,21 @@ class _ActionPanelState extends State<ActionPanel>
                 child: panelContent,
               );
 
-        return Transform.scale(
+        Widget scaledPanel = Transform.scale(
           scale: panelScale,
           alignment: widget.scaleAlignment,
           child: panelCard,
         );
+        if (widget.useGlassMenuStyle) {
+          scaledPanel = Listener(
+            onPointerDown: _onMenuPointerDown,
+            onPointerMove: _onMenuPointerMove,
+            onPointerUp: _onMenuPointerUp,
+            onPointerCancel: _onMenuPointerCancel,
+            child: scaledPanel,
+          );
+        }
+        return scaledPanel;
       },
     );
   }

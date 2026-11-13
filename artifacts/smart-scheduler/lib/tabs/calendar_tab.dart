@@ -11908,12 +11908,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
           onTap: () => onChanged(!value),
           child: Padding(
             padding: const EdgeInsets.only(left: 16, top: 10, bottom: 10),
-            child: SizedBox(
-              height: 30,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(label, style: _kLabelStyle),
-              ),
+            child: ModalSheetRowLabel(
+              text: label,
+              style: _kLabelStyle,
+              minHeight: 30,
             ),
           ),
         ),
@@ -17174,6 +17172,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
 
   // ── Monthly unified card ──────────────────────────────────────────────────
 
+  double get _dateGridRowHeight =>
+      modalSheetScaledRowExtent(context, 44.0);
+
   Widget _buildMonthlyUnifiedCard() => _card([
     _monthlyModeRow('Each', 'Each'),
     _sep(),
@@ -17187,7 +17188,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             color: resolveThemeColor(kSeparatorColor, context),
           ),
         SizedBox(
-          height: 44,
+          height: _dateGridRowHeight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -17296,7 +17297,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   }
 
   Widget _dateCell(int n) {
-    if (n > 31) return SizedBox(height: 44);
+    if (n > 31) return SizedBox(height: _dateGridRowHeight);
     final selected = _selectedDates.contains(n);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -17307,7 +17308,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           _selectedDates.add(n);
       }),
       child: SizedBox(
-        height: 44,
+        height: _dateGridRowHeight,
         child: ColoredBox(
           color: selected ? widget.accentColor : const Color(0x00000000),
           child: Center(
@@ -17334,7 +17335,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       behavior: HitTestBehavior.opaque,
       onTap: () => _toggleYearlyMonth(monthIndex),
       child: SizedBox(
-        height: 44,
+        height: _dateGridRowHeight,
         child: ColoredBox(
           color: selected ? widget.accentColor : const Color(0x00000000),
           child: Center(
@@ -17362,7 +17363,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           color: resolveThemeColor(kSeparatorColor, context),
         ),
       SizedBox(
-        height: 44,
+        height: _dateGridRowHeight,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -17401,8 +17402,13 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
-              Text('Days of Week', style: _kRowLabelStyle),
-              const Spacer(),
+              Expanded(
+                child: ModalSheetRowLabel(
+                  text: 'Days of Week',
+                  style: _kRowLabelStyle,
+                  minHeight: 30,
+                ),
+              ),
               SizedBox(
                 width: 70 * 0.80,
                 height: 30,

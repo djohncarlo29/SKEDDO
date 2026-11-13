@@ -1389,6 +1389,60 @@ class MinGapLabelValueRow extends StatelessWidget {
   }
 }
 
+/// A text label for modal rows with a preserved minimum target height.
+///
+/// The label's measured text block can grow beyond [minHeight] when OS text
+/// scaling or wrapping requires more room, preventing fixed switch/control
+/// slots from clipping the row label.
+class ModalSheetRowLabel extends StatelessWidget {
+  const ModalSheetRowLabel({
+    super.key,
+    required this.text,
+    required this.style,
+    this.minHeight = 30.0,
+    this.alignment = Alignment.centerLeft,
+  });
+
+  final String text;
+  final TextStyle style;
+  final double minHeight;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.hasBoundedWidth
+            ? math.max(1.0, constraints.maxWidth)
+            : double.infinity;
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: textDirection,
+          textScaler: textScaler,
+          textWidthBasis: TextWidthBasis.parent,
+        )..layout(maxWidth: maxWidth);
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: math.max(minHeight, painter.height),
+          ),
+          child: Align(
+            alignment: alignment,
+            heightFactor: 1,
+            child: Text(text, style: style),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Keeps fixed-cell modal grids from staying shorter than their OS text scale.
+double modalSheetScaledRowExtent(BuildContext context, double baseExtent) {
+  return math.max(baseExtent, MediaQuery.textScalerOf(context).scale(baseExtent));
+}
+
 /// Describes one date/time-style pill in [AdaptiveLabelPillRow].
 class AdaptivePillSpec {
   const AdaptivePillSpec({

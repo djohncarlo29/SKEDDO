@@ -23831,6 +23831,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
 
   // ── Monthly — unified card (mode selector + sub-content) ─────────────────
 
+  double get _dateGridRowHeight =>
+      modalSheetScaledRowExtent(context, 44.0);
+
   Widget _buildMonthlyUnifiedCard() => _card([
     _monthlyModeRow('Each', 'Each'),
     _sep(),
@@ -23844,7 +23847,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             color: resolveThemeColor(kSeparatorColor, context),
           ),
         SizedBox(
-          height: 44,
+          height: _dateGridRowHeight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -23969,7 +23972,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   Widget _dateCell(int n) {
     if (n > 31) {
       // Empty placeholder — keeps grid columns aligned.
-      return SizedBox(height: 44);
+      return SizedBox(height: _dateGridRowHeight);
     }
     final selected = _selectedDates.contains(n);
     return GestureDetector(
@@ -23982,7 +23985,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               _selectedDates.add(n);
           }),
       child: SizedBox(
-        height: 44,
+        height: _dateGridRowHeight,
         child: ColoredBox(
           color: selected ? widget.accentColor : const Color(0x00000000),
           child: Center(
@@ -24010,7 +24013,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       behavior: HitTestBehavior.opaque,
       onTap: () => _toggleYearlyMonth(monthIndex),
       child: SizedBox(
-        height: 44,
+        height: _dateGridRowHeight,
         child: ColoredBox(
           color: selected ? widget.accentColor : const Color(0x00000000),
           child: Center(
@@ -24039,7 +24042,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           color: resolveThemeColor(kSeparatorColor, context),
         ),
       SizedBox(
-        height: 44,
+        height: _dateGridRowHeight,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -24079,8 +24082,13 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  Text('Days of Week', style: _kRowLabelStyle),
-                  const Spacer(),
+                  Expanded(
+                    child: ModalSheetRowLabel(
+                      text: 'Days of Week',
+                      style: _kRowLabelStyle,
+                      minHeight: 30,
+                    ),
+                  ),
                   // height: 30 matches pill height so switch rows == date rows
                   SizedBox(
                     width: 70 * 0.80,

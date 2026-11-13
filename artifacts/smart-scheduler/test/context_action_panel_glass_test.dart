@@ -346,6 +346,110 @@ void main() {
     expect(selected, 'Option 3');
   });
 
+  testWidgets('an opened context platter supports its own glide selection', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    addTearDown(closing.dispose);
+    var pinCount = 0;
+    var archiveCount = 0;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 270,
+            child: ActionPanel(
+              isClosing: closing,
+              useGlassMenuStyle: true,
+              items: [
+                ActionItem(
+                  label: 'Pin',
+                  icon: CupertinoIcons.pin,
+                  onTap: () => pinCount++,
+                ),
+                ActionItem(
+                  label: 'Archive Category',
+                  icon: SFIcons.sf_archivebox,
+                  onTap: () => archiveCount++,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Pin')),
+    );
+    await gesture.moveTo(tester.getCenter(find.text('Archive Category')));
+    await tester.pump(const Duration(milliseconds: 20));
+    await gesture.up();
+    await tester.pump();
+
+    expect(pinCount, 0);
+    expect(archiveCount, 1);
+  });
+
+  testWidgets('an independently scrolled platter selects on release', (
+    tester,
+  ) async {
+    final closing = ValueNotifier(false);
+    addTearDown(closing.dispose);
+    var selected = '';
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 270,
+            child: ActionPanel(
+              isClosing: closing,
+              useGlassMenuStyle: true,
+              maxHeight: 132,
+              items: [
+                for (var index = 0; index < 7; index++)
+                  ActionItem(
+                    label: 'Option $index',
+                    icon: CupertinoIcons.circle,
+                    onTap: () => selected = 'Option $index',
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final viewportFinder = find.byType(SingleChildScrollView).first;
+    final viewport = tester.getRect(viewportFinder);
+    final scrollController = tester
+        .widget<SingleChildScrollView>(viewportFinder)
+        .controller!;
+    // The menu is deliberately over height so this verifies its real scroll
+    // path, not just glide-selecting rows that were initially visible.
+    expect(scrollController.position.maxScrollExtent, greaterThan(0));
+    final start = Offset(viewport.center.dx, viewport.bottom - 10);
+    final gesture = await tester.startGesture(start);
+    var releasePosition = start;
+    for (var step = 1; step <= 10; step++) {
+      releasePosition = start.translate(0, -step * 8.0);
+      await gesture.moveTo(releasePosition);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(scrollController.offset, greaterThan(0));
+    const targetLabel = 'Option 1';
+    final targetPosition = tester.getCenter(find.text(targetLabel));
+    await gesture.moveTo(targetPosition);
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.up();
+    await tester.pump();
+    expect(selected, targetLabel);
+  });
+
   testWidgets('context action panel scrolls and reveals its scroll pill', (
     tester,
   ) async {
