@@ -1065,7 +1065,8 @@ class _GlassPopoverState extends State<GlassPopover>
 
   Widget _buildContentWithMeasurement(
       double clampedValue, double targetHeight) {
-    // Fade in smoothly: fully opaque by 70 % morph progress.
+    // Keep content opaque; the live glass boundary reveals the oversized,
+    // lightly blurred group as the popover morphs.
     final contentOpacity = GlassMorphContentMotion.opacity(
       progress: clampedValue,
       isClosing: _morphController.isClosing,

@@ -41,8 +41,8 @@ enum MorphStyle {
   bloom,
 }
 
-/// Shared opacity, scale, and blur profile for content entering/leaving a
-/// liquid morph surface. Popovers and menus use it in sync with glass geometry.
+/// Shared scale and blur profile for content entering/leaving a liquid morph
+/// surface. The live glass clip, not an alpha fade, reveals the content.
 class GlassMorphContentMotion {
   const GlassMorphContentMotion._();
 
@@ -50,57 +50,33 @@ class GlassMorphContentMotion {
   /// is still opening, expressed as a fraction of its settled size.
   static const double contentOvershoot = 0.12;
 
-  /// The morph progress at which content first becomes visible.
-  static const double openVisibilityStart = 0.3;
-
-  /// The morph progress at which closing content begins to disappear.
-  static const double closeVisibilityStart = 0.85;
-
-  /// Returns whether the content should be mounted for this morph frame.
+  /// Content is present from the first morph frame and revealed by the
+  /// growing/clipping platter, rather than by a delayed visibility gate.
   static bool isVisible({
     required double progress,
     required bool isClosing,
-  }) =>
-      isClosing
-          ? progress > closeVisibilityStart
-          : progress > openVisibilityStart;
+  }) => true;
 
-  /// Returns the shared content fade for the current morph frame.
+  /// Content remains opaque; the glass boundary reveals and clips it.
   static double opacity({
     required double progress,
     required bool isClosing,
-  }) =>
-      isClosing
-          ? ((progress - closeVisibilityStart) /
-                  (1.0 - closeVisibilityStart))
-              .clamp(0.0, 1.0)
-              .toDouble()
-          : ((progress - openVisibilityStart) /
-                  (0.7 - openVisibilityStart))
-              .clamp(0.0, 1.0)
-              .toDouble();
+  }) => 1.0;
 
   /// Normalized content-motion progress for the current root morph frame.
-  ///
-  /// The open and close windows are intentionally asymmetric: content enters
-  /// after the shape begins forming, and exits before the shape disappears.
+  /// Opening runs from oversized/blurred to settled; closing reverses it.
   static double phaseProgress({
     required double progress,
     required bool isClosing,
   }) =>
       isClosing
-          ? ((1.0 - progress) / (1.0 - closeVisibilityStart))
-                .clamp(0.0, 1.0)
-                .toDouble()
-          : ((progress - openVisibilityStart) /
-                    (1.0 - openVisibilityStart))
-                .clamp(0.0, 1.0)
-                .toDouble();
+          ? (1.0 - progress).clamp(0.0, 1.0).toDouble()
+          : progress.clamp(0.0, 1.0).toDouble();
 
-  /// Returns the shared content scale for a normalized transition phase.
+  /// Returns the shared group scale for a normalized transition phase.
   ///
-  /// Contents begin larger than their settled size, then pass just below it
-  /// before springing to 1.0. Closing walks that motion in reverse.
+  /// The complete content group starts 12% larger at its settled position;
+  /// the platter clips the overflow while the group springs to 1.0.
   static double scaleForPhase(
     double phase, {
     required bool isClosing,

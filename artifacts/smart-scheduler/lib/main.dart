@@ -2075,7 +2075,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget Function(BuildContext context, bool submenuOpen)? trailingBuilder,
     String? subtitle,
     List<Widget>? submenu,
-    double? submenuContentHorizontalInset,
+    double? contentHorizontalInset,
     bool isDestructive = false,
     Color? labelColor,
     Offset iconInkCorrection = Offset.zero,
@@ -2139,7 +2139,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       subtitle: subtitle,
       allowTextWrapping: true,
       submenu: submenu,
-      submenuContentHorizontalInset: submenuContentHorizontalInset,
+      contentHorizontalInset: contentHorizontalInset,
       isDestructive: isDestructive,
       onTap: onTap,
     );
@@ -2412,6 +2412,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             title: direction,
             icon: check(sortDir == direction),
             iconSlotBaseSize: 24,
+            contentHorizontalInset: 0,
             onTap: () => saveSort('Creation Date', direction: direction),
           ),
         );
@@ -2430,6 +2431,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             title: option == 'Deadline' ? 'Due Date' : option,
             icon: check(sortBy == option),
             iconSlotBaseSize: 24,
+            contentHorizontalInset: 0,
             onTap: () => saveSort(option),
           ),
         );
@@ -2443,6 +2445,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               title: direction,
               icon: check(sortDir == direction),
               iconSlotBaseSize: 24,
+              contentHorizontalInset: 0,
               onTap: () => saveSort(sortBy, direction: direction),
             ),
           );
@@ -2521,7 +2524,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             modeSubmenuIcon(false, isOpen: isOpen),
         trailingWidth: modeSubmenuIconWidth(false),
         submenu: sortItems,
-        submenuContentHorizontalInset: 0,
         onTap: () {},
       ),
       if (isUtilityCategory)

@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassMenu, GlassMenuController, GlassMenuItem;
+    show GlassMenu, GlassMenuController, GlassMenuDivider, GlassMenuItem;
 import 'package:liquid_glass_widgets/utils/glass_morph_controller.dart'
     show GlassMorphContentMotion;
 
@@ -13,25 +13,25 @@ void main() {
     expect(menu.keepTriggerAnchorOnOverflow, isFalse);
   });
 
-  test('menu and popover content share the same fade and spring motion', () {
+  test('menu content starts oversized and clipped by the surface morph', () {
     expect(
-      GlassMorphContentMotion.isVisible(progress: 0.29, isClosing: false),
-      isFalse,
-    );
-    expect(
-      GlassMorphContentMotion.isVisible(progress: 0.31, isClosing: false),
+      GlassMorphContentMotion.isVisible(progress: 0.0, isClosing: false),
       isTrue,
     );
     expect(
-      GlassMorphContentMotion.opacity(progress: 0.3, isClosing: false),
-      0.0,
+      GlassMorphContentMotion.opacity(progress: 0.0, isClosing: false),
+      1.0,
     );
     expect(
       GlassMorphContentMotion.opacity(progress: 0.5, isClosing: false),
-      closeTo(0.5, 0.001),
+      1.0,
     );
     expect(
-      GlassMorphContentMotion.scale(0.3),
+      GlassMorphContentMotion.isVisible(progress: 0.0, isClosing: true),
+      isTrue,
+    );
+    expect(
+      GlassMorphContentMotion.scale(0.0),
       1.12,
     );
     expect(
@@ -39,7 +39,7 @@ void main() {
       1.0,
     );
     expect(
-      GlassMorphContentMotion.blurSigma(progress: 0.3, isClosing: false),
+      GlassMorphContentMotion.blurSigma(progress: 0.0, isClosing: false),
       2.0,
     );
     expect(
@@ -47,12 +47,8 @@ void main() {
       0.0,
     );
     expect(
-      GlassMorphContentMotion.opacity(progress: 0.85, isClosing: true),
-      0.0,
-    );
-    expect(
-      GlassMorphContentMotion.opacity(progress: 0.925, isClosing: true),
-      closeTo(0.5, 0.001),
+      GlassMorphContentMotion.opacity(progress: 0.0, isClosing: true),
+      1.0,
     );
     expect(
       GlassMorphContentMotion.scaleForMorph(
@@ -63,64 +59,78 @@ void main() {
     );
     expect(
       GlassMorphContentMotion.scaleForMorph(
-        progress: 0.85,
+        progress: 0.0,
         isClosing: true,
       ),
       1.12,
     );
   });
 
-  testWidgets('submenu can align a leading checkmark to its 16px inset', (
-    tester,
-  ) async {
-    final controller = GlassMenuController();
-    const leadingSlotKey = ValueKey('sort-selected-leading-slot');
+  testWidgets(
+    'Sort By checkmark rows use 16pt while parent and separator keep 12pt',
+    (tester) async {
+      final controller = GlassMenuController();
+      const leadingSlotKey = ValueKey('sort-selected-leading-slot');
+      const separatorKey = ValueKey('sort-submenu-separator');
 
-    await tester.pumpWidget(
-      CupertinoApp(
-        home: CupertinoPageScaffold(
-          child: Center(
-            child: GlassMenu(
-              controller: controller,
-              menuWidth: 260,
-              items: [
-                GlassMenuItem(
-                  title: 'Sort By',
-                  submenuContentHorizontalInset: 0,
-                  submenu: [
-                    GlassMenuItem(
-                      title: 'Manual',
-                      icon: const SizedBox(
-                        key: leadingSlotKey,
-                        width: 24,
-                        height: 24,
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: Center(
+              child: GlassMenu(
+                controller: controller,
+                menuWidth: 260,
+                items: [
+                  GlassMenuItem(
+                    title: 'Sort By',
+                    submenu: [
+                      GlassMenuItem(
+                        title: 'Manual',
+                        icon: const SizedBox(
+                          key: leadingSlotKey,
+                          width: 24,
+                          height: 24,
+                        ),
+                        iconSize: 24,
+                        contentHorizontalInset: 0,
+                        onTap: () {},
                       ),
-                      iconSize: 24,
-                      onTap: () {},
-                    ),
-                  ],
-                  onTap: () {},
+                      const GlassMenuDivider(key: separatorKey, height: 8),
+                    ],
+                    onTap: () {},
+                  ),
+                ],
+                triggerBuilder: (context, toggle) => CupertinoButton(
+                  onPressed: toggle,
+                  child: const Text('Menu'),
                 ),
-              ],
-              triggerBuilder: (context, toggle) =>
-                  CupertinoButton(onPressed: toggle, child: const Text('Menu')),
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
-    controller.open();
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Sort By'));
-    await tester.pumpAndSettle();
+      );
+      await tester.pump();
+      controller.open();
+      await tester.pumpAndSettle();
 
-    final cardRect = tester.getRect(
-      find.byKey(const ValueKey('glass-menu-submenu-card-0')),
-    );
-    final leadingSlotRect = tester.getRect(find.byKey(leadingSlotKey));
-    expect(leadingSlotRect.left - cardRect.left, 16);
-  });
+      final rootSurfaceRect = tester.getRect(
+        find.byKey(const ValueKey('glass-menu-scroll-surface-0')),
+      );
+      final parentLabelRect = tester.getRect(find.text('Sort By'));
+      expect(parentLabelRect.left - rootSurfaceRect.left, closeTo(28, 0.01));
+
+      await tester.tap(find.text('Sort By'));
+      await tester.pumpAndSettle();
+
+      final cardRect = tester.getRect(
+        find.byKey(const ValueKey('glass-menu-submenu-card-0')),
+      );
+      final leadingSlotRect = tester.getRect(find.byKey(leadingSlotKey));
+      expect(leadingSlotRect.left - cardRect.left, 16);
+      final separatorRect = tester.getRect(find.byKey(separatorKey));
+      expect(separatorRect.left - cardRect.left, closeTo(12, 0.01));
+    },
+  );
 
   testWidgets('menu row centers leading and trailing controls with its label', (
     tester,

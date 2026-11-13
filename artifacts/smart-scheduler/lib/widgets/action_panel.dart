@@ -1024,9 +1024,9 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
           morphFromZero: false,
           suppressTriggerGlassBlob: true,
           triggerEntryImpactStrength: 0.35,
-          // Picker options lead with a checkmark; the row's own 16pt inset is
-          // the full edge gap, matching checkmark-led Calendar and Sort By menus.
-          menuContentHorizontalInset: 0,
+          // Picker rows retain the standard platter inset; only explicitly
+          // checkmark-led Sort By submenu rows remove this extra 12pt.
+          menuContentHorizontalInset: 12,
           menuPadding: const EdgeInsets.all(16),
           triggerImpactStrength: 1.15,
           onClose: _notifyClosedAfterMorph,
@@ -1875,6 +1875,15 @@ class _ActionPanelState extends State<ActionPanel>
         final pt = _panelT;
         final gt = _glassT; // leads close by 50 ms; identical to pt on open
         final outlineT = _outlineT; // leads close by 100 ms
+        final contentPhase = _isClosingNow ? 1.0 - pt : pt;
+        final contentScale = GlassMorphContentMotion.scaleForPhase(
+          contentPhase,
+          isClosing: _isClosingNow,
+        );
+        final contentSigma = GlassMorphContentMotion.blurSigmaForPhase(
+          contentPhase,
+          isClosing: _isClosingNow,
+        );
         // easeOutBack: peaks at ~1.07 before settling —
         // starting from 0.60 makes the gel bloom visually pronounced.
         // On close (pt 1→0) this naturally behaves like easeInBack.
@@ -2165,9 +2174,19 @@ class _ActionPanelState extends State<ActionPanel>
             ? 0.80
             : (isDark && !widget.bouncingScroll ? 0.75 : 0.65);
         final glassMenuStyleContent = Transform.scale(
-          scale: 1.0 / panelScale,
+          scale: contentScale,
           alignment: widget.scaleAlignment,
-          child: panelContent,
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: contentSigma,
+              sigmaY: contentSigma,
+            ),
+            child: Transform.scale(
+              scale: 1.0 / panelScale,
+              alignment: widget.scaleAlignment,
+              child: panelContent,
+            ),
+          ),
         );
 
         // liquid_glass_easy intentionally paints no lens when its shader
@@ -2226,14 +2245,8 @@ class _ActionPanelState extends State<ActionPanel>
         : (widget.items[i].instantOnOpen && !_isClosingNow)
         ? 1.0
         : _rowT(i);
-    final phase = _isClosingNow ? 1.0 - _panelT : _panelT;
-    final contentScale = GlassMorphContentMotion.scaleForPhase(
-      phase,
-      isClosing: _isClosingNow,
-    );
-    final contentSigma = 2.0 * (_isClosingNow ? phase : 1.0 - phase);
-    // Glass menu rows start full-sized inside the clipped platter, with a
-    // subtle overshoot and 2 px blur that settles away as the platter opens.
+    // Glass-menu content is scaled and blurred as one settled-layout group by
+    // the panel builder, so the platter clips it rather than moving each row.
     final rowScale = widget.useGlassMenuStyle
         ? 1.0
         : 0.76 + 0.24 * Curves.easeOutBack.transform(t);
@@ -2244,33 +2257,14 @@ class _ActionPanelState extends State<ActionPanel>
       child: Transform.scale(
         scale: rowScale,
         key: _glideRowKeys[i],
-        child: widget.useGlassMenuStyle
-            ? ImageFiltered(
-                imageFilter: ImageFilter.blur(
-                  sigmaX: contentSigma,
-                  sigmaY: contentSigma,
-                ),
-                child: Transform.scale(
-                  scale: contentScale,
-                  child: _ActionRow(
-                    item: widget.items[i],
-                    chevronColumn: widget.chevronColumn,
-                    labelFontSize: widget.labelFontSize,
-                    leadingIconLabelGap: widget.leadingIconLabelGap,
-                    enforceTrailingIconSpacing:
-                        widget.enforceTrailingIconSpacing,
-                    useGlassMenuStyle: widget.useGlassMenuStyle,
-                  ),
-                ),
-              )
-            : _ActionRow(
-                item: widget.items[i],
-                chevronColumn: widget.chevronColumn,
-                labelFontSize: widget.labelFontSize,
-                leadingIconLabelGap: widget.leadingIconLabelGap,
-                enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
-                useGlassMenuStyle: widget.useGlassMenuStyle,
-              ),
+        child: _ActionRow(
+          item: widget.items[i],
+          chevronColumn: widget.chevronColumn,
+          labelFontSize: widget.labelFontSize,
+          leadingIconLabelGap: widget.leadingIconLabelGap,
+          enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
+          useGlassMenuStyle: widget.useGlassMenuStyle,
+        ),
       ),
     );
   }
