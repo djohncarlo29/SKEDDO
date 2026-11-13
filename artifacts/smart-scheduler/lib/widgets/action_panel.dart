@@ -2251,6 +2251,11 @@ class _ActionPanelState extends State<ActionPanel>
                   child: _GlassMenuStyleActionPanelCard(
                     progress: gt,
                     surfaceSize: _glassMenuSurfaceSize ?? Size.zero,
+                    foregroundEffectStrength:
+                        (contentSigma /
+                                GlassMorphContentMotion.contentPeakBlurSigma)
+                            .clamp(0.0, 1.0)
+                            .toDouble(),
                     child: glassMenuStyleContent,
                   ),
                 ),
@@ -3108,11 +3113,13 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
   const _GlassMenuStyleActionPanelCard({
     required this.progress,
     required this.surfaceSize,
+    required this.foregroundEffectStrength,
     required this.child,
   });
 
   final double progress;
   final Size surfaceSize;
+  final double foregroundEffectStrength;
   final Widget child;
 
   @override
@@ -3149,6 +3156,7 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
             progress: progress,
             size: surfaceSize,
             cornerRadius: 32,
+            effectStrength: foregroundEffectStrength,
             thickness: GlassMenuContentLens.foregroundThickness,
             refractiveIndex:
                 GlassMenuContentLens.foregroundRefractiveIndex,

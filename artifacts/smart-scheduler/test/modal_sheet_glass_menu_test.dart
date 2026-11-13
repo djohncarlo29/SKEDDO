@@ -8,7 +8,8 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMenuItem,
         GlassQuality,
         AdaptiveLiquidGlassLayer,
-        LiquidRoundedRectangle;
+        LiquidRoundedRectangle,
+        GlassMorphContentMotion;
 import 'package:liquid_glass_widgets/widgets/shared/glass_menu_content_lens.dart'
     show GlassMenuContentLens;
 
@@ -239,6 +240,17 @@ void main() {
     expect(foregroundLens.thickness, 30);
     expect(foregroundLens.refractiveIndex, 1.30);
     expect(foregroundLens.chromaticAberration, 0.06);
+    expect(
+      foregroundLens.normalizedEffectStrength,
+      closeTo(
+        GlassMorphContentMotion.blurSigma(
+              progress: foregroundLens.progress,
+              isClosing: false,
+            ) /
+            GlassMorphContentMotion.contentPeakBlurSigma,
+        0.001,
+      ),
+    );
     final menuBody = tester.widget<GlassContainer>(
       find.byType(GlassContainer).last,
     );

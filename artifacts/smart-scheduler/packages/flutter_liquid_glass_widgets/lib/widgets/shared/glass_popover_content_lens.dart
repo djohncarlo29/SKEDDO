@@ -7,6 +7,9 @@ import 'package:flutter/widgets.dart';
 /// Applies the menu lens response to popover foreground content while it
 /// crosses the moving glass edge. The settled content remains unfiltered.
 class GlassPopoverContentLens extends StatefulWidget {
+  /// Peak content blur sigma shared with the other SKEDDO menu morphs.
+  static const double peakContentBlurSigma = 4.0;
+
   /// Foreground optics used while popover content crosses the moving glass edge.
   /// Thickness in logical pixels.
   static const double foregroundThickness = 30.0;
@@ -25,6 +28,7 @@ class GlassPopoverContentLens extends StatefulWidget {
     required this.thickness,
     required this.refractiveIndex,
     required this.chromaticAberration,
+    this.effectStrength,
     super.key,
   });
 
@@ -35,6 +39,28 @@ class GlassPopoverContentLens extends StatefulWidget {
   final double thickness;
   final double refractiveIndex;
   final double chromaticAberration;
+
+  /// Optional normalized foreground-lens strength driven by the same curve as
+  /// the content blur. Zero is neutral; one uses the peak optical settings.
+  /// When omitted, preserve the original symmetric progress envelope.
+  final double? effectStrength;
+
+  /// Clamped normalized strength applied to the foreground lens.
+  double get normalizedEffectStrength =>
+      (effectStrength ?? 4.0 * progress * (1.0 - progress))
+          .clamp(0.0, 1.0)
+          .toDouble();
+
+  /// Thickness remaining after applying the current strength curve.
+  double get effectiveThickness => thickness * normalizedEffectStrength;
+
+  /// Effective foreground refractive index, returning 1.0 at rest.
+  double get effectiveRefractiveIndex =>
+      1.0 + (refractiveIndex - 1.0) * normalizedEffectStrength;
+
+  /// Effective color separation, returning zero at rest.
+  double get effectiveChromaticAberration =>
+      chromaticAberration * normalizedEffectStrength;
 
   static ui.FragmentProgram? _program;
   static Future<void>? _loadFuture;
@@ -91,20 +117,21 @@ class _GlassPopoverContentLensState extends State<GlassPopoverContentLens> {
   Widget build(BuildContext context) {
     final shader = _shader;
     final shortSide = math.min(widget.size.width, widget.size.height);
-    final progress = widget.progress.clamp(0.0, 1.0);
-    final intensity = 4.0 * progress * (1.0 - progress);
+    final intensity = widget.normalizedEffectStrength;
+    final effectiveThickness = widget.effectiveThickness;
     if (shader == null ||
         shortSide <= 0 ||
         intensity <= 0.001 ||
+        effectiveThickness <= 0.001 ||
         !ui.ImageFilter.isShaderFilterSupported) {
       return widget.child;
     }
 
     shader
-      ..setFloat(2, intensity)
-      ..setFloat(3, widget.thickness / shortSide)
-      ..setFloat(4, widget.refractiveIndex)
-      ..setFloat(5, widget.chromaticAberration.clamp(0.0, 1.0))
+      ..setFloat(2, 1.0)
+      ..setFloat(3, effectiveThickness / shortSide)
+      ..setFloat(4, widget.effectiveRefractiveIndex)
+      ..setFloat(5, widget.effectiveChromaticAberration.clamp(0.0, 1.0))
       ..setFloat(6, (widget.cornerRadius / shortSide).clamp(0.0, 0.5));
 
     return ImageFiltered(

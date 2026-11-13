@@ -1072,6 +1072,14 @@ class _GlassPopoverState extends State<GlassPopover>
                 progress: clampedValue,
                 size: Size(currentWidth, currentHeight),
                 cornerRadius: currentRadius,
+                effectStrength:
+                    (GlassMorphContentMotion.blurSigma(
+                              progress: clampedValue,
+                              isClosing: _morphController.isClosing,
+                            ) /
+                            GlassMorphContentMotion.contentPeakBlurSigma)
+                        .clamp(0.0, 1.0)
+                        .toDouble(),
                 thickness: GlassMenuContentLens.foregroundThickness,
                 refractiveIndex:
                     GlassMenuContentLens.foregroundRefractiveIndex,

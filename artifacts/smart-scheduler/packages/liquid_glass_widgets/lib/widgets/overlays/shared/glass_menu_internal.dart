@@ -1419,6 +1419,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
               progress: isTop ? contentMotionProgress : 1.0,
               size: Size(widget.menuWidth.toDouble(), flightRect.height),
               cornerRadius: widget.menuBorderRadius,
+              effectStrength:
+                  (contentSigma /
+                          GlassMorphContentMotion.contentPeakBlurSigma)
+                      .clamp(0.0, 1.0)
+                      .toDouble(),
               thickness: GlassMenuContentLens.foregroundThickness,
               refractiveIndex:
                   GlassMenuContentLens.foregroundRefractiveIndex,
@@ -2521,6 +2526,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           progress: clampedValue,
           size: Size(currentWidth, currentHeight),
           cornerRadius: currentRadius,
+          effectStrength:
+              (GlassMorphContentMotion.blurSigma(
+                        progress: clampedValue,
+                        isClosing: _morphController.isClosing,
+                      ) /
+                      GlassMorphContentMotion.contentPeakBlurSigma)
+                  .clamp(0.0, 1.0)
+                  .toDouble(),
           // Keep the content-only transition lens independent of the menu
           // surface, which retains the stronger toolbar-matched glass optics.
           thickness: GlassMenuContentLens.foregroundThickness,

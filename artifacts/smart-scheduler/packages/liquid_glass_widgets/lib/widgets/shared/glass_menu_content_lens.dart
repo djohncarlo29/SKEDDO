@@ -29,6 +29,7 @@ class GlassMenuContentLens extends StatefulWidget {
     required this.thickness,
     required this.refractiveIndex,
     required this.chromaticAberration,
+    this.effectStrength,
     super.key,
   });
 
@@ -52,6 +53,29 @@ class GlassMenuContentLens extends StatefulWidget {
 
   /// Chromatic separation applied to the child edge.
   final double chromaticAberration;
+
+  /// Optional normalized strength from the shared content-blur curve.
+  ///
+  /// Zero is neutral and one applies the configured peak optics. When omitted,
+  /// the original symmetric progress envelope is retained.
+  final double? effectStrength;
+
+  /// Clamped normalized strength applied to the foreground lens.
+  double get normalizedEffectStrength =>
+      (effectStrength ?? 4.0 * progress * (1.0 - progress))
+          .clamp(0.0, 1.0)
+          .toDouble();
+
+  /// Thickness remaining after applying the current strength curve.
+  double get effectiveThickness => thickness * normalizedEffectStrength;
+
+  /// Effective foreground refractive index, returning 1.0 at rest.
+  double get effectiveRefractiveIndex =>
+      1.0 + (refractiveIndex - 1.0) * normalizedEffectStrength;
+
+  /// Effective color separation, returning zero at rest.
+  double get effectiveChromaticAberration =>
+      chromaticAberration * normalizedEffectStrength;
 
   static ui.FragmentProgram? _program;
   static Future<void>? _loadFuture;
@@ -107,20 +131,23 @@ class _GlassMenuContentLensState extends State<GlassMenuContentLens> {
   Widget build(BuildContext context) {
     final shader = _shader;
     final shortSide = math.min(widget.size.width, widget.size.height);
-    final progress = widget.progress.clamp(0.0, 1.0);
-    final intensity = 4.0 * progress * (1.0 - progress);
+    final intensity = widget.normalizedEffectStrength;
+    final effectiveThickness = widget.effectiveThickness;
     if (shader == null ||
         shortSide <= 0 ||
         intensity <= 0.001 ||
+        effectiveThickness <= 0.001 ||
         !ui.ImageFilter.isShaderFilterSupported) {
       return widget.child;
     }
 
     shader
-      ..setFloat(2, intensity)
-      ..setFloat(3, widget.thickness / shortSide)
-      ..setFloat(4, widget.refractiveIndex)
-      ..setFloat(5, widget.chromaticAberration.clamp(0.0, 1.0))
+      // The live optical values carry the curve; do not attenuate the same
+      // strength a second time through the shader's contact multiplier.
+      ..setFloat(2, 1.0)
+      ..setFloat(3, effectiveThickness / shortSide)
+      ..setFloat(4, widget.effectiveRefractiveIndex)
+      ..setFloat(5, widget.effectiveChromaticAberration.clamp(0.0, 1.0))
       ..setFloat(6, (widget.cornerRadius / shortSide).clamp(0.0, 0.5));
 
     return ImageFiltered(

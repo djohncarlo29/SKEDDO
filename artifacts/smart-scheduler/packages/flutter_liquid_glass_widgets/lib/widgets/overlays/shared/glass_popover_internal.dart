@@ -851,6 +851,9 @@ class _GlassPopoverState extends State<GlassPopover>
                 progress: clampedValue,
                 size: Size(currentWidth, currentHeight),
                 cornerRadius: currentRadius,
+                effectStrength: (1.0 - clampedValue)
+                    .clamp(0.0, 1.0)
+                    .toDouble(),
                 // Keep the content-only transition lens independent of
                 // the popover surface's stronger toolbar-matched optics.
                 thickness: GlassPopoverContentLens.foregroundThickness,
@@ -880,7 +883,8 @@ class _GlassPopoverState extends State<GlassPopover>
     // independently of the platter's travel from its trigger.
     final contentScale =
         1.0 + 0.12 * (1.0 - Curves.easeOutBack.transform(clampedValue));
-    final contentBlur = 2.0 * (1.0 - clampedValue);
+    final contentBlur =
+        GlassPopoverContentLens.peakContentBlurSigma * (1.0 - clampedValue);
 
     // _cachedContent was set in _openPopover (or refreshed in didUpdateWidget).
     // The null-coalesce is a last-resort safety net only.
