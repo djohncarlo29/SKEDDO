@@ -183,20 +183,20 @@ void main() {
     );
     for (final option in options) {
       expect(option.contentHorizontalInset, 0);
-      expect(option.iconSize, 70);
-      expect(option.iconLabelGap, 12);
+      expect(option.iconSize, 42.5);
+      expect(option.iconLabelGap, 16);
       expect(option.allowTextWrapping, isTrue);
       expect(option.trailing, isNull);
-      final iconSlot = option.icon! as SizedBox;
-      expect(iconSlot.width, 70);
-      expect(iconSlot.height, 70);
+      final iconRow = option.icon! as Row;
+      expect(iconRow.children.single, isA<SizedBox>());
     }
-    final firstIconRow = (options.first.icon! as SizedBox).child as Row;
+    final firstIconRow = options.first.icon! as Row;
     final firstCheckmarkSlot = firstIconRow.children.single as SizedBox;
-    final checkmark = (firstCheckmarkSlot.child as Center).child as Icon;
+    expect(firstCheckmarkSlot.width, 42.5);
+    final checkmark = firstCheckmarkSlot.child as Icon;
     expect(checkmark.icon, CupertinoIcons.checkmark);
     expect(checkmark.size, 42.5);
-    final lastIconRow = (options.last.icon! as SizedBox).child as Row;
+    final lastIconRow = options.last.icon! as Row;
     expect((lastIconRow.children.single as SizedBox).child, isA<SizedBox>());
 
     final initialPosition = liquidGlassSliderPositionForOpacity(
@@ -343,26 +343,22 @@ void main() {
       expect(options, hasLength(2));
       for (final option in options) {
         expect(option.contentHorizontalInset, 0);
-        expect(option.iconLabelGap, 12);
-        final iconSlot = option.icon! as SizedBox;
-        expect(iconSlot.width, 58);
-        final iconRow = iconSlot.child! as Row;
+        expect(option.iconLabelGap, 16);
+        expect(option.iconSize, 17);
+        final iconRow = option.icon! as Row;
         expect(iconRow.children, hasLength(3));
-        expect(iconRow.children.first, isA<SizedBox>());
+        final checkmarkSlot = iconRow.children.first as SizedBox;
+        expect(checkmarkSlot.width, 17);
         expect(iconRow.children[1], isA<SizedBox>());
-        expect(iconRow.children.last, isA<Container>());
+        expect((iconRow.children[1] as SizedBox).width, 16);
+        final categoryDot = iconRow.children.last as Container;
+        expect(categoryDot.constraints!.maxWidth, 14);
       }
-      final selectedIconSlot = options.first.icon! as SizedBox;
-      final selectedIconRow = selectedIconSlot.child! as Row;
-      final checkmarkSlot = selectedIconRow.children.first as SizedBox;
-      expect(
-        (checkmarkSlot.child as Center).child,
-        isA<Icon>(),
-      );
-      final unselectedIconSlot = options.last.icon! as SizedBox;
-      final unselectedIconRow = unselectedIconSlot.child! as Row;
-      final unselectedCheckmarkSlot =
-          unselectedIconRow.children.first as SizedBox;
+      final selectedIconRow = options.first.icon! as Row;
+      final selectedCheckmarkSlot = selectedIconRow.children.first as SizedBox;
+      expect(selectedCheckmarkSlot.child, isA<Icon>());
+      final unselectedIconRow = options.last.icon! as Row;
+      final unselectedCheckmarkSlot = unselectedIconRow.children.first as SizedBox;
       expect(unselectedCheckmarkSlot.child, isA<SizedBox>());
     },
   );

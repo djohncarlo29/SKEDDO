@@ -68,6 +68,9 @@ class _ActionPanelSFIcon extends StatelessWidget {
 
 const double _actionPanelCheckmarkBaseSize = 18.0;
 const double _actionPanelCheckmarkOptionGap = 16.0;
+const double _modalPickerCheckmarkBaseSize = 17.0;
+const double _modalPickerLeadingIconGap = 16.0;
+const double _modalPickerIconLabelGap = 16.0;
 const double _glassMenuIconLabelGap = 12.0;
 const double _actionPanelLeadingGlyphBoxPadding = 3.0;
 const double _actionPanelHorizontalInset = 16.0;
@@ -1067,35 +1070,29 @@ List<Widget> _glassMenuItemsForActions(
                 ).withValues(alpha: 0.9)
         : CupertinoDynamicColor.resolve(action.labelColor!, context);
     final textScaler = MediaQuery.textScalerOf(context);
-    final leadingSlotSize = textScaler.scale(kGlassMenuIconSlotBaseSize);
-    final checkmarkSize = textScaler.scale(17);
-    final categoryDotWidth = action.showCategoryDotInPickerMenu ? 14.0 : 0.0;
-    final categoryDotGap = action.showCategoryDotInPickerMenu ? 16.0 : 0.0;
-    final menuIcon = SizedBox(
-      width: leadingSlotSize + categoryDotGap + categoryDotWidth,
-      height: leadingSlotSize,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: leadingSlotSize,
-            height: leadingSlotSize,
-            child: action.checkmark
-                ? Center(
-                    child: Icon(
-                      CupertinoIcons.checkmark,
-                      size: checkmarkSize,
-                      color: checkColor,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          if (action.showCategoryDotInPickerMenu) ...[
-            const SizedBox(width: 16),
-            action.iconBuilder?.call(labelColor) ?? const SizedBox.shrink(),
-          ],
+    // Keep this row tied to the actual rendered checkmark and category dot.
+    // The general 28pt menu slot made the visible checkmark-to-dot gap larger
+    // than the explicit 16pt gap below.
+    final checkmarkSize = textScaler.scale(_modalPickerCheckmarkBaseSize);
+    final menuIcon = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: checkmarkSize,
+          height: checkmarkSize,
+          child: action.checkmark
+              ? Icon(
+                  CupertinoIcons.checkmark,
+                  size: checkmarkSize,
+                  color: checkColor,
+                )
+              : const SizedBox.shrink(),
+        ),
+        if (action.showCategoryDotInPickerMenu) ...[
+          const SizedBox(width: _modalPickerLeadingIconGap),
+          action.iconBuilder?.call(labelColor) ?? const SizedBox.shrink(),
         ],
-      ),
+      ],
     );
 
     items.add(
@@ -1103,8 +1100,8 @@ List<Widget> _glassMenuItemsForActions(
         title: action.label,
         subtitle: action.subtitle,
         icon: menuIcon,
-        iconSize: leadingSlotSize,
-        iconLabelGap: 12,
+        iconSize: checkmarkSize,
+        iconLabelGap: _modalPickerIconLabelGap,
         allowTextWrapping: true,
         // Every option is selectable, so reserve the checkmark slot uniformly
         // and remove the platter's extra inset for all rows, selected or not.
@@ -3151,13 +3148,10 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
       valueListenable: appLiquidGlassOpacityNotifier,
       builder: (context, opacity, _) {
         final sliderPosition = liquidGlassSliderPositionForOpacity(opacity);
-        final sharedSettings = skeddoPopoverGlassSettingsFor(
-          CupertinoTheme.brightnessOf(context),
-          resolveThemeColor(kCardColor, context),
+        final settings = _glassMenuSurfaceSettingsFor(
+          context,
           sliderPosition: sliderPosition,
-        ).copyWith(visibility: progress.clamp(0.0, 1.0).toDouble());
-        final settings = skeddoNavigationGlassSettingsFromShared(
-          sharedSettings,
+          visibility: progress.clamp(0.0, 1.0).toDouble(),
         );
 
         return GlassInteractiveContainer(
@@ -3194,6 +3188,108 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
       },
     );
   }
+}
+
+LiquidGlassSettings _glassMenuSurfaceSettingsFor(
+  BuildContext context, {
+  required double sliderPosition,
+  required double visibility,
+}) {
+  final sharedSettings = skeddoPopoverGlassSettingsFor(
+    CupertinoTheme.brightnessOf(context),
+    resolveThemeColor(kCardColor, context),
+    sliderPosition: sliderPosition,
+  ).copyWith(visibility: visibility);
+  return skeddoNavigationGlassSettingsFromShared(sharedSettings);
+}
+
+/// Adds only the menu's rendered optical rim to a lifted ordinary tile.
+///
+/// The menu and tile share the same package renderer/settings. A narrow contour
+/// clip keeps the tile's normal fill and content untouched while allowing the
+/// same Fresnel/reflection treatment to remain visible around its edge.
+class GlassMenuRimOutline extends StatelessWidget {
+  const GlassMenuRimOutline({
+    super.key,
+    required this.child,
+    required this.radius,
+    required this.outlineShape,
+    this.rimBandWidth = 4,
+  });
+
+  final Widget child;
+  final double radius;
+  final ShapeBorder outlineShape;
+  final double rimBandWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.passthrough,
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ValueListenableBuilder<double>(
+              valueListenable: appLiquidGlassOpacityNotifier,
+              builder: (context, opacity, _) {
+                final settings = _glassMenuSurfaceSettingsFor(
+                  context,
+                  sliderPosition: liquidGlassSliderPositionForOpacity(
+                    opacity,
+                  ),
+                  visibility: 1,
+                );
+                return ClipPath(
+                  clipBehavior: Clip.antiAlias,
+                  clipper: _GlassMenuRimBandClipper(
+                    outlineShape: outlineShape,
+                    bandWidth: rimBandWidth,
+                  ),
+                  child: GlassContainer(
+                    shape: LiquidRoundedSuperellipse(
+                      borderRadius: radius,
+                    ),
+                    settings: settings,
+                    quality: GlassQuality.premium,
+                    useOwnLayer: true,
+                    clipBehavior: Clip.antiAlias,
+                    child: const SizedBox.expand(),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GlassMenuRimBandClipper extends CustomClipper<Path> {
+  const _GlassMenuRimBandClipper({
+    required this.outlineShape,
+    required this.bandWidth,
+  });
+
+  final ShapeBorder outlineShape;
+  final double bandWidth;
+
+  @override
+  Path getClip(Size size) {
+    final rect = Offset.zero & size;
+    final outer = outlineShape.getOuterPath(rect);
+    final innerRect = rect.deflate(bandWidth);
+    if (innerRect.isEmpty) return outer;
+    final inner = outlineShape.getOuterPath(innerRect);
+    return Path.combine(PathOperation.difference, outer, inner);
+  }
+
+  @override
+  bool shouldReclip(covariant _GlassMenuRimBandClipper oldClipper) =>
+      outlineShape != oldClipper.outlineShape ||
+      bandWidth != oldClipper.bandWidth;
 }
 
 // ── Liquid-glass action-panel surface ─────────────────────────────────────────

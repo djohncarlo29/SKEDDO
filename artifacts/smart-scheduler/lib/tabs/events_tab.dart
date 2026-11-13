@@ -100,17 +100,6 @@ void _dismissModalSheetFocus() {
   FocusManager.instance.primaryFocus?.unfocus();
 }
 
-BorderSide _darkModeGhostBorder(
-  BuildContext context, {
-  bool suppress = false,
-}) =>
-    !suppress && CupertinoTheme.brightnessOf(context) == Brightness.dark
-        ? BorderSide(
-          color: resolveThemeColor(kTertiaryLabel, context),
-          width: 0.5,
-        )
-        : BorderSide.none;
-
 // ── Context footer constants ──────────────────────────────────────────────────
 // Two kinds of context footer exist:
 //
@@ -1090,7 +1079,7 @@ class _ContextMenuOverlay extends StatelessWidget {
               child: IgnorePointer(
                 child: Transform.scale(
                   scale: cardScale,
-                  child: _DarkModeGhostOutline(child: previewBuilder(context)),
+                  child: _LiftedTileRimOutline(child: previewBuilder(context)),
                 ),
               ),
             ),
@@ -1124,7 +1113,7 @@ class _ContextMenuOverlay extends StatelessWidget {
                   opacity: cardOpacity,
                   child: Transform.scale(
                     scale: cardScale,
-                    child: _DarkModeGhostOutline(
+                    child: _LiftedTileRimOutline(
                       child: previewBuilder(context),
                     ),
                   ),
@@ -1159,23 +1148,19 @@ class _ContextMenuOverlay extends StatelessWidget {
   }
 }
 
-class _DarkModeGhostOutline extends StatelessWidget {
+class _LiftedTileRimOutline extends StatelessWidget {
   final Widget child;
 
-  const _DarkModeGhostOutline({required this.child});
+  const _LiftedTileRimOutline({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    final border = _darkModeGhostBorder(context);
-    if (border == BorderSide.none) return child;
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        shape: BoundedSquircleStadiumBorder(
-          radius: _kCornerRadius,
-          side: border,
-        ),
-      ),
+    return GlassMenuRimOutline(
       child: child,
+      radius: _kCornerRadius,
+      outlineShape: const BoundedSquircleStadiumBorder(
+        radius: _kCornerRadius,
+      ),
     );
   }
 }
@@ -2744,12 +2729,19 @@ class EventsTabState extends State<EventsTab>
   /// dragged together.  Called when the user releases the drag over a target.
   void _openNewGroupSheet(_UserCategory cat1, _UserCategory cat2) {
     final allSolo = _userCategories.where((c) => !c.archived).toList();
+    final visibleUtilityCategoryIds = {
+      for (final category in allSolo)
+        if (_isSystemUtilityCategory(category) &&
+            _hasSystemUtilityItems(category))
+          category.id,
+    };
     showRoundedCupertinoSheet<void>(
       context: context,
       requestFocus: true,
       pageBuilder:
           (ctx) => _NewGroupSheet(
             allCategories: allSolo,
+            visibleUtilityCategoryIds: visibleUtilityCategoryIds,
             existingGroups: _categoryGroups,
             initialMemberIds: [cat1.id, cat2.id],
             onSave: _createGroup,
@@ -2760,11 +2752,18 @@ class EventsTabState extends State<EventsTab>
   /// Opens the Edit Group modal for an existing group.
   void _editGroupSheet(_CategoryGroup group) {
     final allSolo = _userCategories.where((c) => !c.archived).toList();
+    final visibleUtilityCategoryIds = {
+      for (final category in allSolo)
+        if (_isSystemUtilityCategory(category) &&
+            _hasSystemUtilityItems(category))
+          category.id,
+    };
     showRoundedCupertinoSheet<void>(
       context: context,
       pageBuilder:
           (ctx) => _NewGroupSheet(
             allCategories: allSolo,
+            visibleUtilityCategoryIds: visibleUtilityCategoryIds,
             existingGroups: _categoryGroups,
             initialMemberIds: group.memberIds,
             initial: group,
@@ -5710,10 +5709,6 @@ class EventsTabState extends State<EventsTab>
                   child: _buildPinnedTileGhostCard(
                     cat,
                     shadow,
-                    // A category-row drag has entered the pinned-grid reorder
-                    // path, so the lifted tile must not receive the Dark Mode
-                    // ghost hairline.
-                    suppressDarkModeOutline: true,
                   ),
                 ),
               ),
@@ -5771,7 +5766,6 @@ class EventsTabState extends State<EventsTab>
                           cat,
                           indented: _draggingListGroupId != null,
                           cardWidth: tileWidth,
-                          suppressDarkModeOutline: _listDragCrossingToGrid,
                         )
                         : _buildListDragGroupHeaderGhost(
                           grp!,
@@ -5794,7 +5788,6 @@ class EventsTabState extends State<EventsTab>
     _UserCategory cat, {
     bool indented = false,
     required double cardWidth,
-    bool suppressDarkModeOutline = false,
   }) {
     // Keep the lifted ghost's complete icon unit in lockstep with the settled
     // _CategoryRow.  The row scales its circle from the active OS text scaler;
@@ -5804,37 +5797,35 @@ class EventsTabState extends State<EventsTab>
     // _CategoryRow uses 32 px here versus 16 px for solo categories; applying
     // that inset to the overlay ghost prevents the card from jumping left
     // when the drag begins.
-    return Container(
-      decoration: ShapeDecoration(
-        color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedSquircleStadiumBorder(
-          radius: _kCornerRadius,
-          side: _darkModeGhostBorder(
+    return _LiftedTileRimOutline(
+      child: Container(
+        decoration: ShapeDecoration(
+          color: resolveThemeColor(kSbSurface, context),
+          shape: const BoundedSquircleStadiumBorder(
+            radius: _kCornerRadius,
+          ),
+          shadows: resolveThemeShadows(const [
+            BoxShadow(
+              color: Color(0x3A000000),
+              blurRadius: 18,
+              offset: Offset(0, 6),
+            ),
+          ], context),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: indented ? 32.0 : 16.0,
+            right: 16,
+            top: 16,
+            bottom: 16,
+          ),
+          child: _buildCategoryListRowBody(
             context,
-            suppress: suppressDarkModeOutline,
+            category: cat,
+            liveCount: _liveEventCounts[cat.id] ?? 0,
+            indented: indented,
+            cardWidth: cardWidth,
           ),
-        ),
-        shadows: resolveThemeShadows(const [
-          BoxShadow(
-            color: Color(0x3A000000),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ], context),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: indented ? 32.0 : 16.0,
-          right: 16,
-          top: 16,
-          bottom: 16,
-        ),
-        child: _buildCategoryListRowBody(
-          context,
-          category: cat,
-          liveCount: _liveEventCounts[cat.id] ?? 0,
-          indented: indented,
-          cardWidth: cardWidth,
         ),
       ),
     );
@@ -5849,28 +5840,29 @@ class EventsTabState extends State<EventsTab>
     // Match _GroupRow's scaled icon unit.  The group header participates in
     // the same category list geometry, so its lifted copy must grow with the
     // OS text scale instead of retaining the authored 34 px size.
-    return Container(
-      decoration: ShapeDecoration(
-        color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedSquircleStadiumBorder(
-          radius: _kCornerRadius,
-          side: _darkModeGhostBorder(context),
-        ),
-        shadows: resolveThemeShadows(const [
-          BoxShadow(
-            color: Color(0x3A000000),
-            blurRadius: 18,
-            offset: Offset(0, 6),
+    return _LiftedTileRimOutline(
+      child: Container(
+        decoration: ShapeDecoration(
+          color: resolveThemeColor(kSbSurface, context),
+          shape: const BoundedSquircleStadiumBorder(
+            radius: _kCornerRadius,
           ),
-        ], context),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: _buildGroupListRowBody(
-          context,
-          group: group,
-          isExpanded: isExpanded,
-          cardWidth: cardWidth,
+          shadows: resolveThemeShadows(const [
+            BoxShadow(
+              color: Color(0x3A000000),
+              blurRadius: 18,
+              offset: Offset(0, 6),
+            ),
+          ], context),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: _buildGroupListRowBody(
+            context,
+            group: group,
+            isExpanded: isExpanded,
+            cardWidth: cardWidth,
+          ),
         ),
       ),
     );
@@ -5974,7 +5966,7 @@ class EventsTabState extends State<EventsTab>
             height: tileHeight,
             child: Transform.scale(
               scale: 1.05,
-              child: _buildGridDragGhost(key, suppressDarkModeOutline: true),
+              child: _buildGridDragGhost(key),
             ),
           ),
         ],
@@ -5986,9 +5978,8 @@ class EventsTabState extends State<EventsTab>
   /// dragged.  Uses a single elevation shadow since kCardShadow is on the
   /// in-Stack tile which is now hidden with Opacity(0).
   Widget _buildGridDragGhost(
-    Object key, {
-    bool suppressDarkModeOutline = false,
-  }) {
+    Object key,
+  ) {
     const shadow = BoxShadow(
       color: Color(0x3A000000),
       blurRadius: 18,
@@ -6013,13 +6004,11 @@ class EventsTabState extends State<EventsTab>
         tile,
         color,
         shadow,
-        suppressDarkModeOutline: suppressDarkModeOutline,
       );
     } else if (key is _UserCategory) {
       return _buildPinnedTileGhostCard(
         key,
         shadow,
-        suppressDarkModeOutline: suppressDarkModeOutline,
       );
     }
     return const SizedBox.shrink();
@@ -6028,9 +6017,8 @@ class EventsTabState extends State<EventsTab>
   Widget _buildSmartTileGhostCard(
     _TileData tile,
     Color color,
-    BoxShadow shadow, {
-    bool suppressDarkModeOutline = false,
-  }) {
+    BoxShadow shadow,
+  ) {
     final circleSize = _eventsScaledCategoryIconSize(
       context,
       _kGridTileCircleSize,
@@ -6087,187 +6075,182 @@ class EventsTabState extends State<EventsTab>
       circleContent = Center(child: inner);
     }
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        _kGridTileInset,
-        _kGridTileInset,
-        _kGridTileInset,
-        _kGridTileInset,
-      ),
-      decoration: ShapeDecoration(
-        color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedSquircleStadiumBorder(
-          radius: _kCornerRadius,
-          side: _darkModeGhostBorder(
-            context,
-            suppress: suppressDarkModeOutline,
-          ),
+    return _LiftedTileRimOutline(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          _kGridTileInset,
+          _kGridTileInset,
+          _kGridTileInset,
+          _kGridTileInset,
         ),
-        shadows: resolveThemeShadows([shadow], context),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            child: Container(
-              width: circleSize,
-              height: circleSize,
-              decoration: BoxDecoration(
-                color: renderCategoryColor(color, context),
-                shape: BoxShape.circle,
-              ),
-              child: circleContent,
-            ),
+        decoration: ShapeDecoration(
+          color: resolveThemeColor(kSbSurface, context),
+          shape: const BoundedSquircleStadiumBorder(
+            radius: _kCornerRadius,
           ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: SizedBox(
-              height: circleSize,
-              child: Center(
-                child: Text(
-                  '${tile.count}',
-                  style: TextStyle(
-                    inherit: false,
-                    color: resolveThemeColor(kPrimaryLabel, context),
-                    fontSize: 32,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
+          shadows: resolveThemeShadows([shadow], context),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              child: Container(
+                width: circleSize,
+                height: circleSize,
+                decoration: BoxDecoration(
+                  color: renderCategoryColor(color, context),
+                  shape: BoxShape.circle,
+                ),
+                child: circleContent,
+              ),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SizedBox(
+                height: circleSize,
+                child: Center(
+                  child: Text(
+                    '${tile.count}',
+                    style: TextStyle(
+                      inherit: false,
+                      color: resolveThemeColor(kPrimaryLabel, context),
+                      fontSize: 32,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                    textScaler: MediaQuery.textScalerOf(context),
                   ),
-                  textScaler: MediaQuery.textScalerOf(context),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            // Keep the smart-tile circle/title gap explicit.
-            // Both horizontal bounds are required here because this card is
-            // rendered in the global overlay; without a right bound, the
-            // Positioned Text receives loose width constraints and stays on
-            // one line even though the lifted card has a wrapped height.
-            top: circleSize + _kGridTileTitleGap,
-            left: 0,
-            right: 0,
-            child: Text(
-              tile.label,
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kSecondaryLabel, context),
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w600,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
+            Positioned(
+              // Keep the smart-tile circle/title gap explicit.
+              // Both horizontal bounds are required here because this card is
+              // rendered in the global overlay; without a right bound, the
+              // Positioned Text receives loose width constraints and stays on
+              // one line even though the lifted card has a wrapped height.
+              top: circleSize + _kGridTileTitleGap,
+              left: 0,
+              right: 0,
+              child: Text(
+                tile.label,
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
+                softWrap: true,
               ),
-              softWrap: true,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPinnedTileGhostCard(
     _UserCategory cat,
-    BoxShadow shadow, {
-    bool suppressDarkModeOutline = false,
-  }) {
+    BoxShadow shadow,
+  ) {
     final circleSize = _eventsScaledCategoryIconSize(
       context,
       _kGridTileCircleSize,
     );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        _kGridTileInset,
-        _kGridTileInset,
-        _kGridTileInset,
-        _kGridTileInset,
-      ),
-      decoration: ShapeDecoration(
-        color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedSquircleStadiumBorder(
-          radius: _kCornerRadius,
-          side: _darkModeGhostBorder(
-            context,
-            suppress: suppressDarkModeOutline,
-          ),
+    return _LiftedTileRimOutline(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          _kGridTileInset,
+          _kGridTileInset,
+          _kGridTileInset,
+          _kGridTileInset,
         ),
-        shadows: resolveThemeShadows([shadow], context),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            child: Container(
-              width: circleSize,
-              height: circleSize,
-              decoration: BoxDecoration(
-                color: _userCategoryCircleColor(cat, context),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: _renderCatIcon(
-                  cat.iconOrSvg,
-                  circleSize,
-                  _userCategoryIconColor(cat, context),
-                  containerColor: _userCategoryCircleColor(cat, context),
-                  emojiOffsetY: 1,
-                  ctx: context,
-                ),
-              ),
-            ),
+        decoration: ShapeDecoration(
+          color: resolveThemeColor(kSbSurface, context),
+          shape: const BoundedSquircleStadiumBorder(
+            radius: _kCornerRadius,
           ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: SizedBox(
-              height: circleSize,
-              child: Center(
-                child: Text(
-                  '${_liveEventCounts[cat.id] ?? 0}',
-                  style: TextStyle(
-                    inherit: false,
-                    color: resolveThemeColor(kPrimaryLabel, context),
-                    fontSize: 32,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
+          shadows: resolveThemeShadows([shadow], context),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              child: Container(
+                width: circleSize,
+                height: circleSize,
+                decoration: BoxDecoration(
+                  color: _userCategoryCircleColor(cat, context),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: _renderCatIcon(
+                    cat.iconOrSvg,
+                    circleSize,
+                    _userCategoryIconColor(cat, context),
+                    containerColor: _userCategoryCircleColor(cat, context),
+                    emojiOffsetY: 1,
+                    ctx: context,
                   ),
-                  textScaler: MediaQuery.textScalerOf(context),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            // Keep the circle-to-title relationship explicit: the title
-            // starts exactly 8pt below the circle, with no optical offset.
-            // Keep the overlay title width bounded just like the settled
-            // pinned tile so long names wrap inside the captured card.
-            top: circleSize + _kGridTileTitleGap,
-            left: 0,
-            right: 0,
-            child: Text(
-              cat.name,
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kSecondaryLabel, context),
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w600,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SizedBox(
+                height: circleSize,
+                child: Center(
+                  child: Text(
+                    '${_liveEventCounts[cat.id] ?? 0}',
+                    style: TextStyle(
+                      inherit: false,
+                      color: resolveThemeColor(kPrimaryLabel, context),
+                      fontSize: 32,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                    textScaler: MediaQuery.textScalerOf(context),
+                  ),
+                ),
               ),
-              softWrap: true,
             ),
-          ),
-        ],
+            Positioned(
+              // Keep the circle-to-title relationship explicit: the title
+              // starts exactly 8pt below the circle, with no optical offset.
+              // Keep the overlay title width bounded just like the settled
+              // pinned tile so long names wrap inside the captured card.
+              top: circleSize + _kGridTileTitleGap,
+              left: 0,
+              right: 0,
+              child: Text(
+                cat.name,
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
+                softWrap: true,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -14164,6 +14147,9 @@ class _NewGroupSheet extends StatefulWidget {
   /// All non-pinned, non-archived categories available for grouping.
   final List<_UserCategory> allCategories;
 
+  /// System utility categories currently shown in the Events Tab.
+  final Set<String> visibleUtilityCategoryIds;
+
   /// All existing groups — used to gray out cats already in another group.
   final List<_CategoryGroup> existingGroups;
 
@@ -14178,6 +14164,7 @@ class _NewGroupSheet extends StatefulWidget {
 
   const _NewGroupSheet({
     required this.allCategories,
+    required this.visibleUtilityCategoryIds,
     required this.existingGroups,
     required this.initialMemberIds,
     required this.onSave,
@@ -14299,7 +14286,12 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
 
   List<ActionItem> _includePickerItems() {
     final String? editingGroupId = widget.initial?.id;
-    return widget.allCategories.map((cat) {
+    final includeCategories = widget.allCategories.where(
+      (category) =>
+          !_isSystemUtilityCategory(category) ||
+          widget.visibleUtilityCategoryIds.contains(category.id),
+    );
+    return includeCategories.map((cat) {
           // Is this cat locked inside another group that we're not editing?
           final lockedInOther = widget.existingGroups.any(
             (g) => g.id != editingGroupId && g.memberIds.contains(cat.id),
@@ -19176,7 +19168,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
     Animation<double> animation,
   ) {
     // Match the event-tile reorder ghost: lift the complete standalone card,
-    // including its larger shadow and dark-mode hairline.  The only
+    // including its larger shadow and shared Light/Dark rim. The only
     // intentional difference is the Edit Sections card surface colour.
     final shadows = resolveThemeShadows(const [
       BoxShadow(color: Color(0x3A000000), blurRadius: 18, offset: Offset(0, 6)),
@@ -19185,7 +19177,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
     final originalIndex = _sectionOrder[safeIndex];
     return Transform.scale(
       scale: 1.05,
-      child: _DarkModeGhostOutline(
+      child: _LiftedTileRimOutline(
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
@@ -21099,7 +21091,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             child: IgnorePointer(
               child: Transform.scale(
                 scale: 1.05,
-                child: _DarkModeGhostOutline(
+                child: _LiftedTileRimOutline(
                   child: _ScheduledEventCard(
                     event: ghostEvent,
                     dotColor: _resolveEventDotColor(ctx, ghostEvent),

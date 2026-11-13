@@ -38,6 +38,17 @@ description: Data model, state vars, rendering pipeline, and persistence for the
 
 Title field + "Include" picker using `ActionMenuOverlay`. Min 2 categories checked to enable Save. Multi-select: tapping a checked item with count ≤ 2 is silently ignored. `_ModalCircleButton.onTap` is non-nullable — pass `() {}` no-op instead of `null` when disabled.
 
+The Include picker lists Archived Items and Recently Deleted only while the
+corresponding utility has content and is visible in the Events Tab. Use the
+same utility-content predicate as the tab; do not offer empty utility rows.
+
+**Why:** Group options should reflect categories users can currently reach in
+the Events Tab, rather than exposing empty navigation entries.
+
+**How to apply:** Pass the currently visible utility IDs into the group sheet
+and filter only utility entries from Include options. Keep ordinary categories
+and persisted group membership behavior unchanged.
+
 ## Persistence / migration
 
 - `_saveCategories` → writes `_categoryGroups` (JSON) and `_listTopOrder` (strings) to prefs.

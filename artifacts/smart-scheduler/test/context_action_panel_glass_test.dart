@@ -10,11 +10,47 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMenuItem,
         GlassQuality;
 import 'package:smart_scheduler/app_theme.dart'
-    show kPrimaryLabel, resolveThemeColor;
+    show BoundedSquircleStadiumBorder, kPrimaryLabel, resolveThemeColor;
 import 'package:smart_scheduler/widgets/action_panel.dart'
-    show ActionItem, ActionPanel, ActionPanelGlideController;
+    show
+        ActionItem,
+        ActionPanel,
+        ActionPanelGlideController,
+        GlassMenuRimOutline;
 
 void main() {
+  testWidgets('lifted tile rim uses the context menu glass treatment', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 220,
+            height: 76,
+            child: GlassMenuRimOutline(
+              radius: 24,
+              outlineShape: const BoundedSquircleStadiumBorder(radius: 24),
+              child: const ColoredBox(
+                color: CupertinoColors.systemGrey,
+                child: SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final surface = tester.widget<GlassContainer>(find.byType(GlassContainer));
+    expect(surface.quality, GlassQuality.premium);
+    expect(surface.settings!.thickness, 30);
+    expect(surface.settings!.refractiveIndex, 1.59);
+    expect(surface.settings!.chromaticAberration, 0.3);
+    expect(surface.settings!.visibility, 1);
+    expect(find.byType(ClipPath), findsWidgets);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets(
       'context action panel resolves GlassMenu labels in $brightness',

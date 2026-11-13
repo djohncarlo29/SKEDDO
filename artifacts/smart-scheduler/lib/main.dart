@@ -1974,7 +1974,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
     final checkmarkSize = textScaler.scale(17);
-    final gap = textScaler.scale(16);
+    const gap = 16.0; // Layout spacing stays fixed while both glyphs scale.
     final modeIconSize = textScaler.scale(24);
     final slotSize = _calendarModeLeadingIconSlotSize();
     return SizedBox(
@@ -2018,7 +2018,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   Size _calendarModeLeadingIconSlotSize() {
     final textScaler = MediaQuery.textScalerOf(context);
     return Size(
-      textScaler.scale(17) + textScaler.scale(16) + textScaler.scale(24),
+      // Measure the icon group from its two actual glyph slots and the fixed
+      // gap between them; do not reserve a wider generic menu icon box.
+      textScaler.scale(17) + 16.0 + textScaler.scale(24),
       textScaler.scale(24),
     );
   }
@@ -2066,6 +2068,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget? icon,
     bool scaleIconContent = true,
     bool reserveIconSlot = true,
+    bool scaleIconLabelGap = true,
     double iconSlotBaseSize = kGlassMenuIconSlotBaseSize,
     Size? iconSlotSizeOverride,
     double? iconSizeOverride,
@@ -2130,7 +2133,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             )
           : null,
       iconSize: iconSizeOverride ?? iconSlotSize,
-      iconLabelGap: textScaler.scale(iconLabelGap),
+      iconLabelGap: scaleIconLabelGap
+          ? textScaler.scale(iconLabelGap)
+          : iconLabelGap,
       trailing: trailing,
       trailingWidth: trailing == null && trailingBuilder == null
           ? null
@@ -2171,6 +2176,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == CalendarViewMode.compact ? accent : labelColor,
         onTap: () => select(CalendarViewMode.compact),
       ),
@@ -2187,6 +2194,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == CalendarViewMode.stacked ? accent : labelColor,
         onTap: () => select(CalendarViewMode.stacked),
       ),
@@ -2203,6 +2212,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == CalendarViewMode.details ? accent : labelColor,
         onTap: () => select(CalendarViewMode.details),
       ),
@@ -2220,6 +2231,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == CalendarViewMode.list ? accent : labelColor,
         onTap: () => select(CalendarViewMode.list),
       ),
@@ -2266,6 +2279,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == DayViewSubMode.singleDay ? accent : labelColor,
         onTap: () => select(DayViewSubMode.singleDay),
       ),
@@ -2282,6 +2297,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == DayViewSubMode.multiDay ? accent : labelColor,
         onTap: () => select(DayViewSubMode.multiDay),
       ),
@@ -2299,6 +2316,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         scaleIconContent: false,
         iconSlotSizeOverride: modeIconSlotSize,
         iconSizeOverride: modeIconSlotSize.height,
+        iconLabelGap: 16,
+        scaleIconLabelGap: false,
         labelColor: current == DayViewSubMode.list ? accent : labelColor,
         onTap: () => select(DayViewSubMode.list),
       ),

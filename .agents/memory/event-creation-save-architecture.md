@@ -57,3 +57,11 @@ Unscheduled toggle → `date`/`time`/`endDate`/`endTime` all null → event natu
 `_categoryId == 'uncategorized'` → normalised to `'sys-uncategorized'` on save.
 `travelTime/travelMode == 'None'` → saved as null.
 `repeat == 'Never'` → saved as null (no repeat fields emitted).
+
+
+## Default duration and edit scope
+The saved Default Event Duration applies only when creating a new timed event. Editing an existing event must preserve its stored Starts/Ends and derive any later start-time adjustment from that event's saved interval. Ends remains manually editable, with a five-minute minimum after Starts.
+
+**Why:** A preference for future events must not rewrite the user's already-saved schedule when they open an event to edit it.
+
+**How to apply:** Read the global duration only for a new-event initializer; on edit, seed the duration from the saved event interval. Apply the same minimum in every Ends picker path.

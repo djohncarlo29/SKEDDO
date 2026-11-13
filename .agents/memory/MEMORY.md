@@ -42,7 +42,7 @@
 - [Bounded squircle geometry](bounded-squircle-geometry.md) — constrain shared-radius paths to each card’s actual rect; Flutter’s individual clamp leaves seams on short cards.
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
-- [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
+- [Lifted tile rim outlines](dark-mode-ghost-and-sheet-outlines.md) — context and reorder ghosts use the same clipped shader rim as long-press menus, not a fixed stroke.
 - [Modal toolbar package glass](light-mode-checkmark-glass.md) — use GlassIconButton with shared tab-bar optics, action-tinted checks, and disabled confirmation state.
 - [Shared Liquid Glass controls](static-liquid-glass-action-buttons.md) — shared glass settings follow the slider; search fill stays opaque while a hidden shape proxy preserves cancel-button blending.
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
