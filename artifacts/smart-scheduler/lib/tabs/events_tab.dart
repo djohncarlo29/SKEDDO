@@ -46,6 +46,7 @@ import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/trailing_checkmark_slot.dart';
+import '../widgets/skeddo_glass_settings.dart';
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -6433,20 +6434,12 @@ class EventsTabState extends State<EventsTab>
             : 'This category has no events. Only $scope will be archived and '
                 'hidden from the active list.';
     final categoryName = _categoryDisplayName(category.name);
-    final result =
-        await (isDelete
-            ? showDeleteConfirmationSheet(
-              context,
-              title: '$actionVerb the category "$categoryName"?',
-              subtitle: subtitle,
-              actionLabel: '$actionVerb Category',
-            )
-            : showArchiveConfirmationSheet(
-              context,
-              title: '$actionVerb the category "$categoryName"?',
-              subtitle: subtitle,
-              actionLabel: '$actionVerb Category',
-            ));
+    final result = await _showCategoryLifecycleConfirmationDialog(
+      context,
+      title: '$actionVerb the category "$categoryName"?',
+      message: subtitle,
+      actionLabel: '$actionVerb Category',
+    );
     return result == true;
   }
 
@@ -6501,10 +6494,10 @@ class EventsTabState extends State<EventsTab>
                 'events will be affected.';
     return showTwoStepConfirmationSheet(
       firstStep:
-          () => showDeleteConfirmationSheet(
+          () => _showCategoryLifecycleConfirmationDialog(
             context,
             title: '$actionVerb the smart category "$displayName"?',
-            subtitle:
+            message:
                 isDelete
                     ? 'This only changes the saved Smart Category rule. '
                         '$matchingEventsSubtitle'
@@ -6514,10 +6507,10 @@ class EventsTabState extends State<EventsTab>
                 isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
           ),
       secondStep:
-          () => showDeleteConfirmationSheet(
+          () => _showCategoryLifecycleConfirmationDialog(
             context,
             title: 'Are you sure?',
-            subtitle:
+            message:
                 isDelete
                     ? 'The Smart Category rule will move to Recently Deleted. '
                         '$matchingEventsSubtitle'
@@ -6568,20 +6561,12 @@ class EventsTabState extends State<EventsTab>
         withContents
             ? '$actionVerb Category & Contents'
             : '$actionVerb Category Only';
-    final result =
-        await (isDelete
-            ? showDeleteConfirmationSheet(
-              context,
-              title: 'Are you sure?',
-              subtitle: subtitle,
-              actionLabel: actionLabel,
-            )
-            : showArchiveConfirmationSheet(
-              context,
-              title: 'Are you sure?',
-              subtitle: subtitle,
-              actionLabel: actionLabel,
-            ));
+    final result = await _showCategoryLifecycleConfirmationDialog(
+      context,
+      title: 'Are you sure?',
+      message: subtitle,
+      actionLabel: actionLabel,
+    );
     return result == true;
   }
 
@@ -12558,207 +12543,88 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
 
 enum _ArchiveCategoryChoice { withContents, categoryOnly }
 
+Future<T?> _showCategoryLifecycleGlassDialog<T>(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required List<GlassDialogAction> Function(BuildContext dialogContext)
+  actionsBuilder,
+}) {
+  final sharedSettings = skeddoModalSheetPickerGlassSettingsFor(
+    CupertinoTheme.brightnessOf(context),
+  );
+  final dialogSettings = skeddoNavigationGlassSettingsFromShared(
+    sharedSettings,
+  );
+  return showSafeCupertinoDialog<T>(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: const Color(0x44000000),
+    builder: (dialogContext) => GlassDialog(
+      title: title,
+      message: message,
+      actions: actionsBuilder(dialogContext),
+      settings: dialogSettings,
+      quality: GlassQuality.premium,
+    ),
+  );
+}
+
+Future<bool?> _showCategoryLifecycleConfirmationDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String actionLabel,
+}) {
+  return _showCategoryLifecycleGlassDialog<bool>(
+    context,
+    title: title,
+    message: message,
+    actionsBuilder: (dialogContext) => [
+      GlassDialogAction(
+        label: 'Cancel',
+        onPressed: () => Navigator.of(dialogContext).pop(false),
+      ),
+      GlassDialogAction(
+        label: actionLabel,
+        isDestructive: true,
+        onPressed: () => Navigator.of(dialogContext).pop(true),
+      ),
+    ],
+  );
+}
+
 /// Lets the user decide whether a category's contents should remain together
-/// before the category is archived.
+/// before the category is archived or deleted.
 class _ArchiveCategorySheet {
   static Future<_ArchiveCategoryChoice?> show(
     BuildContext context, {
     required String categoryName,
     required String subtitle,
     String actionVerb = 'Archive',
-  }) async {
-    final completer = Completer<_ArchiveCategoryChoice?>();
-    late final OverlayEntry entry;
-    final overlay = Overlay.of(context, rootOverlay: true);
-
-    void close(_ArchiveCategoryChoice? result) {
-      if (completer.isCompleted) return;
-      entry.remove();
-      completer.complete(result);
-    }
-
-    entry = OverlayEntry(
-      builder:
-          (_) => _ArchiveCategorySheetOverlay(
-            categoryName: categoryName,
-            subtitle: subtitle,
-            actionVerb: actionVerb,
-            onResult: close,
-          ),
-    );
-    overlay.insert(entry);
-    return completer.future;
-  }
-}
-
-class _ArchiveCategorySheetOverlay extends StatelessWidget {
-  final String categoryName;
-  final String subtitle;
-  final String actionVerb;
-  final void Function(_ArchiveCategoryChoice?) onResult;
-
-  const _ArchiveCategorySheetOverlay({
-    required this.categoryName,
-    required this.subtitle,
-    required this.actionVerb,
-    required this.onResult,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLandscapeInset =
-        AppWindowContentScope.of(context).horizontalInset > 0.0;
-    final primary = resolveThemeColor(kPrimaryLabel, context);
-    final secondary = resolveThemeColor(kSecondaryLabel, context);
-    final horizontalInset =
-        AppWindowContentScope.of(context).horizontalInset + 16;
-    final buttonDecor = ShapeDecoration(
-      color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(
-        radius: kConfirmationButtonCornerRadius,
-      ),
-      shadows: resolveThemeShadows(kCardShadow, context),
-    );
-    final sheetBorder =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? BorderSide(
-              color: resolveThemeColor(kTertiaryLabel, context),
-              width: 0.5,
-            )
-            : null;
-    Widget button({
-      required String label,
-      required Color labelColor,
-      required VoidCallback onTap,
-    }) {
-      return GelBloomButton(
-        peakScale: 1.06,
-        tapDelay: const Duration(milliseconds: 120),
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          decoration: buttonDecor,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-          child: Center(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                color: labelColor,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
-              ),
-            ),
-          ),
+  }) {
+    return _showCategoryLifecycleGlassDialog<_ArchiveCategoryChoice>(
+      context,
+      title: '$actionVerb the category "$categoryName"?',
+      message: subtitle,
+      actionsBuilder: (dialogContext) => [
+        GlassDialogAction(
+          label: '$actionVerb Category Only',
+          onPressed: () => Navigator.of(
+            dialogContext,
+          ).pop(_ArchiveCategoryChoice.categoryOnly),
         ),
-      );
-    }
-
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onResult(null),
-          child: const ColoredBox(
-            color: Color(0x44000000),
-            child: SizedBox.expand(),
-          ),
+        GlassDialogAction(
+          label: '$actionVerb Category & Contents',
+          isDestructive: true,
+          onPressed: () => Navigator.of(
+            dialogContext,
+          ).pop(_ArchiveCategoryChoice.withContents),
         ),
-        Align(
-          alignment: Alignment.center,
-          child: SafeArea(
-            left: !hasLandscapeInset,
-            right: !hasLandscapeInset,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalInset,
-                vertical: 16,
-              ),
-              child: GelBloomCard(
-                scaleOrigin: Alignment.center,
-                fillOpacity: 0.82,
-                shadowOpacity: 0.26,
-                border: sheetBorder,
-                shape: BoundedSquircleStadiumBorder(
-                  radius: kConfirmationSheetCornerRadius,
-                  side: sheetBorder ?? BorderSide.none,
-                ),
-                child: ActionPanelScrollView(
-                  maxHeight: MediaQuery.sizeOf(context).height,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    child: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                       children: [
-                      Text(
-                        '$actionVerb the category "$categoryName"?',
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 18,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w600,
-                          color: primary,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 15,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          color: secondary,
-                          height: 1.5,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      button(
-                        label: actionVerb == 'Delete'
-                            ? 'Delete Category Only'
-                            : 'Archive Category Only',
-                        labelColor: primary,
-                        onTap:
-                            () => onResult(
-                              actionVerb == 'Delete'
-                                  ? _ArchiveCategoryChoice.categoryOnly
-                                  : _ArchiveCategoryChoice.categoryOnly,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      button(
-                        label: actionVerb == 'Delete'
-                            ? 'Delete Category & Contents'
-                            : 'Archive Category & Contents',
-                        labelColor: CupertinoColors.destructiveRed,
-                        onTap:
-                            () => onResult(
-                              actionVerb == 'Delete'
-                                  ? _ArchiveCategoryChoice.withContents
-                                  : _ArchiveCategoryChoice.withContents,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      button(
-                        label: 'Cancel',
-                        labelColor: primary,
-                        onTap: () => onResult(null),
-                      ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+        GlassDialogAction(
+          label: 'Cancel',
+          onPressed: () => Navigator.of(dialogContext).pop(),
+        ),
       ],
     );
   }

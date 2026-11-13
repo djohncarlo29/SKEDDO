@@ -225,14 +225,17 @@ Future<T?> showSafeCupertinoModalPopup<T>({
 Future<T?> showSafeCupertinoDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
+  bool barrierDismissible = false,
+  Color? barrierColor,
 }) {
-  return AppShellNavigationScope.rootNavigatorOf(context).push<T>(
-    CupertinoDialogRoute<T>(
-      context: context,
-      builder: (dialogContext) => _SafePopupRouteSurface(
-        safeBottom: systemSafeAreaBottomInset(dialogContext),
-        child: builder(dialogContext),
-      ),
+  return showCupertinoDialog<T>(
+    context: context,
+    useRootNavigator: true,
+    barrierDismissible: barrierDismissible,
+    barrierColor: barrierColor,
+    builder: (dialogContext) => _SafePopupRouteSurface(
+      safeBottom: systemSafeAreaBottomInset(dialogContext),
+      child: builder(dialogContext),
     ),
   );
 }
