@@ -1424,6 +1424,12 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                           GlassMorphContentMotion.contentPeakBlurSigma)
                       .clamp(0.0, 1.0)
                       .toDouble(),
+              thicknessStrength: isTop
+                  ? GlassMorphContentMotion.thicknessStrengthForPhase(
+                      contentMotionProgress,
+                    )
+                  : 0.0,
+              refractiveIndexActive: isTop && _contentMorph.isAnimating,
               thickness: GlassMenuContentLens.foregroundThickness,
               refractiveIndex:
                   GlassMenuContentLens.foregroundRefractiveIndex,
@@ -2081,7 +2087,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       ),
       clampedValue,
     );
-
     final effectiveQuality = GlassThemeHelpers.resolveQuality(
       context,
       widgetQuality: widget.quality,
@@ -2492,6 +2497,10 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       clampedValue,
     );
 
+    final contentMotionProgress = GlassMorphContentMotion.phaseProgress(
+      progress: clampedValue,
+      isClosing: _morphController.isClosing,
+    );
     final glassContent = LiquidStretch(
       stretch: widget.stretch,
       interactionScale: widget.interactionScale,
@@ -2526,9 +2535,17 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           progress: clampedValue,
           size: Size(currentWidth, currentHeight),
           cornerRadius: currentRadius,
+          thicknessStrength:
+              GlassMorphContentMotion.thicknessStrengthForPhase(
+                contentMotionProgress,
+              ),
+          refractiveIndexActive:
+              _morphController.isClosing
+                  ? _morphController.status != AnimationStatus.dismissed
+                  : _morphController.status != AnimationStatus.completed,
           effectStrength:
-              (GlassMorphContentMotion.blurSigma(
-                        progress: clampedValue,
+              (GlassMorphContentMotion.blurSigmaForPhase(
+                        contentMotionProgress,
                         isClosing: _morphController.isClosing,
                       ) /
                       GlassMorphContentMotion.contentPeakBlurSigma)

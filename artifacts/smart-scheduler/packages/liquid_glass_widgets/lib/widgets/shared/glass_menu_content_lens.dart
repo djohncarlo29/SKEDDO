@@ -15,7 +15,7 @@ class GlassMenuContentLens extends StatefulWidget {
   static const double foregroundThickness = 30.0;
 
   /// Refractive index for the foreground edge response.
-  static const double foregroundRefractiveIndex = 1.30;
+  static const double foregroundRefractiveIndex = 1.45;
 
   /// Channel separation strength for the foreground edge response.
   static const double foregroundChromaticAberration = 0.06;
@@ -30,6 +30,8 @@ class GlassMenuContentLens extends StatefulWidget {
     required this.refractiveIndex,
     required this.chromaticAberration,
     this.effectStrength,
+    this.thicknessStrength,
+    this.refractiveIndexActive,
     super.key,
   });
 
@@ -54,11 +56,19 @@ class GlassMenuContentLens extends StatefulWidget {
   /// Chromatic separation applied to the child edge.
   final double chromaticAberration;
 
-  /// Optional normalized strength from the shared content-blur curve.
+  /// Optional normalized color-separation strength from the content-blur
+  /// curve.
   ///
-  /// Zero is neutral and one applies the configured peak optics. When omitted,
-  /// the original symmetric progress envelope is retained.
+  /// When omitted, the original symmetric progress envelope is retained.
   final double? effectStrength;
+
+  /// Optional thickness strength, independent of the chromatic-aberration
+  /// curve.
+  final double? thicknessStrength;
+
+  /// Whether the morph is active. Refraction stays at its peak while active,
+  /// then returns to the neutral refractive index of 1.0.
+  final bool? refractiveIndexActive;
 
   /// Clamped normalized strength applied to the foreground lens.
   double get normalizedEffectStrength =>
@@ -66,12 +76,19 @@ class GlassMenuContentLens extends StatefulWidget {
           .clamp(0.0, 1.0)
           .toDouble();
 
-  /// Thickness remaining after applying the current strength curve.
-  double get effectiveThickness => thickness * normalizedEffectStrength;
+  /// Thickness remaining after applying the thickness-specific curve.
+  double get effectiveThickness {
+    final strength = (thicknessStrength ?? normalizedEffectStrength)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    return thickness * strength;
+  }
 
-  /// Effective foreground refractive index, returning 1.0 at rest.
+  /// Effective foreground refractive index, held at peak during the morph.
   double get effectiveRefractiveIndex =>
-      1.0 + (refractiveIndex - 1.0) * normalizedEffectStrength;
+      (refractiveIndexActive ?? normalizedEffectStrength > 0.001)
+          ? refractiveIndex
+          : 1.0;
 
   /// Effective color separation, returning zero at rest.
   double get effectiveChromaticAberration =>
@@ -131,12 +148,15 @@ class _GlassMenuContentLensState extends State<GlassMenuContentLens> {
   Widget build(BuildContext context) {
     final shader = _shader;
     final shortSide = math.min(widget.size.width, widget.size.height);
-    final intensity = widget.normalizedEffectStrength;
     final effectiveThickness = widget.effectiveThickness;
+    final effectiveRefractiveIndex = widget.effectiveRefractiveIndex;
+    final effectiveChromaticAberration =
+        widget.effectiveChromaticAberration.clamp(0.0, 1.0).toDouble();
     if (shader == null ||
         shortSide <= 0 ||
-        intensity <= 0.001 ||
         effectiveThickness <= 0.001 ||
+        (effectiveRefractiveIndex <= 1.0 &&
+            effectiveChromaticAberration <= 0.001) ||
         !ui.ImageFilter.isShaderFilterSupported) {
       return widget.child;
     }
@@ -146,8 +166,8 @@ class _GlassMenuContentLensState extends State<GlassMenuContentLens> {
       // strength a second time through the shader's contact multiplier.
       ..setFloat(2, 1.0)
       ..setFloat(3, effectiveThickness / shortSide)
-      ..setFloat(4, widget.effectiveRefractiveIndex)
-      ..setFloat(5, widget.effectiveChromaticAberration.clamp(0.0, 1.0))
+      ..setFloat(4, effectiveRefractiveIndex)
+      ..setFloat(5, effectiveChromaticAberration)
       ..setFloat(6, (widget.cornerRadius / shortSide).clamp(0.0, 0.5));
 
     return ImageFiltered(

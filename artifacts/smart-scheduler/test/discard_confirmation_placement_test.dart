@@ -343,10 +343,11 @@ void main() {
       find.byType(GlassPopoverContentLens),
     );
     expect(foregroundLens.thickness, 30);
-    expect(foregroundLens.refractiveIndex, 1.30);
+    expect(foregroundLens.refractiveIndex, 1.45);
     expect(foregroundLens.chromaticAberration, 0.06);
     expect(foregroundLens.normalizedEffectStrength, 0);
     expect(foregroundLens.effectiveThickness, 0);
+    expect(foregroundLens.refractiveIndexActive, isFalse);
     expect(foregroundLens.effectiveRefractiveIndex, 1);
     expect(foregroundLens.effectiveChromaticAberration, 0);
     final morphLayerFinder = find.byType(LiquidGlassLayer);

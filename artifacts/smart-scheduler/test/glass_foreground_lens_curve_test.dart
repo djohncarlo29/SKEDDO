@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/widgets/shared/glass_popover_content_lens.dart'
     show GlassPopoverContentLens;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassMorphContentMotion;
 import 'package:liquid_glass_widgets/widgets/shared/glass_menu_content_lens.dart'
     show GlassMenuContentLens;
 
@@ -11,17 +13,14 @@ void main() {
     required double normalizedStrength,
     required double thickness,
     required double effectiveThickness,
-    required double refractiveIndex,
+    required bool refractiveIndexActive,
     required double effectiveRefractiveIndex,
     required double chromaticAberration,
     required double effectiveChromaticAberration,
   }) {
     expect(normalizedStrength, strength);
     expect(effectiveThickness, closeTo(thickness * strength, 0.0001));
-    expect(
-      effectiveRefractiveIndex,
-      closeTo(1.0 + (refractiveIndex - 1.0) * strength, 0.0001),
-    );
+    expect(effectiveRefractiveIndex, refractiveIndexActive ? 1.45 : 1.0);
     expect(
       effectiveChromaticAberration,
       closeTo(chromaticAberration * strength, 0.0001),
@@ -39,6 +38,8 @@ void main() {
         chromaticAberration:
             GlassMenuContentLens.foregroundChromaticAberration,
         effectStrength: strength,
+        thicknessStrength: strength,
+        refractiveIndexActive: strength > 0,
         child: const SizedBox(),
       );
       final popoverLens = GlassPopoverContentLens(
@@ -50,6 +51,8 @@ void main() {
         chromaticAberration:
             GlassPopoverContentLens.foregroundChromaticAberration,
         effectStrength: strength,
+        thicknessStrength: strength,
+        refractiveIndexActive: strength > 0,
         child: const SizedBox(),
       );
 
@@ -58,7 +61,7 @@ void main() {
         normalizedStrength: menuLens.normalizedEffectStrength,
         thickness: menuLens.thickness,
         effectiveThickness: menuLens.effectiveThickness,
-        refractiveIndex: menuLens.refractiveIndex,
+        refractiveIndexActive: menuLens.refractiveIndexActive!,
         effectiveRefractiveIndex: menuLens.effectiveRefractiveIndex,
         chromaticAberration: menuLens.chromaticAberration,
         effectiveChromaticAberration: menuLens.effectiveChromaticAberration,
@@ -68,7 +71,7 @@ void main() {
         normalizedStrength: popoverLens.normalizedEffectStrength,
         thickness: popoverLens.thickness,
         effectiveThickness: popoverLens.effectiveThickness,
-        refractiveIndex: popoverLens.refractiveIndex,
+        refractiveIndexActive: popoverLens.refractiveIndexActive!,
         effectiveRefractiveIndex: popoverLens.effectiveRefractiveIndex,
         chromaticAberration: popoverLens.chromaticAberration,
         effectiveChromaticAberration:
@@ -86,6 +89,35 @@ void main() {
     }
   });
 
+  test('thickness stays full until the final 15 percent of either morph', () {
+    for (final phase in [0.0, 0.5, 0.85]) {
+      expect(
+        GlassMorphContentMotion.thicknessStrengthForPhase(phase),
+        1.0,
+      );
+      expect(
+        GlassPopoverContentLens.thicknessStrengthForPhase(phase),
+        1.0,
+      );
+    }
+    for (final phase in [0.925, 1.0]) {
+      final menuStrength =
+          GlassMorphContentMotion.thicknessStrengthForPhase(phase);
+      final popoverStrength =
+          GlassPopoverContentLens.thicknessStrengthForPhase(phase);
+      expect(menuStrength, closeTo(popoverStrength, 0.0001));
+      expect(menuStrength, lessThan(1.0));
+    }
+    expect(
+      GlassMorphContentMotion.thicknessStrengthForPhase(1.0),
+      0.0,
+    );
+    expect(
+      GlassPopoverContentLens.thicknessStrengthForPhase(1.0),
+      0.0,
+    );
+  });
+
   test('settled foreground lenses have no thickness, refraction, or color split', () {
     final menuLens = GlassMenuContentLens(
       progress: 1,
@@ -96,6 +128,8 @@ void main() {
       chromaticAberration:
           GlassMenuContentLens.foregroundChromaticAberration,
       effectStrength: 0,
+      thicknessStrength: 0,
+      refractiveIndexActive: false,
       child: const SizedBox(),
     );
     final popoverLens = GlassPopoverContentLens(
@@ -107,6 +141,8 @@ void main() {
       chromaticAberration:
           GlassPopoverContentLens.foregroundChromaticAberration,
       effectStrength: 0,
+      thicknessStrength: 0,
+      refractiveIndexActive: false,
       child: const SizedBox(),
     );
 
