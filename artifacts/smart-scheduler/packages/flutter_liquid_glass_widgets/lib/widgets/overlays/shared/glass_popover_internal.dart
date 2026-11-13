@@ -854,17 +854,6 @@ class _GlassPopoverState extends State<GlassPopover>
                 effectStrength: (1.0 - clampedValue)
                     .clamp(0.0, 1.0)
                     .toDouble(),
-                thicknessStrength:
-                    GlassPopoverContentLens.thicknessStrengthForPhase(
-                      _morphController.isClosing
-                          ? 1.0 - clampedValue
-                          : clampedValue,
-                    ),
-                refractiveIndexActive:
-                    _morphController.isClosing
-                        ? _morphController.status != AnimationStatus.dismissed
-                        : _morphController.status !=
-                              AnimationStatus.completed,
                 // Keep the content-only transition lens independent of
                 // the popover surface's stronger toolbar-matched optics.
                 thickness: GlassPopoverContentLens.foregroundThickness,

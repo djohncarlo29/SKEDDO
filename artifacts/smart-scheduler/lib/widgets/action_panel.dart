@@ -2256,11 +2256,6 @@ class _ActionPanelState extends State<ActionPanel>
                                 GlassMorphContentMotion.contentPeakBlurSigma)
                             .clamp(0.0, 1.0)
                             .toDouble(),
-                    foregroundThicknessStrength:
-                        GlassMorphContentMotion.thicknessStrengthForPhase(
-                          contentPhase,
-                        ),
-                    foregroundRefractionActive: _ctrl.isAnimating,
                     child: glassMenuStyleContent,
                   ),
                 ),
@@ -3119,16 +3114,12 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
     required this.progress,
     required this.surfaceSize,
     required this.foregroundEffectStrength,
-    required this.foregroundThicknessStrength,
-    required this.foregroundRefractionActive,
     required this.child,
   });
 
   final double progress;
   final Size surfaceSize;
   final double foregroundEffectStrength;
-  final double foregroundThicknessStrength;
-  final bool foregroundRefractionActive;
   final Widget child;
 
   @override
@@ -3166,8 +3157,6 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
             size: surfaceSize,
             cornerRadius: 32,
             effectStrength: foregroundEffectStrength,
-            thicknessStrength: foregroundThicknessStrength,
-            refractiveIndexActive: foregroundRefractionActive,
             thickness: GlassMenuContentLens.foregroundThickness,
             refractiveIndex:
                 GlassMenuContentLens.foregroundRefractiveIndex,

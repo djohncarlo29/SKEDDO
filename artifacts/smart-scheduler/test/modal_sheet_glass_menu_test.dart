@@ -238,19 +238,8 @@ void main() {
       find.byType(GlassMenuContentLens),
     );
     expect(foregroundLens.thickness, 30);
-    expect(foregroundLens.refractiveIndex, 1.45);
+    expect(foregroundLens.refractiveIndex, 1.30);
     expect(foregroundLens.chromaticAberration, 0.06);
-    expect(foregroundLens.effectiveRefractiveIndex, 1.45);
-    expect(foregroundLens.refractiveIndexActive, isTrue);
-    expect(
-      foregroundLens.thicknessStrength,
-      closeTo(
-        GlassMorphContentMotion.thicknessStrengthForPhase(
-          foregroundLens.progress,
-        ),
-        0.001,
-      ),
-    );
     expect(
       foregroundLens.normalizedEffectStrength,
       closeTo(

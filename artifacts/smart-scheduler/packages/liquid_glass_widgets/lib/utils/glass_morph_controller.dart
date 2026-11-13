@@ -53,9 +53,6 @@ class GlassMorphContentMotion {
   /// Maximum Gaussian blur applied to menu content at the start of a morph.
   static const double contentPeakBlurSigma = 4.0;
 
-  /// Thickness remains at its peak through most of the morph, then tapers out.
-  static const double contentThicknessFadeStart = 0.85;
-
   /// Fraction of the transition used for the content fade at either end.
   static const double contentFadeFraction = 0.15;
 
@@ -137,18 +134,6 @@ class GlassMorphContentMotion {
   }) {
     final t = phase.clamp(0.0, 1.0).toDouble();
     return contentPeakBlurSigma * (isClosing ? t : 1.0 - t);
-  }
-
-  /// Keeps foreground glass thickness full until the final 15% of a morph.
-  ///
-  /// [phase] always advances from zero to one in animation order, including
-  /// when a closing morph is reversing the opening transition.
-  static double thicknessStrengthForPhase(double phase) {
-    final t = phase.clamp(0.0, 1.0).toDouble();
-    if (t <= contentThicknessFadeStart) return 1.0;
-    final fadeProgress =
-        (t - contentThicknessFadeStart) / (1.0 - contentThicknessFadeStart);
-    return 1.0 - Curves.easeInCubic.transform(fadeProgress);
   }
 }
 
