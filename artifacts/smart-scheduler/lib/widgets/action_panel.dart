@@ -3241,14 +3241,13 @@ class GlassMenuRimOutline extends StatelessWidget {
                   ),
                   visibility: 1,
                 );
-                // A lifted content tile is not itself a glass surface. Keep
-                // the menu-matched optical rim, but do not frost or tint the
-                // tile that sits beneath this narrow edge band.
-                final settings = menuSettings.copyWith(
+                // Keep the menu's rim/refraction settings, but disable
+                // backdrop blur for this edge-only overlay. The tile content
+                // stays sharp beneath it, while the glass output is clipped to
+                // the narrow contour band.
+                final rimSettings = menuSettings.copyWith(
                   blur: 0,
                   frost: 0,
-                  frostOpacity: 0,
-                  glassColor: menuSettings.glassColor.withValues(alpha: 0),
                 );
                 return ClipPath(
                   clipBehavior: Clip.antiAlias,
@@ -3260,7 +3259,7 @@ class GlassMenuRimOutline extends StatelessWidget {
                     shape: LiquidRoundedSuperellipse(
                       borderRadius: radius,
                     ),
-                    settings: settings,
+                    settings: rimSettings,
                     quality: GlassQuality.premium,
                     useOwnLayer: true,
                     clipBehavior: Clip.antiAlias,

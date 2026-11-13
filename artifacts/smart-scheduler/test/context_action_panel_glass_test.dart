@@ -19,9 +19,10 @@ import 'package:smart_scheduler/widgets/action_panel.dart'
         GlassMenuRimOutline;
 
 void main() {
-  testWidgets('lifted tile rim preserves the edge without frosting its body', (
+  testWidgets('lifted tile keeps the rim and crisp content together', (
     tester,
   ) async {
+    const contentLabel = 'Lifted tile content stays sharp';
     await tester.pumpWidget(
       CupertinoApp(
         home: Center(
@@ -32,7 +33,7 @@ void main() {
               radius: 24,
               outlineShape: const BoundedSquircleStadiumBorder(radius: 24),
               child: const Center(
-                child: Text('Lifted tile content stays sharp'),
+                child: Text(contentLabel),
               ),
             ),
           ),
@@ -48,9 +49,15 @@ void main() {
     expect(surface.settings!.chromaticAberration, 0.3);
     expect(surface.settings!.visibility, 1);
     expect(surface.settings!.blur, 0);
-    expect(surface.settings!.frost, 0);
-    expect(surface.settings!.frostOpacity, 0);
-    expect(surface.settings!.glassColor.a, 0);
+    expect(surface.settings!.fresnelStrength, greaterThan(0));
+    expect(surface.settings!.glassColor.a, greaterThan(0));
+    expect(
+      find.descendant(
+        of: find.byType(GlassContainer),
+        matching: find.text(contentLabel),
+      ),
+      findsNothing,
+    );
 
     final rimClip = tester.widget<ClipPath>(
       find.ancestor(

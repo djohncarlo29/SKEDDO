@@ -22,11 +22,11 @@ Every field in the New Event sheet is saved to `ScheduledEvent` on checkmark tap
 - **Starts date change (all-day)**: clamps Ends to Starts if Ends would fall before
 - **Starts time change**: always adjusts Ends to maintain duration (pre-existing)
 - **Inline date grid + barrel**: use the same date-only minimum for both surfaces (`max(today, Starts date when Ends is open)`). Pass it to the barrel as `minimumDate`; past dates are unavailable for Starts, Ends, and Reminder, and Ends also cannot precede Starts.
-- **Ends time (same day)**: clamps to Starts + 15 min if user picks earlier
+- **Ends time**: manual time entry and date changes clamp immediately; during a wheel gesture, temporarily show the selected value, then snap to Starts + 5 min when scrolling settles
 
 **Why:** The month grid and wheel barrel are separate controls; applying a disabled-date rule to only one lets the same date appear unavailable in one view but selectable in the other.
 
-**How to apply:** Whenever grid date availability changes, derive matching wheel bounds from the same rule and keep dimming and selection clamping consistent.
+**How to apply:** Keep live wheel values separate from settle-time validation. After an Ends wheel scroll settles, clamp to the shared minimum and let the wheel animate back to the accepted value.
 
 ## Recurrence storage rule
 **Why:** Infinite recurrence (Never end) must not generate infinite event copies.

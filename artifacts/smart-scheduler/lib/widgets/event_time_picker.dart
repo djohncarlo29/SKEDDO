@@ -17,10 +17,18 @@ class EventTimePicker extends StatefulWidget {
     super.key,
     required this.initialTime,
     required this.onChanged,
+    this.onWheelChanged,
+    this.onWheelScrollEnd,
   });
 
   final DateTime initialTime;
   final ValueChanged<DateTime> onChanged;
+  /// Optional live callback for values reached while manually scrolling.
+  ///
+  /// This lets a parent allow temporary selections that it will validate when
+  /// the wheel settles, without changing text-entry behavior.
+  final ValueChanged<DateTime>? onWheelChanged;
+  final VoidCallback? onWheelScrollEnd;
 
   @override
   State<EventTimePicker> createState() => _EventTimePickerState();
@@ -83,6 +91,35 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _entryController = TextEditingController();
     _entryFocusNode = FocusNode();
     _entryFocusNode.addListener(_handleEntryFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant EventTimePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final time = widget.initialTime;
+    final nextPeriod = time.hour >= 12 ? 1 : 0;
+    final nextHour12 = time.hour % 12 == 0 ? 12 : time.hour % 12;
+    final nextMinute = time.minute;
+    final periodChanged = nextPeriod != _period;
+    final hourChanged = nextHour12 != _hour12;
+    final minuteChanged = nextMinute != _minute;
+    if (!periodChanged && !hourChanged && !minuteChanged) return;
+
+    _period = nextPeriod;
+    _hour12 = nextHour12;
+    _minute = nextMinute;
+    if (_isTimeEntryMode) {
+      // A parent may reject a selection (for example, an Ends time before its
+      // minimum) and send the corrected time back. Keep numeric entry and the
+      // wheels synchronized with that authoritative value.
+      _hourEntryDigits = '';
+      _minuteEntryDigits = '';
+      _syncEntryController();
+    }
+
+    if (hourChanged) _animateHourTo(nextHour12);
+    if (minuteChanged) _animateMinuteTo(nextMinute);
+    if (periodChanged) _animatePeriodTo(nextPeriod);
   }
 
   @override
@@ -254,19 +291,22 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _isFinishingTimeEntry = false;
   }
 
-  void _notify() {
+  void _notify({bool fromWheel = false}) {
     final hour24 = _period == 0
         ? (_hour12 == 12 ? 0 : _hour12)
         : (_hour12 == 12 ? 12 : _hour12 + 12);
-    widget.onChanged(
-      DateTime(
-        widget.initialTime.year,
-        widget.initialTime.month,
-        widget.initialTime.day,
-        hour24,
-        _minute,
-      ),
+    final selectedTime = DateTime(
+      widget.initialTime.year,
+      widget.initialTime.month,
+      widget.initialTime.day,
+      hour24,
+      _minute,
     );
+    if (fromWheel && widget.onWheelChanged != null) {
+      widget.onWheelChanged!(selectedTime);
+    } else {
+      widget.onChanged(selectedTime);
+    }
   }
 
   Future<void> _animateHourTo(int hour12) async {
@@ -519,6 +559,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
     if (!_isWheelInteractionActive) return;
     _isWheelInteractionActive = false;
     _entryInteractionGeneration++;
+    widget.onWheelScrollEnd?.call();
     if (_isTimeEntryMode && !_entryFocusNode.hasFocus) _requestEntryFocus();
   }
 
@@ -685,7 +726,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
       onChanged: (index) {
         if (_suppressHourWheelCallbacks) return;
         _hour12 = index + 1;
-        _notify();
+        _notify(fromWheel: true);
       },
       children: List.generate(
         12,
@@ -708,7 +749,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
       onChanged: (index) {
         if (_suppressMinuteWheelCallbacks) return;
         _minute = index;
-        _notify();
+        _notify(fromWheel: true);
       },
       children: List.generate(
         60,
@@ -727,7 +768,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
       onChanged: (index) {
         if (_suppressPeriodWheelCallbacks) return;
         _period = index;
-        _notify();
+        _notify(fromWheel: true);
       },
       children: [
         Align(

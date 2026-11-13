@@ -10,6 +10,8 @@ Future<void> _mountPicker(
   WidgetTester tester, {
   required DateTime initialTime,
   ValueChanged<DateTime>? onChanged,
+  ValueChanged<DateTime>? onWheelChanged,
+  VoidCallback? onWheelScrollEnd,
   Widget Function(Widget child)? wrapPicker,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
@@ -23,6 +25,8 @@ Future<void> _mountPicker(
   Widget picker = EventTimePicker(
     initialTime: initialTime,
     onChanged: onChanged ?? (_) {},
+    onWheelChanged: onWheelChanged,
+    onWheelScrollEnd: onWheelScrollEnd,
   );
   if (wrapPicker != null) picker = wrapPicker(picker);
 
@@ -56,6 +60,25 @@ int _selectedMinute(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('manual wheel reports live values and signals when settled', (
+    tester,
+  ) async {
+    final wheelValues = <DateTime>[];
+    var scrollEndCount = 0;
+    await _mountPicker(
+      tester,
+      initialTime: DateTime(2026, 10, 2, 14, 10),
+      onWheelChanged: wheelValues.add,
+      onWheelScrollEnd: () => scrollEndCount++,
+    );
+
+    await tester.drag(find.byKey(_minuteWheelKey), const Offset(0, -56));
+    await tester.pumpAndSettle();
+
+    expect(wheelValues, isNotEmpty);
+    expect(scrollEndCount, 1);
+  });
+
   testWidgets(
     'selection-bar tap opens one invisible numeric input and preserves the minute wheel',
     (tester) async {

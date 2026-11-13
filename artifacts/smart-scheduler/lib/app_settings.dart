@@ -18,7 +18,7 @@ import 'services/local_storage.dart';
 //                              Saturday.
 //   appStartOfWeekUsesSystemNotifier — whether the weekday follows the OS.
 //   appDefaultViewNotifier   — 'Day' | 'Week' | 'Month' | 'Year'.
-//   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
+//   appEventDurationNotifier — the default duration for newly created events.
 //   appDateLocaleNotifier    — monthFirst or dayFirst for ambiguous numeric dates.
 //   appDateFormatNotifier    — the app-wide date display format.
 //   appLiquidGlassOpacityNotifier — 0.2..0.8 material opacity for Liquid Glass
@@ -583,6 +583,39 @@ final ValueNotifier<String> appEventDurationNotifier = ValueNotifier<String>(
   '1 hour',
 );
 
+const List<String> kDefaultEventDurationOptions = <String>[
+  '5 minutes',
+  '10 minutes',
+  '15 minutes',
+  '25 minutes',
+  '30 minutes',
+  '45 minutes',
+  '50 minutes',
+  '55 minutes',
+  '1 hour',
+  '1 hour, 30 minutes',
+  '2 hours',
+];
+
+const Map<String, int> _defaultEventDurationMinutes = <String, int>{
+  '5 minutes': 5,
+  '10 minutes': 10,
+  '15 minutes': 15,
+  '25 minutes': 25,
+  '30 minutes': 30,
+  '45 minutes': 45,
+  '50 minutes': 50,
+  '55 minutes': 55,
+  '1 hour': 60,
+  '1 hour, 30 minutes': 90,
+  '2 hours': 120,
+};
+
+/// Converts the selected setting label into its event duration in minutes.
+/// Unknown legacy values use the established one-hour default.
+int defaultEventDurationMinutesForLabel(String label) =>
+    _defaultEventDurationMinutes[label] ?? 60;
+
 /// Event creation and category recovery — category ID to use when no category
 /// is explicitly selected.  Uncategorized is the default for new installs.
 const String kDefaultCategoryFallbackId = 'sys-uncategorized';
@@ -1122,7 +1155,11 @@ Future<void> loadAppSettings() async {
   }
 
   final eventDuration = prefs.getString(_kEventDurationKey);
-  if (eventDuration != null) appEventDurationNotifier.value = eventDuration;
+  appEventDurationNotifier.value =
+      eventDuration != null &&
+          kDefaultEventDurationOptions.contains(eventDuration)
+      ? eventDuration
+      : '1 hour';
 
   final defaultCategory = prefs.getString(_kDefaultCategoryKey);
   if (defaultCategory != null && defaultCategory.isNotEmpty) {

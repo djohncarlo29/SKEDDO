@@ -6,14 +6,138 @@ import 'package:liquid_glass_easy/src/widgets/lens/liquid_glass_lens.dart'
     show LiquidGlassLens;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_theme.dart' show AdaptiveLabelPillRow;
+import 'package:smart_scheduler/app_settings.dart'
+    show appEventDurationNotifier;
 import 'package:smart_scheduler/main.dart' show AppShell;
 import 'package:smart_scheduler/services/event_model.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/event_time_picker.dart';
 import 'package:smart_scheduler/widgets/interactive_tap_focus_dismissal.dart';
 
+Finder _dateTimeRow(String label) => find
+    .ancestor(of: find.text(label), matching: find.byType(AdaptiveLabelPillRow))
+    .first;
+
+String _timeText(WidgetTester tester, String label) =>
+    tester.widget<AdaptiveLabelPillRow>(_dateTimeRow(label)).pills[1].text;
+
+int _minutesOfDay(String value) {
+  final match = RegExp(
+    r'^(\d{1,2}):(\d{2})\s*([AP]M)$',
+    caseSensitive: false,
+  ).firstMatch(value.trim());
+  if (match == null) {
+    throw FormatException('Unexpected time label: $value');
+  }
+  var hour = int.parse(match.group(1)!);
+  final minute = int.parse(match.group(2)!);
+  final isPm = match.group(3)!.toUpperCase() == 'PM';
+  hour %= 12;
+  if (isPm) hour += 12;
+  return hour * 60 + minute;
+}
+
+int _displayedIntervalMinutes(WidgetTester tester) {
+  final starts = _minutesOfDay(_timeText(tester, 'Starts'));
+  final ends = _minutesOfDay(_timeText(tester, 'Ends'));
+  return (ends - starts + 24 * 60) % (24 * 60);
+}
+
 void main() {
+  testWidgets('new events use the selected default duration', (tester) async {
+    appEventDurationNotifier.value = '1 hour, 30 minutes';
+    final calendarKey = await _mountCalendar(tester);
+    calendarKey.currentState!.showNewEventSheet(
+      tester.element(find.byType(CalendarTab)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_displayedIntervalMinutes(tester), 90);
+  });
+
+  testWidgets('editing preserves the saved duration when Starts changes', (
+    tester,
+  ) async {
+    appEventDurationNotifier.value = '2 hours';
+    final calendarKey = await _mountCalendar(tester);
+    calendarKey.currentState!.showEditEventSheet(
+      tester.element(find.byType(CalendarTab)),
+      const ScheduledEvent(
+        id: 'saved-event-duration-test',
+        title: 'Saved interval',
+        date: 'October 27, 2026',
+        time: '9:00 AM',
+        endDate: 'October 27, 2026',
+        endTime: '10:15 AM',
+        alerts: ['At time of event'],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(_displayedIntervalMinutes(tester), 75);
+
+    await tester.tap(find.text(_timeText(tester, 'Starts')).first);
+    await tester.pumpAndSettle();
+    final startsPicker = tester
+        .widgetList<EventTimePicker>(find.byType(EventTimePicker))
+        .last;
+    startsPicker.onChanged(DateTime(2026, 10, 27, 10));
+    await tester.pumpAndSettle();
+
+    expect(_displayedIntervalMinutes(tester), 75);
+  });
+
+  testWidgets('Ends wheel snaps to five minutes after scrolling settles', (
+    tester,
+  ) async {
+    final calendarKey = await _mountCalendar(tester);
+    calendarKey.currentState!.showEditEventSheet(
+      tester.element(find.byType(CalendarTab)),
+      const ScheduledEvent(
+        id: 'minimum-event-duration-test',
+        title: 'Minimum interval',
+        date: 'October 27, 2026',
+        time: '2:00 PM',
+        endDate: 'October 27, 2026',
+        endTime: '2:10 PM',
+        alerts: ['At time of event'],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(_timeText(tester, 'Ends')));
+    await tester.pumpAndSettle();
+    final endsPicker = tester
+        .widgetList<EventTimePicker>(find.byType(EventTimePicker))
+        .last;
+    endsPicker.onWheelChanged!(DateTime(2026, 10, 27, 14, 4));
+    await tester.pumpAndSettle();
+
+    final inProgressPicker = tester
+        .widgetList<EventTimePicker>(find.byType(EventTimePicker))
+        .last;
+    expect(inProgressPicker.initialTime, DateTime(2026, 10, 27, 14, 4));
+    expect(_displayedIntervalMinutes(tester), 4);
+
+    inProgressPicker.onWheelScrollEnd!();
+    await tester.pumpAndSettle();
+
+    final correctedPicker = tester
+        .widgetList<EventTimePicker>(find.byType(EventTimePicker))
+        .last;
+    expect(correctedPicker.initialTime, DateTime(2026, 10, 27, 14, 5));
+    final minuteWheel = tester
+        .widgetList<ListWheelScrollView>(
+          find.byKey(const ValueKey('event-time-minute-wheel')),
+        )
+        .last;
+    final minuteController =
+        minuteWheel.controller! as FixedExtentScrollController;
+    expect(minuteController.selectedItem % 60, 5);
+    expect(_displayedIntervalMinutes(tester), 5);
+  });
+
   testWidgets('editing an event toggles All-day state and dependent rows', (
     tester,
   ) async {

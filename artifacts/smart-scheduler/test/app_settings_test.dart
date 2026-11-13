@@ -24,6 +24,7 @@ void main() {
     appStartOfWeekUsesSystemNotifier.value = true;
     appStartOfWeekNotifier.value = 'Sunday';
     appDefaultViewNotifier.value = 'Month';
+    appEventDurationNotifier.value = '1 hour';
     appDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
     appCustomDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
     appSystemDateFormatNotifier.value = AppDateFormat.monthDayYearSlash;
@@ -102,6 +103,49 @@ void main() {
 
     expect(appDefaultViewNotifier.value, 'Year');
   });
+
+  test(
+    'Default Event Duration offers the requested values and minute counts',
+    () {
+      expect(kDefaultEventDurationOptions, [
+        '5 minutes',
+        '10 minutes',
+        '15 minutes',
+        '25 minutes',
+        '30 minutes',
+        '45 minutes',
+        '50 minutes',
+        '55 minutes',
+        '1 hour',
+        '1 hour, 30 minutes',
+        '2 hours',
+      ]);
+      expect(
+        kDefaultEventDurationOptions
+            .map(defaultEventDurationMinutesForLabel)
+            .toList(),
+        [5, 10, 15, 25, 30, 45, 50, 55, 60, 90, 120],
+      );
+    },
+  );
+
+  test(
+    'Default Event Duration defaults to one hour and restores its choice',
+    () async {
+      await loadAppSettings();
+      expect(appEventDurationNotifier.value, '1 hour');
+
+      appEventDurationNotifier.value = '1 hour, 30 minutes';
+      await saveAppSetting(
+        'Default Event Duration',
+        appEventDurationNotifier.value,
+      );
+      appEventDurationNotifier.value = '1 hour';
+      await loadAppSettings();
+
+      expect(appEventDurationNotifier.value, '1 hour, 30 minutes');
+    },
+  );
 
   test('mirrored settings use a consistent System trailing value', () {
     expect(

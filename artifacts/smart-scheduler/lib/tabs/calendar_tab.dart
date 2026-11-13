@@ -11091,8 +11091,27 @@ class _NewEventSheetState extends State<_NewEventSheet>
   late final AnimationController _pickerSlideCtrl; // drives month swipe
 
   // ── Duration tracking ─────────────────────────────────────────────────────
-  // Default 1-hour interval between Starts and Ends.  Future: user-selectable.
+  // New events start with the selected preference. Editing an event replaces
+  // this with its saved interval so moving Starts preserves that event's timing.
   int _durationMinutes = 60;
+  static const int _kMinimumTimedEventDurationMinutes = 5;
+  static const int _kMaximumTimedEventDurationMinutes = 1440;
+
+  DateTime _clampEndToMinimum(DateTime proposed) {
+    final earliestEnd = _starts.add(
+      const Duration(minutes: _kMinimumTimedEventDurationMinutes),
+    );
+    return proposed.isBefore(earliestEnd) ? earliestEnd : proposed;
+  }
+
+  int _durationBetween(DateTime starts, DateTime ends) => ends
+      .difference(starts)
+      .inMinutes
+      .clamp(
+        _kMinimumTimedEventDurationMinutes,
+        _kMaximumTimedEventDurationMinutes,
+      )
+      .toInt();
 
   // ── Scheduled-rows collapse (All-day / Starts / Ends collapse when Unscheduled)
   late final AnimationController _schedRowsCtrl;
@@ -11287,6 +11306,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
   @override
   void initState() {
     super.initState();
+    if (!widget.isEditing) {
+      _durationMinutes = defaultEventDurationMinutesForLabel(
+        appEventDurationNotifier.value,
+      );
+    }
     if (widget.initial == null) {
       final requestedId = widget.initialCategoryId ?? appDefaultCategoryId;
       _categoryId = requestedId == kDefaultCategoryFallbackId
@@ -12183,13 +12207,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
         final clamped = proposedDateOnly.isBefore(startsDateOnly)
             ? startsDateOnly
             : proposedDateOnly;
-        _ends = DateTime(
+        final proposedEnd = DateTime(
           clamped.year,
           clamped.month,
           clamped.day,
           _ends.hour,
           _ends.minute,
         );
+        _ends = _allDay ? proposedEnd : _clampEndToMinimum(proposedEnd);
+        if (!_allDay) _durationMinutes = _durationBetween(_starts, _ends);
       }
     });
   }
@@ -12206,22 +12232,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
         );
         _ends = _starts.add(Duration(minutes: _durationMinutes));
       } else if (_activePicker == 'ends_time') {
-        var proposed = DateTime(
+        final proposed = DateTime(
           _ends.year,
           _ends.month,
           _ends.day,
           dt.hour,
           dt.minute,
         );
-        final sameDay =
-            _ends.year == _starts.year &&
-            _ends.month == _starts.month &&
-            _ends.day == _starts.day;
-        if (sameDay && !proposed.isAfter(_starts)) {
-          proposed = _starts.add(const Duration(minutes: 15));
-        }
-        _ends = proposed;
-        _durationMinutes = _ends.difference(_starts).inMinutes.clamp(15, 1440);
+        _ends = _clampEndToMinimum(proposed);
+        _durationMinutes = _durationBetween(_starts, _ends);
       } else if (_activePicker == 'reminder_time') {
         // Update only the time component of the reminder date.
         _reminderDate = DateTime(
@@ -12232,6 +12251,29 @@ class _NewEventSheetState extends State<_NewEventSheet>
           dt.minute,
         );
       }
+    });
+  }
+
+  /// Lets the Ends wheel show the user's in-progress value, including one
+  /// below the minimum. The constraint is applied when the wheel settles.
+  void _setPickerTimeFromWheel(DateTime dt) {
+    if (_activePicker != 'ends_time' || _allDay) {
+      _setPickerTime(dt);
+      return;
+    }
+    setState(() {
+      _ends = DateTime(_ends.year, _ends.month, _ends.day, dt.hour, dt.minute);
+    });
+  }
+
+  void _settleEndTimeWheel() {
+    if (_activePicker != 'ends_time' || _allDay) return;
+    final settledEnd = _clampEndToMinimum(_ends);
+    final settledDuration = _durationBetween(_starts, settledEnd);
+    if (_ends == settledEnd && _durationMinutes == settledDuration) return;
+    setState(() {
+      _ends = settledEnd;
+      _durationMinutes = settledDuration;
     });
   }
 
@@ -12800,6 +12842,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
         _starts = startDt;
         final endDt = _parseStoredDate(e.endDate, _allDay ? null : e.endTime);
         _ends = endDt ?? _starts.add(Duration(minutes: _durationMinutes));
+        if (!_allDay && endDt != null) {
+          _durationMinutes = _durationBetween(_starts, endDt);
+        }
         _pickerCalMonth = DateTime(_starts.year, _starts.month);
       }
     }
@@ -15867,6 +15912,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
         key: ValueKey('time_$_activePicker'),
         initialTime: _pickerDate,
         onChanged: _setPickerTime,
+        onWheelChanged: _activePicker == 'ends_time'
+            ? _setPickerTimeFromWheel
+            : null,
+        onWheelScrollEnd: _activePicker == 'ends_time'
+            ? _settleEndTimeWheel
+            : null,
       );
     }
 

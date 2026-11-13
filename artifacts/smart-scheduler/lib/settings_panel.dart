@@ -148,7 +148,7 @@ const _kRoutes = <String, _SettingsRoute>{
   // Contextual — defaultValue matches the trailing shown in the main list.
   'Default Event Duration': _SettingsRoute(
     title: 'Default Event Duration',
-    options: ['15 minutes', '30 minutes', '1 hour', '2 hours'],
+    options: kDefaultEventDurationOptions,
     defaultValue: '1 hour',
   ),
   'Default Category': _SettingsRoute(
