@@ -21676,6 +21676,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         return _buildGroupedSections(
           keyOf: (e) => _dateOnlyLabel(e.parsedDate?.absoluteDate),
           fallbackLabel: 'No Date',
+          fallbackAtStart: true,
           fallbackAtEnd: false,
         );
       case 'Creation Date':
@@ -21685,7 +21686,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             return _dateOnlyLabel(DateTime.tryParse(e.createdAt!));
           },
           fallbackLabel: 'No Date',
-          fallbackAtEnd: true,
+          fallbackAtStart: true,
+          fallbackAtEnd: false,
         );
       case 'Priority':
         return _buildGroupedSections(
@@ -21702,7 +21704,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             return RegExp(r'^[A-Z]$').hasMatch(ch) ? ch : null;
           },
           fallbackLabel: '#',
-          fallbackAtEnd: true,
+          fallbackAtStart: widget.sortDir == 'Descending',
+          fallbackAtEnd: widget.sortDir != 'Descending',
         );
       default:
         return [_DcvSection(events: List.of(_items))];
@@ -21711,10 +21714,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   /// Groups [_items] (already in sort order) into [_DcvSection]s.
   /// [keyOf] returns the section key for each event, or null for the fallback.
-  /// [fallbackAtEnd] controls whether null-key events go last (true) or inline.
+  /// [fallbackAtStart] and [fallbackAtEnd] place null-key events in a grouped
+  /// section at that edge. If neither is requested, they remain inline.
   List<_DcvSection> _buildGroupedSections({
     required String? Function(ScheduledEvent) keyOf,
     required String fallbackLabel,
+    bool fallbackAtStart = false,
     bool fallbackAtEnd = true,
   }) {
     final mainSections = <_DcvSection>[];
@@ -21736,7 +21741,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     for (final e in _items) {
       final key = keyOf(e);
       if (key == null) {
-        if (fallbackAtEnd) {
+        if (fallbackAtStart || fallbackAtEnd) {
           fallbackEvents.add(e);
           continue;
         }
@@ -21759,9 +21764,14 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     flushCurrent();
 
     if (fallbackEvents.isEmpty) return mainSections;
+    final fallbackSection = _DcvSection(
+      headerText: fallbackLabel,
+      events: fallbackEvents,
+    );
+    if (fallbackAtStart) return [fallbackSection, ...mainSections];
     return [
       ...mainSections,
-      _DcvSection(headerText: fallbackLabel, events: fallbackEvents),
+      fallbackSection,
     ];
   }
 
