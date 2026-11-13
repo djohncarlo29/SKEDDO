@@ -19,7 +19,7 @@ import 'package:smart_scheduler/widgets/action_panel.dart'
         GlassMenuRimOutline;
 
 void main() {
-  testWidgets('lifted tile keeps the rim and crisp content together', (
+  testWidgets('lifted tile paints a rim without a glass surface or blur', (
     tester,
   ) async {
     const contentLabel = 'Lifted tile content stays sharp';
@@ -30,11 +30,12 @@ void main() {
             width: 220,
             height: 76,
             child: GlassMenuRimOutline(
-              radius: 24,
-              outlineShape: const BoundedSquircleStadiumBorder(radius: 24),
-              child: const Center(
-                child: Text(contentLabel),
-              ),
+                outlineShape: const BoundedSquircleStadiumBorder(
+                  radius: 24,
+                ),
+                child: const Center(
+                  child: Text(contentLabel),
+                ),
             ),
           ),
         ),
@@ -42,33 +43,18 @@ void main() {
     );
     await tester.pump();
 
-    final surface = tester.widget<GlassContainer>(find.byType(GlassContainer));
-    expect(surface.quality, GlassQuality.premium);
-    expect(surface.settings!.thickness, 30);
-    expect(surface.settings!.refractiveIndex, 1.59);
-    expect(surface.settings!.chromaticAberration, 0.3);
-    expect(surface.settings!.visibility, 1);
-    expect(surface.settings!.blur, 0);
-    expect(surface.settings!.fresnelStrength, greaterThan(0));
-    expect(surface.settings!.glassColor.a, greaterThan(0));
+    expect(find.byType(GlassContainer), findsNothing);
+    final rimPainter = find.byWidgetPredicate(
+      (widget) =>
+          widget is CustomPaint && widget.painter != null && widget.child == null,
+    );
+    expect(rimPainter, findsOneWidget);
     expect(
-      find.descendant(
-        of: find.byType(GlassContainer),
-        matching: find.text(contentLabel),
-      ),
+      find.descendant(of: rimPainter, matching: find.text(contentLabel)),
       findsNothing,
     );
-
-    final rimClip = tester.widget<ClipPath>(
-      find.ancestor(
-        of: find.byType(GlassContainer),
-        matching: find.byType(ClipPath),
-      ).first,
-    );
-    final size = tester.getSize(find.byType(GlassContainer));
-    final rimPath = rimClip.clipper!.getClip(size);
-    expect(rimPath.contains(Offset(size.width / 2, size.height / 2)), isFalse);
-    expect(rimPath.contains(Offset(size.width / 2, 1)), isTrue);
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(ImageFiltered), findsNothing);
   });
 
   for (final brightness in Brightness.values) {

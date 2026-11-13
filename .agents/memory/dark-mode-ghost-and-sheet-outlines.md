@@ -3,15 +3,12 @@ name: Lifted tile rims and intentional grouping glow
 description: Lifted category and event tiles use shared Light/Dark rim contours; grouping snap glow remains separate from outlines.
 ---
 
-Lifted category and event tile ghosts use the same package-rendered rim,
-refraction, tint, and lighting settings as the long-press context menu, clipped
-to a narrow contour so their ordinary fill and content remain unchanged. Keep
-backdrop blur off on this edge-only glass layer; its blur can soften the whole
-lifted tile even when the visible output is clipped to the rim. The tile content
-must remain a separate, sharp sibling behind the edge-only layer. Do not
-approximate this with a fixed `BorderSide`; the shader-generated rim is not a
-0.5pt stroke. Apply it to context-menu previews and all reorder paths, including
-pinned-grid drags.
+Lifted category and event tile ghosts remain ordinary surfaces; paint the shared
+menu-style rim as a separate edge-only overlay. Do not put a glass renderer or
+opacity layer over the tile face: those either soften the tile or wash out its
+contents. Derive the rim's direction and strength from the shared menu settings,
+and paint it along the same squircle contour. Apply it to context-menu previews
+and all reorder paths, including pinned-grid drags.
 Overlay-sheet outlines retain their separate treatment. The category-grouping
 snap glow is separate from elevation shadows and must remain visible in Dark
 Mode.
@@ -22,9 +19,8 @@ surfaces. A hairline border was too weak in the web preview. The grouping glow
 communicates an active drop target rather than elevation and should not be
 removed by app-wide Dark Mode shadow suppression.
 
-**How to apply:** Reuse the long-press menu's package renderer and slider-driven
-glass settings, set only blur/frost to zero, and clip the rendered effect to the
-tile's edge contour. Keep the tile's own fill, text, and category/event icon
-untouched. Do not suppress the rim for any reorder path. Paint grouping glow
-directly rather than through the normal shadow resolver, using the stationary
-destination category's resolved color.
+**How to apply:** Keep the tile face fully opaque and draw only a thin,
+directional edge band and perimeter line using the long-press menu's shared rim
+settings. Fade the rim independently from the tile. Do not suppress the rim for
+any reorder path. Paint grouping glow directly rather than through the normal
+shadow resolver, using the stationary destination category's resolved color.

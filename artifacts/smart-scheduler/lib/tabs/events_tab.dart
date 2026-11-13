@@ -1053,8 +1053,9 @@ class _ContextMenuOverlay extends StatelessWidget {
         // at the bloom peak before settling, staying well within comfortable range.
         final cardScale = 1.0 + 0.07 * rawT;
 
-        // ── Card opacity — linear fade in/out ────────────────────────────────
-        final cardOpacity = clampedT;
+        // The tile face stays fully opaque while the edge treatment fades in.
+        // This prevents the scrim underneath from washing out the tile content.
+        final rimOpacity = clampedT;
 
         // Hole is fixed at the original tile footprint — the dim mask never
         // moves or resizes. The preview can scale beyond the hole above it.
@@ -1069,8 +1070,8 @@ class _ContextMenuOverlay extends StatelessWidget {
           children: [
             // ① Below-scrim tile — painted before the scrim and kept sharp in
             //   the source hole while the lifted copy animates above it. This
-            //   is the clear source copy; only the foreground lifted copy gets
-            //   the glass rim so two refractive layers cannot soften its text.
+            //   clear copy prevents the dim scrim from washing out the source
+            //   tile during the lift transition.
             Positioned(
               left: originalOffset.dx,
               top: originalOffset.dy,
@@ -1109,13 +1110,11 @@ class _ContextMenuOverlay extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onDismiss,
-                child: Opacity(
-                  opacity: cardOpacity,
-                  child: Transform.scale(
-                    scale: cardScale,
-                    child: _LiftedTileRimOutline(
-                      child: previewBuilder(context),
-                    ),
+                child: Transform.scale(
+                  scale: cardScale,
+                  child: _LiftedTileRimOutline(
+                    rimOpacity: rimOpacity,
+                    child: previewBuilder(context),
                   ),
                 ),
               ),
@@ -1150,14 +1149,18 @@ class _ContextMenuOverlay extends StatelessWidget {
 
 class _LiftedTileRimOutline extends StatelessWidget {
   final Widget child;
+  final double rimOpacity;
 
-  const _LiftedTileRimOutline({required this.child});
+  const _LiftedTileRimOutline({
+    required this.child,
+    this.rimOpacity = 1,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GlassMenuRimOutline(
       child: child,
-      radius: _kCornerRadius,
+      rimOpacity: rimOpacity,
       outlineShape: const BoundedSquircleStadiumBorder(
         radius: _kCornerRadius,
       ),

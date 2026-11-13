@@ -3203,23 +3203,23 @@ LiquidGlassSettings _glassMenuSurfaceSettingsFor(
   return skeddoNavigationGlassSettingsFromShared(sharedSettings);
 }
 
-/// Adds only the menu's rendered optical rim to a lifted ordinary tile.
+/// Paints a menu-matched rim around a lifted ordinary tile.
 ///
-/// The menu and tile share the same package renderer/settings. A narrow contour
-/// clip keeps the tile's normal fill and content untouched while allowing the
-/// same Fresnel/reflection treatment to remain visible around its edge.
+/// This is deliberately an edge painter, not a glass surface. The tile stays
+/// painted once with its normal fill and content; no backdrop sampling or blur
+/// is applied to the tile face.
 class GlassMenuRimOutline extends StatelessWidget {
   const GlassMenuRimOutline({
     super.key,
     required this.child,
-    required this.radius,
     required this.outlineShape,
-    this.rimBandWidth = 4,
+    this.rimOpacity = 1,
+    this.rimBandWidth = 2,
   });
 
   final Widget child;
-  final double radius;
   final ShapeBorder outlineShape;
+  final double rimOpacity;
   final double rimBandWidth;
 
   @override
@@ -3241,29 +3241,13 @@ class GlassMenuRimOutline extends StatelessWidget {
                   ),
                   visibility: 1,
                 );
-                // Keep the menu's rim/refraction settings, but disable
-                // backdrop blur for this edge-only overlay. The tile content
-                // stays sharp beneath it, while the glass output is clipped to
-                // the narrow contour band.
-                final rimSettings = menuSettings.copyWith(
-                  blur: 0,
-                  frost: 0,
-                );
-                return ClipPath(
-                  clipBehavior: Clip.antiAlias,
-                  clipper: _GlassMenuRimBandClipper(
-                    outlineShape: outlineShape,
+                return CustomPaint(
+                  painter: _GlassMenuRimPainter(
+                    shape: outlineShape,
+                    settings: menuSettings,
+                    brightness: CupertinoTheme.brightnessOf(context),
                     bandWidth: rimBandWidth,
-                  ),
-                  child: GlassContainer(
-                    shape: LiquidRoundedSuperellipse(
-                      borderRadius: radius,
-                    ),
-                    settings: rimSettings,
-                    quality: GlassQuality.premium,
-                    useOwnLayer: true,
-                    clipBehavior: Clip.antiAlias,
-                    child: const SizedBox.expand(),
+                    opacity: rimOpacity,
                   ),
                 );
               },
@@ -3275,29 +3259,96 @@ class GlassMenuRimOutline extends StatelessWidget {
   }
 }
 
-class _GlassMenuRimBandClipper extends CustomClipper<Path> {
-  const _GlassMenuRimBandClipper({
-    required this.outlineShape,
+class _GlassMenuRimPainter extends CustomPainter {
+  const _GlassMenuRimPainter({
+    required this.shape,
+    required this.settings,
+    required this.brightness,
     required this.bandWidth,
+    required this.opacity,
   });
 
-  final ShapeBorder outlineShape;
+  final ShapeBorder shape;
+  final LiquidGlassSettings settings;
+  final Brightness brightness;
   final double bandWidth;
+  final double opacity;
 
   @override
-  Path getClip(Size size) {
+  void paint(Canvas canvas, Size size) {
+    if (opacity <= 0 || size.isEmpty) return;
     final rect = Offset.zero & size;
-    final outer = outlineShape.getOuterPath(rect);
-    final innerRect = rect.deflate(bandWidth);
-    if (innerRect.isEmpty) return outer;
-    final inner = outlineShape.getOuterPath(innerRect);
-    return Path.combine(PathOperation.difference, outer, inner);
+    final outer = shape.getOuterPath(rect);
+    final innerRect = rect.deflate(
+      bandWidth.clamp(0.75, 4.0).toDouble(),
+    );
+    final inner = innerRect.isEmpty
+        ? Path()
+        : shape.getOuterPath(innerRect);
+    final ring = innerRect.isEmpty
+        ? outer
+        : Path.combine(PathOperation.difference, outer, inner);
+
+    final isDark = brightness == Brightness.dark;
+    final rimStrength = (0.18 +
+            settings.effectiveFresnelStrength * 0.18 +
+            settings.effectiveRimLight * 0.12 +
+            settings.effectiveAmbientRim * 0.08)
+        .clamp(0.16, 0.56)
+        .toDouble();
+    final lightX = math.cos(settings.lightAngle);
+    final lightY = -math.sin(settings.lightAngle);
+    final begin = Alignment(-lightX, -lightY);
+    final end = Alignment(lightX, lightY);
+    final gradient = LinearGradient(
+      begin: begin,
+      end: end,
+      colors: isDark
+          ? [
+              Color.fromRGBO(255, 255, 255, rimStrength * opacity),
+              Color.fromRGBO(255, 255, 255, rimStrength * opacity * 0.48),
+              Color.fromRGBO(0, 0, 0, rimStrength * opacity * 0.16),
+            ]
+          : [
+              Color.fromRGBO(255, 255, 255, rimStrength * opacity),
+              Color.fromRGBO(255, 255, 255, rimStrength * opacity * 0.42),
+              Color.fromRGBO(0, 0, 0, rimStrength * opacity * 0.18),
+            ],
+      stops: const [0, 0.52, 1],
+    ).createShader(rect);
+
+    canvas.save();
+    canvas.clipPath(ring, doAntiAlias: true);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = gradient
+        ..isAntiAlias = true,
+    );
+    canvas.restore();
+
+    // A crisp perimeter line anchors the directional highlight and remains
+    // visible on flat, low-contrast tile fills in both themes.
+    final outlineColor = isDark
+        ? Color.fromRGBO(255, 255, 255, 0.30 * opacity)
+        : Color.fromRGBO(35, 35, 38, 0.18 * opacity);
+    canvas.drawPath(
+      outer,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.85
+        ..color = outlineColor
+        ..isAntiAlias = true,
+    );
   }
 
   @override
-  bool shouldReclip(covariant _GlassMenuRimBandClipper oldClipper) =>
-      outlineShape != oldClipper.outlineShape ||
-      bandWidth != oldClipper.bandWidth;
+  bool shouldRepaint(covariant _GlassMenuRimPainter oldDelegate) =>
+      shape != oldDelegate.shape ||
+      settings != oldDelegate.settings ||
+      brightness != oldDelegate.brightness ||
+      bandWidth != oldDelegate.bandWidth ||
+      opacity != oldDelegate.opacity;
 }
 
 // ── Liquid-glass action-panel surface ─────────────────────────────────────────
