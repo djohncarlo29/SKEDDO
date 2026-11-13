@@ -234,6 +234,12 @@ class _GlassPopoverState extends State<GlassPopover>
         final double triggerOpacity;
         if (!_overlayController.isShowing || isHandoff) {
           triggerOpacity = 1.0;
+        } else if (widget.keepTriggerHiddenDuringClose &&
+            _morphController.isClosing) {
+          // Do not reveal a separately surfaced trigger underneath the
+          // contracting glass body. It can show through the moving clip as a
+          // detached partial circle near the trigger during dismissal.
+          triggerOpacity = 0.0;
         } else if (!_morphController.isClosing ||
             _morphController.isReverseClosing) {
           triggerOpacity =

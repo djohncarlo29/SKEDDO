@@ -101,6 +101,7 @@ class GlassPopover extends StatefulWidget {
     this.popoverHeight,
     this.popoverOffset = Offset.zero,
     this.anchorGrowthToTrigger = false,
+    this.keepTriggerHiddenDuringClose = false,
     this.popoverBorderRadius = 24.0,
     this.alignment,
     this.autoAdjustToScreen = true,
@@ -192,6 +193,14 @@ class GlassPopover extends StatefulWidget {
   /// traveling glass blob would appear as an unintended detached arc. Defaults
   /// to false, preserving the standard liquid morph.
   final bool anchorGrowthToTrigger;
+
+  /// Keeps the real trigger hidden during the closing morph, revealing it only
+  /// when the glass overlay hands off at the end of the transition.
+  ///
+  /// This prevents a trigger with its own visible surface from showing through
+  /// the shrinking popover and appearing as a duplicate partial shape. Defaults
+  /// to false to preserve the normal trigger fade behavior.
+  final bool keepTriggerHiddenDuringClose;
 
   /// Border radius of the expanded popover.
   ///

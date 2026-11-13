@@ -101,6 +101,91 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets(
+    'discard popover does not reveal its surfaced trigger under the closing glass',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final triggerKey = GlobalKey();
+      VoidCallback? closePopover;
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 48, top: 88),
+              child: GlassPopover(
+                popoverWidth: 260,
+                popoverHeight: 160,
+                anchorGrowthToTrigger: true,
+                keepTriggerHiddenDuringClose: true,
+                triggerBuilder: (context, toggle) => GestureDetector(
+                  key: triggerKey,
+                  behavior: HitTestBehavior.opaque,
+                  onTap: toggle,
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+                contentBuilder: (_, close) {
+                  closePopover = close;
+                  return const Text('Discard confirmation');
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(triggerKey));
+      await tester.pumpAndSettle();
+      expect(find.byType(LiquidGlassLayer), findsOneWidget);
+
+      closePopover!();
+      var observedVisibleClosingLayer = false;
+      for (
+        var frame = 0;
+        frame < 80 && find.byType(LiquidGlassLayer).evaluate().isNotEmpty;
+        frame++
+      ) {
+        await tester.pump(const Duration(milliseconds: 16));
+
+        final layer = find.byType(LiquidGlassLayer);
+        if (layer.evaluate().isEmpty) continue;
+        final layerOpacityFinder = find.ancestor(
+          of: layer,
+          matching: find.byType(Opacity),
+        );
+        final layerOpacity = layerOpacityFinder.evaluate().isEmpty
+            ? 1.0
+            : tester.widget<Opacity>(layerOpacityFinder.first).opacity;
+        if (layerOpacity <= 0.001) continue;
+
+        observedVisibleClosingLayer = true;
+        final triggerOpacities = find
+            .ancestor(
+              of: find.byKey(triggerKey),
+              matching: find.byType(Opacity),
+            )
+            .evaluate()
+            .map((element) => (element.widget as Opacity).opacity);
+        expect(
+          triggerOpacities,
+          everyElement(0.0),
+          reason:
+              'The separate trigger surface must stay hidden while the '
+              'closing popover glass is still visible.',
+        );
+      }
+
+      expect(observedVisibleClosingLayer, isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byType(LiquidGlassLayer), findsNothing);
+    },
+  );
+
   testWidgets('discard popover grows without detaching below its trigger', (
     tester,
   ) async {
@@ -225,6 +310,7 @@ void main() {
     expect(popover.quality, GlassQuality.premium);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.anchorGrowthToTrigger, isTrue);
+    expect(popover.keepTriggerHiddenDuringClose, isTrue);
     expect(popover.popoverWidth, 400);
     expect(popover.popoverOffset, const Offset(-4, -4));
     expect(popover.screenPadding, const EdgeInsets.all(12));

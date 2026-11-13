@@ -610,6 +610,7 @@ class DiscardChangesPopoverAnchorState
         // remain exactly trigger-aligned by default.
         popoverOffset: const Offset(-4, -4),
         anchorGrowthToTrigger: true,
+        keepTriggerHiddenDuringClose: true,
         popoverBorderRadius: isPresentedOverModalSheet
             ? kModalConfirmationSheetCornerRadius
             : kConfirmationSheetCornerRadius,
