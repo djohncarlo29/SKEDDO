@@ -3214,13 +3214,11 @@ class GlassMenuRimOutline extends StatelessWidget {
     required this.child,
     required this.outlineShape,
     this.rimOpacity = 1,
-    this.rimBandWidth = 2,
   });
 
   final Widget child;
   final ShapeBorder outlineShape;
   final double rimOpacity;
-  final double rimBandWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -3245,8 +3243,6 @@ class GlassMenuRimOutline extends StatelessWidget {
                   painter: _GlassMenuRimPainter(
                     shape: outlineShape,
                     settings: menuSettings,
-                    brightness: CupertinoTheme.brightnessOf(context),
-                    bandWidth: rimBandWidth,
                     opacity: rimOpacity,
                   ),
                 );
@@ -3263,81 +3259,33 @@ class _GlassMenuRimPainter extends CustomPainter {
   const _GlassMenuRimPainter({
     required this.shape,
     required this.settings,
-    required this.brightness,
-    required this.bandWidth,
     required this.opacity,
   });
 
   final ShapeBorder shape;
   final LiquidGlassSettings settings;
-  final Brightness brightness;
-  final double bandWidth;
   final double opacity;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (opacity <= 0 || size.isEmpty) return;
-    final rect = Offset.zero & size;
-    final outer = shape.getOuterPath(rect);
-    final innerRect = rect.deflate(
-      bandWidth.clamp(0.75, 4.0).toDouble(),
-    );
-    final inner = innerRect.isEmpty
-        ? Path()
-        : shape.getOuterPath(innerRect);
-    final ring = innerRect.isEmpty
-        ? outer
-        : Path.combine(PathOperation.difference, outer, inner);
-
-    final isDark = brightness == Brightness.dark;
-    final rimStrength = (0.18 +
-            settings.effectiveFresnelStrength * 0.18 +
-            settings.effectiveRimLight * 0.12 +
-            settings.effectiveAmbientRim * 0.08)
-        .clamp(0.16, 0.56)
+    final path = shape.getOuterPath(Offset.zero & size);
+    final strength = (0.22 +
+            settings.effectiveFresnelStrength * 0.10 +
+            settings.effectiveRimLight * 0.06 +
+            settings.effectiveAmbientRim * 0.04)
+        .clamp(0.22, 0.42)
         .toDouble();
-    final lightX = math.cos(settings.lightAngle);
-    final lightY = -math.sin(settings.lightAngle);
-    final begin = Alignment(-lightX, -lightY);
-    final end = Alignment(lightX, lightY);
-    final gradient = LinearGradient(
-      begin: begin,
-      end: end,
-      colors: isDark
-          ? [
-              Color.fromRGBO(255, 255, 255, rimStrength * opacity),
-              Color.fromRGBO(255, 255, 255, rimStrength * opacity * 0.48),
-              Color.fromRGBO(0, 0, 0, rimStrength * opacity * 0.16),
-            ]
-          : [
-              Color.fromRGBO(255, 255, 255, rimStrength * opacity),
-              Color.fromRGBO(255, 255, 255, rimStrength * opacity * 0.42),
-              Color.fromRGBO(0, 0, 0, rimStrength * opacity * 0.18),
-            ],
-      stops: const [0, 0.52, 1],
-    ).createShader(rect);
 
-    canvas.save();
-    canvas.clipPath(ring, doAntiAlias: true);
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = gradient
-        ..isAntiAlias = true,
-    );
-    canvas.restore();
-
-    // A crisp perimeter line anchors the directional highlight and remains
-    // visible on flat, low-contrast tile fills in both themes.
-    final outlineColor = isDark
-        ? Color.fromRGBO(255, 255, 255, 0.30 * opacity)
-        : Color.fromRGBO(35, 35, 38, 0.18 * opacity);
+    // Keep the lift treatment to a uniform white contour. A directional fill
+    // band can read as a large light-to-dark wash on ordinary tile surfaces,
+    // and a dark stroke incorrectly makes Light Mode tiles look grey-edged.
     canvas.drawPath(
-      outer,
+      path,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.85
-        ..color = outlineColor
+        ..strokeWidth = 1
+        ..color = Color.fromRGBO(255, 255, 255, strength * opacity)
         ..isAntiAlias = true,
     );
   }
@@ -3346,8 +3294,6 @@ class _GlassMenuRimPainter extends CustomPainter {
   bool shouldRepaint(covariant _GlassMenuRimPainter oldDelegate) =>
       shape != oldDelegate.shape ||
       settings != oldDelegate.settings ||
-      brightness != oldDelegate.brightness ||
-      bandWidth != oldDelegate.bandWidth ||
       opacity != oldDelegate.opacity;
 }
 
