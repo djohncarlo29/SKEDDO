@@ -1054,9 +1054,11 @@ class _ContextMenuOverlay extends StatelessWidget {
         // at the bloom peak before settling, staying well within comfortable range.
         final cardScale = 1.0 + 0.07 * rawT;
 
-        // The tile face stays fully opaque while the edge treatment fades in.
-        // This prevents the scrim underneath from washing out the tile content.
-        final rimOpacity = clampedT;
+        // Keep the shared Fresnel rim fully present for the entire time the
+        // tile is lifted. The menu's own surface animates separately; fading
+        // the tile rim with that transition made the edge disappear during
+        // the very frames when the lifted tile should read as raised.
+        const rimOpacity = 1.0;
 
         // Hole is fixed at the original tile footprint — the dim mask never
         // moves or resizes. The preview can scale beyond the hole above it.
@@ -12417,13 +12419,13 @@ Future<bool?> _showCategoryLifecycleConfirmationDialog(
     message: message,
     actionsBuilder: (dialogContext) => [
       GlassDialogAction(
-        label: 'Cancel',
-        onPressed: () => Navigator.of(dialogContext).pop(false),
-      ),
-      GlassDialogAction(
         label: actionLabel,
         isDestructive: true,
         onPressed: () => Navigator.of(dialogContext).pop(true),
+      ),
+      GlassDialogAction(
+        label: 'Cancel',
+        onPressed: () => Navigator.of(dialogContext).pop(false),
       ),
     ],
   );

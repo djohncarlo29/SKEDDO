@@ -3256,6 +3256,7 @@ class GlassMenuRimOutline extends StatelessWidget {
                   saturation: 1,
                   whitenStrength: 0,
                   bodyShade: 0,
+                  fresnelStrength: kSkeddoSharedGlassRimStrength,
                   bodyMode: GlassBodyMode.clear,
                 );
                 return GlassContainer(
