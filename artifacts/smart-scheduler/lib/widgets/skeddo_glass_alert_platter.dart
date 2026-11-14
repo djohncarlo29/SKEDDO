@@ -12,6 +12,7 @@ import 'skeddo_glass_settings.dart';
 
 const double _alertPlatterTitleMessageGap = 14.5;
 const double _alertPlatterMessageActionGap = 20.33;
+const double _alertPlatterInitialScale = 1.12;
 
 /// Presents SKEDDO's scoped iOS 26/27-style alert with the shared glass curve.
 Future<T?> showSkeddoGlassAlertDialog<T>({
@@ -248,7 +249,7 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
       child: ScaleTransition(
         key: const ValueKey('skeddo-glass-alert-dialog-transition'),
         scale: animation.drive(
-          Tween<double>(begin: 1.3, end: 1),
+          Tween<double>(begin: _alertPlatterInitialScale, end: 1),
         ),
         child: child,
       ),

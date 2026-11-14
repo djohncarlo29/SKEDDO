@@ -179,6 +179,17 @@ void main() {
         findsOneWidget,
       );
       expect(
+        tester
+            .widget<ScaleTransition>(
+              find.byKey(
+                const ValueKey('skeddo-glass-alert-dialog-transition'),
+              ),
+            )
+            .scale
+            .value,
+        closeTo(1.12, 0.02),
+      );
+      expect(
         find.byKey(const ValueKey('safe-popup-bottom-cover')),
         findsNothing,
       );
@@ -197,6 +208,74 @@ void main() {
       expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
     },
   );
+
+  testWidgets('a second confirmation waits for the first route to exit', (
+    tester,
+  ) async {
+    var secondDialogStarted = false;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppWindowContentBoundary(child: child!),
+        home: Builder(
+          builder: (context) => CupertinoPageScaffold(
+            child: Center(
+              child: CupertinoButton(
+                onPressed: () async {
+                  await showSkeddoGlassAlertDialog<bool>(
+                    context: context,
+                    title: 'First confirmation',
+                    actionsBuilder: (dialogContext) => [
+                      GlassDialogAction(
+                        label: 'Continue',
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(true),
+                      ),
+                      GlassDialogAction(
+                        label: 'Cancel',
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(false),
+                      ),
+                    ],
+                  );
+                  secondDialogStarted = true;
+                  await showSkeddoGlassAlertDialog<void>(
+                    context: context,
+                    title: 'Second confirmation',
+                    actionsBuilder: (dialogContext) => [
+                      GlassDialogAction(
+                        label: 'Done',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                      ),
+                    ],
+                  );
+                },
+                child: const Text('Open sequence'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open sequence'));
+    await tester.pumpAndSettle();
+    expect(find.text('First confirmation'), findsOneWidget);
+    expect(secondDialogStarted, isFalse);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('First confirmation'), findsOneWidget);
+    expect(find.text('Second confirmation'), findsNothing);
+    expect(secondDialogStarted, isFalse);
+
+    await tester.pumpAndSettle();
+    expect(find.text('First confirmation'), findsNothing);
+    expect(find.text('Second confirmation'), findsOneWidget);
+    expect(secondDialogStarted, isTrue);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('alert platter stays legible at accessibility text scaling', (
     tester,

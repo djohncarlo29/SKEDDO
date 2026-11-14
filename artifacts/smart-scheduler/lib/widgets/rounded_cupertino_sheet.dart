@@ -230,15 +230,19 @@ Future<T?> showSafeCupertinoDialog<T>({
   RouteTransitionsBuilder? transitionBuilder,
 }) {
   if (transitionBuilder != null) {
-    return Navigator.of(context, rootNavigator: true).push<T>(
-      CupertinoDialogRoute<T>(
-        builder: builder,
-        context: context,
-        barrierDismissible: barrierDismissible,
-        barrierColor: barrierColor,
-        transitionBuilder: transitionBuilder,
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = CupertinoDialogRoute<T>(
+      builder: (dialogContext) => _SafePopupRouteSurface(
+        safeBottom: systemSafeAreaBottomInset(dialogContext),
+        coverSafeBottom: false,
+        child: builder(dialogContext),
       ),
+      context: context,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      transitionBuilder: transitionBuilder,
     );
+    return _pushCupertinoDialogAndWaitForExit(navigator, route);
   }
   return showCupertinoDialog<T>(
     context: context,
@@ -251,6 +255,17 @@ Future<T?> showSafeCupertinoDialog<T>({
       child: builder(dialogContext),
     ),
   );
+}
+
+Future<T?> _pushCupertinoDialogAndWaitForExit<T>(
+  NavigatorState navigator,
+  CupertinoDialogRoute<T> route,
+) async {
+  final result = await navigator.push<T>(route);
+  // The route's result completes as soon as pop begins. Wait for its reverse
+  // transition and removal before a caller can present a second dialog.
+  await route.completed;
+  return result;
 }
 
 class _SafePopupRouteSurface extends StatelessWidget {
