@@ -9,6 +9,7 @@ import '../app_theme.dart';
 import 'modal_toolbar_glass_button.dart';
 import 'horizontal_edge_fade.dart';
 import 'header_title_scroller.dart';
+import 'modal_sheet_title_scroller.dart';
 import 'picker_grid_geometry.dart';
 import 'rounded_cupertino_sheet.dart';
 import 'modal_sheet_scroll_under.dart';
@@ -1635,14 +1636,17 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     // Back chevron — replaces xmark in sub-sheets to indicate navigation back.
     // Uses chevron_left to match the DCV header back indicator.
-    final xBtn = ModalToolbarGlassButton(
-      icon: CupertinoIcons.chevron_left,
-      iconColor: labelColor,
-      surfaceColor: cardColor,
-      semanticLabel: 'Back',
-      iconOffset: const Offset(-2, 0),
-      tapDelay: const Duration(milliseconds: 130),
-      onTap: _close,
+    final xBtn = shiftModalSheetToolbarControl(
+      isLeading: true,
+      child: ModalToolbarGlassButton(
+        icon: CupertinoIcons.chevron_left,
+        iconColor: labelColor,
+        surfaceColor: cardColor,
+        semanticLabel: 'Back',
+        iconOffset: const Offset(-2, 0),
+        tapDelay: const Duration(milliseconds: 130),
+        onTap: _close,
+      ),
     );
 
     return CupertinoPageScaffold(
@@ -1664,39 +1668,31 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         ),
         surfaceColor: resolveThemeColor(kModalBackground, context),
         header: RoundedCupertinoSheetHeader(
-            child: SizedBox(
-              height: _emojiSheetHeaderHeight,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: headerInset),
-                child: Row(
-                  children: [
-                    xBtn,
-                    const SizedBox(width: kHorizontalFadeEdgeGap),
-                    Expanded(
-                      child: HeaderTitleScroller(
-                        title: 'Choose Emoji',
-                        style: TextStyle(
-                          inherit: false,
-                          color: labelColor,
-                          fontFamily: kSFProText,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          height: 1.0,
-                        ),
-                        fadeColor: resolveThemeColor(kModalBackground, context),
-                        centerWhenContentFits: true,
-                        contentAlignment: Alignment.center,
-                      ),
+          child: SizedBox(
+            height: _emojiSheetHeaderHeight,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: ModalSheetTitleScroller(
+                    title: 'Choose Emoji',
+                    hasTrailingToolbar: false,
+                    style: TextStyle(
+                      inherit: false,
+                      color: labelColor,
+                      fontFamily: kSFProText,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      height: 1.0,
                     ),
-                    const SizedBox(width: kHorizontalFadeEdgeGap),
-                    const SizedBox(
-                      width: 40,
-                    ), // mirrors xBtn width for symmetry
-                  ],
+                    fadeColor: resolveThemeColor(kModalBackground, context),
+                  ),
                 ),
-              ),
+                Positioned(left: headerInset, child: xBtn),
+              ],
             ),
           ),
+        ),
       // ── Card: grid (row 1) + separator + category strip (row 2) ─────
         scrollBuilder: (context, scrollPadding) => CustomScrollView(
               clipBehavior: Clip.none,

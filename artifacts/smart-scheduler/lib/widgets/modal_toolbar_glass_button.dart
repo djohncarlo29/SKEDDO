@@ -9,6 +9,31 @@ import '../app_settings.dart';
 import '../app_theme.dart';
 import 'skeddo_glass_settings.dart';
 
+const double kModalSheetToolbarHorizontalShift = 4;
+const double kModalSheetToolbarVerticalShift = 2;
+const Offset kModalSheetLeadingToolbarOffset = Offset(
+  kModalSheetToolbarHorizontalShift,
+  kModalSheetToolbarVerticalShift,
+);
+const Offset kModalSheetTrailingToolbarOffset = Offset(
+  -kModalSheetToolbarHorizontalShift,
+  kModalSheetToolbarVerticalShift,
+);
+
+/// Offsets a modal sheet header control without changing its layout or anchor
+/// box. The transform follows the control's paint and hit-test bounds.
+Widget shiftModalSheetToolbarControl({
+  required bool isLeading,
+  required Widget child,
+}) {
+  return Transform.translate(
+    offset: isLeading
+        ? kModalSheetLeadingToolbarOffset
+        : kModalSheetTrailingToolbarOffset,
+    child: child,
+  );
+}
+
 /// Shared liquid_glass_widgets button for modal sheet toolbar actions.
 class ModalToolbarGlassButton extends StatefulWidget {
   const ModalToolbarGlassButton({

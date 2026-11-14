@@ -3,7 +3,7 @@ name: Glass menu selection behavior
 description: Menu selection, scale, and rubberband interaction rules
 ---
 
-`GlassBarItem.menu`, modal picker `GlassMenu`, and long-press context menu rows show a temporary active-row tint and 0.98× scale during touch or glide selection. Light Mode uses black at 8% opacity; Dark Mode uses white at 4.5%. Semantic selection remains separate from this transient state. All use the shared 2pt row gap; adaptive highlights clear immediately when the pointer moves to another row so only one pill is visible. Overflow scrolling clears the glide highlight when scrolling begins; fitting menus retain slide-to-select and highlight the row under the finger.
+`GlassBarItem.menu`, modal picker `GlassMenu`, and long-press context menu rows show a temporary active-row tint and 0.98× scale during touch or glide selection. Light Mode uses black at 8% opacity; Dark Mode uses white at 6%. Semantic selection remains separate from this transient state. All use the shared 2pt row gap; adaptive highlights clear immediately when the pointer moves to another row so only one pill is visible. Overflow scrolling clears the glide highlight when scrolling begins; fitting menus retain slide-to-select and highlight the row under the finger.
 
 **Why:** The user explicitly changed the earlier no-pill behavior and requested one consistent selection highlight across these three menu paths.
 

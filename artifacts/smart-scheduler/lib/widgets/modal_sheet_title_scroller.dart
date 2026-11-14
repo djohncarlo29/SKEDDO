@@ -4,6 +4,10 @@ import '../app_theme.dart'
     show kModalSheetButtonDiameter, kModalSheetButtonEdgeGap;
 import 'header_title_scroller.dart';
 import 'horizontal_edge_fade.dart' show kHorizontalFadeEdgeGap;
+import 'modal_toolbar_glass_button.dart'
+    show
+        kModalSheetLeadingToolbarOffset,
+        kModalSheetToolbarHorizontalShift;
 
 /// Centers a modal title when it fits and gives it the same horizontal
 /// scrolling, rubberband, and edge-fade behavior as the AppShell title.
@@ -14,29 +18,47 @@ class ModalSheetTitleScroller extends StatelessWidget {
   final String title;
   final TextStyle style;
   final Color fadeColor;
+  final bool hasLeadingToolbar;
+  final bool hasTrailingToolbar;
 
   const ModalSheetTitleScroller({
     super.key,
     required this.title,
     required this.style,
     required this.fadeColor,
+    this.hasLeadingToolbar = true,
+    this.hasTrailingToolbar = true,
   });
 
-  static const double _titleSideInset =
+  static const double _titleToolbarInset =
       kModalSheetButtonEdgeGap +
       kModalSheetButtonDiameter +
-      kHorizontalFadeEdgeGap;
+      kHorizontalFadeEdgeGap +
+      kModalSheetToolbarHorizontalShift;
 
   @override
   Widget build(BuildContext context) {
+    final leadingInset = hasLeadingToolbar
+        ? _titleToolbarInset
+        : kHorizontalFadeEdgeGap;
+    final trailingInset = hasTrailingToolbar
+        ? _titleToolbarInset
+        : kHorizontalFadeEdgeGap;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: _titleSideInset),
-      child: HeaderTitleScroller(
-        title: title,
-        style: style,
-        fadeColor: fadeColor,
-        centerWhenContentFits: true,
-        contentAlignment: Alignment.centerLeft,
+      padding: EdgeInsets.only(
+        left: leadingInset,
+        right: trailingInset,
+      ),
+      child: Transform.translate(
+        offset: Offset(0, kModalSheetLeadingToolbarOffset.dy),
+        child: HeaderTitleScroller(
+          title: title,
+          style: style,
+          fadeColor: fadeColor,
+          centerWhenContentFits: true,
+          contentAlignment: Alignment.centerLeft,
+          fittingContentOffsetX: (trailingInset - leadingInset) / 2,
+        ),
       ),
     );
   }

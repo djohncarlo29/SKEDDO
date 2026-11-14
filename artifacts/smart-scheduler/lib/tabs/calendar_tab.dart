@@ -10782,6 +10782,7 @@ class _CalModalCircleButton extends StatelessWidget {
   final VoidCallback onTap;
   final Duration tapDelay;
   final Offset iconOffset;
+  final bool applyHeaderOffset;
 
   const _CalModalCircleButton({
     super.key,
@@ -10791,11 +10792,12 @@ class _CalModalCircleButton extends StatelessWidget {
     this.containerColor = kModalCard,
     this.tapDelay = Duration.zero,
     this.iconOffset = Offset.zero,
+    this.applyHeaderOffset = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ModalToolbarGlassButton(
+    final button = ModalToolbarGlassButton(
       icon: icon,
       iconColor: iconColor,
       surfaceColor: containerColor,
@@ -10804,6 +10806,8 @@ class _CalModalCircleButton extends StatelessWidget {
       tapDelay: tapDelay,
       iconOffset: iconOffset,
     );
+    if (!applyHeaderOffset) return button;
+    return shiftModalSheetToolbarControl(isLeading: false, child: button);
   }
 }
 
@@ -16118,7 +16122,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           left: _kHeaderEdge,
                           child: DiscardChangesPopoverAnchor(
                             key: _discardPopoverKey,
+                            triggerOffset: kModalSheetLeadingToolbarOffset,
                             child: _CalModalCircleButton(
+                              applyHeaderOffset: false,
                               icon: CupertinoIcons.xmark,
                               iconColor: resolveThemeColor(
                                 kPrimaryLabel,
@@ -17673,7 +17679,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       left: kModalSheetButtonEdgeGap,
                       child: DiscardChangesPopoverAnchor(
                         key: _discardPopoverKey,
+                      triggerOffset: kModalSheetLeadingToolbarOffset,
                         child: _CalModalCircleButton(
+                        applyHeaderOffset: false,
                           icon: CupertinoIcons.chevron_left,
                           iconColor: kPrimaryLabel,
                           iconOffset: const Offset(-2, 0),

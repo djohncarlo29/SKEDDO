@@ -412,7 +412,7 @@ void main() {
     expect(
       pinDecoration.color,
       (isDark ? CupertinoColors.white : CupertinoColors.black).withValues(
-        alpha: isDark ? 0.045 : 0.08,
+        alpha: isDark ? 0.06 : 0.08,
       ),
     );
     final pinScale = tester.widget<AnimatedScale>(

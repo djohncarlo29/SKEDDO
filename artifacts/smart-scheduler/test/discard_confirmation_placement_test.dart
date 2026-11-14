@@ -309,7 +309,7 @@ void main() {
     expect(message, findsOneWidget);
     final messageText = tester.widget<Text>(message);
     expect(messageText.style?.fontSize, 15);
-    expect(messageText.style?.height, isNull);
+    expect(messageText.style?.height, 1.25);
     expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
     final popoverFinder = find.byType(GlassPopover);
     expect(popoverFinder, findsOneWidget);
@@ -816,6 +816,7 @@ void main() {
                 padding: const EdgeInsets.only(left: 24, top: 72),
                 child: DiscardChangesPopoverAnchor(
                   key: anchorKey,
+                  triggerOffset: const Offset(4, 2),
                   child: const SizedBox(width: 44, height: 44),
                 ),
               ),
@@ -835,7 +836,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final popover = tester.widget<GlassPopover>(find.byType(GlassPopover));
-    expect(popover.popoverOffset, const Offset(-4, -4));
+    expect(popover.popoverOffset, const Offset(-8, -6));
     final glassContainers = find.byType(GlassContainer);
     final glassContainerRects = List<Rect>.generate(
       glassContainers.evaluate().length,
@@ -844,12 +845,13 @@ void main() {
     expect(
       glassContainerRects.any(
         (rect) =>
-            (rect.left - (triggerOrigin.dx - 4)).abs() < 1.0 &&
-            (rect.top - (triggerOrigin.dy - 4)).abs() < 1.0 &&
+            (rect.left - (triggerOrigin.dx - 8)).abs() < 1.0 &&
+            (rect.top - (triggerOrigin.dy - 6)).abs() < 1.0 &&
             (rect.width - popover.popoverWidth).abs() < 1.0,
       ),
       isTrue,
-      reason: 'The portrait popover should open 4px above and left of its X.',
+      reason:
+          'The moved trigger must keep the settled popover at its old position.',
     );
 
     await tester.tapAt(const Offset(500, 700));

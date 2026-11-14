@@ -132,7 +132,7 @@ class GlassMenu extends StatefulWidget {
   /// Uses a subtle Light/Dark-mode highlight color for active rows.
   ///
   /// When enabled, Light Mode uses black at 8% opacity and Dark Mode uses
-  /// white at 4.5% opacity. The active row also receives the standard 0.98×
+  /// white at 6% opacity. The active row also receives the standard 0.98×
   /// press-scale response.
   final bool useAdaptiveInteractionHighlight;
 

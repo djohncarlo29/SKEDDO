@@ -259,9 +259,16 @@ Future<bool?> confirmDeleteSection(
 /// remains the popover trigger, so its glass lens morphs into the confirmation
 /// instead of rendering a second X above the editor.
 class DiscardChangesPopoverAnchor extends StatefulWidget {
-  const DiscardChangesPopoverAnchor({super.key, required this.child});
+  const DiscardChangesPopoverAnchor({
+    super.key,
+    required this.child,
+    this.triggerOffset = Offset.zero,
+  });
 
   final Widget child;
+  /// Moves the modal-header trigger while keeping the popover's settled
+  /// position fixed.
+  final Offset triggerOffset;
 
   @override
   State<DiscardChangesPopoverAnchor> createState() =>
@@ -577,6 +584,7 @@ class DiscardChangesPopoverAnchorState
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w400,
                     color: primary,
+                    height: 1.25,
                   ),
                 ),
               ),
@@ -632,7 +640,7 @@ class DiscardChangesPopoverAnchorState
       final screenSize =
           device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
 
-      return GlassPopover(
+      final popover = GlassPopover(
         key: _popoverKey,
         triggerBuilder: (_, togglePopover) {
           _togglePopover = togglePopover;
@@ -642,9 +650,9 @@ class DiscardChangesPopoverAnchorState
             _buildPopoverContent(popoverContext, closePopover, sliderPosition),
         popoverWidth:
             screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
-        // Keep the app-specific offset here so regular/future GlassPopovers
-        // remain exactly trigger-aligned by default.
-        popoverOffset: const Offset(-4, -4),
+        // Compensate the moved modal header trigger so the settled popover
+        // remains at its existing screen coordinates.
+        popoverOffset: const Offset(-4, -4) - widget.triggerOffset,
         anchorGrowthToTrigger: true,
         keepTriggerHiddenDuringClose: true,
         popoverBorderRadius: kDiscardConfirmationPopoverCornerRadius,
@@ -663,6 +671,11 @@ class DiscardChangesPopoverAnchorState
         barrierDismissible: true,
         onClose: _onPopoverClosing,
         onOpen: _onPopoverOpened,
+      );
+      if (widget.triggerOffset == Offset.zero) return popover;
+      return Transform.translate(
+        offset: widget.triggerOffset,
+        child: popover,
       );
     },
   );

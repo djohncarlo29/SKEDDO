@@ -5,6 +5,8 @@ import 'package:smart_scheduler/app_theme.dart'
 import 'package:smart_scheduler/widgets/header_title_scroller.dart';
 import 'package:smart_scheduler/widgets/horizontal_edge_fade.dart'
     show kHorizontalFadeEdgeGap;
+import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart'
+    show kModalSheetToolbarHorizontalShift;
 import 'package:smart_scheduler/widgets/modal_sheet_title_scroller.dart';
 
 const _fadeColor = Color(0xFFF2F2F7);
@@ -15,7 +17,12 @@ const _titleStyle = TextStyle(
   fontWeight: FontWeight.w600,
 );
 
-Widget _harness(String title, {double width = 320}) {
+Widget _harness(
+  String title, {
+  double width = 320,
+  bool hasLeadingToolbar = true,
+  bool hasTrailingToolbar = true,
+}) {
   return CupertinoApp(
     home: CupertinoPageScaffold(
       backgroundColor: _fadeColor,
@@ -30,6 +37,8 @@ Widget _harness(String title, {double width = 320}) {
                   title: title,
                   style: _titleStyle,
                   fadeColor: _fadeColor,
+                  hasLeadingToolbar: hasLeadingToolbar,
+                  hasTrailingToolbar: hasTrailingToolbar,
                 ),
               ),
             ],
@@ -64,7 +73,8 @@ void main() {
       final controlAndFadeGap =
           kModalSheetButtonEdgeGap +
           kModalSheetButtonDiameter +
-          kHorizontalFadeEdgeGap;
+          kHorizontalFadeEdgeGap +
+          kModalSheetToolbarHorizontalShift;
       expect(
         scrollerRect.left - sheetTitleRect.left,
         closeTo(controlAndFadeGap, 0.5),
@@ -97,6 +107,64 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets('one-sided sheet title fades use each actual edge boundary', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        'Deleted',
+        hasLeadingToolbar: false,
+        hasTrailingToolbar: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    var sheetRect = tester.getRect(find.byType(ModalSheetTitleScroller));
+    var scrollerRect = tester.getRect(find.byType(HeaderTitleScroller));
+    expect(scrollerRect.left - sheetRect.left, closeTo(16, 0.5));
+    expect(sheetRect.right - scrollerRect.right, closeTo(76, 0.5));
+    expect(scrollerRect.center.dy, closeTo(sheetRect.center.dy + 2, 0.5));
+    expect(
+      tester.getCenter(find.text('Deleted')).dx,
+      closeTo(sheetRect.center.dx, 1),
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        'Emoji',
+        hasLeadingToolbar: true,
+        hasTrailingToolbar: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    sheetRect = tester.getRect(find.byType(ModalSheetTitleScroller));
+    scrollerRect = tester.getRect(find.byType(HeaderTitleScroller));
+    expect(scrollerRect.left - sheetRect.left, closeTo(76, 0.5));
+    expect(sheetRect.right - scrollerRect.right, closeTo(16, 0.5));
+    expect(scrollerRect.center.dy, closeTo(sheetRect.center.dy + 2, 0.5));
+    expect(
+      tester.getCenter(find.text('Emoji')).dx,
+      closeTo(sheetRect.center.dx, 1),
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        'A very long title that should remain horizontally scrollable',
+        hasLeadingToolbar: false,
+        hasTrailingToolbar: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .state<ScrollableState>(_titleScrollable())
+          .position
+          .maxScrollExtent,
+      greaterThan(1),
+    );
+  });
 
   testWidgets('shows the trailing fade for an overflowing title at rest', (
     tester,

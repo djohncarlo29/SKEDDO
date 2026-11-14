@@ -119,6 +119,9 @@ class HeaderTitleScroller extends StatefulWidget {
   /// Translates the title/control row inside the unchanged viewport and fade
   /// bounds. Used when a compact control group needs to move as one unit.
   final double contentOffsetX;
+  /// Adds a horizontal correction only while the title group fits, allowing
+  /// asymmetric viewports to keep their resting title centered on the screen.
+  final double fittingContentOffsetX;
   final CrossAxisAlignment contentCrossAxisAlignment;
   final VoidCallback? onTap;
 
@@ -143,6 +146,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.centerWhenContentFits = false,
     this.contentAlignment = Alignment.bottomLeft,
     this.contentOffsetX = 0.0,
+    this.fittingContentOffsetX = 0.0,
     this.contentCrossAxisAlignment = CrossAxisAlignment.center,
     this.onTap,
   });
@@ -469,15 +473,21 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                     final showLeadingFade = _showLeadingFade;
                     final showTrailingFade =
                         _showTrailingFade || initialTrailingFade;
+                    final contentFits =
+                        constraints.maxWidth.isFinite &&
+                        constraints.maxWidth > 0 &&
+                        !overflowBeforeLayout &&
+                        naturalContentWidth <= constraints.maxWidth;
                     final centeredInset =
-                        widget.centerWhenContentFits &&
-                            constraints.maxWidth.isFinite &&
-                            constraints.maxWidth > 0 &&
-                            !overflowBeforeLayout &&
-                            naturalContentWidth <= constraints.maxWidth
+                        widget.centerWhenContentFits && contentFits
                         ? ((constraints.maxWidth - naturalContentWidth) / 2)
                               .clamp(0.0, double.infinity)
                               .toDouble()
+                        : 0.0;
+                    final fittingContentOffsetX =
+                        widget.centerWhenContentFits &&
+                            contentFits
+                        ? widget.fittingContentOffsetX
                         : 0.0;
 
                     return Stack(
@@ -523,7 +533,11 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                     ),
                                     padding: EdgeInsets.zero,
                                     child: Transform.translate(
-                                      offset: Offset(widget.contentOffsetX, 0),
+                                      offset: Offset(
+                                        widget.contentOffsetX +
+                                            fittingContentOffsetX,
+                                        0,
+                                      ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         crossAxisAlignment:

@@ -370,7 +370,7 @@ class _GlassMenuItemState extends State<GlassMenuItem>
             ? const Color(0x00000000)
             : widget.useAdaptiveInteractionHighlight
                 ? (isDark ? CupertinoColors.white : CupertinoColors.black)
-                    .withValues(alpha: isDark ? 0.045 : 0.08)
+                    .withValues(alpha: isDark ? 0.06 : 0.08)
                 : effectivePressed || widget.isInteractionHighlighted
                     ? const Color(0x26FFFFFF)
                     : const Color(0x1AFFFFFF);

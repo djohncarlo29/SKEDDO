@@ -13412,6 +13412,7 @@ class _ArchivedCategoriesSheet extends StatelessWidget {
                 Positioned.fill(
                   child: ModalSheetTitleScroller(
                     title: _kArchivedUtilityLabel,
+                    hasLeadingToolbar: false,
                     style: TextStyle(
                       inherit: false,
                       color: primary,
@@ -13543,6 +13544,7 @@ class _RecentlyDeletedSheet extends StatelessWidget {
                 Positioned.fill(
                   child: ModalSheetTitleScroller(
                     title: 'Recently Deleted',
+                    hasLeadingToolbar: false,
                     style: TextStyle(
                       inherit: false,
                       color: primary,
@@ -13876,7 +13878,9 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                         left: _kHeaderEdge,
                          child: DiscardChangesPopoverAnchor(
                            key: _discardPopoverKey,
+                           triggerOffset: kModalSheetLeadingToolbarOffset,
                            child: _ModalCircleButton(
+                             applyHeaderOffset: false,
                              icon: CupertinoIcons.xmark,
                              iconColor: resolveThemeColor(kPrimaryLabel, context),
                              tapDelay: const Duration(milliseconds: 130),
@@ -17156,7 +17160,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         left: _kHeaderEdge,
                          child: DiscardChangesPopoverAnchor(
                            key: _discardPopoverKey,
+                           triggerOffset: kModalSheetLeadingToolbarOffset,
                            child: _ModalCircleButton(
+                             applyHeaderOffset: false,
                              icon: CupertinoIcons.xmark,
                              iconColor: resolveThemeColor(kPrimaryLabel, context),
                              tapDelay: const Duration(milliseconds: 130),
@@ -18308,6 +18314,7 @@ class _ModalCircleButton extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.onTap,
+    this.applyHeaderOffset = true,
     this.containerColor = kModalCard,
     this.tapDelay = Duration.zero,
     this.iconOffset = Offset.zero,
@@ -18322,6 +18329,7 @@ class _ModalCircleButton extends StatelessWidget {
   final Color containerColor;
   final VoidCallback onTap;
   final Duration tapDelay;
+  final bool applyHeaderOffset;
 
   /// Fine pixel offset applied to the icon glyph only (not the circle).
   /// Use [Offset(-2, 0)] for [CupertinoIcons.chevron_left] to optically
@@ -18330,7 +18338,7 @@ class _ModalCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ModalToolbarGlassButton(
+    final button = ModalToolbarGlassButton(
       icon: icon,
       iconColor: iconColor,
       surfaceColor: containerColor,
@@ -18339,6 +18347,8 @@ class _ModalCircleButton extends StatelessWidget {
       tapDelay: tapDelay,
       iconOffset: iconOffset,
     );
+    if (!applyHeaderOffset) return button;
+    return shiftModalSheetToolbarControl(isLeading: false, child: button);
   }
 }
 
@@ -18774,7 +18784,9 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                       left: _kHeaderEdge,
                        child: DiscardChangesPopoverAnchor(
                          key: _discardPopoverKey,
+                         triggerOffset: kModalSheetLeadingToolbarOffset,
                          child: _ModalCircleButton(
+                           applyHeaderOffset: false,
                            icon: CupertinoIcons.xmark,
                            iconColor: primaryLabel,
                            tapDelay: const Duration(milliseconds: 130),
@@ -23783,7 +23795,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       left: kModalSheetButtonEdgeGap,
                       child: DiscardChangesPopoverAnchor(
                         key: _discardPopoverKey,
+                        triggerOffset: kModalSheetLeadingToolbarOffset,
                         child: _ModalCircleButton(
+                          applyHeaderOffset: false,
                           icon: CupertinoIcons.chevron_left,
                           iconColor: resolveThemeColor(kPrimaryLabel, context),
                           iconOffset: const Offset(-2, 0),
