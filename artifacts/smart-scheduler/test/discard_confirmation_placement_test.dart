@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassButton,
@@ -460,6 +461,28 @@ void main() {
     expect(
       discardLabel.style?.color,
       CupertinoColors.systemRed.resolveFrom(pageContext),
+    );
+    final fillFinder = find.byKey(
+      const ValueKey('discard-confirmation-action-fill'),
+    );
+    Color currentActionFill() =>
+        (tester.widget<AnimatedContainer>(fillFinder).decoration
+                as ShapeDecoration)
+            .color!;
+    expect(
+      currentActionFill(),
+      skeddoConfirmationActionFillColor(pageContext, highlighted: false),
+    );
+    final mouse = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(
+      mouse.addPointer(location: buttonRect.center),
+    );
+    await tester.pump();
+    await tester.sendEventToBinding(mouse.hover(buttonRect.center));
+    await tester.pump();
+    expect(
+      currentActionFill(),
+      skeddoConfirmationActionFillColor(pageContext, highlighted: true),
     );
     expect(
       discardButton.settings!.glassColor.a,

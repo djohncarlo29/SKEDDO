@@ -603,7 +603,7 @@ class DiscardChangesPopoverAnchorState
 
 /// Keeps the destructive action in the popover's content subtree so its
 /// moving clip, foreground lens, and transition blur affect surface and label.
-class _DiscardConfirmationGlassButton extends StatelessWidget {
+class _DiscardConfirmationGlassButton extends StatefulWidget {
   const _DiscardConfirmationGlassButton({
     required this.width,
     required this.height,
@@ -621,47 +621,101 @@ class _DiscardConfirmationGlassButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
+  State<_DiscardConfirmationGlassButton> createState() =>
+      _DiscardConfirmationGlassButtonState();
+}
+
+class _DiscardConfirmationGlassButtonState
+    extends State<_DiscardConfirmationGlassButton> {
+  bool _pressed = false;
+  bool _hovered = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  void _setHovered(bool value) {
+    if (_hovered == value) return;
+    setState(() => _hovered = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final highlighted = _pressed || _hovered;
+    final buttonFill = skeddoConfirmationActionFillColor(
+      context,
+      highlighted: highlighted,
+    );
+    const buttonShape = LiquidRoundedSuperellipse(
+      borderRadius: kDiscardConfirmationButtonCornerRadius,
+    );
+
     return SizedBox(
       key: const ValueKey('discard-confirmation-glass-button-anchor'),
-      width: width,
-      height: height,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: isClosing,
-        child: GlassButton.custom(
-          onTap: onPressed,
-          width: width,
-          height: height,
-          shape: const LiquidRoundedSuperellipse(
-            borderRadius: kDiscardConfirmationButtonCornerRadius,
-          ),
-          settings: settings,
-          quality: GlassQuality.premium,
-          useOwnLayer: true,
-          style: GlassButtonStyle.filled,
-          interactionScale: 1,
-          stretch: 0,
-          anchorStretch: false,
-          glowColor: const Color(0x00000000),
-          glowOpacity: 0,
-          glowBlurRadius: 0,
-          glowSpreadRadius: 0,
-          ambientBaseLight: 0,
-          enableInteractionColorFeedback: false,
-          label: 'Discard Changes',
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Center(
-              child: Text(
-                'Discard Changes',
-                textAlign: TextAlign.center,
-                style: textStyle,
+      width: widget.width,
+      height: widget.height,
+      child: MouseRegion(
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: Listener(
+          onPointerDown: (_) => _setPressed(true),
+          onPointerUp: (_) => _setPressed(false),
+          onPointerCancel: (_) => _setPressed(false),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: widget.isClosing,
+            child: GlassButton.custom(
+              onTap: widget.onPressed,
+              width: widget.width,
+              height: widget.height,
+              shape: buttonShape,
+              settings: widget.settings,
+              quality: GlassQuality.premium,
+              useOwnLayer: true,
+              style: GlassButtonStyle.filled,
+              interactionScale: 1,
+              stretch: 0,
+              anchorStretch: false,
+              glowColor: const Color(0x00000000),
+              glowOpacity: 0,
+              glowBlurRadius: 0,
+              glowSpreadRadius: 0,
+              ambientBaseLight: 0,
+              enableInteractionColorFeedback: false,
+              label: 'Discard Changes',
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  IgnorePointer(
+                    child: AnimatedContainer(
+                      key: const ValueKey('discard-confirmation-action-fill'),
+                      duration: highlighted
+                          ? Duration.zero
+                          : const Duration(milliseconds: 150),
+                      curve: Curves.easeOutCubic,
+                      decoration: ShapeDecoration(
+                        color: buttonFill,
+                        shape: buttonShape,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Center(
+                      child: Text(
+                        'Discard Changes',
+                        textAlign: TextAlign.center,
+                        style: widget.textStyle,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+            builder: (context, isClosing, button) =>
+                IgnorePointer(ignoring: isClosing, child: button),
           ),
         ),
-        builder: (context, isClosing, button) =>
-            IgnorePointer(ignoring: isClosing, child: button),
       ),
     );
   }

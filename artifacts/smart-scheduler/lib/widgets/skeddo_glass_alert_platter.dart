@@ -11,6 +11,7 @@ import '../app_theme.dart'
     show
         kConfirmationButtonCornerRadius,
         kConfirmationMessageActionGap,
+        skeddoConfirmationActionFillColor,
         kTertiaryLabel;
 import 'rounded_cupertino_sheet.dart';
 import 'skeddo_glass_settings.dart';
@@ -497,14 +498,10 @@ class _SkeddoAlertActionButtonState extends State<_SkeddoAlertActionButton> {
         valueListenable: widget.hoveredActionIndex,
         builder: (context, hoveredIndex, _) {
           final highlighted = _pressed || hoveredIndex == widget.actionIndex;
-          final isDark =
-              CupertinoTheme.brightnessOf(context) == Brightness.dark;
-          final fillAlpha = isDark
-              ? (highlighted ? 0.20 : 0.115)
-              : (highlighted ? 0.25 : 0.15);
-          final fill = isDark
-              ? CupertinoColors.white.withValues(alpha: fillAlpha)
-              : CupertinoColors.black.withValues(alpha: fillAlpha);
+          final fill = skeddoConfirmationActionFillColor(
+            context,
+            highlighted: highlighted,
+          );
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             excludeFromSemantics: true,
