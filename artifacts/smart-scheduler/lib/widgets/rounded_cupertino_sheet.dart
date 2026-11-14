@@ -227,7 +227,19 @@ Future<T?> showSafeCupertinoDialog<T>({
   required WidgetBuilder builder,
   bool barrierDismissible = false,
   Color? barrierColor,
+  RouteTransitionsBuilder? transitionBuilder,
 }) {
+  if (transitionBuilder != null) {
+    return Navigator.of(context, rootNavigator: true).push<T>(
+      CupertinoDialogRoute<T>(
+        builder: builder,
+        context: context,
+        barrierDismissible: barrierDismissible,
+        barrierColor: barrierColor,
+        transitionBuilder: transitionBuilder,
+      ),
+    );
+  }
   return showCupertinoDialog<T>(
     context: context,
     useRootNavigator: true,

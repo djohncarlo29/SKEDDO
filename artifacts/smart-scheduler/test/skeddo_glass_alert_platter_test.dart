@@ -161,6 +161,23 @@ void main() {
             .useOwnLayer,
         isFalse,
       );
+      final captureLayer = find.byType(AdaptiveLiquidGlassLayer);
+      expect(
+        find.ancestor(
+          of: captureLayer,
+          matching: find.byType(ScaleTransition),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: captureLayer,
+          matching: find.byKey(
+            const ValueKey('skeddo-glass-alert-dialog-transition'),
+          ),
+        ),
+        findsOneWidget,
+      );
       expect(
         find.byKey(const ValueKey('safe-popup-bottom-cover')),
         findsNothing,
@@ -454,7 +471,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('two long actions remain side by side and wrap', (tester) async {
+  testWidgets('two long actions stack full width and wrap', (tester) async {
     const longLabel = 'Keep every category and event together in this group';
     await tester.pumpWidget(
       CupertinoApp(
@@ -486,8 +503,12 @@ void main() {
       matching: find.byType(AnimatedContainer),
     );
     expect(
-      tester.getCenter(cancelButton).dx,
-      lessThan(tester.getCenter(destructiveButton).dx),
+      tester.getCenter(destructiveButton).dy,
+      lessThan(tester.getCenter(cancelButton).dy),
+    );
+    expect(
+      tester.getSize(destructiveButton).width,
+      closeTo(tester.getSize(cancelButton).width, 0.1),
     );
     expect(tester.getSize(destructiveButton).height, greaterThan(48));
     expect(tester.takeException(), isNull);
@@ -528,25 +549,33 @@ void main() {
     expect(find.text('Delete'), findsNothing);
     expect(find.text('Cancel'), findsOneWidget);
     expect(
-      tester.getCenter(find.text('Cancel')).dx,
-      lessThan(tester.getCenter(find.text('Delete Category')).dx),
+      tester.getCenter(find.text('Delete Category')).dy,
+      lessThan(tester.getCenter(find.text('Cancel')).dy),
     );
 
     await pumpTwoActions('Archive Event');
     expect(find.text('Archive Event'), findsOneWidget);
     expect(find.text('Archive'), findsNothing);
+    expect(
+      tester.getCenter(find.text('Archive Event')).dy,
+      lessThan(tester.getCenter(find.text('Cancel')).dy),
+    );
 
     await pumpTwoActions('Remove Group', cancelFirst: true);
     expect(find.text('Remove Group'), findsOneWidget);
     expect(find.text('Remove'), findsNothing);
     expect(
-      tester.getCenter(find.text('Cancel')).dx,
-      lessThan(tester.getCenter(find.text('Remove Group')).dx),
+      tester.getCenter(find.text('Remove Group')).dy,
+      lessThan(tester.getCenter(find.text('Cancel')).dy),
     );
 
     await pumpTwoActions('Permanently Delete');
     expect(find.text('Permanently Delete'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Permanently Delete')).dy,
+      lessThan(tester.getCenter(find.text('Cancel')).dy),
+    );
     expect(tester.takeException(), isNull);
   });
 

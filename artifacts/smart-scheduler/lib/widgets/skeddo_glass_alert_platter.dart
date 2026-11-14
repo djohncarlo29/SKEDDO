@@ -32,6 +32,10 @@ Future<T?> showSkeddoGlassAlertDialog<T>({
     context: context,
     barrierDismissible: barrierDismissible,
     barrierColor: const Color(0x44000000),
+    // Keep the full-window capture layer stationary. Cupertino's default
+    // transition scales the entire route child, which shifts the glass
+    // backdrop sampling while the dialog itself is moving.
+    transitionBuilder: (context, animation, secondaryAnimation, child) => child,
     builder: (dialogContext) => SkeddoGlassAlertPlatter(
       title: title,
       message: message,
@@ -126,102 +130,100 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: widget.maxWidth ?? 320,
-                      ),
-                      child: Semantics(
-                        scopesRoute: true,
-                        namesRoute: true,
-                        explicitChildNodes: true,
-                        label: widget.title ?? 'Confirmation',
-                        child: GlassInteractiveContainer(
-                          useOwnLayer: false,
-                          settings: settings,
-                          quality: quality,
-                          shape: const LiquidRoundedSuperellipse(
-                            borderRadius: 34,
-                          ),
-                          padding: EdgeInsets.zero,
-                          child: _AlertPlatterScrollViewport(
-                            actions: widget.actions,
-                            actionKeys: _actionKeys,
-                            hoveredActionIndex: _hoveredActionIndex,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (hasHeader)
-                                  Padding(
-                                    padding:
-                                        const EdgeInsetsDirectional.fromSTEB(
-                                          30,
-                                          22,
-                                          30,
-                                          0,
-                                        ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (widget.title != null)
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: Text(
-                                              widget.title!,
-                                              style: TextStyle(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.w600,
-                                                color: CupertinoColors.label
-                                                    .resolveFrom(context),
+                    child: _transitionDialogContent(
+                      context,
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: widget.maxWidth ?? 320,
+                        ),
+                        child: Semantics(
+                          scopesRoute: true,
+                          namesRoute: true,
+                          explicitChildNodes: true,
+                          label: widget.title ?? 'Confirmation',
+                          child: GlassInteractiveContainer(
+                            useOwnLayer: false,
+                            settings: settings,
+                            quality: quality,
+                            shape: const LiquidRoundedSuperellipse(
+                              borderRadius: 34,
+                            ),
+                            padding: EdgeInsets.zero,
+                            child: _AlertPlatterScrollViewport(
+                              actions: widget.actions,
+                              actionKeys: _actionKeys,
+                              hoveredActionIndex: _hoveredActionIndex,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                children: [
+                                  if (hasHeader)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsetsDirectional.fromSTEB(
+                                            30,
+                                            22,
+                                            30,
+                                            0,
+                                          ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (widget.title != null)
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: Text(
+                                                widget.title!,
+                                                style: TextStyle(
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: CupertinoColors.label
+                                                      .resolveFrom(context),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        if (widget.title != null &&
-                                            widget.message != null)
-                                          const SizedBox(
-                                            // Text glyphs leave different
-                                            // leading inside the 17pt and 15pt
-                                            // line boxes. This optical
-                                            // correction matches the action gap.
-                                            height:
-                                                _alertPlatterTitleMessageGap,
-                                          ),
-                                        if (widget.message != null)
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: Text(
-                                              widget.message!,
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                color: CupertinoColors
-                                                    .secondaryLabel
-                                                    .resolveFrom(context),
+                                          if (widget.title != null &&
+                                              widget.message != null)
+                                            const SizedBox(
+                                              // Text glyphs leave different
+                                              // leading inside the 17pt and 15pt
+                                              // line boxes. This optical
+                                              // correction matches the action gap.
+                                              height:
+                                                  _alertPlatterTitleMessageGap,
+                                            ),
+                                          if (widget.message != null)
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: Text(
+                                                widget.message!,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: CupertinoColors
+                                                      .secondaryLabel
+                                                      .resolveFrom(context),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
+                                  Padding(
+                                    padding: EdgeInsets.fromLTRB(
+                                      16,
+                                      hasHeader
+                                          ? _alertPlatterMessageActionGap
+                                          : 22,
+                                      16,
+                                      16,
+                                    ),
+                                    child: _buildActions(context),
                                   ),
-                                Padding(
-                                  padding: EdgeInsets.fromLTRB(
-                                    16,
-                                    hasHeader
-                                        ? _alertPlatterMessageActionGap
-                                        : 22,
-                                    16,
-                                    16,
-                                  ),
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) =>
-                                        _buildActions(
-                                          context,
-                                          constraints.maxWidth,
-                                        ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -237,56 +239,50 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
     );
   }
 
-  Widget _buildActions(BuildContext context, double width) {
-    if (widget.actions.length <= 2) {
-      final buttonOrder = List<int>.generate(
-        widget.actions.length,
-        (index) => index,
+  Widget _transitionDialogContent(BuildContext context, Widget child) {
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null) return child;
+
+    return FadeTransition(
+      opacity: animation,
+      child: ScaleTransition(
+        key: const ValueKey('skeddo-glass-alert-dialog-transition'),
+        scale: animation.drive(
+          Tween<double>(begin: 1.3, end: 1),
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context) {
+    final buttonOrder = List<int>.generate(
+      widget.actions.length,
+      (index) => index,
+    );
+    if (buttonOrder.length == 2) {
+      final cancelIndex = widget.actions.indexWhere(
+        (action) => action.label.trim().toLowerCase() == 'cancel',
       );
-      if (buttonOrder.length == 2) {
-        final cancelIndex = widget.actions.indexWhere(
-          (action) => action.label.trim().toLowerCase() == 'cancel',
-        );
-        if (cancelIndex == 1) {
-          buttonOrder
-            ..[0] = 1
-            ..[1] = 0;
-        }
+      if (cancelIndex == 0) {
+        buttonOrder
+          ..[0] = 1
+          ..[1] = 0;
       }
-      return Row(
-        children: [
-          for (
-            var orderIndex = 0;
-            orderIndex < buttonOrder.length;
-            orderIndex++
-          ) ...[
-            if (orderIndex > 0) const SizedBox(width: 8),
-            Expanded(
-              child: _SkeddoAlertActionButton(
-                key: _actionKeys[buttonOrder[orderIndex]],
-                action: widget.actions[buttonOrder[orderIndex]],
-                  displayLabel: widget.actions[buttonOrder[orderIndex]].label,
-                actionIndex: buttonOrder[orderIndex],
-                hoveredActionIndex: _hoveredActionIndex,
-              ),
-            ),
-          ],
-        ],
-      );
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var index = 0; index < widget.actions.length; index++)
+        for (var orderIndex = 0; orderIndex < buttonOrder.length; orderIndex++)
           Padding(
-            padding: EdgeInsets.only(top: index > 0 ? 8 : 0),
+            padding: EdgeInsets.only(top: orderIndex > 0 ? 8 : 0),
             child: _SkeddoAlertActionButton(
-              key: _actionKeys[index],
-              action: widget.actions[index],
-              displayLabel: widget.actions[index].label,
-              actionIndex: index,
+              key: _actionKeys[buttonOrder[orderIndex]],
+              action: widget.actions[buttonOrder[orderIndex]],
+              displayLabel: widget.actions[buttonOrder[orderIndex]].label,
+              actionIndex: buttonOrder[orderIndex],
               hoveredActionIndex: _hoveredActionIndex,
             ),
           ),
