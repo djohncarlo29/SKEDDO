@@ -49,5 +49,7 @@ scale, zero stretch, zero ambient light, and disabled package color feedback,
 but explicitly uses `GlassDefaults` touch-glow color, radius, blur, spread, and
 opacity. Its drag-selection bridge highlights the button under the pointer and
 activates on release; when the content overflows, require actual scroll movement
-before highlighting or selecting.
+before highlighting or selecting. Override `GlassPopover.glowOnTapOnly` to
+`false` when its glow should track a drag; the package Popover defaults to
+tap-only, unlike `GlassMenu`.
 Non-Impeller renderers still use the package's lighter path.

@@ -315,6 +315,8 @@ void main() {
     expect(popoverFinder, findsOneWidget);
     final popover = tester.widget<GlassPopover>(popoverFinder);
     expect(popover.quality, GlassQuality.premium);
+    expect(popover.enableInteractionGlow, isTrue);
+    expect(popover.glowOnTapOnly, isFalse);
     expect(popover.popoverBorderRadius, 34);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.anchorGrowthToTrigger, isTrue);

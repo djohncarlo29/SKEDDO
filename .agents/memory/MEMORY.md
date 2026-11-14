@@ -43,7 +43,7 @@
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
 - [Lifted tile rim outlines](dark-mode-ghost-and-sheet-outlines.md) — context and reorder ghosts use the same clipped shader rim as long-press menus, not a fixed stroke.
-- [Modal toolbar package glass](light-mode-checkmark-glass.md) — use GlassIconButton with shared tab-bar optics, action-tinted checks, and disabled confirmation state.
+- [Modal toolbar and Popover glass](light-mode-checkmark-glass.md) — preserve toolbar optics; override GlassPopover’s tap-only default when glow must follow drags.
 - [Shared Liquid Glass controls](static-liquid-glass-action-buttons.md) — shared glass settings follow the slider; search fill stays opaque while a hidden shape proxy preserves cancel-button blending.
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.

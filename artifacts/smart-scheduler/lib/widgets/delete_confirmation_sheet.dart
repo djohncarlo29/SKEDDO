@@ -616,6 +616,7 @@ class DiscardChangesPopoverAnchorState
           sliderPosition: sliderPosition,
         ),
         quality: GlassQuality.premium,
+        glowOnTapOnly: false,
         barrierDismissible: true,
         onClose: _onPopoverClosing,
         onOpen: _onPopoverOpened,
