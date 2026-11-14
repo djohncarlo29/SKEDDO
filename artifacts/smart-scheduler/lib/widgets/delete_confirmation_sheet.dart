@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show
@@ -14,7 +15,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassDialogAction;
+    show GlassDialogAction, GlassDefaults;
 
 import '../app_settings.dart';
 import '../app_theme.dart';
@@ -274,6 +275,10 @@ class DiscardChangesPopoverAnchorState
 
   late final VoidCallback _dismissCallback;
   final GlobalKey _triggerKey = GlobalKey();
+  final GlobalKey _discardActionTargetKey = GlobalKey();
+  final ValueNotifier<bool> _discardActionScrollHighlighted = ValueNotifier(
+    false,
+  );
   final ValueNotifier<bool> _popoverOverlayClosing = ValueNotifier(false);
   VoidCallback? _togglePopover;
   Key _popoverKey = UniqueKey();
@@ -297,6 +302,7 @@ class DiscardChangesPopoverAnchorState
   @override
   void dispose() {
     _closePollTimer?.cancel();
+    _discardActionScrollHighlighted.dispose();
     _popoverOverlayClosing.dispose();
     if (identical(_activeDiscardChangesSheetDismiss, _dismissCallback)) {
       _activeDiscardChangesSheetDismiss = null;
@@ -318,6 +324,7 @@ class DiscardChangesPopoverAnchorState
     _isNew = isNew;
     _pendingResult = null;
     _popoverOverlayClosing.value = false;
+    _discardActionScrollHighlighted.value = false;
     _popoverIsOpen = false;
     _isClosing = false;
     _triggerOrigin = null;
@@ -463,6 +470,7 @@ class DiscardChangesPopoverAnchorState
     _confirmationCompleter = null;
     _pendingResult = null;
     _popoverOverlayClosing.value = false;
+    _discardActionScrollHighlighted.value = false;
     _entityLabel = 'item';
     _isNew = false;
     _isClosing = false;
@@ -492,66 +500,81 @@ class DiscardChangesPopoverAnchorState
         ? 'Are you sure you want to discard this new $_entityLabel?'
         : 'Are you sure you want to discard your changes?';
 
-    return ActionPanelScrollView(
-      maxHeight: MediaQuery.sizeOf(context).height,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          kDiscardConfirmationButtonEdgeGap,
-          kDiscardConfirmationSheetTopInset,
-          kDiscardConfirmationButtonEdgeGap,
-          kDiscardConfirmationButtonEdgeGap,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: kDiscardConfirmationMessageHorizontalInset,
-              ),
-              child: Text(
-                message,
-                style: TextStyle(
-                  inherit: false,
-                  fontSize: 15,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w400,
-                  color: primary,
+    return _DiscardPopoverScrollToSelect(
+      buttonTargetKey: _discardActionTargetKey,
+      isClosing: _popoverOverlayClosing,
+      onHighlightChanged: (highlighted) {
+        if (_discardActionScrollHighlighted.value != highlighted) {
+          _discardActionScrollHighlighted.value = highlighted;
+        }
+      },
+      onSelect: () => _acceptDiscard(closePopover),
+      child: ActionPanelScrollView(
+        maxHeight: MediaQuery.sizeOf(context).height,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            kDiscardConfirmationButtonEdgeGap,
+            kDiscardConfirmationSheetTopInset,
+            kDiscardConfirmationButtonEdgeGap,
+            kDiscardConfirmationButtonEdgeGap,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: kDiscardConfirmationMessageHorizontalInset,
+                ),
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    inherit: false,
+                    fontSize: 15,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w400,
+                    color: primary,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: kDiscardConfirmationMessageButtonGap),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final buttonWidth = constraints.maxWidth;
-                final textScaler = MediaQuery.textScalerOf(context);
-                final buttonTextStyle = _discardConfirmationButtonTextStyle(
-                  context,
-                );
-                final textPainter = TextPainter(
-                  text: TextSpan(
-                    text: 'Discard Changes',
-                    style: buttonTextStyle,
-                  ),
-                  textDirection: Directionality.of(context),
-                  textScaler: textScaler,
-                )..layout(maxWidth: math.max(0, buttonWidth - 32));
-                final buttonHeight = math.max(48.0, textPainter.height + 26.0);
-                return _DiscardConfirmationGlassButton(
-                  width: buttonWidth,
-                  height: buttonHeight,
-                  textStyle: buttonTextStyle,
-                  isClosing: _popoverOverlayClosing,
-                  settings: skeddoPopoverButtonGlassSettingsFor(
-                    CupertinoTheme.brightnessOf(context),
-                    resolveThemeColor(kModalButtonBackground, context),
-                    sliderPosition: sliderPosition,
-                  ),
-                  onPressed: () => _acceptDiscard(closePopover),
-                );
-              },
-            ),
-          ],
+              const SizedBox(height: kDiscardConfirmationMessageButtonGap),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final buttonWidth = constraints.maxWidth;
+                  final textScaler = MediaQuery.textScalerOf(context);
+                  final buttonTextStyle = _discardConfirmationButtonTextStyle(
+                    context,
+                  );
+                  final textPainter = TextPainter(
+                    text: TextSpan(
+                      text: 'Discard Changes',
+                      style: buttonTextStyle,
+                    ),
+                    textDirection: Directionality.of(context),
+                    textScaler: textScaler,
+                  )..layout(maxWidth: math.max(0, buttonWidth - 32));
+                  final buttonHeight = math.max(
+                    48.0,
+                    textPainter.height + 26.0,
+                  );
+                  return _DiscardConfirmationGlassButton(
+                    buttonTargetKey: _discardActionTargetKey,
+                    scrollHighlighted: _discardActionScrollHighlighted,
+                    width: buttonWidth,
+                    height: buttonHeight,
+                    textStyle: buttonTextStyle,
+                    isClosing: _popoverOverlayClosing,
+                    settings: skeddoPopoverButtonGlassSettingsFor(
+                      CupertinoTheme.brightnessOf(context),
+                      resolveThemeColor(kModalButtonBackground, context),
+                      sliderPosition: sliderPosition,
+                    ),
+                    onPressed: () => _acceptDiscard(closePopover),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -605,6 +628,8 @@ class DiscardChangesPopoverAnchorState
 /// moving clip, foreground lens, and transition blur affect surface and label.
 class _DiscardConfirmationGlassButton extends StatefulWidget {
   const _DiscardConfirmationGlassButton({
+    required this.buttonTargetKey,
+    required this.scrollHighlighted,
     required this.width,
     required this.height,
     required this.textStyle,
@@ -613,6 +638,8 @@ class _DiscardConfirmationGlassButton extends StatefulWidget {
     required this.onPressed,
   });
 
+  final GlobalKey buttonTargetKey;
+  final ValueListenable<bool> scrollHighlighted;
   final double width;
   final double height;
   final TextStyle textStyle;
@@ -629,6 +656,7 @@ class _DiscardConfirmationGlassButtonState
     extends State<_DiscardConfirmationGlassButton> {
   bool _pressed = false;
   bool _hovered = false;
+  Offset? _pressDownPosition;
 
   void _setPressed(bool value) {
     if (_pressed == value) return;
@@ -640,81 +668,262 @@ class _DiscardConfirmationGlassButtonState
     setState(() => _hovered = value);
   }
 
+  void _onPointerDown(PointerDownEvent event) {
+    _pressDownPosition = event.position;
+    _setPressed(true);
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    final downPosition = _pressDownPosition;
+    if (downPosition != null &&
+        (event.position - downPosition).distance > kTouchSlop) {
+      _setPressed(false);
+    }
+  }
+
+  void _onPointerEnd(PointerEvent event) {
+    _pressDownPosition = null;
+    _setPressed(false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final highlighted = _pressed || _hovered;
-    final buttonFill = skeddoConfirmationActionFillColor(
-      context,
-      highlighted: highlighted,
-    );
     const buttonShape = LiquidRoundedSuperellipse(
       borderRadius: kDiscardConfirmationButtonCornerRadius,
     );
 
-    return SizedBox(
-      key: const ValueKey('discard-confirmation-glass-button-anchor'),
-      width: widget.width,
-      height: widget.height,
-      child: MouseRegion(
-        onEnter: (_) => _setHovered(true),
-        onExit: (_) => _setHovered(false),
-        child: Listener(
-          onPointerDown: (_) => _setPressed(true),
-          onPointerUp: (_) => _setPressed(false),
-          onPointerCancel: (_) => _setPressed(false),
-          child: ValueListenableBuilder<bool>(
-            valueListenable: widget.isClosing,
-            child: GlassButton.custom(
-              onTap: widget.onPressed,
-              width: widget.width,
-              height: widget.height,
-              shape: buttonShape,
-              settings: widget.settings,
-              quality: GlassQuality.premium,
-              useOwnLayer: true,
-              style: GlassButtonStyle.filled,
-              interactionScale: 1,
-              stretch: 0,
-              anchorStretch: false,
-              glowColor: const Color(0x00000000),
-              glowOpacity: 0,
-              glowBlurRadius: 0,
-              glowSpreadRadius: 0,
-              ambientBaseLight: 0,
-              enableInteractionColorFeedback: false,
-              label: 'Discard Changes',
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  IgnorePointer(
-                    child: AnimatedContainer(
-                      key: const ValueKey('discard-confirmation-action-fill'),
-                      duration: highlighted
-                          ? Duration.zero
-                          : const Duration(milliseconds: 150),
-                      curve: Curves.easeOutCubic,
-                      decoration: ShapeDecoration(
-                        color: buttonFill,
-                        shape: buttonShape,
-                      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: widget.scrollHighlighted,
+      builder: (context, scrollHighlighted, _) {
+        final highlighted = _pressed || _hovered || scrollHighlighted;
+        final buttonFill = skeddoConfirmationActionFillColor(
+          context,
+          highlighted: highlighted,
+        );
+        return KeyedSubtree(
+          key: widget.buttonTargetKey,
+          child: SizedBox(
+            key: const ValueKey('discard-confirmation-glass-button-anchor'),
+            width: widget.width,
+            height: widget.height,
+            child: MouseRegion(
+              onEnter: (_) => _setHovered(true),
+              onExit: (_) => _setHovered(false),
+              child: Listener(
+                onPointerDown: _onPointerDown,
+                onPointerMove: _onPointerMove,
+                onPointerUp: _onPointerEnd,
+                onPointerCancel: _onPointerEnd,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: widget.isClosing,
+                  child: GlassButton.custom(
+                    onTap: widget.onPressed,
+                    width: widget.width,
+                    height: widget.height,
+                    shape: buttonShape,
+                    settings: widget.settings,
+                    quality: GlassQuality.premium,
+                    useOwnLayer: true,
+                    style: GlassButtonStyle.filled,
+                    interactionScale: 1,
+                    stretch: 0,
+                    anchorStretch: false,
+                    glowColor: GlassDefaults.touchGlowColorForBrightness(
+                      CupertinoTheme.brightnessOf(context),
+                    ),
+                    glowRadius: GlassDefaults.touchGlowRadius,
+                    glowBlurRadius: GlassDefaults.touchGlowBlurRadius,
+                    glowSpreadRadius: GlassDefaults.touchGlowSpreadRadius,
+                    glowOpacity: GlassDefaults.touchGlowOpacity,
+                    ambientBaseLight: 0,
+                    enableInteractionColorFeedback: false,
+                    label: 'Discard Changes',
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        IgnorePointer(
+                          child: AnimatedContainer(
+                            key: const ValueKey(
+                              'discard-confirmation-action-fill',
+                            ),
+                            duration: highlighted
+                                ? Duration.zero
+                                : const Duration(milliseconds: 150),
+                            curve: Curves.easeOutCubic,
+                            decoration: ShapeDecoration(
+                              color: buttonFill,
+                              shape: buttonShape,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Center(
+                            child: Text(
+                              'Discard Changes',
+                              textAlign: TextAlign.center,
+                              style: widget.textStyle,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Center(
-                      child: Text(
-                        'Discard Changes',
-                        textAlign: TextAlign.center,
-                        style: widget.textStyle,
-                      ),
-                    ),
-                  ),
-                ],
+                  builder: (context, isClosing, button) =>
+                      IgnorePointer(ignoring: isClosing, child: button),
+                ),
               ),
             ),
-            builder: (context, isClosing, button) =>
-                IgnorePointer(ignoring: isClosing, child: button),
           ),
+        );
+      },
+    );
+  }
+}
+
+/// Adds the same glide-selection behavior as menu rows to the discard
+/// popover's single action button.
+class _DiscardPopoverScrollToSelect extends StatefulWidget {
+  const _DiscardPopoverScrollToSelect({
+    required this.buttonTargetKey,
+    required this.isClosing,
+    required this.onHighlightChanged,
+    required this.onSelect,
+    required this.child,
+  });
+
+  final GlobalKey buttonTargetKey;
+  final ValueListenable<bool> isClosing;
+  final ValueChanged<bool> onHighlightChanged;
+  final VoidCallback onSelect;
+  final Widget child;
+
+  @override
+  State<_DiscardPopoverScrollToSelect> createState() =>
+      _DiscardPopoverScrollToSelectState();
+}
+
+class _DiscardPopoverScrollToSelectState
+    extends State<_DiscardPopoverScrollToSelect> {
+  int? _activePointer;
+  Offset? _pointerDownPosition;
+  Offset? _lastPointerPosition;
+  double? _lastScrollPixels;
+  double? _latestScrollPixels;
+  bool _pointerDragged = false;
+  bool _canScroll = false;
+  bool _didScrollDuringPointer = false;
+
+  void _onPointerDown(PointerDownEvent event) {
+    if (_activePointer != null || widget.isClosing.value) return;
+    _activePointer = event.pointer;
+    _pointerDownPosition = event.position;
+    _lastPointerPosition = event.position;
+    _lastScrollPixels = _latestScrollPixels ?? 0;
+    _pointerDragged = false;
+    _didScrollDuringPointer = false;
+    widget.onHighlightChanged(false);
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _activePointer || _pointerDownPosition == null) return;
+    _lastPointerPosition = event.position;
+    if ((event.position - _pointerDownPosition!).distance > kTouchSlop) {
+      _pointerDragged = true;
+    }
+    _updateHighlight(event.position);
+  }
+
+  bool _onScrollMetrics(ScrollMetricsNotification notification) {
+    if (notification.metrics.axis == Axis.vertical) {
+      _canScroll = notification.metrics.maxScrollExtent > 1.0;
+      _latestScrollPixels = notification.metrics.pixels;
+    }
+    return false;
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical || notification.depth > 0) {
+      return false;
+    }
+    _canScroll = notification.metrics.maxScrollExtent > 1.0;
+    if (notification is ScrollUpdateNotification) {
+      final pixels = notification.metrics.pixels;
+      final previousPixels = _lastScrollPixels ?? 0;
+      if (_activePointer != null &&
+          (pixels - previousPixels).abs() > 0.01) {
+        _didScrollDuringPointer = true;
+        _updateHighlight(_lastPointerPosition);
+      }
+      _lastScrollPixels = pixels;
+    }
+    _latestScrollPixels = notification.metrics.pixels;
+    return false;
+  }
+
+  void _updateHighlight(Offset? position) {
+    if (position == null ||
+        !_pointerDragged ||
+        (_canScroll && !_didScrollDuringPointer) ||
+        widget.isClosing.value) {
+      widget.onHighlightChanged(false);
+      return;
+    }
+    widget.onHighlightChanged(_buttonBounds?.contains(position) ?? false);
+  }
+
+  Rect? get _buttonBounds {
+    final renderObject = widget.buttonTargetKey.currentContext
+        ?.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      return null;
+    }
+    return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+  }
+
+  void _resetPointer() {
+    _activePointer = null;
+    _pointerDownPosition = null;
+    _lastPointerPosition = null;
+    _lastScrollPixels = null;
+    _pointerDragged = false;
+    _didScrollDuringPointer = false;
+    widget.onHighlightChanged(false);
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    if (event.pointer != _activePointer) return;
+    _lastPointerPosition = event.position;
+    _updateHighlight(event.position);
+    final shouldSelect =
+        _pointerDragged &&
+        (!_canScroll || _didScrollDuringPointer) &&
+        (_buttonBounds?.contains(event.position) ?? false) &&
+        !widget.isClosing.value;
+    _resetPointer();
+    if (shouldSelect) widget.onSelect();
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _activePointer) return;
+    _resetPointer();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: _onScrollMetrics,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
+          child: widget.child,
         ),
       ),
     );

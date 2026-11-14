@@ -17,6 +17,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 import 'package:flutter_liquid_glass_widgets/widgets/shared/glass_popover_content_lens.dart'
     show GlassPopoverContentLens;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassDefaults;
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
@@ -498,10 +500,14 @@ void main() {
     expect(discardButton.interactionScale, 1);
     expect(discardButton.stretch, 0);
     expect(discardButton.anchorStretch, isFalse);
-    expect(discardButton.glowColor, const Color(0x00000000));
-    expect(discardButton.glowOpacity, 0);
-    expect(discardButton.glowBlurRadius, 0);
-    expect(discardButton.glowSpreadRadius, 0);
+    expect(
+      discardButton.glowColor,
+      GlassDefaults.touchGlowColorForBrightness(Brightness.light),
+    );
+    expect(discardButton.glowRadius, GlassDefaults.touchGlowRadius);
+    expect(discardButton.glowOpacity, GlassDefaults.touchGlowOpacity);
+    expect(discardButton.glowBlurRadius, GlassDefaults.touchGlowBlurRadius);
+    expect(discardButton.glowSpreadRadius, GlassDefaults.touchGlowSpreadRadius);
     expect(discardButton.ambientBaseLight, 0);
     expect(discardButton.enableInteractionColorFeedback, isFalse);
     final buttonGlassFinder = find.descendant(
@@ -608,6 +614,110 @@ void main() {
     expect(acceptedConfirmationFinished, isFalse);
     await tester.pumpAndSettle();
     expect(await acceptedConfirmation, isTrue);
+  });
+
+  testWidgets('discard popover supports drag-to-select its single action', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    late BuildContext pageContext;
+    final anchorKey = GlobalKey<DiscardChangesPopoverAnchorState>();
+    await tester.pumpWidget(
+      CupertinoApp(
+        theme: const CupertinoThemeData(brightness: Brightness.dark),
+        builder: (context, child) => AppWindowContentScope(
+          horizontalInset: 24,
+          physicalWidth: 800,
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: Builder(
+          builder: (context) {
+            pageContext = context;
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, top: 72),
+                child: DiscardChangesPopoverAnchor(
+                  key: anchorKey,
+                  child: CupertinoButton(
+                    onPressed: () {},
+                    child: const Icon(CupertinoIcons.xmark),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final confirmation = showDiscardChangesConfirmationSheet(
+      pageContext,
+      anchorKey: anchorKey,
+      entityLabel: 'event',
+      isNew: true,
+    );
+    await tester.pumpAndSettle();
+
+    final message = find.text(
+      'Are you sure you want to discard this new event?',
+    );
+    final button = find.byKey(
+      const ValueKey('discard-confirmation-glass-button-anchor'),
+    );
+    final glassButton = tester.widget<GlassButton>(
+      find.ancestor(
+        of: find.text('Discard Changes'),
+        matching: find.byType(GlassButton),
+      ),
+    );
+    final fill = find.byKey(
+      const ValueKey('discard-confirmation-action-fill'),
+    );
+    Color currentFill() =>
+        (tester.widget<AnimatedContainer>(fill).decoration as ShapeDecoration)
+            .color!;
+
+    expect(message, findsOneWidget);
+    expect(button, findsOneWidget);
+    expect(
+      glassButton.glowColor,
+      GlassDefaults.touchGlowColorForBrightness(Brightness.dark),
+    );
+    expect(
+      currentFill(),
+      skeddoConfirmationActionFillColor(pageContext, highlighted: false),
+    );
+
+    final gesture = await tester.startGesture(tester.getCenter(message));
+    await gesture.moveTo(tester.getCenter(button));
+    await tester.pump();
+    expect(
+      currentFill(),
+      skeddoConfirmationActionFillColor(pageContext, highlighted: true),
+    );
+
+    await gesture.moveTo(tester.getCenter(message));
+    await tester.pump();
+    expect(
+      currentFill(),
+      skeddoConfirmationActionFillColor(pageContext, highlighted: false),
+    );
+
+    await gesture.moveTo(tester.getCenter(button));
+    await tester.pump();
+    expect(
+      currentFill(),
+      skeddoConfirmationActionFillColor(pageContext, highlighted: true),
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(await confirmation, isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('discard action button grows with large system text', (

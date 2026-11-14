@@ -18,8 +18,8 @@ glyph in both themes, tinted `#CECDD3` in Light Mode or `#474749` in Dark Mode,
 while remaining semantically and functionally disabled. Set
 `GlassButton.glowColor` to transparent on these inactive checkmarks to remove
 the touch halo without changing their resting glass tint. The
-discard-confirmation button has no touch glow, stretch, or interaction-driven
-color change.
+discard-confirmation button stays rigid, but uses the package's shared
+touch-glow profile and its app-owned hover, press, and drag-selection fill.
 
 **Why:** The package button's general theme defaults don't match the app's
 slider-driven shared optics. Active checkmarks need stable optics even as the
@@ -44,7 +44,10 @@ opacity to the category fill only. When updating the vendored navigation
 package, preserve its pinned shared-capsule stretch of 0.5. Inactive grey tints use shared slider
 settings, `glassColor` directly, and a white glyph in both themes. Keep inactive
 controls semantically and functionally disabled and suppress their glow with
-transparent `glowColor`. The discard confirmation action uses zero interaction
-scale, zero stretch, transparent zero-opacity glow, zero ambient light, and
-disabled interaction color feedback.
+transparent `glowColor`. The discard confirmation action keeps zero interaction
+scale, zero stretch, zero ambient light, and disabled package color feedback,
+but explicitly uses `GlassDefaults` touch-glow color, radius, blur, spread, and
+opacity. Its drag-selection bridge highlights the button under the pointer and
+activates on release; when the content overflows, require actual scroll movement
+before highlighting or selecting.
 Non-Impeller renderers still use the package's lighter path.
