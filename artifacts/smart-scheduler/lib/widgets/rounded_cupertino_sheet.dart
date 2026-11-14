@@ -235,6 +235,7 @@ Future<T?> showSafeCupertinoDialog<T>({
     barrierColor: barrierColor,
     builder: (dialogContext) => _SafePopupRouteSurface(
       safeBottom: systemSafeAreaBottomInset(dialogContext),
+      coverSafeBottom: false,
       child: builder(dialogContext),
     ),
   );
@@ -245,11 +246,13 @@ class _SafePopupRouteSurface extends StatelessWidget {
     required this.safeBottom,
     required this.child,
     this.fullScreen = false,
+    this.coverSafeBottom = true,
   });
 
   final double safeBottom;
   final Widget child;
   final bool fullScreen;
+  final bool coverSafeBottom;
 
   @override
   Widget build(BuildContext context) {
@@ -260,13 +263,16 @@ class _SafePopupRouteSurface extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (safeBottom > 0)
+        if (coverSafeBottom && safeBottom > 0)
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             height: safeBottom,
-            child: ColoredBox(color: surfaceColor),
+            child: ColoredBox(
+              key: const ValueKey('safe-popup-bottom-cover'),
+              color: surfaceColor,
+            ),
           ),
         if (fullScreen)
           Positioned.fill(child: popupChild)

@@ -10,7 +10,7 @@ import '../app_theme.dart' show kTertiaryLabel;
 import 'rounded_cupertino_sheet.dart';
 import 'skeddo_glass_settings.dart';
 
-const double _alertPlatterTitleMessageGap = 16;
+const double _alertPlatterTitleMessageGap = 14.5;
 const double _alertPlatterMessageActionGap = 20.33;
 
 /// Presents SKEDDO's scoped iOS 26/27-style alert with the shared glass curve.
@@ -100,103 +100,131 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
   @override
   Widget build(BuildContext context) {
     final hasHeader = widget.title != null || widget.message != null;
-    return AnimatedPadding(
-      padding: MediaQuery.viewInsetsOf(context),
-      duration: const Duration(milliseconds: 100),
-      curve: Curves.decelerate,
-      child: MediaQuery.removeViewInsets(
-        context: context,
-        removeLeft: true,
-        removeTop: true,
-        removeRight: true,
-        removeBottom: true,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: widget.maxWidth ?? 320),
-                child: Semantics(
-                  scopesRoute: true,
-                  namesRoute: true,
-                  explicitChildNodes: true,
-                  label: widget.title ?? 'Confirmation',
-                  child: GlassInteractiveContainer(
-                    useOwnLayer: true,
-                    settings: widget.settings ?? const LiquidGlassSettings(),
-                    quality: widget.quality ?? GlassQuality.standard,
-                    shape: const LiquidRoundedSuperellipse(borderRadius: 34),
-                    padding: EdgeInsets.zero,
-                    child: _AlertPlatterScrollViewport(
-                      actions: widget.actions,
-                      actionKeys: _actionKeys,
-                      hoveredActionIndex: _hoveredActionIndex,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (hasHeader)
-                            Padding(
-                              padding: const EdgeInsetsDirectional.fromSTEB(
-                                30,
-                                22,
-                                30,
-                                0,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (widget.title != null)
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: Text(
-                                        widget.title!,
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w600,
-                                          color: CupertinoColors.label
-                                              .resolveFrom(context),
+    final settings = widget.settings ?? const LiquidGlassSettings();
+    final quality = widget.quality ?? GlassQuality.standard;
+    return Stack(
+      key: const ValueKey('skeddo-glass-alert-fullscreen-layer'),
+      fit: StackFit.expand,
+      children: [
+        // Match GlassMenu's backdrop-capture architecture: keep the capture
+        // layer full-screen and alive for the entire route transition, with the
+        // alert surface grouped inside it instead of capturing in its own layer.
+        AdaptiveLiquidGlassLayer(
+          settings: settings,
+          quality: quality,
+          child: AnimatedPadding(
+            padding: MediaQuery.viewInsetsOf(context),
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.decelerate,
+            child: MediaQuery.removeViewInsets(
+              context: context,
+              removeLeft: true,
+              removeTop: true,
+              removeRight: true,
+              removeBottom: true,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: widget.maxWidth ?? 320,
+                      ),
+                      child: Semantics(
+                        scopesRoute: true,
+                        namesRoute: true,
+                        explicitChildNodes: true,
+                        label: widget.title ?? 'Confirmation',
+                        child: GlassInteractiveContainer(
+                          useOwnLayer: false,
+                          settings: settings,
+                          quality: quality,
+                          shape: const LiquidRoundedSuperellipse(
+                            borderRadius: 34,
+                          ),
+                          padding: EdgeInsets.zero,
+                          child: _AlertPlatterScrollViewport(
+                            actions: widget.actions,
+                            actionKeys: _actionKeys,
+                            hoveredActionIndex: _hoveredActionIndex,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (hasHeader)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsetsDirectional.fromSTEB(
+                                          30,
+                                          22,
+                                          30,
+                                          0,
                                         ),
-                                      ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (widget.title != null)
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: Text(
+                                              widget.title!,
+                                              style: TextStyle(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w600,
+                                                color: CupertinoColors.label
+                                                    .resolveFrom(context),
+                                              ),
+                                            ),
+                                          ),
+                                        if (widget.title != null &&
+                                            widget.message != null)
+                                          const SizedBox(
+                                            // Text glyphs leave different
+                                            // leading inside the 17pt and 15pt
+                                            // line boxes. This optical
+                                            // correction matches the action gap.
+                                            height:
+                                                _alertPlatterTitleMessageGap,
+                                          ),
+                                        if (widget.message != null)
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: Text(
+                                              widget.message!,
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: CupertinoColors
+                                                    .secondaryLabel
+                                                    .resolveFrom(context),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
-                                  if (widget.title != null &&
-                                      widget.message != null)
-                                    const SizedBox(
-                                      // Text glyphs leave different amounts of
-                                      // leading inside the 17pt and 15pt line
-                                      // boxes. A 1.5pt optical correction makes
-                                      // the visible gap match the action gap.
-                                      height: _alertPlatterTitleMessageGap,
-                                    ),
-                                  if (widget.message != null)
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: Text(
-                                        widget.message!,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          color: CupertinoColors.secondaryLabel
-                                              .resolveFrom(context),
+                                  ),
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    16,
+                                    hasHeader
+                                        ? _alertPlatterMessageActionGap
+                                        : 22,
+                                    16,
+                                    16,
+                                  ),
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) =>
+                                        _buildActions(
+                                          context,
+                                          constraints.maxWidth,
                                         ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              16,
-                              hasHeader ? _alertPlatterMessageActionGap : 22,
-                              16,
-                              16,
-                            ),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) =>
-                                  _buildActions(context, constraints.maxWidth),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -205,7 +233,7 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -237,7 +265,7 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
               child: _SkeddoAlertActionButton(
                 key: _actionKeys[buttonOrder[orderIndex]],
                 action: widget.actions[buttonOrder[orderIndex]],
-                displayLabel: _displayActionLabel(buttonOrder[orderIndex]),
+                  displayLabel: widget.actions[buttonOrder[orderIndex]].label,
                 actionIndex: buttonOrder[orderIndex],
                 hoveredActionIndex: _hoveredActionIndex,
               ),
@@ -264,29 +292,6 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
           ),
       ],
     );
-  }
-
-  String _displayActionLabel(int index) {
-    final label = widget.actions[index].label.trim();
-    if (widget.actions.length != 2) return label;
-    final action = widget.actions[index];
-    if (!action.isDestructive && !action.isPrimary) return label;
-    for (final verb in const [
-      'Permanently Delete',
-      'Delete',
-      'Archive',
-      'Remove',
-      'Recover',
-      'Restore',
-      'Keep',
-      'Discard',
-      'Save',
-      'Move',
-      'Confirm',
-    ]) {
-      if (label == verb || label.startsWith('$verb ')) return verb;
-    }
-    return label;
   }
 }
 

@@ -6,6 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassDialogAction,
         GlassInteractiveContainer,
+        AdaptiveLiquidGlassLayer,
         GlassQuality,
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
@@ -73,14 +74,29 @@ void main() {
         matching: find.byType(AnimatedContainer),
       ),
     );
-    expect(messageRect.top - titleRect.bottom, closeTo(16, 0.1));
+    expect(messageRect.top - titleRect.bottom, closeTo(14.5, 0.1));
     expect(firstButtonRect.top - messageRect.bottom, closeTo(20.33, 0.1));
+    final destructiveButtonRect = tester.getRect(
+      find.ancestor(
+        of: find.text('Delete Category & Contents'),
+        matching: find.byType(AnimatedContainer),
+      ),
+    );
+    final cancelButtonRect = tester.getRect(
+      find.ancestor(
+        of: find.text('Cancel'),
+        matching: find.byType(AnimatedContainer),
+      ),
+    );
+    expect(destructiveButtonRect.bottom, lessThan(cancelButtonRect.top));
 
     final platter = tester.widget<GlassInteractiveContainer>(
       find.byType(GlassInteractiveContainer),
     );
     expect(platter.shape, const LiquidRoundedSuperellipse(borderRadius: 34));
     expect(platter.quality, GlassQuality.standard);
+    expect(platter.useOwnLayer, isFalse);
+    expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
     expect(platter.enableInteractionGlow, isTrue);
     expect(platter.stretch, 0.5);
     expect(platter.interactionScale, 1.02);
@@ -93,6 +109,77 @@ void main() {
     await tester.pump();
     expect(selectedAction, 'Delete Category & Contents');
   });
+
+  testWidgets(
+    'dialog capture is active during entry and its barrier covers safe areas',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppWindowContentBoundary(child: child!),
+          home: Builder(
+            builder: (context) => CupertinoPageScaffold(
+              child: Center(
+                child: CupertinoButton(
+                  onPressed: () {
+                    showSkeddoGlassAlertDialog<void>(
+                      context: context,
+                      title: 'Confirm action',
+                      actionsBuilder: (dialogContext) => [
+                        GlassDialogAction(
+                          label: 'Done',
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                        ),
+                      ],
+                    );
+                  },
+                  child: const Text('Open dialog'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open dialog'));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('skeddo-glass-alert-fullscreen-layer')),
+        findsOneWidget,
+      );
+      expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+      expect(find.byType(GlassInteractiveContainer), findsOneWidget);
+      expect(
+        tester
+            .widget<GlassInteractiveContainer>(
+              find.byType(GlassInteractiveContainer),
+            )
+            .useOwnLayer,
+        isFalse,
+      );
+      expect(
+        find.byKey(const ValueKey('safe-popup-bottom-cover')),
+        findsNothing,
+      );
+
+      final barrier = find.byType(AnimatedModalBarrier);
+      expect(tester.getRect(barrier.last), const Rect.fromLTWH(0, 0, 390, 844));
+
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+      expect(find.byType(GlassInteractiveContainer), findsOneWidget);
+
+      await tester.tap(find.text('Done'));
+      await tester.pump();
+      expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+    },
+  );
 
   testWidgets('alert platter stays legible at accessibility text scaling', (
     tester,
@@ -406,7 +493,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('two-action lifecycle buttons show only Delete or Archive', (
+  testWidgets('two-action dialogs retain descriptive action labels', (
     tester,
   ) async {
     Future<void> pumpTwoActions(
@@ -437,25 +524,29 @@ void main() {
     }
 
     await pumpTwoActions('Delete Category');
-    expect(find.text('Delete'), findsOneWidget);
-    expect(find.text('Delete Category'), findsNothing);
+    expect(find.text('Delete Category'), findsOneWidget);
+    expect(find.text('Delete'), findsNothing);
     expect(find.text('Cancel'), findsOneWidget);
     expect(
       tester.getCenter(find.text('Cancel')).dx,
-      lessThan(tester.getCenter(find.text('Delete')).dx),
+      lessThan(tester.getCenter(find.text('Delete Category')).dx),
     );
 
     await pumpTwoActions('Archive Event');
-    expect(find.text('Archive'), findsOneWidget);
-    expect(find.text('Archive Event'), findsNothing);
+    expect(find.text('Archive Event'), findsOneWidget);
+    expect(find.text('Archive'), findsNothing);
 
     await pumpTwoActions('Remove Group', cancelFirst: true);
-    expect(find.text('Remove'), findsOneWidget);
-    expect(find.text('Remove Group'), findsNothing);
+    expect(find.text('Remove Group'), findsOneWidget);
+    expect(find.text('Remove'), findsNothing);
     expect(
       tester.getCenter(find.text('Cancel')).dx,
-      lessThan(tester.getCenter(find.text('Remove')).dx),
+      lessThan(tester.getCenter(find.text('Remove Group')).dx),
     );
+
+    await pumpTwoActions('Permanently Delete');
+    expect(find.text('Permanently Delete'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

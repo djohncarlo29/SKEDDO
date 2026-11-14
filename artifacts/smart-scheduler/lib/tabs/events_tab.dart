@@ -3624,8 +3624,7 @@ class EventsTabState extends State<EventsTab>
               ? 'The smart category cannot be recovered. Its matching events '
                   'will stay unchanged.'
               : _permanentlyDeleteCategorySubtitle(category),
-      actionLabel:
-          isSmart ? 'Permanently Delete Smart Category' : 'Permanently Delete',
+      actionLabel: 'Permanently Delete',
     );
     if (!mounted) return;
     if (confirmed != true) {
