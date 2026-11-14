@@ -6,7 +6,7 @@ import 'dart:ui' show Color;
 /// navigation surfaces. Theme-aware callers select the matching surface tint.
 abstract final class GlassInteractionGlowDefaults {
   /// Shared radius as a proportion of the glow layer's shortest side.
-  static const double radius = 1.6;
+  static const double radius = 1.2;
 
   /// Shared Gaussian blur sigma, in logical pixels.
   static const double blurRadius = 16;
@@ -14,8 +14,8 @@ abstract final class GlassInteractionGlowDefaults {
   /// Shared additive spread beyond the animated radius.
   static const double spreadRadius = 0;
 
-  /// Shared opacity multiplier, reduced to keep the finger-following glow subtle.
-  static const double opacity = 0.6;
+  /// Shared opacity multiplier, kept subtle across all glow-enabled surfaces.
+  static const double opacity = 0.36;
 
   /// Neutral touch glow for light surfaces.
   static const Color lightModeColor = Color(0x1A000000);
