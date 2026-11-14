@@ -47,6 +47,7 @@ import '../widgets/delete_confirmation_sheet.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/trailing_checkmark_slot.dart';
 import '../widgets/skeddo_glass_settings.dart';
+import '../widgets/skeddo_glass_alert_platter.dart';
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -12560,7 +12561,7 @@ Future<T?> _showCategoryLifecycleGlassDialog<T>(
     context: context,
     barrierDismissible: true,
     barrierColor: const Color(0x44000000),
-    builder: (dialogContext) => GlassDialog(
+    builder: (dialogContext) => SkeddoGlassAlertPlatter(
       title: title,
       message: message,
       actions: actionsBuilder(dialogContext),
