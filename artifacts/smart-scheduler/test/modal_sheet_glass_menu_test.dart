@@ -582,6 +582,69 @@ void main() {
     expect(controller!.isOpen, isFalse);
   });
 
+  testWidgets(
+    'modal picker keeps its trigger and open menu visible after rotation',
+    (tester) async {
+      tester.view.physicalSize = const Size(420, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      GlassMenuController? controller;
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 640),
+                ModalSheetGlassMenu(
+                  trigger: const Text('Rotation trigger'),
+                  actions: [
+                    ActionItem(
+                      label: 'Rotation option',
+                      icon: CupertinoIcons.circle,
+                      onTap: () {},
+                    ),
+                  ],
+                  semanticLabel: 'Rotation picker',
+                  onOpened: (value) => controller = value,
+                  builder: (context, menuTrigger, openMenu) => menuTrigger,
+                ),
+                const SizedBox(height: 800),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final trigger = find.text('Rotation trigger');
+      await tester.ensureVisible(trigger);
+      await tester.tap(trigger);
+      await tester.pumpAndSettle();
+      expect(controller!.isOpen, isTrue);
+
+      tester.view.physicalSize = const Size(900, 420);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(controller!.isOpen, isTrue);
+      final triggerRect = tester.getRect(trigger);
+      expect(triggerRect.top, greaterThanOrEqualTo(0));
+      expect(triggerRect.bottom, lessThanOrEqualTo(420));
+
+      final option = find.text('Rotation option');
+      expect(option, findsOneWidget);
+      final optionRect = tester.getRect(option);
+      expect(optionRect.top, greaterThanOrEqualTo(0));
+      expect(optionRect.bottom, lessThanOrEqualTo(420));
+
+      controller!.close();
+      await tester.pumpAndSettle();
+      expect(controller!.isOpen, isFalse);
+    },
+  );
+
   testWidgets('picker trigger return spring is independent of option count', (
     tester,
   ) async {

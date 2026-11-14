@@ -281,7 +281,9 @@ class DiscardChangesPopoverAnchorState
   );
   final ValueNotifier<bool> _popoverOverlayClosing = ValueNotifier(false);
   VoidCallback? _togglePopover;
-  Key _popoverKey = UniqueKey();
+  GlobalKey _popoverKey = GlobalKey();
+  MediaQueryData? _lastViewportMetrics;
+  bool _triggerOriginRefreshScheduled = false;
   Timer? _closePollTimer;
   Completer<bool?>? _confirmationCompleter;
   Offset? _triggerOrigin;
@@ -297,6 +299,54 @@ class DiscardChangesPopoverAnchorState
   void initState() {
     super.initState();
     _dismissCallback = _dismissActivePopover;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final viewportMetrics = MediaQuery.maybeOf(context);
+    final previousViewportMetrics = _lastViewportMetrics;
+    final viewportGeometryChanged = previousViewportMetrics != null &&
+        viewportMetrics != null &&
+        (previousViewportMetrics.size != viewportMetrics.size ||
+            previousViewportMetrics.orientation !=
+                viewportMetrics.orientation ||
+            previousViewportMetrics.padding != viewportMetrics.padding ||
+            previousViewportMetrics.viewPadding !=
+                viewportMetrics.viewPadding ||
+            previousViewportMetrics.viewInsets != viewportMetrics.viewInsets);
+    _lastViewportMetrics = viewportMetrics;
+    if (viewportGeometryChanged && (_popoverIsOpen || _isClosing)) {
+      _scheduleTriggerOriginRefresh();
+    }
+  }
+
+  void _scheduleTriggerOriginRefresh() {
+    if (_triggerOriginRefreshScheduled) return;
+    _triggerOriginRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerOriginRefreshScheduled = false;
+      if (!mounted || (!_popoverIsOpen && !_isClosing)) return;
+      final origin = _popoverLayoutOrigin();
+      if (origin == null) return;
+      _triggerOrigin = origin;
+      _previousTriggerPosition = null;
+      _stableTriggerFrames = 0;
+    });
+  }
+
+  Offset? _popoverLayoutOrigin() {
+    final renderObject = _popoverKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox &&
+        renderObject.attached &&
+        renderObject.hasSize) {
+      return renderObject.localToGlobal(Offset.zero);
+    }
+    final trigger = _triggerKey.currentContext?.findRenderObject();
+    if (trigger is RenderBox && trigger.attached && trigger.hasSize) {
+      return trigger.localToGlobal(Offset.zero);
+    }
+    return null;
   }
 
   @override
@@ -378,14 +428,7 @@ class DiscardChangesPopoverAnchorState
 
   void _onPopoverOpened() {
     _popoverOverlayClosing.value = false;
-    final renderObject = _triggerKey.currentContext?.findRenderObject();
-    if (renderObject is! RenderBox ||
-        !renderObject.attached ||
-        !renderObject.hasSize) {
-      _triggerOrigin = null;
-      return;
-    }
-    _triggerOrigin = renderObject.localToGlobal(Offset.zero);
+    _triggerOrigin = _popoverLayoutOrigin();
     _previousTriggerPosition = null;
     _stableTriggerFrames = 0;
   }
@@ -474,7 +517,7 @@ class DiscardChangesPopoverAnchorState
     _entityLabel = 'item';
     _isNew = false;
     _isClosing = false;
-    _popoverKey = UniqueKey();
+    _popoverKey = GlobalKey();
     if (mounted) setState(() {});
     if (completer != null && !completer.isCompleted) {
       completer.complete(result);

@@ -945,4 +945,102 @@ void main() {
       await sheetFuture;
     },
   );
+
+  testWidgets(
+    'discard popover follows rotation, closes, and opens again',
+    (tester) async {
+      tester.view.physicalSize = const Size(420, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final anchorKey = GlobalKey<DiscardChangesPopoverAnchorState>();
+      late BuildContext pageContext;
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppWindowContentScope(
+            horizontalInset: 0,
+            physicalWidth: 420,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: Builder(
+            builder: (context) {
+              pageContext = context;
+              return CupertinoPageScaffold(
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: DiscardChangesPopoverAnchor(
+                      key: anchorKey,
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(CupertinoIcons.xmark),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      Future<bool?> openDiscardPopover() =>
+          showDiscardChangesConfirmationSheet(
+            pageContext,
+            anchorKey: anchorKey,
+            entityLabel: 'event',
+            isNew: true,
+          );
+
+      var confirmation = openDiscardPopover();
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Are you sure you want to discard this new event?'),
+        findsOneWidget,
+      );
+
+      tester.view.physicalSize = const Size(900, 420);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final popover = tester.widget<GlassPopover>(find.byType(GlassPopover));
+      final glassContainers = find.byType(GlassContainer);
+      final bodyRects = List<Rect>.generate(
+        glassContainers.evaluate().length,
+        (index) => tester.getRect(glassContainers.at(index)),
+      ).where((rect) => (rect.width - popover.popoverWidth).abs() < 1.0)
+          .toList();
+      final visibleBodyRects = bodyRects
+          .where(
+            (rect) =>
+                rect.left >= 11 &&
+                rect.right <= 889 &&
+                rect.top >= 11 &&
+                rect.bottom <= 409,
+          )
+          .toList();
+      expect(
+        visibleBodyRects,
+        isNotEmpty,
+        reason: 'Popover body candidates after rotation: $bodyRects',
+      );
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(await confirmation, isNull);
+
+      confirmation = openDiscardPopover();
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Are you sure you want to discard this new event?'),
+        findsOneWidget,
+      );
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(await confirmation, isNull);
+    },
+  );
 }

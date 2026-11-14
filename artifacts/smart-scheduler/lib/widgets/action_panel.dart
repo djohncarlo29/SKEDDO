@@ -939,8 +939,54 @@ class ModalSheetGlassMenu extends StatefulWidget {
 
 class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
   final GlassMenuController _controller = GlassMenuController();
+  final GlobalKey _triggerAnchorKey = GlobalKey();
+  MediaQueryData? _lastViewportMetrics;
   int _closeCompletionGeneration = 0;
   List<ActionItem>? _actionsDuringClose;
+  bool _triggerRevealScheduled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final viewportMetrics = MediaQuery.maybeOf(context);
+    final previousViewportMetrics = _lastViewportMetrics;
+    final viewportGeometryChanged = previousViewportMetrics != null &&
+        viewportMetrics != null &&
+        (previousViewportMetrics.size != viewportMetrics.size ||
+            previousViewportMetrics.orientation !=
+                viewportMetrics.orientation ||
+            previousViewportMetrics.padding != viewportMetrics.padding ||
+            previousViewportMetrics.viewPadding !=
+                viewportMetrics.viewPadding ||
+            previousViewportMetrics.viewInsets != viewportMetrics.viewInsets);
+    _lastViewportMetrics = viewportMetrics;
+    if (viewportGeometryChanged && _controller.isOpen) {
+      _scheduleTriggerReveal();
+    }
+  }
+
+  void _scheduleTriggerReveal() {
+    if (_triggerRevealScheduled) return;
+    _triggerRevealScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerRevealScheduled = false;
+      if (!mounted || !_controller.isOpen) return;
+      final triggerContext = _triggerAnchorKey.currentContext;
+      if (triggerContext == null || !triggerContext.mounted) return;
+
+      // The sheet can become shorter or reflow its rows during rotation. Keep
+      // the source row visible first; GlassMenu's own live-metrics pass then
+      // captures its settled position and reclamps the open platter.
+      unawaited(
+        Scrollable.ensureVisible(
+          triggerContext,
+          alignment: 0.5,
+          duration: Duration.zero,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        ),
+      );
+    });
+  }
 
   void _prepareToOpen() {
     // A close can be reversed by reopening the menu before its spring settles.
@@ -1007,10 +1053,13 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
             container: true,
             button: true,
             label: widget.semanticLabel,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _toggleMenu(toggleMenu),
-              child: widget.trigger,
+            child: KeyedSubtree(
+              key: _triggerAnchorKey,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _toggleMenu(toggleMenu),
+                child: widget.trigger,
+              ),
             ),
           ),
           items: items,

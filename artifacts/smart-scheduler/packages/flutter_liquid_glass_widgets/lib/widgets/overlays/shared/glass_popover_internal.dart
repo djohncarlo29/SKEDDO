@@ -19,6 +19,8 @@ class _GlassPopoverState extends State<GlassPopover>
   Size? _triggerSize;
   double? _triggerBorderRadius;
   Offset _triggerGlobalPosition = Offset.zero;
+  MediaQueryData? _lastViewportMetrics;
+  bool _viewportGeometryRefreshScheduled = false;
   double _horizontalOffset = 0.0;
   double _verticalOffset = 0.0;
 
@@ -153,6 +155,22 @@ class _GlassPopoverState extends State<GlassPopover>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final viewportMetrics = MediaQuery.maybeOf(context);
+    final previousViewportMetrics = _lastViewportMetrics;
+    final viewportGeometryChanged = previousViewportMetrics != null &&
+        viewportMetrics != null &&
+        (previousViewportMetrics.size != viewportMetrics.size ||
+            previousViewportMetrics.orientation !=
+                viewportMetrics.orientation ||
+            previousViewportMetrics.padding != viewportMetrics.padding ||
+            previousViewportMetrics.viewPadding !=
+                viewportMetrics.viewPadding ||
+            previousViewportMetrics.viewInsets != viewportMetrics.viewInsets);
+    _lastViewportMetrics = viewportMetrics;
+    if (viewportGeometryChanged && _overlayController.isShowing) {
+      _scheduleOpenPopoverGeometryRefresh();
+    }
+
     // Sync the reduced-motion accessibility flag to the morph controller.
     _morphController.setDisableAnimations(
       MediaQuery.of(context).disableAnimations,
@@ -382,19 +400,46 @@ class _GlassPopoverState extends State<GlassPopover>
     widget.onClose?.call();
   }
 
+  bool _captureTriggerGeometry() {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null ||
+        !renderBox.attached ||
+        !renderBox.hasSize) {
+      return false;
+    }
+
+    _triggerSize = renderBox.size;
+    _triggerBorderRadius = _triggerSize!.height / 2;
+    _triggerGlobalPosition = renderBox.localToGlobal(Offset.zero);
+    return true;
+  }
+
+  void _scheduleOpenPopoverGeometryRefresh({int attempt = 0}) {
+    if (_viewportGeometryRefreshScheduled) return;
+    _viewportGeometryRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _viewportGeometryRefreshScheduled = false;
+      if (!mounted || !_overlayController.isShowing) return;
+      if (!_captureTriggerGeometry()) {
+        if (attempt >= 12) return;
+        WidgetsBinding.instance.scheduleFrame();
+        _scheduleOpenPopoverGeometryRefresh(attempt: attempt + 1);
+        return;
+      }
+
+      setState(_updatePositionAndClamping);
+      // Content can wrap differently or be height-clamped after rotation.
+      _scheduleRemeasure();
+    });
+  }
+
   void _openPopover() {
     // context.findRenderObject() works correctly here because build() returns
     // AnimatedBuilder at the top level. AnimatedBuilder has no render object of
     // its own, so the traversal descends into the builder's returned Stack,
     // which is always sized to the trigger button. localToGlobal therefore gives
     // the trigger's actual screen position.
-    final renderBox = context.findRenderObject() as RenderBox?;
-
-    if (renderBox == null || !renderBox.hasSize) return;
-
-    _triggerSize = renderBox.size;
-    _triggerBorderRadius = _triggerSize!.height / 2;
-    _triggerGlobalPosition = renderBox.localToGlobal(Offset.zero);
+    if (!_captureTriggerGeometry()) return;
 
     // Build the content widget exactly once for this open cycle. All
     // subsequent frames read _cachedContent; didUpdateWidget refreshes it
