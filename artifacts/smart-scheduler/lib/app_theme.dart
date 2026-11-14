@@ -723,16 +723,19 @@ const double kLargeModalSheetCornerRadius = 40.0;
 const double kConfirmationSheetCornerRadius = 24.0;
 const double kModalConfirmationSheetCornerRadius = 24.0;
 const double kConfirmationButtonCornerRadius = kSquircleStadiumRadius;
+const double kConfirmationMessageActionGap = 20.33;
 // The dismiss confirmation keeps its own token, but its radius is fixed so
 // multiline labels grow through the straight middle section.
 const double kDiscardConfirmationButtonCornerRadius = kSquircleStadiumRadius;
+const double kDiscardConfirmationPopoverCornerRadius = 34.0;
 const double kModalConfirmationHorizontalInset = 24.0;
 const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
 const double kDiscardConfirmationTopLeftEdgeGap = 16.0;
 const double kDiscardConfirmationButtonEdgeGap = 16.0;
 const double kDiscardConfirmationMessageHorizontalInset = 8.0;
-const double kDiscardConfirmationMessageButtonGap = 16.0;
-const double kDiscardConfirmationSheetTopInset = 16.0;
+const double kDiscardConfirmationMessageButtonGap =
+    kConfirmationMessageActionGap;
+const double kDiscardConfirmationSheetTopInset = 22.0;
 
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;

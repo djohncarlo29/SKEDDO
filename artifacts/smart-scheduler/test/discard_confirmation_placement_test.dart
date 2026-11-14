@@ -11,7 +11,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         LiquidGlassBlendGroup,
         GlassPopover,
         GlassQuality,
-        LiquidGlassLayer;
+        LiquidGlassLayer,
+        LiquidRoundedSuperellipse;
 import 'package:flutter_liquid_glass_widgets/widgets/shared/glass_popover_content_lens.dart'
     show GlassPopoverContentLens;
 import 'package:flutter_test/flutter_test.dart';
@@ -303,11 +304,15 @@ void main() {
       'Are you sure you want to discard this new event?',
     );
     expect(message, findsOneWidget);
+    final messageText = tester.widget<Text>(message);
+    expect(messageText.style?.fontSize, 15);
+    expect(messageText.style?.height, isNull);
     expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
     final popoverFinder = find.byType(GlassPopover);
     expect(popoverFinder, findsOneWidget);
     final popover = tester.widget<GlassPopover>(popoverFinder);
     expect(popover.quality, GlassQuality.premium);
+    expect(popover.popoverBorderRadius, 34);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.anchorGrowthToTrigger, isTrue);
     expect(popover.keepTriggerHiddenDuringClose, isTrue);
@@ -395,6 +400,7 @@ void main() {
     expect(buttonAnchorFinder, findsOneWidget);
     final buttonRect = tester.getRect(discardButtonFinder);
     final anchorRect = tester.getRect(buttonAnchorFinder);
+    expect(buttonRect.height, closeTo(48, 0.01));
     expect(buttonRect.left, closeTo(anchorRect.left, 0.01));
     expect(buttonRect.top, closeTo(anchorRect.top, 0.01));
     expect(buttonRect.width, closeTo(anchorRect.width, 0.01));
@@ -437,6 +443,24 @@ void main() {
       isTrue,
     );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
+    expect(discardButton.height, 48);
+    expect(
+      discardButton.shape,
+      const LiquidRoundedSuperellipse(
+        borderRadius: kDiscardConfirmationButtonCornerRadius,
+      ),
+    );
+    final discardLabel = tester.widget<Text>(
+      find.descendant(
+        of: discardButtonFinder,
+        matching: find.text('Discard Changes'),
+      ),
+    );
+    expect(discardLabel.style?.fontWeight, FontWeight.w400);
+    expect(
+      discardLabel.style?.color,
+      CupertinoColors.systemRed.resolveFrom(pageContext),
+    );
     expect(
       discardButton.settings!.glassColor.a,
       closeTo(kSkeddoPopoverGlassOpacity, 0.001),

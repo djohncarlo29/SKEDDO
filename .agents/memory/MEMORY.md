@@ -117,7 +117,7 @@
 - [Settings Dynamic Type padding](settings-dynamic-type-padding.md) — apply 16px vertical insets around content-driven rows so Dynamic Type grows rows without squeezing breathing room.
 - [Modal row Dynamic Type sizing](modal-row-dynamic-type.md) — fixed control slots must not impose fixed heights on modal-sheet labels.
 - [Settled thumb row geometry](settled-thumb-row-geometry.md) — slider rows measure 16px from the resting thumb; lifted animation viewport overflows invisibly inside that padding.
-- [Large confirmation sheet radius](large-confirmation-sheet-radius.md) — microphone access and Delete Group overlays use the dedicated 40px bounded squircle; regular modal controls remain 24px.
+- [Large confirmation sheet radius](large-confirmation-sheet-radius.md) — keep alert surfaces' outer shapes distinct; the discard popover uses a 34px surface and fixed 24px action radius.
 - [Expandable modal card surfaces](expandable-modal-card-surfaces.md) — expandable row stacks must use one shared bounded squircle surface, never adjacent partial-radius cards.
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.

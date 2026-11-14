@@ -513,12 +513,10 @@ class DiscardChangesPopoverAnchorState
                 message,
                 style: TextStyle(
                   inherit: false,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontFamily: kSFProText,
                   fontWeight: FontWeight.w400,
                   color: primary,
-                  letterSpacing: kTracking16,
-                  height: 1.5,
                 ),
               ),
             ),
@@ -527,14 +525,8 @@ class DiscardChangesPopoverAnchorState
               builder: (context, constraints) {
                 final buttonWidth = constraints.maxWidth;
                 final textScaler = MediaQuery.textScalerOf(context);
-                final buttonTextStyle = TextStyle(
-                  inherit: false,
-                  fontSize: 17,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w500,
-                  color: CupertinoColors.destructiveRed,
-                  letterSpacing: kTracking17,
-                  height: kLineHeight,
+                final buttonTextStyle = _discardConfirmationButtonTextStyle(
+                  context,
                 );
                 final textPainter = TextPainter(
                   text: TextSpan(
@@ -543,11 +535,12 @@ class DiscardChangesPopoverAnchorState
                   ),
                   textDirection: Directionality.of(context),
                   textScaler: textScaler,
-                )..layout(maxWidth: buttonWidth);
-                final buttonHeight = math.max(57.0, textPainter.height + 32.0);
+                )..layout(maxWidth: math.max(0, buttonWidth - 32));
+                final buttonHeight = math.max(48.0, textPainter.height + 26.0);
                 return _DiscardConfirmationGlassButton(
                   width: buttonWidth,
                   height: buttonHeight,
+                  textStyle: buttonTextStyle,
                   isClosing: _popoverOverlayClosing,
                   settings: skeddoPopoverButtonGlassSettingsFor(
                     CupertinoTheme.brightnessOf(context),
@@ -572,8 +565,6 @@ class DiscardChangesPopoverAnchorState
       final viewportSize = MediaQuery.sizeOf(context);
       final screenSize =
           device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
-      final isPresentedOverModalSheet =
-          RoundedCupertinoSheetRoute.hasParentSheet(context);
 
       return GlassPopover(
         key: _popoverKey,
@@ -590,9 +581,7 @@ class DiscardChangesPopoverAnchorState
         popoverOffset: const Offset(-4, -4),
         anchorGrowthToTrigger: true,
         keepTriggerHiddenDuringClose: true,
-        popoverBorderRadius: isPresentedOverModalSheet
-            ? kModalConfirmationSheetCornerRadius
-            : kConfirmationSheetCornerRadius,
+        popoverBorderRadius: kDiscardConfirmationPopoverCornerRadius,
         alignment: GlassMenuAlignment.topLeft,
         // GlassPopover adds the platform view insets itself when clamping. Do
         // not add AppWindowContentScope's landscape inset again here, or the
@@ -618,6 +607,7 @@ class _DiscardConfirmationGlassButton extends StatelessWidget {
   const _DiscardConfirmationGlassButton({
     required this.width,
     required this.height,
+    required this.textStyle,
     required this.isClosing,
     required this.settings,
     required this.onPressed,
@@ -625,6 +615,7 @@ class _DiscardConfirmationGlassButton extends StatelessWidget {
 
   final double width;
   final double height;
+  final TextStyle textStyle;
   final ValueListenable<bool> isClosing;
   final LiquidGlassSettings settings;
   final VoidCallback onPressed;
@@ -658,11 +649,14 @@ class _DiscardConfirmationGlassButton extends StatelessWidget {
           ambientBaseLight: 0,
           enableInteractionColorFeedback: false,
           label: 'Discard Changes',
-          child: Center(
-            child: Text(
-              'Discard Changes',
-              textAlign: TextAlign.center,
-              style: _discardConfirmationButtonTextStyle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Center(
+              child: Text(
+                'Discard Changes',
+                textAlign: TextAlign.center,
+                style: textStyle,
+              ),
             ),
           ),
         ),
@@ -673,12 +667,11 @@ class _DiscardConfirmationGlassButton extends StatelessWidget {
   }
 }
 
-final TextStyle _discardConfirmationButtonTextStyle = TextStyle(
-  inherit: false,
-  fontSize: 17,
-  fontFamily: kSFProText,
-  fontWeight: FontWeight.w500,
-  color: CupertinoColors.destructiveRed,
-  letterSpacing: kTracking17,
-  height: kLineHeight,
-);
+TextStyle _discardConfirmationButtonTextStyle(BuildContext context) =>
+    TextStyle(
+      inherit: false,
+      fontSize: 17,
+      fontFamily: kSFProText,
+      fontWeight: FontWeight.w400,
+      color: CupertinoColors.systemRed.resolveFrom(context),
+    );
