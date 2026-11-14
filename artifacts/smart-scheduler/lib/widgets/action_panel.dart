@@ -3238,36 +3238,42 @@ class GlassMenuRimOutline extends StatelessWidget {
       children: [
         child,
         Positioned.fill(
-          child: IgnorePointer(
-            child: ValueListenableBuilder<double>(
-              valueListenable: appLiquidGlassOpacityNotifier,
-              builder: (context, opacity, _) {
-                final menuSettings = _glassMenuSurfaceSettingsFor(
-                  context,
-                  sliderPosition: liquidGlassSliderPositionForOpacity(
-                    opacity,
-                  ),
-                  visibility: rimOpacity.clamp(0.0, 1.0).toDouble(),
-                ).copyWith(
-                  glassColor: const Color(0x00FFFFFF),
-                  blur: 0,
-                  refractiveIndex: 1,
-                  chromaticAberration: 0,
-                  saturation: 1,
-                  whitenStrength: 0,
-                  bodyShade: 0,
-                  fresnelStrength: kSkeddoSharedGlassRimStrength,
-                  bodyMode: GlassBodyMode.clear,
-                );
-                return GlassContainer(
-                  padding: EdgeInsets.zero,
-                  useOwnLayer: true,
-                  settings: menuSettings,
-                  quality: GlassQuality.premium,
-                  shape: shape,
-                  child: const SizedBox.expand(),
-                );
-              },
+          // Cache only the transparent edge pass. Never include the tile
+          // contents in this boundary: they must stay crisp while the lifted
+          // tile is transformed.
+          child: RepaintBoundary(
+            key: const ValueKey('glass-menu-rim-layer'),
+            child: IgnorePointer(
+              child: ValueListenableBuilder<double>(
+                valueListenable: appLiquidGlassOpacityNotifier,
+                builder: (context, opacity, _) {
+                  final menuSettings = _glassMenuSurfaceSettingsFor(
+                    context,
+                    sliderPosition: liquidGlassSliderPositionForOpacity(
+                      opacity,
+                    ),
+                    visibility: rimOpacity.clamp(0.0, 1.0).toDouble(),
+                  ).copyWith(
+                    glassColor: const Color(0x00FFFFFF),
+                    blur: 0,
+                    refractiveIndex: 1,
+                    chromaticAberration: 0,
+                    saturation: 1,
+                    whitenStrength: 0,
+                    bodyShade: 0,
+                    fresnelStrength: kSkeddoSharedGlassRimStrength,
+                    bodyMode: GlassBodyMode.clear,
+                  );
+                  return GlassContainer(
+                    padding: EdgeInsets.zero,
+                    useOwnLayer: true,
+                    settings: menuSettings,
+                    quality: GlassQuality.premium,
+                    shape: shape,
+                    child: const SizedBox.expand(),
+                  );
+                },
+              ),
             ),
           ),
         ),

@@ -73,6 +73,15 @@ void main() {
     expect(glassRim.settings!.lightIntensity, greaterThan(0));
     expect(glassRim.settings!.thickness, greaterThan(0));
     expect(glassRim.shape, const LiquidRoundedSuperellipse(borderRadius: 24));
+    final cachedRimLayer = find.byKey(const ValueKey('glass-menu-rim-layer'));
+    expect(cachedRimLayer, findsOneWidget);
+    expect(
+      find.descendant(
+        of: cachedRimLayer,
+        matching: find.text(contentLabel),
+      ),
+      findsNothing,
+    );
     expect(
       find.descendant(
         of: find.byType(GlassContainer),
