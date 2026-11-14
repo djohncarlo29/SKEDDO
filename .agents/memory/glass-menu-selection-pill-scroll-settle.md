@@ -3,8 +3,8 @@ name: Glass menu selection behavior
 description: Menu selection, scale, and rubberband interaction rules
 ---
 
-`GlassBarItem.menu` rows stay visually neutral for every gesture: no selector pill, press/hover/focus fill, or selected-row scale. Normal taps and slide-to-select remain functional. Rubberbanding depends only on actual overflow; fitting root and nested menus do not bounce, while overflowing ones do.
+`GlassBarItem.menu`, modal picker `GlassMenu`, and long-press context menu rows show a temporary active-row tint and 0.98× scale during touch or glide selection. Light Mode uses black at 8% opacity; Dark Mode uses white at 4.5%. Semantic selection remains separate from this transient state. All use the shared 2pt row gap; adaptive highlights clear immediately when the pointer moves to another row so only one pill is visible. Overflow scrolling clears the glide highlight when scrolling begins; fitting menus retain slide-to-select and highlight the row under the finger.
 
-**Why:** The row's press/hover fill can look like the selector pill even after the pill itself is disabled. Selection, visual feedback, and scrolling must remain independent.
+**Why:** The user explicitly changed the earlier no-pill behavior and requested one consistent selection highlight across these three menu paths.
 
-**How to apply:** Disable row interaction highlights for every `GlassBarItem.menu` appearance, including light/dark and submenu levels, without disabling pointer selection or tap handlers. Enable bounce only when rendered content exceeds its viewport.
+**How to apply:** Keep the adaptive tint, 0.98× active-row scale, and shared row gap on the toolbar menu, modal picker menu, and long-press context menu. Clear the prior active pill immediately on row changes. Keep actual selected values independent, preserve normal taps and slide selection, and do not turn overflow scrolling into glide activation.

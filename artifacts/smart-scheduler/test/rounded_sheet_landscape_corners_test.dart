@@ -5,12 +5,30 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_theme.dart'
-    show kRoundedSheetLandscapeSafeAreaGap;
+    show
+        BoundedSquircleStadiumBorder,
+        kModalSheetCornerRadius,
+        kRoundedSheetLandscapeSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
+  test('modal sheets and scroll-edge clipping use 46pt top corners', () {
+    final sheet = ModalSheetScrollUnder(
+      header: const SizedBox.shrink(),
+      headerHeight: 0,
+      baseScrollPadding: EdgeInsets.zero,
+      surfaceColor: CupertinoColors.white,
+      scrollBuilder: (context, padding) => const SizedBox.shrink(),
+    );
+    final edgeShape = sheet.edgeClipShape as BoundedSquircleStadiumBorder;
+
+    expect(kModalSheetCornerRadius, 46);
+    expect(edgeShape.radius, 46);
+    expect(edgeShape.topOnly, isTrue);
+  });
+
   testWidgets(
     'landscape parent and nested sheet surfaces keep rounded top corners',
     (tester) async {

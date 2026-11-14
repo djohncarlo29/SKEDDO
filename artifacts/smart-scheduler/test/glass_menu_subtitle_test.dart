@@ -782,7 +782,7 @@ void main() {
     );
   });
 
-  testWidgets('overflow scrolling does not show the selection pill', (
+  testWidgets('overflow scrolling does not glide-highlight menu options', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -808,8 +808,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Actions'));
     await tester.pumpAndSettle();
-    final pill = find.byKey(const ValueKey('glass-menu-selection-pill'));
-    expect(pill, findsNothing);
+    void expectNoGlideHighlight() {
+      expect(
+        tester
+            .widgetList<GlassMenuItem>(find.byType(GlassMenuItem))
+            .where((item) => item.isInteractionHighlighted),
+        isEmpty,
+      );
+    }
+
+    expectNoGlideHighlight();
 
     final scrollableFinder = find.descendant(
       of: find.byType(GlassMenu),
@@ -826,16 +834,16 @@ void main() {
     );
     await tester.pump();
     expect(scrollable.position.pixels, greaterThan(0));
-    expect(pill, findsNothing);
+    expectNoGlideHighlight();
 
     // Pulling beyond the top edge uses the scroll view's rubberband response,
     // but must not turn that gesture into a row-selection highlight.
     await tester.drag(scrollableFinderTarget, const Offset(0, 400));
     await tester.pumpAndSettle();
-    expect(pill, findsNothing);
+    expectNoGlideHighlight();
   });
 
-  testWidgets('press and long-press activation has no selector or row scale', (
+  testWidgets('press and long-press show interaction highlight and row scale', (
     tester,
   ) async {
     var tapped = false;
@@ -866,10 +874,10 @@ void main() {
     await tester.tap(find.text('Actions'));
     await tester.pumpAndSettle();
 
-    final pill = find.byKey(const ValueKey('glass-menu-selection-pill'));
     final gesture = await tester.startGesture(
       tester.getCenter(find.text('Option 0')),
     );
+    await tester.pump();
     final optionRow = find
         .ancestor(
           of: find.text('Option 0'),
@@ -880,10 +888,12 @@ void main() {
       of: optionRow,
       matching: find.byType(AnimatedScale),
     );
-    expect(tester.widget<AnimatedScale>(rowScale).scale, 1.0);
+    final activeItem = tester.widget<GlassMenuItem>(optionRow);
+    expect(activeItem.showInteractionHighlight, isTrue);
+    expect(activeItem.enablePressScale, isTrue);
+    expect(tester.widget<AnimatedScale>(rowScale).scale, 0.98);
     await tester.pump(const Duration(milliseconds: 510));
-    expect(pill, findsNothing);
-    expect(tester.widget<AnimatedScale>(rowScale).scale, 1.0);
+    expect(tester.widget<AnimatedScale>(rowScale).scale, 0.98);
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tapped, isTrue);
@@ -1338,7 +1348,7 @@ void main() {
   );
 
   testWidgets(
-    'swipe-to-select works without a pill or row scale in a fitting menu',
+    'swipe-to-select highlights and scales the active row in a fitting menu',
     (tester) async {
       VoidCallback? toggleMenu;
       int? selectedOption;
@@ -1348,6 +1358,7 @@ void main() {
             child: GlassMenu(
               menuWidth: 260,
               menuHeight: 240,
+              useAdaptiveInteractionHighlight: true,
               items: [
                 for (var index = 0; index < 4; index++)
                   GlassMenuItem(
@@ -1382,27 +1393,54 @@ void main() {
         isA<NeverScrollableScrollPhysics>(),
       );
 
-      final pill = find.byKey(const ValueKey('glass-menu-selection-pill'));
-      expect(pill, findsNothing);
       final gesture = await tester.startGesture(
         tester.getCenter(find.text('Swipe option 0')),
       );
       await tester.pump();
       await gesture.moveTo(tester.getCenter(find.text('Swipe option 1')));
       await tester.pump();
-      expect(pill, findsNothing);
+      final previousRow = find.ancestor(
+        of: find.text('Swipe option 0'),
+        matching: find.byType(GlassMenuItem),
+      );
+      final previousSurface = find.descendant(
+        of: previousRow.first,
+        matching: find.byType(AnimatedContainer),
+      );
+      expect(
+        (tester.widget<AnimatedContainer>(previousSurface.first).decoration
+                as BoxDecoration)
+            .color,
+        const Color(0x00000000),
+      );
       final selectedRow = find.ancestor(
         of: find.text('Swipe option 1'),
         matching: find.byType(GlassMenuItem),
       );
       expect(
+        tester.widget<GlassMenuItem>(selectedRow.first).isInteractionHighlighted,
+        isTrue,
+      );
+      expect(
         tester.widget<GlassMenuItem>(selectedRow.first).enablePressScale,
-        isFalse,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<AnimatedScale>(
+              find
+                  .descendant(
+                    of: selectedRow.first,
+                    matching: find.byType(AnimatedScale),
+                  )
+                  .first,
+            )
+            .scale,
+        0.98,
       );
 
       await gesture.up();
       await tester.pumpAndSettle();
-      expect(pill, findsNothing);
       expect(selectedOption, 1);
     },
   );
@@ -1462,9 +1500,15 @@ void main() {
     await tester.pump();
     await gesture.moveTo(tester.getCenter(find.text('Nested option 2')));
     await tester.pump();
+    final highlightedNestedOption = find.ancestor(
+      of: find.text('Nested option 2'),
+      matching: find.byType(GlassMenuItem),
+    );
     expect(
-      find.byKey(const ValueKey('glass-menu-selection-pill')),
-      findsNothing,
+      tester
+          .widget<GlassMenuItem>(highlightedNestedOption.first)
+          .isInteractionHighlighted,
+      isTrue,
     );
     await gesture.up();
     await tester.pumpAndSettle();

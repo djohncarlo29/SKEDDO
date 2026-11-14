@@ -70,6 +70,7 @@
 - [Deleted category recovery](deleted-category-recovery.md) — recovering a category restores its structure only; events remain in Uncategorized by product decision.
 - [Category archive choices](category-archive-choices.md) — contentful categories ask whether to archive intact or move events out and archive only the category.
 - [GlassMenu runtime](glass-menu-runtime-index.md) — grouped notes for menu curves, morph bounds, scrolling, selection, and submenu chevrons.
+- [Glass menu selection feedback](glass-menu-selection-pill-scroll-settle.md) — targeted menus tint and scale the active row while touch or glide selection is over it.
 - [Modal picker menu layout](glass-menu-modal-picker-layout.md) — menu foreground needs its own transition lens; premium backdrop quality alone does not refract its rows.
 - [Default category setting](default-category-setting.md) — persist the selected category by ID and reset it before deleting that category.
 - [Group deletion confirmation](group-deletion-confirmation.md) — removing a group is immediate; deleting its categories requires a second confirmation.
@@ -108,7 +109,7 @@
 - [Offline file analysis route](offline-file-analysis-route.md) — Notes attachments use local extraction/OCR and deterministic analysis only; Gemini is not a fallback for this flow.
 - [Platform text scaling profile](platform-text-scaling-profile.md) — source text-size positions from the OS profile and preserve nonlinear curves through System↔Custom transitions.
 - [Flutter System scaler diagnostics](flutter-system-scaler-diagnostics.md) — compare native profile and Flutter nonlinear scaling on-device.
-- [Shared modal safe-area handling](shared-modal-safe-area.md) — apply insets once; landscape sheet and scroll effects stay inside rounded safe bounds; AppShell stays full-width.
+- [Shared modal safe-area handling](shared-modal-safe-area.md) — apply insets once; all sheets and scroll effects share 46pt top corners; AppShell stays full-width.
 - [Modal scroll-edge clipping and dimming](modal-scroll-edge-extent-clipping.md) — preserve compositing and rounded clipping; zero-range short pulls include positive overscroll without layout changes.
 - [SliverFillRemaining intrinsic boundaries](sliver-fill-remaining-layoutbuilder.md) — bound responsive LayoutBuilder descendants inside non-scroll-body remaining slivers.
 - [Sheet scroll indicator anchoring](sheet-scroll-indicator-anchoring.md) — overlay-sheet scroll pills must anchor to the sheet surface, outside the padded content viewport.

@@ -10,6 +10,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMenuContentLens,
         GlassMenuItem,
         GlassQuality,
+        kGlassMenuRowGap,
         LiquidRoundedSuperellipse;
 import 'package:smart_scheduler/app_theme.dart'
     show kPrimaryLabel, resolveThemeColor;
@@ -165,7 +166,7 @@ void main() {
         );
         expect(
           tester.getSize(find.byType(GlassContainer)).height,
-          rowsHeight + 24,
+          rowsHeight + kGlassMenuRowGap + 24,
         );
         expect(rows, hasLength(2));
         expect(rows.first.title, 'Edit Event Info');
@@ -178,7 +179,7 @@ void main() {
         expect(rows.first.titleStyle!.fontSize, 17);
         expect(rows.first.allowTextWrapping, isTrue);
         expect(rows.first.enablePressScale, isTrue);
-        expect(rows.first.showInteractionHighlight, isFalse);
+        expect(rows.first.showInteractionHighlight, isTrue);
         expect(rows.first.isSelected, isFalse);
         expect(rows.last.isDestructive, isTrue);
         final titleContext = tester.element(find.text('Edit Event Info'));
@@ -389,8 +390,69 @@ void main() {
     await tester.pumpAndSettle();
 
     glide.move(tester.getCenter(find.text('Pin')));
+    await tester.pump();
+    final pinRow = find.ancestor(
+      of: find.text('Pin'),
+      matching: find.byType(GlassMenuItem),
+    ).first;
+    final highlightedPin = tester.widget<GlassMenuItem>(pinRow);
+    expect(highlightedPin.isInteractionHighlighted, isTrue);
+    expect(highlightedPin.showInteractionHighlight, isTrue);
+    expect(highlightedPin.useAdaptiveInteractionHighlight, isTrue);
+    final pinSurface = find.descendant(
+      of: pinRow,
+      matching: find.byType(AnimatedContainer),
+    );
+    final pinDecoration =
+        tester.widget<AnimatedContainer>(pinSurface.first).decoration
+            as BoxDecoration;
+    final isDark =
+        CupertinoTheme.of(tester.element(find.text('Pin'))).brightness ==
+        Brightness.dark;
+    expect(
+      pinDecoration.color,
+      (isDark ? CupertinoColors.white : CupertinoColors.black).withValues(
+        alpha: isDark ? 0.045 : 0.08,
+      ),
+    );
+    final pinScale = tester.widget<AnimatedScale>(
+      find.descendant(of: pinRow, matching: find.byType(AnimatedScale)).first,
+    );
+    expect(pinScale.scale, 0.98);
+
+    final archiveRow = find
+        .ancestor(
+          of: find.text('Archive Category'),
+          matching: find.byType(GlassMenuItem),
+        )
+        .first;
+    final pinSurfaceRect = tester.getRect(pinSurface.first);
+    final archiveSurface = find.descendant(
+      of: archiveRow,
+      matching: find.byType(AnimatedContainer),
+    );
+    final archiveSurfaceRect = tester.getRect(archiveSurface.first);
+    expect(
+      archiveSurfaceRect.top - pinSurfaceRect.bottom,
+      closeTo(kGlassMenuRowGap, 0.01),
+    );
+
     glide.move(tester.getCenter(find.text('Archive Category')));
+    await tester.pump();
+    final clearedPinDecoration =
+        tester.widget<AnimatedContainer>(pinSurface.first).decoration
+            as BoxDecoration;
+    expect(clearedPinDecoration.color, const Color(0x00000000));
+    expect(
+      tester
+          .widget<GlassMenuItem>(
+            archiveRow,
+          )
+          .isInteractionHighlighted,
+      isTrue,
+    );
     glide.end(tester.getCenter(find.text('Archive Category')));
+    await tester.pump();
 
     expect(pinCount, 0);
     expect(archiveCount, 1);

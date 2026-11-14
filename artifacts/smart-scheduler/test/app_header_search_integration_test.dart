@@ -941,11 +941,8 @@ void main() {
       final activeMenu = tester.widget<navigation_glass.GlassMenu>(
         find.byType(navigation_glass.GlassMenu).last,
       );
-      expect(activeMenu.showItemInteractionHighlight, isFalse);
-      expect(
-        find.byKey(const ValueKey('glass-menu-selection-pill')),
-        findsNothing,
-      );
+      expect(activeMenu.showItemInteractionHighlight, isTrue);
+      expect(activeMenu.useAdaptiveInteractionHighlight, isTrue);
       expect(find.text('Compact'), findsOneWidget);
       final firstLabelLeft = tester.getTopLeft(find.text('Compact')).dx;
       for (final label in const ['Stacked', 'Details', 'List']) {
@@ -963,15 +960,13 @@ void main() {
         tester.getCenter(compactText),
       );
       await tester.pump();
-      expect(
-        find.byKey(const ValueKey('glass-menu-selection-pill')),
-        findsNothing,
-      );
       final compactMenuItem = tester.widget<navigation_glass.GlassMenuItem>(
         compactRow.first,
       );
-      expect(compactMenuItem.enablePressScale, isFalse);
-      expect(compactMenuItem.showInteractionHighlight, isFalse);
+      expect(compactMenuItem.enablePressScale, isTrue);
+      expect(compactMenuItem.showInteractionHighlight, isTrue);
+      expect(compactMenuItem.useAdaptiveInteractionHighlight, isTrue);
+      expect(compactMenuItem.isInteractionHighlighted, isTrue);
       expect(compactMenuItem.isPressed, isFalse);
       final compactRowSurface = find.descendant(
         of: compactRow.first,
@@ -980,22 +975,36 @@ void main() {
       final rowDecoration =
           tester.widget<AnimatedContainer>(compactRowSurface.first).decoration
               as BoxDecoration;
-      expect(rowDecoration.color, const Color(0x00000000));
+      final isDark = CupertinoTheme.of(tester.element(compactText)).brightness ==
+          Brightness.dark;
+      expect(
+        rowDecoration.color,
+        (isDark ? CupertinoColors.white : CupertinoColors.black).withValues(
+          alpha: isDark ? 0.045 : 0.08,
+        ),
+      );
       await compactPress.cancel();
       await tester.pumpAndSettle();
+      final releasedMenuItem =
+          tester.widget<navigation_glass.GlassMenuItem>(compactRow.first);
+      expect(releasedMenuItem.isInteractionHighlighted, isFalse);
       final compactLongPress = await tester.startGesture(
         tester.getCenter(compactText),
       );
       await tester.pump(const Duration(milliseconds: 500));
       expect(
-        find.byKey(const ValueKey('glass-menu-selection-pill')),
-        findsNothing,
+        tester
+            .widget<navigation_glass.GlassMenuItem>(compactRow.first)
+            .isInteractionHighlighted,
+        isTrue,
       );
       await compactLongPress.cancel();
       await tester.pumpAndSettle();
       expect(
-        find.byKey(const ValueKey('glass-menu-selection-pill')),
-        findsNothing,
+        tester
+            .widget<navigation_glass.GlassMenuItem>(compactRow.first)
+            .isInteractionHighlighted,
+        isFalse,
       );
       await tester.tapAt(const Offset(201, 600));
       await tester.pump(const Duration(milliseconds: 400));

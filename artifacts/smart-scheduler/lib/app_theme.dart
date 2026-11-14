@@ -823,13 +823,12 @@ const double kModalCardGap = 16.0;
 const double kCornerRadius = kSquircleStadiumRadius;
 const double kCardCornerRadius = kSquircleStadiumRadius;
 
-// Modal-sheet header geometry. The circular action controls and the sheet
-// corner share one concentric relationship: the sheet radius is the button
-// radius plus the authored edge gap.
+// Modal-sheet header geometry. Keep the sheet radius as one shared shape token
+// for route clipping, nested-sheet dimming, and scroll-edge effects. Header
+// controls retain their independent authored edge gap.
 const double kModalSheetButtonDiameter = 40.0;
 const double kModalSheetButtonEdgeGap = 16.0;
-const double kModalSheetCornerRadius =
-    (kModalSheetButtonDiameter / 2) + kModalSheetButtonEdgeGap;
+const double kModalSheetCornerRadius = 46.0;
 const double kRoundedSheetSafeAreaGap = 8.0;
 // Landscape modal sheets sit slightly lower, matching the supplied reference.
 const double kRoundedSheetLandscapeSafeAreaGap = 8.0;

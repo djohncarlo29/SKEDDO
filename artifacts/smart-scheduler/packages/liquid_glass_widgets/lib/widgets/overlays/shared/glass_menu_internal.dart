@@ -17,6 +17,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   MediaQueryData? _lastViewportMetrics;
   bool _viewportGeometryRefreshScheduled = false;
   int? _hoveredIndex;
+  final ValueNotifier<int?> _hoveredIndexNotifier = ValueNotifier<int?>(null);
   bool _isDragging = false;
   bool _hasStretched =
       false; // Prevents closing if we moved into stretch territory
@@ -126,8 +127,14 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       // a now-deleted index (including inside an open submenu card).
       if (widget.items.length < oldWidget.items.length ||
           (_hoveredIndex != null && _hoveredIndex! >= _items.length)) {
-        _hoveredIndex = null;
+        _setHoveredIndex(null);
       }
+    }
+    if (widget.showItemInteractionHighlight !=
+            oldWidget.showItemInteractionHighlight ||
+        widget.useAdaptiveInteractionHighlight !=
+            oldWidget.useAdaptiveInteractionHighlight) {
+      _cachedWrappedItems = null;
     }
     if (widget.morphSpeed != oldWidget.morphSpeed) {
       _morphController.setSpeed(widget.morphSpeed);
@@ -218,6 +225,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _removeRouteListeners();
     _routes = const [];
     widget.controller?._detach(this);
+    _hoveredIndexNotifier.dispose();
     _morphController.dispose();
     _blurRamp.dispose();
     _contentMorph.dispose();
@@ -734,7 +742,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     }
 
     _isDragging = false;
-    _hoveredIndex = null;
+    _setHoveredIndex(null);
     _hasStretched = false;
     _swipePointerId = null;
     _swipeArmed = false;
@@ -756,7 +764,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     }
 
     _isDragging = false;
-    _hoveredIndex = null;
+    _setHoveredIndex(null);
     _hasStretched = false;
     _swipePointerId = null;
     _swipeArmed = false;
@@ -1020,7 +1028,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         sourceRowHeight: _getScaledItemHeight(parent, context),
       ));
       _cachedWrappedItems = null;
-      _hoveredIndex = null;
+      _setHoveredIndex(null);
       _isDragging = false;
       _hasStretched = false;
       _levelMorphPopping = false;
@@ -1205,7 +1213,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
           _disposeMenuScrollController(removedController);
         }
       });
-      _hoveredIndex = null;
+      _setHoveredIndex(null);
     }
   }
 
@@ -1739,7 +1747,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   }
 
   void _resetMenuSelectionGesture() {
-    _hoveredIndex = null;
+    _setHoveredIndex(null);
   }
 
   bool _handleMenuScrollNotification(
@@ -1754,6 +1762,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             notification is ScrollUpdateNotification ||
             notification is OverscrollNotification)) {
       _showMenuScrollIndicator(scrollController);
+    }
+    if (interactive &&
+        _isDragging &&
+        notification is ScrollUpdateNotification) {
+      _setHoveredIndex(null);
     }
 
     return false;
@@ -1902,7 +1915,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       glowLayerState?.removeTouch();
     }
     _isDragging = false;
-    _hoveredIndex = null;
+    _setHoveredIndex(null);
     if (_hasStretched) setState(() => _hasStretched = false);
   }
 
@@ -1927,8 +1940,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     final wasWaitingForLayout = _openMorphPending;
     _openMorphPending = false;
     _resetMenuSelectionGesture();
+    _setHoveredIndex(null);
     setState(() {
-      _hoveredIndex = null;
       _isDragging = false;
     });
     _swipePointerId = null;
@@ -2341,7 +2354,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
     // Add vertical padding (12px top + 12px bottom = 24px total)
     // plus vertical gaps between items (2px each)
-    final gaps = (widget.items.length - 1) * 2.0;
+    final gaps = (widget.items.length - 1) * kGlassMenuRowGap;
     return math.min(itemHeights + 24.0 + gaps, _maximumStackHeight);
   }
 
@@ -2783,8 +2796,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                     final scrollDisplacement =
                         (currentOffset - _initialScrollOffset).abs();
 
-                    // Fitting menus retain swipe-to-select without a
-                    // highlight surface or row-scale effect.
+                    // Fitting menus retain swipe-to-select. Overflowing menus
+                    // scroll normally and highlight the touched row until
+                    // scrolling begins.
                     if (!listIsScrollable &&
                         (scrollDisplacement < 10 || scrollDepth > 0)) {
                       final indexToTap = _hoveredIndex ??
@@ -2804,7 +2818,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
                       }
                     }
                     _isDragging = false;
-                    _hoveredIndex = null;
+                    _setHoveredIndex(null);
                     _hasStretched = false;
                   }
                   // A row tap recogniser fires later in this pointer dispatch.
@@ -2887,40 +2901,53 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       final item = entry.value;
 
       if (item is GlassMenuItem) {
-        return GlassMenuItem(
-          key: item.key ?? ValueKey(item.title),
-          title: item.title,
-          subtitle: item.subtitle,
-          icon: item.icon,
-          isDestructive: item.isDestructive,
-          enabled: item.enabled,
-          trailing: item.trailing,
-          trailingWidth: item.trailingWidth,
-          trailingBuilder: item.trailingBuilder,
-          submenuOpen: _isSubmenuOpen(item),
-          contentHorizontalInset: item.contentHorizontalInset,
-          height: item.height,
-          titleStyle: item.titleStyle,
-          subtitleStyle: item.subtitleStyle,
-          iconColor: item.iconColor,
-          iconSize: item.iconSize,
-          iconLabelGap: item.iconLabelGap,
-          maxLines: item.maxLines,
-          allowTextWrapping: item.allowTextWrapping,
-          closeDelay: item.closeDelay,
-          closeOnTap: item.closeOnTap,
-          enablePressScale: false,
-          showInteractionHighlight: widget.showItemInteractionHighlight,
-          submenu: item.submenu,
-          isSelected: false,
-          isPressed: false,
-          onTap: () {
-            if (!item.enabled) return;
-            // The body Listener handles only slide-to-select. Taps, including
-            // taps on overflowing rows, remain the row recogniser's job.
-            if (_bodyPointerUpHandled) return;
-            _activateItem(item);
-          },
+        GlassMenuItem buildItem(int? highlightedIndex) => GlassMenuItem(
+              key: item.key ?? ValueKey(item.title),
+              title: item.title,
+              subtitle: item.subtitle,
+              icon: item.icon,
+              isDestructive: item.isDestructive,
+              enabled: item.enabled,
+              trailing: item.trailing,
+              trailingWidth: item.trailingWidth,
+              trailingBuilder: item.trailingBuilder,
+              submenuOpen: _isSubmenuOpen(item),
+              contentHorizontalInset: item.contentHorizontalInset,
+              height: item.height,
+              titleStyle: item.titleStyle,
+              subtitleStyle: item.subtitleStyle,
+              iconColor: item.iconColor,
+              iconSize: item.iconSize,
+              iconLabelGap: item.iconLabelGap,
+              maxLines: item.maxLines,
+              allowTextWrapping: item.allowTextWrapping,
+              closeDelay: item.closeDelay,
+              closeOnTap: item.closeOnTap,
+              enablePressScale: widget.showItemInteractionHighlight,
+              showInteractionHighlight: widget.showItemInteractionHighlight,
+              useAdaptiveInteractionHighlight:
+                  widget.useAdaptiveInteractionHighlight,
+              submenu: item.submenu,
+              isSelected: false,
+              isPressed: false,
+              isInteractionHighlighted:
+                  highlightedIndex == entry.key && item.enabled,
+              onTap: () {
+                if (!item.enabled) return;
+                // The body Listener handles only slide-to-select. Taps,
+                // including overflowing rows, remain the row recogniser's job.
+                if (_bodyPointerUpHandled) return;
+                _activateItem(item);
+              },
+            );
+
+        if (!widget.showItemInteractionHighlight) {
+          return buildItem(null);
+        }
+        return ValueListenableBuilder<int?>(
+          valueListenable: _hoveredIndexNotifier,
+          builder: (context, highlightedIndex, _) =>
+              buildItem(highlightedIndex),
         );
       }
       return item;
@@ -2989,12 +3016,15 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       closeDelay: item.closeDelay,
       closeOnTap: item.closeOnTap,
       enablePressScale: item.enablePressScale,
+      useAdaptiveInteractionHighlight:
+          item.useAdaptiveInteractionHighlight,
       showInteractionHighlight:
           item.showInteractionHighlight &&
           widget.showItemInteractionHighlight,
       submenu: item.submenu,
       isSelected: item.isSelected,
       isPressed: item.isPressed,
+      isInteractionHighlighted: false,
       onTap: item.onTap,
     );
   }
@@ -3134,7 +3164,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         }
         break;
       }
-      currentOffset += itemHeight + 2.0; // height + 2px gap
+      currentOffset += itemHeight + kGlassMenuRowGap;
     }
     return null;
   }
@@ -3165,25 +3195,30 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
 
     int? detectedIndex;
 
-    // Only calculate hover selection for non-scrollable menus (slide-to-select).
-    if (_listHeight(targetItems) <= visibleHeight + 1.0) {
-      detectedIndex = _calculateIndexFromPosition(
-        localPosition,
-        context,
-        items: targetItems,
-        scrollController: targetController,
-        visibleHeight: visibleHeight,
-      );
-    }
+    // Keep the touched row highlighted in both fitting and overflowing
+    // menus. Only fitting menus activate glide selection on release.
+    detectedIndex = _calculateIndexFromPosition(
+      localPosition,
+      context,
+      items: targetItems,
+      scrollController: targetController,
+      visibleHeight: visibleHeight,
+    );
 
-    _hoveredIndex = detectedIndex;
+    _setHoveredIndex(detectedIndex);
+  }
+
+  void _setHoveredIndex(int? index) {
+    if (_hoveredIndex == index) return;
+    _hoveredIndex = index;
+    _hoveredIndexNotifier.value = index;
   }
 }
 
 const Duration _kSubmenuMorphDuration = Duration(milliseconds: 320);
 const Curve _kSubmenuMorphCurve = Curves.easeOutCubic;
 const double _kBodyVerticalPadding = 12.0;
-const double _kRowGap = 2.0;
+const double _kRowGap = kGlassMenuRowGap;
 const double _kSettledMenuLandingDx = 4.0;
 
 /// Geometry is captured before switching the active scroll viewport. Titles

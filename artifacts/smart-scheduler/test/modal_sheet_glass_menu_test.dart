@@ -170,7 +170,8 @@ void main() {
     expect(menu.normalizeTriggerReturnOvershoot, isTrue);
     expect(menu.quality, GlassQuality.premium);
     expect(menu.keepTriggerAnchorOnOverflow, isTrue);
-    expect(menu.showItemInteractionHighlight, isFalse);
+    expect(menu.showItemInteractionHighlight, isTrue);
+    expect(menu.useAdaptiveInteractionHighlight, isTrue);
     expect(menu.menuContentHorizontalInset, 12);
     expect(find.text('October'), findsOneWidget);
 
@@ -462,7 +463,9 @@ void main() {
       final renderedOption = tester
           .widgetList<GlassMenuItem>(find.byType(GlassMenuItem))
           .singleWhere((item) => item.title.startsWith('A picker option'));
-      expect(renderedOption.showInteractionHighlight, isFalse);
+      expect(renderedOption.showInteractionHighlight, isTrue);
+      expect(renderedOption.useAdaptiveInteractionHighlight, isTrue);
+      expect(renderedOption.enablePressScale, isTrue);
       expect(renderedOption.allowTextWrapping, isTrue);
       final optionText = tester.widget<Text>(
         find.text('A picker option that wraps onto multiple lines'),
@@ -624,6 +627,55 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller!.isOpen, isTrue);
 
+      final option = find.text('Rotation option');
+      final optionRow = find.ancestor(
+        of: option,
+        matching: find.byType(GlassMenuItem),
+      ).first;
+      final optionGesture = await tester.startGesture(
+        tester.getCenter(option),
+      );
+      await tester.pump();
+      final highlightedOption = tester.widget<GlassMenuItem>(optionRow);
+      expect(highlightedOption.showInteractionHighlight, isTrue);
+      expect(highlightedOption.useAdaptiveInteractionHighlight, isTrue);
+      expect(highlightedOption.isInteractionHighlighted, isTrue);
+      expect(highlightedOption.enablePressScale, isTrue);
+      final optionSurface = find.descendant(
+        of: optionRow,
+        matching: find.byType(AnimatedContainer),
+      );
+      final optionDecoration =
+          tester.widget<AnimatedContainer>(optionSurface.first).decoration
+              as BoxDecoration;
+      final isDark =
+          CupertinoTheme.of(tester.element(option)).brightness == Brightness.dark;
+      expect(
+        optionDecoration.color,
+        (isDark ? CupertinoColors.white : CupertinoColors.black).withValues(
+          alpha: isDark ? 0.045 : 0.08,
+        ),
+      );
+      expect(
+        tester
+            .widget<AnimatedScale>(
+              find
+                  .descendant(
+                    of: optionRow,
+                    matching: find.byType(AnimatedScale),
+                  )
+                  .first,
+            )
+            .scale,
+        0.98,
+      );
+      await optionGesture.cancel();
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<GlassMenuItem>(optionRow).isInteractionHighlighted,
+        isFalse,
+      );
+
       tester.view.physicalSize = const Size(900, 420);
       await tester.pump();
       await tester.pumpAndSettle();
@@ -633,7 +685,6 @@ void main() {
       expect(triggerRect.top, greaterThanOrEqualTo(0));
       expect(triggerRect.bottom, lessThanOrEqualTo(420));
 
-      final option = find.text('Rotation option');
       expect(option, findsOneWidget);
       final optionRect = tester.getRect(option);
       expect(optionRect.top, greaterThanOrEqualTo(0));

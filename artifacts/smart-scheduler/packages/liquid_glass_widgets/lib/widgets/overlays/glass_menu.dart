@@ -22,6 +22,9 @@ import '../shared/glass_accessibility_scope.dart';
 
 part 'shared/glass_menu_internal.dart';
 
+/// Vertical spacing between adjacent rows and dividers in a [GlassMenu].
+const double kGlassMenuRowGap = 2.0;
+
 /// Controls which edge/corner of the trigger button the menu expands from.
 ///
 /// When [GlassMenu.menuAlignment] is set to one of these values, the menu
@@ -125,6 +128,13 @@ class GlassMenu extends StatefulWidget {
   /// Defaults to `true`. Toolbar menus can disable this without disabling
   /// normal tap or slide-to-select behavior.
   final bool showItemInteractionHighlight;
+
+  /// Uses a subtle Light/Dark-mode highlight color for active rows.
+  ///
+  /// When enabled, Light Mode uses black at 8% opacity and Dark Mode uses
+  /// white at 4.5% opacity. The active row also receives the standard 0.98×
+  /// press-scale response.
+  final bool useAdaptiveInteractionHighlight;
 
   /// The alignment of the menu relative to the trigger.
   final GlassMenuAlignment? menuAlignment;
@@ -388,6 +398,7 @@ class GlassMenu extends StatefulWidget {
     this.triggerBuilder,
     required this.items,
     this.showItemInteractionHighlight = true,
+    this.useAdaptiveInteractionHighlight = false,
     this.menuAlignment,
     this.autoAdjustToScreen = false,
     this.keepTriggerAnchorOnOverflow = false,

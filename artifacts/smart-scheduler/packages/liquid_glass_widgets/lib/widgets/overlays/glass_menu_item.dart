@@ -20,6 +20,7 @@ class GlassMenuItem extends StatefulWidget {
     this.subtitle,
     this.isPressed,
     this.isSelected = false,
+    this.isInteractionHighlighted = false,
     this.enabled = true,
     this.titleStyle,
     this.subtitleStyle,
@@ -33,6 +34,7 @@ class GlassMenuItem extends StatefulWidget {
     this.allowTextWrapping = false,
     this.enablePressScale = true,
     this.showInteractionHighlight = true,
+    this.useAdaptiveInteractionHighlight = false,
     this.closeDelay,
     this.closeOnTap = true,
     this.submenu,
@@ -86,6 +88,12 @@ class GlassMenuItem extends StatefulWidget {
   /// Whether the item is currently selected (e.g. by a sliding pill).
   final bool isSelected;
 
+  /// Whether a menu's glide-selection gesture is currently over this row.
+  ///
+  /// Unlike [isSelected], this is transient interaction feedback and does not
+  /// represent the value selected by the application.
+  final bool isInteractionHighlighted;
+
   /// Whether the item should handle its own interactions.
   final bool enabled;
 
@@ -133,6 +141,10 @@ class GlassMenuItem extends StatefulWidget {
   /// Set to `false` when the menu should keep its rows visually neutral while
   /// preserving their normal tap and slide-to-select interactions.
   final bool showInteractionHighlight;
+
+  /// Uses a subtle theme-aware black/white highlight for touch, hover, focus,
+  /// and glide selection instead of the standard white overlay.
+  final bool useAdaptiveInteractionHighlight;
 
   /// How long to wait after [onTap] fires before the menu begins closing.
   ///
@@ -345,19 +357,29 @@ class _GlassMenuItemState extends State<GlassMenuItem>
         final bool effectivePressed =
             (widget.isPressed == true) || localPressed;
         final bool effectiveSelected = widget.isSelected;
+        final bool showInteraction =
+            widget.showInteractionHighlight &&
+            !effectiveSelected &&
+            (effectivePressed ||
+                widget.isInteractionHighlighted ||
+                isHov ||
+                isFoc);
 
-        final Color backgroundColor = !widget.showInteractionHighlight ||
-                effectiveSelected
+        final isDark = theme.brightness == Brightness.dark;
+        final Color backgroundColor = !showInteraction
             ? const Color(0x00000000)
-            : effectivePressed
-                ? const Color(0x26FFFFFF) // Standalone press
-                : (isHov || isFoc)
-                    ? const Color(0x1AFFFFFF)
-                    : const Color(0x00000000);
+            : widget.useAdaptiveInteractionHighlight
+                ? (isDark ? CupertinoColors.white : CupertinoColors.black)
+                    .withValues(alpha: isDark ? 0.045 : 0.08)
+                : effectivePressed || widget.isInteractionHighlighted
+                    ? const Color(0x26FFFFFF)
+                    : const Color(0x1AFFFFFF);
 
-        // Scale effect on press (subtle squash like iOS buttons)
-        final double scale =
-            (widget.enablePressScale && effectivePressed) ? 0.98 : 1.0;
+        // The active pill and its row shrink together, matching iOS menu
+        // selection feedback while preserving the normal row layout.
+        final double scale = (widget.enablePressScale && showInteraction)
+            ? 0.98
+            : 1.0;
 
         return ConstrainedBox(
           constraints: BoxConstraints(minHeight: minimumHeight),
@@ -366,7 +388,10 @@ class _GlassMenuItemState extends State<GlassMenuItem>
             duration: const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
             child: AnimatedContainer(
-              duration: (effectiveSelected || effectivePressed)
+              duration: (widget.useAdaptiveInteractionHighlight ||
+                      effectiveSelected ||
+                      effectivePressed ||
+                      widget.isInteractionHighlighted)
                   ? Duration.zero // Instant highlight on tap down
                   : const Duration(
                       milliseconds: 150), // Smooth fade out on release

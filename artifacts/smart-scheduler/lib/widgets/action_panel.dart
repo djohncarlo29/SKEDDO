@@ -1063,7 +1063,8 @@ class _ModalSheetGlassMenuState extends State<ModalSheetGlassMenu> {
             ),
           ),
           items: items,
-          showItemInteractionHighlight: false,
+          showItemInteractionHighlight: true,
+          useAdaptiveInteractionHighlight: true,
           menuWidth: widget.menuWidth,
           autoAdjustToScreen: true,
           menuAlignment: GlassMenuAlignment.none,
@@ -1689,7 +1690,16 @@ class _ActionPanelState extends State<ActionPanel>
   void _updateGlideSelection(Offset globalPosition) {
     // Context-menu gliding is intentionally silent: unlike the package's
     // toolbar/picker menus, scanning these actions must not vibrate.
-    _glideIndex = _actionIndexAt(globalPosition);
+    _setGlideIndex(_actionIndexAt(globalPosition));
+  }
+
+  void _setGlideIndex(int? index) {
+    if (_glideIndex == index) return;
+    if (!mounted) {
+      _glideIndex = index;
+      return;
+    }
+    setState(() => _glideIndex = index);
   }
 
   void _endExternalGlide(Offset globalPosition) {
@@ -1700,7 +1710,7 @@ class _ActionPanelState extends State<ActionPanel>
   }
 
   void _clearExternalGlide() {
-    _glideIndex = null;
+    _setGlideIndex(null);
     _lastGlidePosition = null;
   }
 
@@ -2404,6 +2414,8 @@ class _ActionPanelState extends State<ActionPanel>
           leadingIconLabelGap: widget.leadingIconLabelGap,
           enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
           useGlassMenuStyle: widget.useGlassMenuStyle,
+          isInteractionHighlighted:
+              widget.useGlassMenuStyle && _glideIndex == i,
         ),
       ),
     );
@@ -2412,11 +2424,15 @@ class _ActionPanelState extends State<ActionPanel>
   Widget _buildSeparator(int i) {
     final item = widget.items[i];
     final isGroupBreak = item.groupBreakAbove;
-    if (widget.useGlassMenuStyle && !isGroupBreak) {
-      return const SizedBox.shrink();
-    }
-    if (widget.useGlassMenuStyle && isGroupBreak) {
-      return const GlassMenuDivider(height: ActionItem.groupBreakH + 4);
+    if (widget.useGlassMenuStyle) {
+      if (!isGroupBreak) {
+        return const SizedBox(height: kGlassMenuRowGap);
+      }
+      // A GlassMenu places the same 2pt gap on both sides of its divider.
+      // Include both gaps in this divider slot so context-menu row pills align.
+      return const GlassMenuDivider(
+        height: ActionItem.groupBreakH + 4 + (2 * kGlassMenuRowGap),
+      );
     }
     final isStrong = item.strongSeparatorAbove;
     final separatorColor = resolveThemeColor(
@@ -2447,6 +2463,7 @@ class _ActionRow extends StatefulWidget {
   final double leadingIconLabelGap;
   final bool enforceTrailingIconSpacing;
   final bool useGlassMenuStyle;
+  final bool isInteractionHighlighted;
   const _ActionRow({
     required this.item,
     required this.chevronColumn,
@@ -2454,6 +2471,7 @@ class _ActionRow extends StatefulWidget {
     this.leadingIconLabelGap = _actionPanelCheckmarkOptionGap,
     this.enforceTrailingIconSpacing = true,
     this.useGlassMenuStyle = false,
+    this.isInteractionHighlighted = false,
   });
 
   @override
@@ -2731,7 +2749,9 @@ class _ActionRowState extends State<_ActionRow> {
           : ActionItem.rowHeightWithSubtitle,
       allowTextWrapping: true,
       enablePressScale: true,
-      showInteractionHighlight: false,
+      showInteractionHighlight: true,
+      useAdaptiveInteractionHighlight: true,
+      isInteractionHighlighted: widget.isInteractionHighlighted,
       titleStyle: TextStyle(
         color: labelColor,
         fontSize: 17,
