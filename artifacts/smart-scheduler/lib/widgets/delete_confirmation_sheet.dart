@@ -137,19 +137,48 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   return anchor.show(entityLabel: entityLabel, isNew: isNew);
 }
 
-/// Runs a two-step confirmation. Cancelling the second step returns to the
-/// first step; cancelling the first step dismisses the flow.
+/// Runs both confirmations in one morphing glass dialog route. Cancelling the
+/// second step returns to the first; cancelling the first dismisses the flow.
 Future<bool> showTwoStepConfirmationSheet({
-  required Future<bool?> Function() firstStep,
-  required Future<bool?> Function() secondStep,
+  required BuildContext context,
+  required String firstTitle,
+  String? firstSubtitle,
+  required String firstActionLabel,
+  required String secondTitle,
+  String? secondSubtitle,
+  required String secondActionLabel,
+  bool destructive = true,
 }) async {
-  while (true) {
-    final firstResult = await firstStep();
-    if (firstResult != true) return false;
-
-    final secondResult = await secondStep();
-    if (secondResult == true) return true;
-  }
+  final result = await showSkeddoGlassAlertFlow<bool>(
+    context: context,
+    steps: [
+      SkeddoGlassAlertFlowStep<bool>(
+        title: firstTitle,
+        message: firstSubtitle,
+        actions: [
+          SkeddoGlassAlertFlowAction<bool>(
+            label: firstActionLabel,
+            isDestructive: destructive,
+            nextStep: 1,
+          ),
+          const SkeddoGlassAlertFlowAction<bool>(label: 'Cancel'),
+        ],
+      ),
+      SkeddoGlassAlertFlowStep<bool>(
+        title: secondTitle,
+        message: secondSubtitle,
+        actions: [
+          SkeddoGlassAlertFlowAction<bool>(
+            label: secondActionLabel,
+            isDestructive: destructive,
+            result: true,
+          ),
+          const SkeddoGlassAlertFlowAction<bool>(label: 'Cancel', nextStep: 0),
+        ],
+      ),
+    ],
+  );
+  return result == true;
 }
 
 /// Confirms and then moves an active event to Recently Deleted.
@@ -160,24 +189,17 @@ Future<void> confirmDeleteEvent(
   final title =
       'Delete the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
   final confirmed = await showTwoStepConfirmationSheet(
-    firstStep:
-        () => showDeleteConfirmationSheet(
-          context,
-          title: title,
-          subtitle:
-              'This event will move to Recently Deleted. You can recover it '
-              'later or permanently delete it.',
-          actionLabel: 'Delete Event',
-        ),
-    secondStep:
-        () => showDeleteConfirmationSheet(
-          context,
-          title: 'Are you sure?',
-          subtitle:
-              'The event will be removed from the active schedule and moved '
-              'to Recently Deleted.',
-          actionLabel: 'Delete Event',
-        ),
+    context: context,
+    firstTitle: title,
+    firstSubtitle:
+        'This event will move to Recently Deleted. You can recover it '
+        'later or permanently delete it.',
+    firstActionLabel: 'Delete Event',
+    secondTitle: 'Are you sure?',
+    secondSubtitle:
+        'The event will be removed from the active schedule and moved '
+        'to Recently Deleted.',
+    secondActionLabel: 'Delete Event',
   );
   if (confirmed == true) {
     EventStore.instance.remove(event.id);
@@ -192,24 +214,16 @@ Future<void> confirmArchiveEvent(
   final title =
       'Archive the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
   final confirmed = await showTwoStepConfirmationSheet(
-    firstStep:
-        () => showArchiveConfirmationSheet(
-          context,
-          title: title,
-          subtitle:
-              'This event will move to Archived Items. You can recover it '
-              'later.',
-          actionLabel: 'Archive Event',
-        ),
-    secondStep:
-        () => showArchiveConfirmationSheet(
-          context,
-          title: 'Are you sure?',
-          subtitle:
-              'The event will be removed from the active schedule and moved '
-              'to Archived Items.',
-          actionLabel: 'Archive Event',
-        ),
+    context: context,
+    firstTitle: title,
+    firstSubtitle:
+        'This event will move to Archived Items. You can recover it later.',
+    firstActionLabel: 'Archive Event',
+    secondTitle: 'Are you sure?',
+    secondSubtitle:
+        'The event will be removed from the active schedule and moved '
+        'to Archived Items.',
+    secondActionLabel: 'Archive Event',
   );
   if (confirmed == true) {
     EventStore.instance.archiveEvent(event.id);
@@ -222,27 +236,21 @@ Future<bool?> confirmDeleteSection(
   BuildContext context, {
   required String sectionName,
 }) async {
-  final displayName =
-      sectionName.trim().isEmpty ? 'New Section' : sectionName.trim();
+  final displayName = sectionName.trim().isEmpty
+      ? 'New Section'
+      : sectionName.trim();
   return showTwoStepConfirmationSheet(
-    firstStep:
-        () => showDeleteConfirmationSheet(
-          context,
-          title: 'Delete the section "$displayName"?',
-          subtitle:
-              'Events in "$displayName" will stay in this category and will '
-              'no longer belong to this section. They will not be deleted.',
-          actionLabel: 'Delete Section',
-        ),
-    secondStep:
-        () => showDeleteConfirmationSheet(
-          context,
-          title: 'Are you sure?',
-          subtitle:
-              'The section will be removed. Its events will stay in this '
-              'category and can be organized into another section.',
-          actionLabel: 'Delete Section',
-        ),
+    context: context,
+    firstTitle: 'Delete the section "$displayName"?',
+    firstSubtitle:
+        'Events in "$displayName" will stay in this category and will '
+        'no longer belong to this section. They will not be deleted.',
+    firstActionLabel: 'Delete Section',
+    secondTitle: 'Are you sure?',
+    secondSubtitle:
+        'The section will be removed. Its events will stay in this '
+        'category and can be organized into another section.',
+    secondActionLabel: 'Delete Section',
   );
 }
 
@@ -250,10 +258,7 @@ Future<bool?> confirmDeleteSection(
 /// remains the popover trigger, so its glass lens morphs into the confirmation
 /// instead of rendering a second X above the editor.
 class DiscardChangesPopoverAnchor extends StatefulWidget {
-  const DiscardChangesPopoverAnchor({
-    super.key,
-    required this.child,
-  });
+  const DiscardChangesPopoverAnchor({super.key, required this.child});
 
   final Widget child;
 
@@ -293,10 +298,7 @@ class DiscardChangesPopoverAnchorState
   void dispose() {
     _closePollTimer?.cancel();
     _popoverOverlayClosing.dispose();
-    if (identical(
-      _activeDiscardChangesSheetDismiss,
-      _dismissCallback,
-    )) {
+    if (identical(_activeDiscardChangesSheetDismiss, _dismissCallback)) {
       _activeDiscardChangesSheetDismiss = null;
     }
     final completer = _confirmationCompleter;
@@ -306,10 +308,7 @@ class DiscardChangesPopoverAnchorState
     super.dispose();
   }
 
-  Future<bool?> show({
-    required String entityLabel,
-    required bool isNew,
-  }) {
+  Future<bool?> show({required String entityLabel, required bool isNew}) {
     final existing = _confirmationCompleter;
     if (existing != null) return existing.future;
 
@@ -372,8 +371,7 @@ class DiscardChangesPopoverAnchorState
 
   void _onPopoverOpened() {
     _popoverOverlayClosing.value = false;
-    final renderObject =
-        _triggerKey.currentContext?.findRenderObject();
+    final renderObject = _triggerKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox ||
         !renderObject.attached ||
         !renderObject.hasSize) {
@@ -387,9 +385,7 @@ class DiscardChangesPopoverAnchorState
 
   void _scheduleCloseFinish() {
     if (_closePollTimer != null || !mounted) return;
-    _closePollTimer = Timer.periodic(const Duration(milliseconds: 16), (
-      timer,
-    ) {
+    _closePollTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       if (!mounted || !_isClosing) {
         timer.cancel();
         _closePollTimer = null;
@@ -445,7 +441,8 @@ class DiscardChangesPopoverAnchorState
     }
 
     final previous = _previousTriggerPosition;
-    final isStable = previous != null &&
+    final isStable =
+        previous != null &&
         (position.dx - previous.dx).abs() <= _triggerReturnTolerance &&
         (position.dy - previous.dy).abs() <= _triggerReturnTolerance;
     _stableTriggerFrames = isStable ? _stableTriggerFrames + 1 : 0;
@@ -457,10 +454,7 @@ class DiscardChangesPopoverAnchorState
     _closePollTimer?.cancel();
     _closePollTimer = null;
     _popoverIsOpen = false;
-    if (identical(
-      _activeDiscardChangesSheetDismiss,
-      _dismissCallback,
-    )) {
+    if (identical(_activeDiscardChangesSheetDismiss, _dismissCallback)) {
       _activeDiscardChangesSheetDismiss = null;
     }
 
@@ -588,11 +582,7 @@ class DiscardChangesPopoverAnchorState
           return KeyedSubtree(key: _triggerKey, child: widget.child);
         },
         contentBuilder: (popoverContext, closePopover) =>
-            _buildPopoverContent(
-              popoverContext,
-              closePopover,
-              sliderPosition,
-            ),
+            _buildPopoverContent(popoverContext, closePopover, sliderPosition),
         popoverWidth:
             screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
         // Keep the app-specific offset here so regular/future GlassPopovers

@@ -2791,72 +2791,104 @@ class EventsTabState extends State<EventsTab>
 
   /// Opens the confirmation sheet before dissolving or deleting a group.
   void _openDeleteGroupSheet(_CategoryGroup group) async {
-    while (mounted) {
-      final choice = await _DeleteGroupSheet.show(
-        context,
-        groupName: group.name,
-      );
-      if (!mounted || choice == null) return;
-
-      final confirmed =
-          switch (choice) {
-            _DeleteGroupChoice.only => await _confirmRemoveGroup(group),
-            _DeleteGroupChoice.withCategories =>
-              await _confirmDeleteGroupAndCategories(
-                group,
-                deleteEvents: false,
-              ),
-            _DeleteGroupChoice.withCategoriesAndContents =>
-              await _confirmDeleteGroupAndCategories(
-                group,
-                deleteEvents: true,
-              ),
-          };
-      if (!mounted || confirmed) return;
-    }
-  }
-
-  Future<bool> _confirmRemoveGroup(_CategoryGroup group) async {
-    final confirmed = await showConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle:
-          'Only the group wrapper will be removed. Its categories and their '
-          'events will stay unchanged.',
-      actionLabel: 'Remove Group',
-      destructive: true,
-    );
-    if (!mounted || confirmed != true) return false;
-    if (_categoryGroups.any((candidate) => candidate.id == group.id)) {
-      _ungroupGroup(group);
-    }
-    return true;
-  }
-
-  Future<bool> _confirmDeleteGroupAndCategories(
-    _CategoryGroup group, {
-    required bool deleteEvents,
-  }) async {
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle: deleteEvents
-          ? 'The group and its categories will move to Recently Deleted '
-              'together with their events. Recovering a category will recover '
-              'its remaining deleted events too.'
-          : 'The group and its categories will move to Recently Deleted. '
+    final choice = await showSkeddoGlassAlertFlow<_DeleteGroupChoice>(
+      context: context,
+      steps: [
+        SkeddoGlassAlertFlowStep<_DeleteGroupChoice>(
+          title: 'Delete the group "${group.name}"?',
+          message:
+              'Choose whether to remove only the group and keep its categories, '
+              'delete the group and categories while moving their events to the '
+              'default category, or delete the group, categories, and events '
+              'together. Category sections stay with deleted categories.',
+          actions: [
+            SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Remove Group Only',
+              isPrimary: true,
+              nextStep: 1,
+            ),
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Delete Group and Categories',
+              nextStep: 2,
+            ),
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Delete Group, Categories & Events',
+              isDestructive: true,
+              nextStep: 3,
+            ),
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Cancel',
+            ),
+          ],
+        ),
+        SkeddoGlassAlertFlowStep<_DeleteGroupChoice>(
+          title: 'Are you sure?',
+          message:
+              'Only the group wrapper will be removed. Its categories and '
+              'their events will stay unchanged.',
+          actions: [
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Remove Group',
+              isDestructive: true,
+              result: _DeleteGroupChoice.only,
+            ),
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Cancel',
+              nextStep: 0,
+            ),
+          ],
+        ),
+        SkeddoGlassAlertFlowStep<_DeleteGroupChoice>(
+          title: 'Are you sure?',
+          message:
+              'The group and its categories will move to Recently Deleted. '
               'Their events will move to the default category and will not '
               'be deleted.',
-      actionLabel: deleteEvents
-          ? 'Delete Group, Categories & Events'
-          : 'Delete Group and Categories',
+          actions: [
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Delete Group and Categories',
+              isDestructive: true,
+              result: _DeleteGroupChoice.withCategories,
+            ),
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Cancel',
+              nextStep: 0,
+            ),
+          ],
+        ),
+        SkeddoGlassAlertFlowStep<_DeleteGroupChoice>(
+          title: 'Are you sure?',
+          message:
+              'The group and its categories will move to Recently Deleted '
+              'together with their events. Recovering a category will recover '
+              'its remaining deleted events too.',
+          actions: [
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Delete Group, Categories & Events',
+              isDestructive: true,
+              result: _DeleteGroupChoice.withCategoriesAndContents,
+            ),
+            const SkeddoGlassAlertFlowAction<_DeleteGroupChoice>(
+              label: 'Cancel',
+              nextStep: 0,
+            ),
+          ],
+        ),
+      ],
     );
-    if (!mounted || confirmed != true) return false;
-    if (!_categoryGroups.any((candidate) => candidate.id == group.id)) {
-      return true;
+    if (!mounted || choice == null) return;
+    if (!_categoryGroups.any((candidate) => candidate.id == group.id)) return;
+    switch (choice) {
+      case _DeleteGroupChoice.only:
+        _ungroupGroup(group);
+        break;
+      case _DeleteGroupChoice.withCategories:
+        _deleteGroupAndCategories(group, deleteEvents: false);
+        break;
+      case _DeleteGroupChoice.withCategoriesAndContents:
+        _deleteGroupAndCategories(group, deleteEvents: true);
+        break;
     }
-    _deleteGroupAndCategories(group, deleteEvents: deleteEvents);
-    return true;
   }
 
   /// Deletes the group and its member categories using the same visible
@@ -3010,14 +3042,58 @@ class EventsTabState extends State<EventsTab>
     required VoidCallback onAction,
     String? destructiveActionLabel,
     VoidCallback? onDestructiveAction,
+    String? destructiveConfirmationTitle,
+    String? destructiveConfirmationSubtitle,
+    String? destructiveConfirmationActionLabel,
   }) async {
-    final action = await _UtilityItemSheet.show(
-      context,
-      title: title,
-      subtitle: subtitle,
-      actionLabel: actionLabel,
-      destructiveActionLabel: destructiveActionLabel,
-    );
+    final action = destructiveConfirmationTitle != null
+        ? await showSkeddoGlassAlertFlow<_UtilityItemAction>(
+            context: context,
+            steps: [
+              SkeddoGlassAlertFlowStep<_UtilityItemAction>(
+                title: title,
+                message: subtitle,
+                actions: [
+                  SkeddoGlassAlertFlowAction<_UtilityItemAction>(
+                    label: actionLabel,
+                    isPrimary: true,
+                    result: _UtilityItemAction.primary,
+                  ),
+                  SkeddoGlassAlertFlowAction<_UtilityItemAction>(
+                    label: destructiveActionLabel!,
+                    isDestructive: true,
+                    nextStep: 1,
+                  ),
+                  const SkeddoGlassAlertFlowAction<_UtilityItemAction>(
+                    label: 'Cancel',
+                  ),
+                ],
+              ),
+              SkeddoGlassAlertFlowStep<_UtilityItemAction>(
+                title: destructiveConfirmationTitle,
+                message: destructiveConfirmationSubtitle,
+                actions: [
+                  SkeddoGlassAlertFlowAction<_UtilityItemAction>(
+                    label: destructiveConfirmationActionLabel ??
+                        destructiveActionLabel,
+                    isDestructive: true,
+                    result: _UtilityItemAction.destructive,
+                  ),
+                  const SkeddoGlassAlertFlowAction<_UtilityItemAction>(
+                    label: 'Cancel',
+                    nextStep: 0,
+                  ),
+                ],
+              ),
+            ],
+          )
+        : await _UtilityItemSheet.show(
+            context,
+            title: title,
+            subtitle: subtitle,
+            actionLabel: actionLabel,
+            destructiveActionLabel: destructiveActionLabel,
+          );
     if (!mounted) return;
     if (action == _UtilityItemAction.primary) {
       onAction();
@@ -3318,7 +3394,15 @@ class EventsTabState extends State<EventsTab>
       actionLabel: 'Recover',
       onAction: () => _unarchiveCategory(category),
       destructiveActionLabel: 'Delete Category',
-      onDestructiveAction: () => _requestDeleteArchivedCategory(category),
+      destructiveConfirmationTitle: 'Are you sure?',
+      destructiveConfirmationSubtitle:
+          isSmart
+              ? 'The smart category will move to Recently Deleted. Its '
+                  'matching events will stay unchanged.'
+              : _deleteArchivedCategorySubtitle(category),
+      destructiveConfirmationActionLabel:
+          isSmart ? 'Delete Smart Category' : 'Delete Category',
+      onDestructiveAction: () => _deleteArchivedCategoryNow(category),
     );
   }
 
@@ -3337,7 +3421,10 @@ class EventsTabState extends State<EventsTab>
         }
       },
       destructiveActionLabel: 'Permanently Delete',
-      onDestructiveAction: () => _requestPermanentlyDeleteEvent(event),
+      destructiveConfirmationTitle: 'Are you sure?',
+      destructiveConfirmationSubtitle: _permanentlyDeleteEventSubtitle(event),
+      destructiveConfirmationActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _permanentlyDeleteEventNow(event),
     );
   }
 
@@ -3356,23 +3443,11 @@ class EventsTabState extends State<EventsTab>
         }
       },
       destructiveActionLabel: 'Delete Event',
-      onDestructiveAction: () => _confirmMoveArchivedEventToDeleted(event),
+      destructiveConfirmationTitle: 'Are you sure?',
+      destructiveConfirmationSubtitle: _moveArchivedEventSubtitle(event),
+      destructiveConfirmationActionLabel: 'Delete Event',
+      onDestructiveAction: () => _moveArchivedEventToDeleted(event),
     );
-  }
-
-  Future<void> _confirmMoveArchivedEventToDeleted(ScheduledEvent event) async {
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle: _moveArchivedEventSubtitle(event),
-      actionLabel: 'Delete Event',
-    );
-    if (!mounted) return;
-    if (confirmed != true) {
-      _openArchivedEvent(event);
-      return;
-    }
-    _moveArchivedEventToDeleted(event);
   }
 
   void _moveArchivedEventToDeleted(ScheduledEvent event) {
@@ -3394,7 +3469,12 @@ class EventsTabState extends State<EventsTab>
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedSmartCategory(label),
       destructiveActionLabel: 'Permanently Delete',
-      onDestructiveAction: () => _requestPermanentlyDeleteSmartCategory(label),
+      destructiveConfirmationTitle: 'Are you sure?',
+      destructiveConfirmationSubtitle:
+          'This built-in smart category will be permanently deleted and '
+          'cannot be recovered. Your events will not be affected.',
+      destructiveConfirmationActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _permanentlyDeleteSmartCategoryNow(label),
     );
   }
 
@@ -3413,7 +3493,14 @@ class EventsTabState extends State<EventsTab>
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
       destructiveActionLabel: 'Permanently Delete',
-      onDestructiveAction: () => _requestPermanentlyDeleteCategory(category),
+      destructiveConfirmationTitle: 'Are you sure?',
+      destructiveConfirmationSubtitle:
+          isSmart
+              ? 'The smart category cannot be recovered. Its matching events '
+                  'will stay unchanged.'
+              : _permanentlyDeleteCategorySubtitle(category),
+      destructiveConfirmationActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _permanentlyDeleteCategoryNow(category),
     );
   }
 
@@ -3431,62 +3518,19 @@ class EventsTabState extends State<EventsTab>
     }
     final sectionCount = _categorySavedSectionCount(category);
     final eventCount = _categoryLiveEventCount(category);
-    if (eventCount == 0) {
-      while (mounted) {
-        final firstStep = await _showCategoryLifecycleIntro(
-          category,
-          actionVerb: 'Delete',
-          sectionCount: sectionCount,
-        );
-        if (!mounted || !firstStep) return;
-        final confirmed = await _confirmCategoryLifecycleAction(
-          category,
-          actionVerb: 'Delete',
-          withContents: false,
-          sectionCount: sectionCount,
-          eventCount: eventCount,
-        );
-        if (!mounted) return;
-        if (!confirmed) continue;
-        onConfirmed?.call();
-        if (_pinnedUserCategories.contains(category)) {
-          _deletePinnedCategory(category, deleteEvents: false);
-        } else {
-          _deleteUserCategory(category, deleteEvents: false);
-        }
-        return;
-      }
-      return;
-    }
-    while (mounted) {
-      final choice = await _ArchiveCategorySheet.show(
-        context,
-        categoryName: _categoryDisplayName(category.name),
-        subtitle: _categoryChoiceSubtitle(
-          actionVerb: 'Delete',
-          sectionCount: sectionCount,
-          eventCount: eventCount,
-        ),
-        actionVerb: 'Delete',
-      );
-      if (!mounted || choice == null) return;
-      final confirmed = await _confirmCategoryLifecycleAction(
-        category,
-        actionVerb: 'Delete',
-        withContents: choice == _ArchiveCategoryChoice.withContents,
-        sectionCount: sectionCount,
-        eventCount: eventCount,
-      );
-      if (!mounted) return;
-      if (!confirmed) continue;
-      onConfirmed?.call();
-      final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
-      if (_pinnedUserCategories.contains(category)) {
-        _deletePinnedCategory(category, deleteEvents: deleteEvents);
-      } else {
-        _deleteUserCategory(category, deleteEvents: deleteEvents);
-      }
-      return;
+    final choice = await _confirmCategoryLifecycleFlow(
+      category,
+      actionVerb: 'Delete',
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    if (!mounted || choice == null) return;
+    onConfirmed?.call();
+    final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
+    if (_pinnedUserCategories.contains(category)) {
+      _deletePinnedCategory(category, deleteEvents: deleteEvents);
+    } else {
+      _deleteUserCategory(category, deleteEvents: deleteEvents);
     }
   }
 
@@ -3534,33 +3578,17 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
-  void _requestDeleteArchivedCategory(_UserCategory category) async {
+  void _deleteArchivedCategoryNow(_UserCategory category) {
     final isArchived = _archivedUserCategories.any(
       (candidate) => candidate.id == category.id,
     );
     if (!isArchived) return;
     final isSmart = _isSmartUserCategory(category);
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle:
-          isSmart
-              ? 'The smart category will move to Recently Deleted. Its '
-                  'matching events will stay unchanged.'
-              : _deleteArchivedCategorySubtitle(category),
-      actionLabel:
-          isSmart ? 'Delete Smart Category' : 'Delete Category',
-    );
-    if (!mounted) return;
-    if (confirmed != true) {
-      _openArchivedCategory(category);
-      return;
-    }
     _ensureDefaultCategoryAvailable({category.id});
     // An archived category can contain events that were deliberately kept
     // with it. Move both active remnants and archived contents to Recently
     // Deleted rather than silently reassigning either set.
-    if (!_isSmartUserCategory(category)) {
+    if (!isSmart) {
       EventStore.instance.deleteArchivedEventsForCategory(
         category.id,
         origin: EventLifecycleOrigin.category,
@@ -3593,18 +3621,7 @@ class EventsTabState extends State<EventsTab>
     _scheduleUtilityExitIfEmpty();
   }
 
-  void _requestPermanentlyDeleteEvent(ScheduledEvent event) async {
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle: _permanentlyDeleteEventSubtitle(event),
-      actionLabel: 'Permanently Delete',
-    );
-    if (!mounted) return;
-    if (confirmed != true) {
-      _openDeletedEvent(event);
-      return;
-    }
+  void _permanentlyDeleteEventNow(ScheduledEvent event) {
     if (EventStore.instance.permanentlyDelete(event.id)) {
       _removeUtilityDate('deleted-event', event.id);
       _syncUtilityVisibilityAndResurface();
@@ -3614,28 +3631,13 @@ class EventsTabState extends State<EventsTab>
     }
   }
 
-  void _requestPermanentlyDeleteCategory(_UserCategory category) async {
+  void _permanentlyDeleteCategoryNow(_UserCategory category) {
     final isSmart = _isSmartUserCategory(category);
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle:
-          isSmart
-              ? 'The smart category cannot be recovered. Its matching events '
-                  'will stay unchanged.'
-              : _permanentlyDeleteCategorySubtitle(category),
-      actionLabel: 'Permanently Delete',
-    );
-    if (!mounted) return;
-    if (confirmed != true) {
-      _openDeletedCategory(category);
-      return;
-    }
     final deleted = _recentlyDeletedCategories.any(
       (candidate) => candidate.id == category.id,
     );
     if (!deleted) return;
-    if (!_isSmartUserCategory(category)) {
+    if (!isSmart) {
       EventStore.instance.permanentlyDeleteForCategory(category.id);
     }
     setState(() {
@@ -3721,20 +3723,7 @@ class EventsTabState extends State<EventsTab>
     }
   }
 
-  void _requestPermanentlyDeleteSmartCategory(String label) async {
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle:
-          'This built-in smart category will be permanently deleted and '
-          'cannot be recovered. Your events will not be affected.',
-      actionLabel: 'Permanently Delete',
-    );
-    if (!mounted) return;
-    if (confirmed != true) {
-      _openDeletedSmartCategory(label);
-      return;
-    }
+  void _permanentlyDeleteSmartCategoryNow(String label) {
     if (!_recentlyDeletedSmartCategories.contains(label)) return;
     setState(() {
       _recentlyDeletedSmartCategories.remove(label);
@@ -6294,63 +6283,24 @@ class EventsTabState extends State<EventsTab>
     }
     final eventCount = _categoryLiveEventCount(cat);
     final sectionCount = _categorySavedSectionCount(cat);
-    if (eventCount == 0) {
-      while (mounted) {
-        final firstStep = await _showCategoryLifecycleIntro(
-          cat,
-          actionVerb: 'Archive',
-          sectionCount: sectionCount,
-        );
-        if (!mounted || !firstStep) return;
-        final confirmed = await _confirmCategoryLifecycleAction(
-          cat,
-          actionVerb: 'Archive',
-          withContents: false,
-          sectionCount: sectionCount,
-          eventCount: eventCount,
-        );
-        if (!mounted) return;
-        if (!confirmed) continue;
-        onConfirmed?.call();
-        _archiveCategoryAfterChoice(cat);
-        return;
-      }
-      return;
-    }
-
-    while (mounted) {
-      final choice = await _ArchiveCategorySheet.show(
-        context,
-        categoryName: _categoryDisplayName(cat.name),
-        subtitle: _categoryChoiceSubtitle(
-          actionVerb: 'Archive',
-          sectionCount: sectionCount,
-          eventCount: eventCount,
-        ),
+    final choice = await _confirmCategoryLifecycleFlow(
+      cat,
+      actionVerb: 'Archive',
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    if (!mounted || choice == null) return;
+    onConfirmed?.call();
+    if (choice == _ArchiveCategoryChoice.categoryOnly) {
+      _ensureDefaultCategoryAvailable({cat.id});
+      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
+    } else {
+      EventStore.instance.archiveEventsForCategory(
+        cat.id,
+        origin: EventLifecycleOrigin.category,
       );
-      if (!mounted || choice == null) return;
-      final confirmed = await _confirmCategoryLifecycleAction(
-        cat,
-        actionVerb: 'Archive',
-        withContents: choice == _ArchiveCategoryChoice.withContents,
-        sectionCount: sectionCount,
-        eventCount: eventCount,
-      );
-      if (!mounted) return;
-      if (!confirmed) continue;
-      onConfirmed?.call();
-      if (choice == _ArchiveCategoryChoice.categoryOnly) {
-        _ensureDefaultCategoryAvailable({cat.id});
-        EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
-      } else {
-        EventStore.instance.archiveEventsForCategory(
-          cat.id,
-          origin: EventLifecycleOrigin.category,
-        );
-      }
-      _archiveCategoryAfterChoice(cat);
-      return;
     }
+    _archiveCategoryAfterChoice(cat);
   }
 
   int _categoryLiveEventCount(_UserCategory category) =>
@@ -6432,29 +6382,6 @@ class EventsTabState extends State<EventsTab>
         'its ${_pluralizedNoun(eventCount, 'event')} to the default category.';
   }
 
-  Future<bool> _showCategoryLifecycleIntro(
-    _UserCategory category, {
-    required String actionVerb,
-    required int sectionCount,
-  }) async {
-    final isDelete = actionVerb == 'Delete';
-    final scope = _categoryOnlyScope(sectionCount);
-    final subtitle =
-        isDelete
-            ? 'This category has no events. Only $scope will move to Recently '
-                'Deleted.'
-            : 'This category has no events. Only $scope will be archived and '
-                'hidden from the active list.';
-    final categoryName = _categoryDisplayName(category.name);
-    final result = await _showCategoryLifecycleConfirmationDialog(
-      context,
-      title: '$actionVerb the category "$categoryName"?',
-      message: subtitle,
-      actionLabel: '$actionVerb Category',
-    );
-    return result == true;
-  }
-
   int _smartCategoryMatchCount(String categoryName) {
     final allEvents = _expandedEventsFor(DateTime.now());
     if (_kDCVLabels.contains(categoryName)) {
@@ -6504,44 +6431,35 @@ class EventsTabState extends State<EventsTab>
             ? 'Matching events will stay in their parent categories.'
             : 'No events currently match this Smart Category rule, so no '
                 'events will be affected.';
+    final actionLabel =
+        isDelete ? 'Delete Smart Category' : 'Archive Smart Category';
     return showTwoStepConfirmationSheet(
-      firstStep:
-          () => _showCategoryLifecycleConfirmationDialog(
-            context,
-            title: '$actionVerb the smart category "$displayName"?',
-            message:
-                isDelete
-                    ? 'This only changes the saved Smart Category rule. '
-                        '$matchingEventsSubtitle'
-                    : 'This only archives the saved Smart Category rule. '
-                        '$matchingEventsSubtitle',
-            actionLabel:
-                isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
-          ),
-      secondStep:
-          () => _showCategoryLifecycleConfirmationDialog(
-            context,
-            title: 'Are you sure?',
-            message:
-                isDelete
-                    ? 'The Smart Category rule will move to Recently Deleted. '
-                        '$matchingEventsSubtitle'
-                    : 'The Smart Category rule will move to Archived Items. '
-                        '$matchingEventsSubtitle',
-            actionLabel:
-                isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
-          ),
+      context: context,
+      firstTitle: '$actionVerb the smart category "$displayName"?',
+      firstSubtitle:
+          isDelete
+              ? 'This only changes the saved Smart Category rule. '
+                  '$matchingEventsSubtitle'
+              : 'This only archives the saved Smart Category rule. '
+                  '$matchingEventsSubtitle',
+      firstActionLabel: actionLabel,
+      secondTitle: 'Are you sure?',
+      secondSubtitle:
+          isDelete
+              ? 'The Smart Category rule will move to Recently Deleted. '
+                  '$matchingEventsSubtitle'
+              : 'The Smart Category rule will move to Archived Items. '
+                  '$matchingEventsSubtitle',
+      secondActionLabel: actionLabel,
     );
   }
 
-  Future<bool> _confirmCategoryLifecycleAction(
-    _UserCategory category, {
+  String _categoryLifecycleConfirmationMessage({
     required String actionVerb,
     required bool withContents,
     required int sectionCount,
     required int eventCount,
-  }) async {
-    final name = _categoryDisplayName(category.name);
+  }) {
     final onlyScope = _categoryOnlyScope(sectionCount);
     final withContentsScope = _categoryWithContentsScope(
       sectionCount: sectionCount,
@@ -6550,36 +6468,137 @@ class EventsTabState extends State<EventsTab>
     );
     final eventLabel = _pluralizedNoun(eventCount, 'event');
     final isDelete = actionVerb == 'Delete';
-    final subtitle =
-        withContents
-            ? isDelete
-                ? '$withContentsScope will move to Recently Deleted together. '
-                    'You can recover them together until they are permanently '
-                    'deleted.'
-                : '$withContentsScope will be archived together. You can '
-                    'recover them together from Archived Items.'
-            : isDelete
-            ? eventCount > 0
-                ? 'Only $onlyScope will move to Recently Deleted. Its '
-                    '$eventLabel will move to the default category.'
-                : 'Only $onlyScope will move to Recently Deleted. It has no '
-                    'events to move to the default category.'
-            : eventCount > 0
-            ? 'Only $onlyScope will be archived. Its $eventLabel will move to '
-                'the default category.'
-            : 'Only $onlyScope will be archived. It has no events to move to '
-                'the default category.';
-    final actionLabel =
-        withContents
-            ? '$actionVerb Category & Contents'
-            : '$actionVerb Category Only';
-    final result = await _showCategoryLifecycleConfirmationDialog(
-      context,
-      title: 'Are you sure?',
-      message: subtitle,
-      actionLabel: actionLabel,
+    return withContents
+        ? isDelete
+            ? '$withContentsScope will move to Recently Deleted together. '
+                'You can recover them together until they are permanently '
+                'deleted.'
+            : '$withContentsScope will be archived together. You can '
+                'recover them together from Archived Items.'
+        : isDelete
+        ? eventCount > 0
+            ? 'Only $onlyScope will move to Recently Deleted. Its '
+                '$eventLabel will move to the default category.'
+            : 'Only $onlyScope will move to Recently Deleted. It has no '
+                'events to move to the default category.'
+        : eventCount > 0
+        ? 'Only $onlyScope will be archived. Its $eventLabel will move to '
+            'the default category.'
+        : 'Only $onlyScope will be archived. It has no events to move to '
+            'the default category.';
+  }
+
+  Future<_ArchiveCategoryChoice?> _confirmCategoryLifecycleFlow(
+    _UserCategory category, {
+    required String actionVerb,
+    required int sectionCount,
+    required int eventCount,
+  }) {
+    final isDelete = actionVerb == 'Delete';
+    final displayName = _categoryDisplayName(category.name);
+    final steps = <SkeddoGlassAlertFlowStep<_ArchiveCategoryChoice>>[];
+    if (eventCount == 0) {
+      final scope = _categoryOnlyScope(sectionCount);
+      final intro = isDelete
+          ? 'This category has no events. Only $scope will move to Recently '
+                'Deleted.'
+          : 'This category has no events. Only $scope will be archived and '
+                'hidden from the active list.';
+      steps.add(
+        SkeddoGlassAlertFlowStep<_ArchiveCategoryChoice>(
+          title: '$actionVerb the category "$displayName"?',
+          message: intro,
+          actions: [
+            SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: '$actionVerb Category',
+              isDestructive: true,
+              nextStep: 1,
+            ),
+            const SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: 'Cancel',
+            ),
+          ],
+        ),
+      );
+      steps.add(
+        SkeddoGlassAlertFlowStep<_ArchiveCategoryChoice>(
+          title: 'Are you sure?',
+          message: _categoryLifecycleConfirmationMessage(
+            actionVerb: actionVerb,
+            withContents: false,
+            sectionCount: sectionCount,
+            eventCount: eventCount,
+          ),
+          actions: [
+            SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: '$actionVerb Category',
+              isDestructive: true,
+              result: _ArchiveCategoryChoice.categoryOnly,
+            ),
+            const SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: 'Cancel',
+              nextStep: 0,
+            ),
+          ],
+        ),
+      );
+    } else {
+      steps.add(
+        SkeddoGlassAlertFlowStep<_ArchiveCategoryChoice>(
+          title: '$actionVerb the category "$displayName"?',
+          message: _categoryChoiceSubtitle(
+            actionVerb: actionVerb,
+            sectionCount: sectionCount,
+            eventCount: eventCount,
+          ),
+          actions: [
+            SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: '$actionVerb Category Only',
+              nextStep: 2,
+            ),
+            SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: '$actionVerb Category & Contents',
+              isDestructive: true,
+              nextStep: 1,
+            ),
+            const SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+              label: 'Cancel',
+            ),
+          ],
+        ),
+      );
+      for (final choice in _ArchiveCategoryChoice.values) {
+        final withContents = choice == _ArchiveCategoryChoice.withContents;
+        steps.add(
+          SkeddoGlassAlertFlowStep<_ArchiveCategoryChoice>(
+            title: 'Are you sure?',
+            message: _categoryLifecycleConfirmationMessage(
+              actionVerb: actionVerb,
+              withContents: withContents,
+              sectionCount: sectionCount,
+              eventCount: eventCount,
+            ),
+            actions: [
+              SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+                label: withContents
+                    ? '$actionVerb Category & Contents'
+                    : '$actionVerb Category Only',
+                isDestructive: true,
+                result: choice,
+              ),
+              const SkeddoGlassAlertFlowAction<_ArchiveCategoryChoice>(
+                label: 'Cancel',
+                nextStep: 0,
+              ),
+            ],
+          ),
+        );
+      }
+    }
+    return showSkeddoGlassAlertFlow<_ArchiveCategoryChoice>(
+      context: context,
+      steps: steps,
     );
-    return result == true;
   }
 
   /// Flags [cat] as archived so it's hidden from the grid/list without
@@ -7311,31 +7330,44 @@ class EventsTabState extends State<EventsTab>
         : 'This permanently deletes all items in Recently Deleted. This '
             'cannot be undone.';
 
-    while (mounted) {
-      final action = await _UtilityItemSheet.show(
-        context,
-        title: 'Delete All?',
-        subtitle: firstSubtitle,
-        actionLabel: null,
-        destructiveActionLabel: 'Delete All',
-      );
-      if (!mounted || action != _UtilityItemAction.destructive) return;
+    final confirmed = await showSkeddoGlassAlertFlow<bool>(
+      context: context,
+      steps: [
+        SkeddoGlassAlertFlowStep<bool>(
+          title: 'Delete All?',
+          message: firstSubtitle,
+          actions: [
+            SkeddoGlassAlertFlowAction<bool>(
+              label: 'Delete All',
+              isDestructive: true,
+              nextStep: 1,
+            ),
+            const SkeddoGlassAlertFlowAction<bool>(label: 'Cancel'),
+          ],
+        ),
+        SkeddoGlassAlertFlowStep<bool>(
+          title: 'Are you sure?',
+          message: confirmationSubtitle,
+          actions: [
+            const SkeddoGlassAlertFlowAction<bool>(
+              label: 'Delete All',
+              isDestructive: true,
+              result: true,
+            ),
+            const SkeddoGlassAlertFlowAction<bool>(
+              label: 'Cancel',
+              nextStep: 0,
+            ),
+          ],
+        ),
+      ],
+    );
+    if (!mounted || confirmed != true) return;
 
-      final confirmed = await showDeleteConfirmationSheet(
-        context,
-        title: 'Are you sure?',
-        subtitle: confirmationSubtitle,
-        actionLabel: 'Delete All',
-      );
-      if (!mounted) return;
-      if (confirmed != true) continue;
-
-      if (isArchived) {
-        _deleteAllArchivedUtilityItems();
-      } else {
-        _permanentlyDeleteAllRecentlyDeletedItems();
-      }
-      return;
+    if (isArchived) {
+      _deleteAllArchivedUtilityItems();
+    } else {
+      _permanentlyDeleteAllRecentlyDeletedItems();
     }
   }
 
@@ -12354,128 +12386,7 @@ class _GroupRow extends StatelessWidget {
 
 enum _DeleteGroupChoice { only, withCategories, withCategoriesAndContents }
 
-/// First dialog in the group's deletion flow, choosing the deletion scope.
-///
-/// This intentionally follows the same overlay-based presentation as the
-/// microphone access sheet: the card blooms in place and the scrim remains in
-/// the same compositing layer as the Events Tab behind it.
-class _DeleteGroupSheet {
-  static Future<_DeleteGroupChoice?> show(
-    BuildContext context, {
-    required String groupName,
-  }) async {
-    return showSkeddoGlassAlertDialog<_DeleteGroupChoice>(
-      context: context,
-      title: 'Delete the group "$groupName"?',
-      message:
-          'Choose whether to remove only the group and keep its categories, '
-          'delete the group and categories while moving their events to the '
-          'default category, or delete the group, categories, and events '
-          'together. Category sections stay with deleted categories.',
-      actionsBuilder: (dialogContext) => [
-        GlassDialogAction(
-          label: 'Remove Group Only',
-          isPrimary: true,
-          onPressed: () =>
-              Navigator.of(dialogContext).pop(_DeleteGroupChoice.only),
-        ),
-        GlassDialogAction(
-          label: 'Delete Group and Categories',
-          onPressed: () =>
-              Navigator.of(dialogContext).pop(_DeleteGroupChoice.withCategories),
-        ),
-        GlassDialogAction(
-          label: 'Delete Group, Categories & Events',
-          isDestructive: true,
-          onPressed: () => Navigator.of(
-            dialogContext,
-          ).pop(_DeleteGroupChoice.withCategoriesAndContents),
-        ),
-        GlassDialogAction(
-          label: 'Cancel',
-          onPressed: () => Navigator.of(dialogContext).pop(),
-        ),
-      ],
-    );
-  }
-}
-
 enum _ArchiveCategoryChoice { withContents, categoryOnly }
-
-Future<T?> _showCategoryLifecycleGlassDialog<T>(
-  BuildContext context, {
-  required String title,
-  required String message,
-  required List<GlassDialogAction> Function(BuildContext dialogContext)
-  actionsBuilder,
-}) {
-  return showSkeddoGlassAlertDialog<T>(
-    context: context,
-    title: title,
-    message: message,
-    actionsBuilder: actionsBuilder,
-  );
-}
-
-Future<bool?> _showCategoryLifecycleConfirmationDialog(
-  BuildContext context, {
-  required String title,
-  required String message,
-  required String actionLabel,
-}) {
-  return _showCategoryLifecycleGlassDialog<bool>(
-    context,
-    title: title,
-    message: message,
-    actionsBuilder: (dialogContext) => [
-      GlassDialogAction(
-        label: actionLabel,
-        isDestructive: true,
-        onPressed: () => Navigator.of(dialogContext).pop(true),
-      ),
-      GlassDialogAction(
-        label: 'Cancel',
-        onPressed: () => Navigator.of(dialogContext).pop(false),
-      ),
-    ],
-  );
-}
-
-/// Lets the user decide whether a category's contents should remain together
-/// before the category is archived or deleted.
-class _ArchiveCategorySheet {
-  static Future<_ArchiveCategoryChoice?> show(
-    BuildContext context, {
-    required String categoryName,
-    required String subtitle,
-    String actionVerb = 'Archive',
-  }) {
-    return _showCategoryLifecycleGlassDialog<_ArchiveCategoryChoice>(
-      context,
-      title: '$actionVerb the category "$categoryName"?',
-      message: subtitle,
-      actionsBuilder: (dialogContext) => [
-        GlassDialogAction(
-          label: '$actionVerb Category Only',
-          onPressed: () => Navigator.of(
-            dialogContext,
-          ).pop(_ArchiveCategoryChoice.categoryOnly),
-        ),
-        GlassDialogAction(
-          label: '$actionVerb Category & Contents',
-          isDestructive: true,
-          onPressed: () => Navigator.of(
-            dialogContext,
-          ).pop(_ArchiveCategoryChoice.withContents),
-        ),
-        GlassDialogAction(
-          label: 'Cancel',
-          onPressed: () => Navigator.of(dialogContext).pop(),
-        ),
-      ],
-    );
-  }
-}
 
 enum _UtilityItemAction { primary, destructive }
 

@@ -14,6 +14,34 @@ const double _alertPlatterTitleMessageGap = 14.5;
 const double _alertPlatterMessageActionGap = 20.33;
 const double _alertPlatterInitialScale = 1.12;
 
+class SkeddoGlassAlertFlowAction<T> {
+  const SkeddoGlassAlertFlowAction({
+    required this.label,
+    this.isDestructive = false,
+    this.isPrimary = false,
+    this.nextStep,
+    this.result,
+  });
+
+  final String label;
+  final bool isDestructive;
+  final bool isPrimary;
+  final int? nextStep;
+  final T? result;
+}
+
+class SkeddoGlassAlertFlowStep<T> {
+  const SkeddoGlassAlertFlowStep({
+    required this.title,
+    required this.actions,
+    this.message,
+  });
+
+  final String title;
+  final String? message;
+  final List<SkeddoGlassAlertFlowAction<T>> actions;
+}
+
 /// Presents SKEDDO's scoped iOS 26/27-style alert with the shared glass curve.
 Future<T?> showSkeddoGlassAlertDialog<T>({
   required BuildContext context,
@@ -47,6 +75,91 @@ Future<T?> showSkeddoGlassAlertDialog<T>({
   );
 }
 
+/// Presents a multi-step alert in one route so its glass platter can morph
+/// between steps instead of stacking two dismissing/entering dialogs.
+Future<T?> showSkeddoGlassAlertFlow<T>({
+  required BuildContext context,
+  required List<SkeddoGlassAlertFlowStep<T>> steps,
+  int initialStep = 0,
+  bool barrierDismissible = true,
+}) {
+  if (steps.isEmpty || initialStep < 0 || initialStep >= steps.length) {
+    throw ArgumentError.value(initialStep, 'initialStep', 'No matching step.');
+  }
+  final sharedSettings = skeddoModalSheetPickerGlassSettingsFor(
+    CupertinoTheme.brightnessOf(context),
+  );
+  final dialogSettings = skeddoNavigationGlassSettingsFromShared(
+    sharedSettings,
+  );
+  return showSafeCupertinoDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierColor: const Color(0x44000000),
+    transitionBuilder: (context, animation, secondaryAnimation, child) => child,
+    builder: (dialogContext) => _SkeddoGlassAlertFlowRoute<T>(
+      steps: steps,
+      initialStep: initialStep,
+      settings: dialogSettings,
+    ),
+  );
+}
+
+class _SkeddoGlassAlertFlowRoute<T> extends StatefulWidget {
+  const _SkeddoGlassAlertFlowRoute({
+    required this.steps,
+    required this.initialStep,
+    required this.settings,
+  });
+
+  final List<SkeddoGlassAlertFlowStep<T>> steps;
+  final int initialStep;
+  final LiquidGlassSettings settings;
+
+  @override
+  State<_SkeddoGlassAlertFlowRoute<T>> createState() =>
+      _SkeddoGlassAlertFlowRouteState<T>();
+}
+
+class _SkeddoGlassAlertFlowRouteState<T>
+    extends State<_SkeddoGlassAlertFlowRoute<T>> {
+  late int _stepIndex = widget.initialStep;
+
+  void _activate(SkeddoGlassAlertFlowAction<T> action) {
+    final nextStep = action.nextStep;
+    if (nextStep != null) {
+      if (nextStep < 0 || nextStep >= widget.steps.length) {
+        throw RangeError.index(nextStep, widget.steps, 'nextStep');
+      }
+      setState(() => _stepIndex = nextStep);
+      return;
+    }
+    Navigator.of(context).pop<T>(action.result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final step = widget.steps[_stepIndex];
+    return SkeddoGlassAlertPlatter(
+      key: const ValueKey('skeddo-glass-alert-flow-platter'),
+      title: step.title,
+      message: step.message,
+      contentTransitionKey: _stepIndex,
+      settings: widget.settings,
+      quality: GlassQuality.premium,
+      actions: [
+        for (final flowAction in step.actions)
+          GlassDialogAction(
+            label: flowAction.label,
+            isDestructive: flowAction.isDestructive,
+            isPrimary: flowAction.isPrimary,
+            onPressed: () => _activate(flowAction),
+          ),
+      ],
+    );
+  }
+}
+
 /// The iOS 26/27 alert-platter layout scoped to SKEDDO confirmations.
 class SkeddoGlassAlertPlatter extends StatefulWidget {
   const SkeddoGlassAlertPlatter({
@@ -57,6 +170,7 @@ class SkeddoGlassAlertPlatter extends StatefulWidget {
     this.settings,
     this.quality,
     this.maxWidth = 320,
+    this.contentTransitionKey,
   });
 
   final String? title;
@@ -65,6 +179,7 @@ class SkeddoGlassAlertPlatter extends StatefulWidget {
   final LiquidGlassSettings? settings;
   final GlassQuality? quality;
   final double? maxWidth;
+  final Object? contentTransitionKey;
 
   @override
   State<SkeddoGlassAlertPlatter> createState() =>
@@ -84,6 +199,10 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
   @override
   void didUpdateWidget(covariant SkeddoGlassAlertPlatter oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentTransitionKey != widget.contentTransitionKey) {
+      _actionKeys.clear();
+      _hoveredActionIndex.value = null;
+    }
     _syncActionKeys();
   }
 
@@ -154,10 +273,10 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
                               actions: widget.actions,
                               actionKeys: _actionKeys,
                               hoveredActionIndex: _hoveredActionIndex,
+                              contentTransitionKey: widget.contentTransitionKey,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   if (hasHeader)
                                     Padding(
@@ -384,12 +503,14 @@ class _AlertPlatterScrollViewport extends StatefulWidget {
     required this.actions,
     required this.actionKeys,
     required this.hoveredActionIndex,
+    this.contentTransitionKey,
   });
 
   final Widget child;
   final List<GlassDialogAction> actions;
   final List<GlobalKey> actionKeys;
   final ValueNotifier<int?> hoveredActionIndex;
+  final Object? contentTransitionKey;
 
   @override
   State<_AlertPlatterScrollViewport> createState() =>
@@ -430,6 +551,25 @@ class _AlertPlatterScrollViewportState
       ..removeListener(_syncFromController)
       ..dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AlertPlatterScrollViewport oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentTransitionKey == widget.contentTransitionKey) return;
+    _activePointer = null;
+    _pointerDownPosition = null;
+    _lastPointerPosition = null;
+    _pointerDragged = false;
+    _didScrollDuringPointer = false;
+    _lastScrollPixels = null;
+    _indicatorHideTimer?.cancel();
+    _indicatorVisible = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_controller.hasClients) _controller.jumpTo(0);
+      _syncFromController();
+    });
   }
 
   void _syncFromController() {
@@ -593,6 +733,40 @@ class _AlertPlatterScrollViewportState
     _didScrollDuringPointer = false;
     _lastScrollPixels = null;
     _setHoveredAction(null);
+  }
+
+  Widget _buildContent() {
+    final transitionKey = widget.contentTransitionKey;
+    if (transitionKey == null) return widget.child;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 280),
+        reverseDuration: const Duration(milliseconds: 280),
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            for (final previousChild in previousChildren)
+              Positioned(top: 0, left: 0, right: 0, child: previousChild),
+            if (currentChild != null) currentChild,
+          ],
+        ),
+        transitionBuilder: (child, animation) => GlassMaterializeTransition(
+          animation: animation,
+          scaleFrom: 1.05,
+          contentSigma: 2,
+          child: child,
+        ),
+        child: KeyedSubtree(
+          key: ValueKey<Object?>(transitionKey),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 
   Shader _scrollFadeShader(Rect bounds) {
@@ -759,7 +933,7 @@ class _AlertPlatterScrollViewportState
                           parent: AlwaysScrollableScrollPhysics(),
                         )
                       : const NeverScrollableScrollPhysics(),
-                  child: widget.child,
+                  child: _buildContent(),
                 ),
               ),
               _buildScrollIndicator(),

@@ -8,6 +8,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassInteractiveContainer,
         AdaptiveLiquidGlassLayer,
         GlassQuality,
+        GlassMaterializeTransition,
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 import 'package:smart_scheduler/widgets/skeddo_glass_alert_platter.dart';
@@ -163,10 +164,7 @@ void main() {
       );
       final captureLayer = find.byType(AdaptiveLiquidGlassLayer);
       expect(
-        find.ancestor(
-          of: captureLayer,
-          matching: find.byType(ScaleTransition),
-        ),
+        find.ancestor(of: captureLayer, matching: find.byType(ScaleTransition)),
         findsNothing,
       );
       expect(
@@ -209,10 +207,8 @@ void main() {
     },
   );
 
-  testWidgets('a second confirmation waits for the first route to exit', (
-    tester,
-  ) async {
-    var secondDialogStarted = false;
+  testWidgets('confirmation steps morph in one glass route', (tester) async {
+    bool? result;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -222,35 +218,40 @@ void main() {
             child: Center(
               child: CupertinoButton(
                 onPressed: () async {
-                  await showSkeddoGlassAlertDialog<bool>(
+                  result = await showSkeddoGlassAlertFlow<bool>(
                     context: context,
-                    title: 'First confirmation',
-                    actionsBuilder: (dialogContext) => [
-                      GlassDialogAction(
-                        label: 'Continue',
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(true),
+                    steps: [
+                      SkeddoGlassAlertFlowStep<bool>(
+                        title: 'First confirmation',
+                        message: 'Choose the scope.',
+                        actions: [
+                          const SkeddoGlassAlertFlowAction<bool>(
+                            label: 'Continue',
+                            nextStep: 1,
+                          ),
+                          const SkeddoGlassAlertFlowAction<bool>(
+                            label: 'Cancel',
+                          ),
+                        ],
                       ),
-                      GlassDialogAction(
-                        label: 'Cancel',
-                        onPressed: () =>
-                            Navigator.of(dialogContext).pop(false),
-                      ),
-                    ],
-                  );
-                  secondDialogStarted = true;
-                  await showSkeddoGlassAlertDialog<void>(
-                    context: context,
-                    title: 'Second confirmation',
-                    actionsBuilder: (dialogContext) => [
-                      GlassDialogAction(
-                        label: 'Done',
-                        onPressed: () => Navigator.of(dialogContext).pop(),
+                      SkeddoGlassAlertFlowStep<bool>(
+                        title: 'Second confirmation',
+                        message: 'This is the final confirmation step.',
+                        actions: [
+                          const SkeddoGlassAlertFlowAction<bool>(
+                            label: 'Done',
+                            result: true,
+                          ),
+                          const SkeddoGlassAlertFlowAction<bool>(
+                            label: 'Cancel',
+                            nextStep: 0,
+                          ),
+                        ],
                       ),
                     ],
                   );
                 },
-                child: const Text('Open sequence'),
+                child: const Text('Open flow'),
               ),
             ),
           ),
@@ -258,22 +259,45 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Open sequence'));
+    await tester.tap(find.text('Open flow'));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
     expect(find.text('First confirmation'), findsOneWidget);
-    expect(secondDialogStarted, isFalse);
+    expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+    expect(find.byType(GlassInteractiveContainer), findsOneWidget);
+    expect(find.byType(GlassMaterializeTransition), findsOneWidget);
+    final firstPlatterRect = tester.getRect(
+      find.byType(GlassInteractiveContainer),
+    );
 
     await tester.tap(find.text('Continue'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('First confirmation'), findsOneWidget);
-    expect(find.text('Second confirmation'), findsNothing);
-    expect(secondDialogStarted, isFalse);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+    expect(find.byType(GlassInteractiveContainer), findsOneWidget);
+    final morphingPlatterRect = tester.getRect(
+      find.byType(GlassInteractiveContainer),
+    );
+    expect(morphingPlatterRect.height, isNot(firstPlatterRect.height));
 
     await tester.pumpAndSettle();
-    expect(find.text('First confirmation'), findsNothing);
+    expect(tester.takeException(), isNull);
     expect(find.text('Second confirmation'), findsOneWidget);
-    expect(secondDialogStarted, isTrue);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('First confirmation'), findsOneWidget);
+    expect(find.byType(AdaptiveLiquidGlassLayer), findsOneWidget);
+    expect(find.byType(GlassInteractiveContainer), findsOneWidget);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Second confirmation'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(result, isTrue);
     expect(tester.takeException(), isNull);
   });
 
