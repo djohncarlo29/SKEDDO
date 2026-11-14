@@ -12,11 +12,52 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 import 'package:smart_scheduler/app_theme.dart'
-    show kConfirmationButtonCornerRadius;
+    show
+        kConfirmationButtonCornerRadius,
+        skeddoConfirmationActionFillColor;
 import 'package:smart_scheduler/widgets/skeddo_glass_alert_platter.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
+  testWidgets('confirmation action fills use the shared theme opacity values', (
+    tester,
+  ) async {
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      Color? restingFill;
+      Color? highlightedFill;
+      await tester.pumpWidget(
+        CupertinoApp(
+          theme: CupertinoThemeData(brightness: brightness),
+          home: Builder(
+            builder: (context) {
+              restingFill = skeddoConfirmationActionFillColor(
+                context,
+                highlighted: false,
+              );
+              highlightedFill = skeddoConfirmationActionFillColor(
+                context,
+                highlighted: true,
+              );
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      final isDark = brightness == Brightness.dark;
+      expect(restingFill!.a, closeTo(isDark ? 0.065 : 0.10, 0.000001));
+      expect(highlightedFill!.a, closeTo(isDark ? 0.15 : 0.20, 0.000001));
+      expect(
+        restingFill!.toARGB32() & 0x00FFFFFF,
+        isDark ? 0x00FFFFFF : 0x00000000,
+      );
+      expect(
+        highlightedFill!.toARGB32() & 0x00FFFFFF,
+        isDark ? 0x00FFFFFF : 0x00000000,
+      );
+    }
+  });
+
   testWidgets('category alert platter uses the 1.17 layout and actions', (
     tester,
   ) async {
@@ -571,7 +612,7 @@ void main() {
       final decoration =
           tester.widget<AnimatedContainer>(button).decoration
               as ShapeDecoration;
-      if (decoration.color!.a > 0.20) highlightedIndexes.add(index);
+      if (decoration.color!.a >= 0.20) highlightedIndexes.add(index);
     }
     expect(highlightedIndexes, hasLength(1));
 

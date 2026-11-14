@@ -407,6 +407,10 @@ void main() {
     expect(buttonRect.width, closeTo(anchorRect.width, 0.01));
     expect(buttonRect.height, closeTo(anchorRect.height, 0.01));
     expect(
+      anchorRect.top - tester.getRect(message).bottom,
+      closeTo(kDiscardConfirmationMessageButtonGap, 0.1),
+    );
+    expect(
       find.ancestor(
         of: buttonAnchorFinder,
         matching: find.byWidgetPredicate(

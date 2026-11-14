@@ -733,8 +733,7 @@ const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
 const double kDiscardConfirmationTopLeftEdgeGap = 16.0;
 const double kDiscardConfirmationButtonEdgeGap = 16.0;
 const double kDiscardConfirmationMessageHorizontalInset = 8.0;
-const double kDiscardConfirmationMessageButtonGap =
-    kConfirmationMessageActionGap / 2;
+const double kDiscardConfirmationMessageButtonGap = 14.0;
 const double kDiscardConfirmationSheetTopInset = 22.0;
 
 /// Shared resting and hover fill colors for confirmation action buttons.
@@ -744,8 +743,8 @@ Color skeddoConfirmationActionFillColor(
 }) {
   final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
   final opacity = isDark
-      ? (highlighted ? 0.20 : 0.115)
-      : (highlighted ? 0.25 : 0.15);
+      ? (highlighted ? 0.15 : 0.065)
+      : (highlighted ? 0.20 : 0.10);
   return (isDark ? CupertinoColors.white : CupertinoColors.black).withValues(
     alpha: opacity,
   );
