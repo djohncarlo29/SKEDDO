@@ -12,6 +12,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
+import '../../constants/glass_defaults.dart';
+import '../../theme/glass_theme.dart';
 import '../../../widgets/shared/inherited_liquid_glass.dart';
 import '../../../utils/glass_spring.dart';
 import 'rendering/liquid_glass_render_object.dart';
@@ -24,12 +26,11 @@ class GlassGlow extends StatefulWidget {
   /// {@macro glass_glow}
   const GlassGlow({
     required this.child,
-    // Whitelisted: Renderer constant, out of scope for widget criteria.
-    this.glowColor = const Color(0x33FFFFFF), // white24 equivalent
-    this.glowRadius = 1,
-    this.glowBlurRadius = 0,
-    this.glowSpreadRadius = 0,
-    this.glowOpacity = 1,
+    this.glowColor,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
+    this.glowBlurRadius = GlassDefaults.touchGlowBlurRadius,
+    this.glowSpreadRadius = GlassDefaults.touchGlowSpreadRadius,
+    this.glowOpacity = GlassDefaults.touchGlowOpacity,
     this.pulse = 0,
     this.clipper,
     this.hitTestBehavior = HitTestBehavior.opaque,
@@ -43,21 +44,21 @@ class GlassGlow extends StatefulWidget {
   /// A value of 0.8 means the glow radius will be 80% of the shortest
   /// dimension (width or height) of the [GlassGlowLayer].
   ///
-  /// Defaults to 1.
+  /// Defaults to the shared touch-glow radius.
   final double glowRadius;
 
   /// The color of the glow effect.
   ///
   /// The glow will have this colors opacity at the center, and will fade out
   /// to fully transparent at the edge of the glow.
-  final Color glowColor;
+  final Color? glowColor;
 
   /// Additional blur sigma applied to the glow circle via a [MaskFilter].
   ///
-  /// A value of 0 (the default) produces a sharp-edged radial gradient with no
-  /// additional blur. Higher values soften the glow, creating a wider diffuse
-  /// halo. The blur is applied *on top of* the radial gradient fade-out, so
-  /// even moderate values (4–12) are clearly visible.
+  /// The shared default is 16. A value of 0 produces a sharp-edged radial
+  /// gradient with no additional blur. Higher values soften the glow, creating
+  /// a wider diffuse halo. The blur is applied *on top of* the radial gradient
+  /// fade-out.
   ///
   /// Corresponds to [GlassGlowColors.glowBlurRadius].
   final double glowBlurRadius;
@@ -213,7 +214,10 @@ class _GlassGlowState extends State<GlassGlow> {
     layerState.updateTouch(
       pos,
       radius: widget.glowRadius,
-      color: widget.glowColor,
+      color: widget.glowColor ??
+          (GlassTheme.brightnessOf(context) == Brightness.dark
+              ? GlassDefaults.touchGlowDarkModeColor
+              : GlassDefaults.touchGlowLightModeColor),
       blurRadius: widget.glowBlurRadius,
       spreadRadius: widget.glowSpreadRadius,
       opacity: widget.glowOpacity,

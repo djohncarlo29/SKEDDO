@@ -476,10 +476,10 @@ class TabIndicator extends StatefulWidget {
     this.indicatorExpansion = const EdgeInsets.all(8.0),
     this.indicatorPinchStrength = 1.0,
     this.interactionGlowColor,
-    this.interactionGlowRadius = 1.5,
-    this.interactionGlowBlurRadius = 0,
-    this.interactionGlowSpreadRadius = 0,
-    this.interactionGlowOpacity = 1,
+    this.interactionGlowRadius = GlassDefaults.touchGlowRadius,
+    this.interactionGlowBlurRadius = GlassDefaults.touchGlowBlurRadius,
+    this.interactionGlowSpreadRadius = GlassDefaults.touchGlowSpreadRadius,
+    this.interactionGlowOpacity = GlassDefaults.touchGlowOpacity,
     this.interactionScale = 1.0,
     this.platformViewBackdrop = false,
     this.springDescription,
@@ -766,7 +766,10 @@ class TabIndicatorState extends State<TabIndicator>
   /// entirely to avoid three extra widget/render-object allocations per frame.
   Widget _wrapWithGlow({required Widget child}) {
     final effectiveColor =
-        widget.interactionGlowColor ?? const Color(0x1FFFFFFF);
+        widget.interactionGlowColor ??
+        GlassDefaults.touchGlowColorForBrightness(
+          GlassTheme.brightnessOf(context),
+        );
     if (effectiveColor.a == 0) return child;
     return GlassGlow(
       clipper: ShapeBorderClipper(shape: _barShape),

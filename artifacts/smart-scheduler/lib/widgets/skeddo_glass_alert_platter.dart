@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
 import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-import '../app_theme.dart' show kTertiaryLabel;
+import '../app_theme.dart' show kConfirmationButtonCornerRadius, kTertiaryLabel;
 import 'rounded_cupertino_sheet.dart';
 import 'skeddo_glass_settings.dart';
 
@@ -478,13 +478,13 @@ class _SkeddoAlertActionButtonState extends State<_SkeddoAlertActionButton> {
     final textColor = action.isDestructive
         ? CupertinoColors.systemRed.resolveFrom(context)
         : CupertinoColors.label.resolveFrom(context);
-    final wrapsAtAccessibilitySize =
-        MediaQuery.textScalerOf(context).scale(14) > 14 * 1.4;
-    final ShapeBorder shape = wrapsAtAccessibilitySize
-        ? const RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.all(Radius.circular(32)),
-          )
-        : const StadiumBorder();
+    // Keep the corner radius fixed as labels wrap. Taller buttons gain straight
+    // vertical edges through the middle instead of turning into larger pills.
+    const ShapeBorder shape = RoundedSuperellipseBorder(
+      borderRadius: BorderRadius.all(
+        Radius.circular(kConfirmationButtonCornerRadius),
+      ),
+    );
 
     return Semantics(
       button: true,

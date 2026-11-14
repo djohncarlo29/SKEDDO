@@ -127,7 +127,7 @@ class GlassSlider extends StatefulWidget {
     // ── iOS 26 interaction ──────────────────────────────────────────────────────
     this.interactionBehavior = GlassInteractionBehavior.full,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.focusNode,
     this.autofocus = false,
   });
@@ -784,8 +784,7 @@ class _GlassSliderState extends State<GlassSlider>
                     Opacity(
                       opacity: transition,
                       child: GlassGlow(
-                        glowColor:
-                            widget.glowColor ?? Color(0x1FFFFFFF), // white ~12%
+                        glowColor: widget.glowColor,
                         glowRadius: widget.glowRadius,
                         child: SizedBox(
                           width: thumbWidth,

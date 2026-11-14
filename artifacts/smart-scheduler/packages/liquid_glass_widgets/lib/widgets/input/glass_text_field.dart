@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../src/renderer/liquid_glass_renderer.dart';
 import '../../src/types/glass_interaction_behavior.dart';
+import '../../constants/glass_defaults.dart';
 import '../../types/glass_quality.dart';
 import '../shared/adaptive_glass.dart';
 import '../shared/glass_focus_region.dart';
@@ -105,7 +106,7 @@ class GlassTextField extends StatefulWidget {
     this.interactionBehavior = GlassInteractionBehavior.full,
     this.pressScale = 1.03,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.onTapOutside,
   }) : assert(
           height == null || (minHeight == null && maxHeight == null),
@@ -143,7 +144,7 @@ class GlassTextField extends StatefulWidget {
     this.interactionBehavior = GlassInteractionBehavior.full,
     this.pressScale = 1.03,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.onTapOutside,
   })  : obscureText = false,
         keyboardType = TextInputType.text,
@@ -411,17 +412,16 @@ class GlassTextField extends StatefulWidget {
 
   /// Colour of the directional glow.
   ///
-  /// Only active when [interactionBehavior] includes glow. If null, falls back
-  /// to a soft `Colors.white` at ~12% opacity — visibly lighter than
-  /// [GlassButton]'s `white24` to match the iOS 26 input look.
+  /// Only active when [interactionBehavior] includes glow. If null, uses the
+  /// shared brightness-aware touch-glow tint.
   final Color? glowColor;
 
   /// Spread radius of the directional glow relative to the field's dimensions.
   ///
-  /// A value of `1.5` means the glow spreads 150% of the field's shorter
+  /// A value of `1.6` means the glow spreads 160% of the field's shorter
   /// dimension, creating a wide, diffuse ambient highlight across the surface.
   ///
-  /// Defaults to `1.5`.
+  /// Defaults to the shared touch-glow radius.
   final double glowRadius;
 
   @override
@@ -449,7 +449,9 @@ class _GlassTextFieldState extends State<GlassTextField> {
     if (!widget.interactionBehavior.hasGlow) return child;
     return GlassGlow(
       glowColor: widget.glowColor ??
-          (isDark ? const Color(0x1FFFFFFF) : const Color(0x1F000000)),
+          GlassDefaults.touchGlowColorForBrightness(
+            isDark ? Brightness.dark : Brightness.light,
+          ),
       glowRadius: widget.glowRadius,
       child: child,
     );

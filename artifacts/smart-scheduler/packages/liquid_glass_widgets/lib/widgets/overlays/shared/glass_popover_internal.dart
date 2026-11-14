@@ -1060,7 +1060,7 @@ class _GlassPopoverState extends State<GlassPopover>
                   : CupertinoColors.black
                       .withValues(alpha: GlassDefaults.specularDarkAlpha)),
           glowRadius: widget.glowRadius,
-          glowBlurRadius: 40,
+          glowBlurRadius: GlassDefaults.touchGlowBlurRadius,
           clipper: ShapeBorderClipper(shape: teardropShape),
           child: Stack(
             alignment: Alignment.topLeft,

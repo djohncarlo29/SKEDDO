@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import '../../constants/glass_defaults.dart';
 import '../../src/renderer/liquid_glass_renderer.dart';
 import '../../src/types/glass_interaction_behavior.dart';
 import '../../types/glass_quality.dart';
@@ -36,7 +37,7 @@ class GlassPasswordField extends StatefulWidget {
     this.interactionBehavior = GlassInteractionBehavior.full,
     this.pressScale = 1.03,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.onTapOutside,
     this.showPasswordSemanticLabel = 'Show password',
     this.hidePasswordSemanticLabel = 'Hide password',

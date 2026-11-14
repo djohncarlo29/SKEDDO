@@ -1413,7 +1413,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             glowOnTapOnly: widget.glowOnTapOnly,
             glowColor: glowColor,
             glowRadius: widget.glowRadius,
-            glowBlurRadius: 40,
+            glowBlurRadius: GlassDefaults.touchGlowBlurRadius,
             clipper: ShapeBorderClipper(shape: shape),
             child: GlassMenuContentLens(
               progress: isTop ? contentMotionProgress : 1.0,
@@ -2599,7 +2599,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
               : CupertinoColors.black
                   .withValues(alpha: GlassDefaults.specularDarkAlpha)),
       glowRadius: widget.glowRadius,
-      glowBlurRadius: 40,
+      glowBlurRadius: GlassDefaults.touchGlowBlurRadius,
       clipper: ShapeBorderClipper(shape: teardropShape),
       child: Stack(
         alignment: Alignment.topLeft,

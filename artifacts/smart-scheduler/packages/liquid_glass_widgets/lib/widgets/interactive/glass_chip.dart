@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../../src/renderer/liquid_glass_renderer.dart';
+import '../../constants/glass_defaults.dart';
 
 import '../../theme/glass_theme.dart';
 import '../../theme/glass_theme_data.dart';
@@ -111,7 +112,7 @@ class GlassChip extends StatelessWidget {
     // GlassButton properties
     this.interactionScale = 1.03,
     this.stretch = 0.3,
-    this.glowRadius = 0.8,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.anchorStretch = true,
     this.anchorStretchSettings = const AnchorStretchSettings(),
     this.focusNode,
@@ -258,7 +259,7 @@ class GlassChip extends StatelessWidget {
 
   /// Glow radius multiplier.
   ///
-  /// Defaults to 0.8 (subtle glow for chips).
+  /// Defaults to the shared touch-glow radius.
   final double glowRadius;
 
   /// Whether to anchor the chip in place while stretching toward the finger.
@@ -282,6 +283,17 @@ class GlassChip extends StatelessWidget {
         baseColor.withValues(alpha: isDark ? 0.3 : 0.1);
     final defaultGlowUnselected =
         baseColor.withValues(alpha: isDark ? 0.2 : 0.05);
+    final chipGlowTint = CupertinoDynamicColor.resolve(
+      selected
+          ? (selectedColor ?? defaultSelectedColor)
+          : defaultGlowUnselected,
+      context,
+    );
+    final chipGlowAlpha =
+        GlassDefaults.touchGlowColorForBrightness(
+          isDark ? Brightness.dark : Brightness.light,
+        ).a;
+    final chipGlowColor = chipGlowTint.withValues(alpha: chipGlowAlpha);
 
     final effectiveIconColor = iconColor ?? defaultContentColor;
     final effectiveLabelStyle = labelStyle ??
@@ -384,10 +396,9 @@ class GlassChip extends StatelessWidget {
           platformViewBackdrop: platformViewBackdrop,
           interactionScale: effectiveInteractionScale,
           stretch: effectiveStretch,
-          glowRadius: glowRadius,
-          glowColor: selected
-              ? (selectedColor ?? defaultSelectedColor)
-              : defaultGlowUnselected,
+          glowRadius:
+              glowRadius == GlassDefaults.touchGlowRadius ? null : glowRadius,
+          glowColor: chipGlowColor,
           enabled: isInteractive,
           anchorStretch: effectiveAnchorStretch,
           anchorStretchSettings: effectiveAnchorStretchSettings,

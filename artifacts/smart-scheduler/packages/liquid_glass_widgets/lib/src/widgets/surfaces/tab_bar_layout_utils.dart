@@ -8,25 +8,26 @@ library;
 import 'dart:math' as math;
 import 'dart:ui' show Color;
 
+import '../../utils/glass_interaction_glow_defaults.dart';
+
 /// The iOS 26 calibration for a bar's interaction glow, resolved when the
 /// caller leaves `interactionGlowRadius` null.
 ///
-/// These are [GlassButton]'s native-mode figures, which it has carried since
-/// 1.3.0: a wide radius under a heavy Gaussian, at an alpha low enough that
-/// the light washes across the surface instead of concentrating into a
-/// hotspot. The bars could not reach them — their radius was non-nullable
-/// with a default, so there was no null to key on.
-const double kNativeTabBarGlowRadius = 1.6;
+/// This is the shared touch-glow radius used by buttons, menus, sheets, and
+/// bars. Radius is proportional to the layer's shortest side.
+const double kNativeTabBarGlowRadius = GlassInteractionGlowDefaults.radius;
 
-/// The blur sigma that goes with [kNativeTabBarGlowRadius]. The theme's own
-/// fallback is 4, which at this radius draws a disc with a visible edge.
-const double kNativeTabBarGlowBlurRadius = 16.0;
+/// The shared touch-glow blur sigma.
+const double kNativeTabBarGlowBlurRadius =
+    GlassInteractionGlowDefaults.blurRadius;
 
-/// The native sheen, dark mode: white at ~7%.
-const Color kNativeTabBarGlowColorDark = Color(0x12FFFFFF);
+/// The shared neutral sheen on dark surfaces.
+const Color kNativeTabBarGlowColorDark =
+    GlassInteractionGlowDefaults.darkModeColor;
 
-/// The native sheen, light mode: white at ~10%.
-const Color kNativeTabBarGlowColorLight = Color(0x1AFFFFFF);
+/// The shared neutral sheen on light surfaces.
+const Color kNativeTabBarGlowColorLight =
+    GlassInteractionGlowDefaults.lightModeColor;
 
 /// Resolves a bar's interaction glow from what the caller asked for and what
 /// the theme offers.

@@ -57,7 +57,7 @@ class SegmentedControlContent extends StatefulWidget {
     this.backgroundKey,
     this.interactionBehavior = GlassInteractionBehavior.full,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     super.key,
   });
 

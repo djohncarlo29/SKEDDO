@@ -1,6 +1,7 @@
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/widgets.dart';
+import '../constants/glass_defaults.dart';
 import '../src/renderer/liquid_glass_renderer.dart';
 import '../utils/glass_brightness.dart';
 import 'glass_interaction_settings.dart';
@@ -23,9 +24,9 @@ class GlassGlowColors {
     this.warning,
     this.danger,
     this.info,
-    this.glowBlurRadius = 4.0,
-    this.glowSpreadRadius = 0,
-    this.glowOpacity = 1,
+    this.glowBlurRadius = GlassDefaults.touchGlowBlurRadius,
+    this.glowSpreadRadius = GlassDefaults.touchGlowSpreadRadius,
+    this.glowOpacity = GlassDefaults.touchGlowOpacity,
   });
 
   /// Primary brand color for default interactive elements
@@ -48,9 +49,9 @@ class GlassGlowColors {
 
   /// Gaussian blur sigma applied to the glow halo.
   ///
-  /// Defaults to `4.0` — softens the glow edge into a natural, liquid-glass
-  /// specular halo. Set to `0` for a crisp hard edge.
-  /// Values in the 4–16 range give progressively more diffuse softening.
+  /// Defaults to the shared touch-glow blur, which softens the edge into a
+  /// natural specular halo. Set to `0` for a crisp hard edge.
+  /// Values around 4–16 give progressively more diffuse softening.
   /// Applied via [MaskFilter.blur] on the additive paint layer inside
   /// [GlassGlowLayer]; guarded so no GPU work occurs when the value is 0.
   ///
@@ -153,11 +154,10 @@ class GlassGlowColors {
     warning: Color(0xFFFF9500), // iOS orange
     danger: Color(0xFFFF3B30), // iOS red
     info: Color(0xFF5AC8FA), // iOS light blue
-    // Appearance defaults — sigma-4 blur softens the glow edge for a natural
-    // liquid-glass feel. Zero-cost when inactive (guarded by > 0 check).
-    glowBlurRadius: 4.0,
-    glowSpreadRadius: 0,
-    glowOpacity: 1,
+    // Appearance defaults use the shared touch-glow settings.
+    glowBlurRadius: GlassDefaults.touchGlowBlurRadius,
+    glowSpreadRadius: GlassDefaults.touchGlowSpreadRadius,
+    glowOpacity: GlassDefaults.touchGlowOpacity,
   );
 
   @override
@@ -614,13 +614,12 @@ class GlassThemeData {
     // directly here, or the glow and the variant would use different sources.
     final isDark =
         (brightness ?? resolveGlassBrightness(context)) == Brightness.dark;
-    // 0x3D = ~24% opacity in light mode (matches the pre-0.9.1 Colors.white24
-    // default that GlassButton used before theme propagation was introduced).
-    // 0x2A = ~16% opacity in dark mode — dark glass surfaces are already
-    // luminous, so a slightly dimmer highlight looks more natural.
-    // BlendMode.plus compositing keeps both from blowing out.
-    final adaptivePrimary =
-        isDark ? const Color(0x2AFFFFFF) : const Color(0x3DFFFFFF);
+    // Keep the neutral touch sheen consistent with menus and tab bars:
+    // a restrained dark highlight on light surfaces and a white highlight
+    // on dark surfaces.
+    final adaptivePrimary = isDark
+        ? GlassDefaults.touchGlowDarkModeColor
+        : GlassDefaults.touchGlowLightModeColor;
 
     return colors.copyWith(primary: adaptivePrimary);
   }

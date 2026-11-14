@@ -3177,8 +3177,8 @@ class _GlassMenuStyleActionPanelCard extends StatelessWidget {
           stretchAxis: Axis.horizontal,
           allowPositiveX: true,
           allowNegativeX: true,
-          glowRadius: 0.6,
-          glowBlurRadius: 40,
+          glowRadius: GlassDefaults.touchGlowRadius,
+          glowBlurRadius: GlassDefaults.touchGlowBlurRadius,
           child: GlassMenuContentLens(
             progress: progress,
             size: surfaceSize,

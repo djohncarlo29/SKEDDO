@@ -965,7 +965,7 @@ class GlassModalSheetScaffold extends StatelessWidget {
     this.dragIndicatorHeight = 4,
     this.dragIndicatorTopPadding = 8,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.suppressInteractionOnChildren = false,
     this.padding,
     this.enableTopFade = false,

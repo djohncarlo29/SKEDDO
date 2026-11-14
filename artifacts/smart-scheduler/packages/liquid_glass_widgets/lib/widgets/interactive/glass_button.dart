@@ -742,11 +742,9 @@ class _GlassButtonState extends State<GlassButton>
         GlassThemeData.of(context).glowColorsFor(context);
     final isNativeGlow = widget.glowRadius == null;
     final isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
-    // Native specular sheen is subtle (~10% alpha in light mode, ~7% in dark mode)
-    // to provide a delicate specular highlight on top of ambientBaseLight
-    // without creating a dense, opaque white fog circle.
-    final nativeGlowColor =
-        isDark ? const Color(0x12FFFFFF) : const Color(0x1AFFFFFF);
+    final nativeGlowColor = GlassDefaults.touchGlowColorForBrightness(
+      isDark ? Brightness.dark : Brightness.light,
+    );
 
     final effectiveGlowColor = widget.glowColor ??
         (isNativeGlow ? nativeGlowColor : resolvedGlowColors.primary) ??
@@ -846,7 +844,9 @@ class _GlassButtonState extends State<GlassButton>
 
     // Resolve effective blur: null falls through to 16.0 for a creamy organic falloff.
     final nativeGlowBlurRadius =
-        widget.glowRadius == null ? 16.0 : effectiveGlowBlurRadius;
+        widget.glowRadius == null
+        ? GlassDefaults.touchGlowBlurRadius
+        : effectiveGlowBlurRadius;
 
     // This part is static relative to the glass saturation pulse.
     // clipper is passed directly to GlassGlow (not to AdaptiveGlass) so the

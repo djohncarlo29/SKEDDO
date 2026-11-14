@@ -14,7 +14,7 @@
 - [App-header scroll-edge behavior](app-header-scroll-edge.md) — keep the 50pt settled-circle boundary, 16pt compact content gap, and expanded-title rhythm distinct.
 - [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep insets and wrapper ancestry stable; capture keyed scroll anchors after layout, not during mount.
 - [Landscape single-pane rule](landscape-events-master-detail.md) — Settings subscreens and Events DCV remain full-screen in landscape; do not restore side-by-side panes.
-- [Dark-mode surface coverage](dark-mode-surface-coverage.md) — Liquid Glass rims share one strength target; keep interaction glow and tint/blur separate.
+- [Dark-mode surface coverage](dark-mode-surface-coverage.md) — keep the shared rim target separate from the unified touch-glow profile.
 - [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
 - [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer; don't prefilter hits with a render-tree Listener.
 - [Overlay dismissal confirmation ownership](overlay-dismissal-confirmation-ownership.md) — an OverlayEntry confirmation must consume Back and guard the parent PopScope to prevent stacked copies.

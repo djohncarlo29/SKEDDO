@@ -6,6 +6,8 @@ library;
 
 import 'package:flutter/widgets.dart';
 
+import '../src/utils/glass_interaction_glow_defaults.dart';
+
 /// Default values for glass visual properties.
 class GlassDefaults {
   // Prevent instantiation
@@ -193,4 +195,35 @@ class GlassDefaults {
 
   /// Specular tint applied to drag handles and pill surfaces (dark mode).
   static const double specularDarkAlpha = 0.10;
+
+  /// Shared relative radius for transient touch-following glow.
+  static const double touchGlowRadius = GlassInteractionGlowDefaults.radius;
+
+  /// Shared blur sigma for transient touch-following glow.
+  static const double touchGlowBlurRadius =
+      GlassInteractionGlowDefaults.blurRadius;
+
+  /// Shared spread for transient touch-following glow.
+  static const double touchGlowSpreadRadius =
+      GlassInteractionGlowDefaults.spreadRadius;
+
+  /// Shared opacity multiplier for transient touch-following glow.
+  static const double touchGlowOpacity = GlassInteractionGlowDefaults.opacity;
+
+  /// Fixed corner radius for dialog action buttons, including wrapped labels.
+  static const double dialogActionCornerRadius = 24;
+
+  /// Neutral touch glow on light surfaces.
+  static const Color touchGlowLightModeColor =
+      GlassInteractionGlowDefaults.lightModeColor;
+
+  /// Neutral touch glow on dark surfaces.
+  static const Color touchGlowDarkModeColor =
+      GlassInteractionGlowDefaults.darkModeColor;
+
+  /// Resolves the neutral touch-glow tint for a surface's brightness.
+  static Color touchGlowColorForBrightness(Brightness brightness) =>
+      brightness == Brightness.dark
+          ? touchGlowDarkModeColor
+          : touchGlowLightModeColor;
 }

@@ -209,7 +209,7 @@ class GlassMenu extends StatefulWidget {
   /// Custom color for the touch interaction glow.
   final Color? glowColor;
 
-  /// Radius of the touch interaction glow. Default: 0.6.
+  /// Relative radius of the touch interaction glow. Default: 1.6.
   final double glowRadius;
 
   /// The intensity of the interactive glow.
@@ -412,7 +412,7 @@ class GlassMenu extends StatefulWidget {
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = false,
     this.glowColor,
-    this.glowRadius = 0.6,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.glowIntensity = 0.0,
     this.onClose,
     this.controller,

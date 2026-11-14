@@ -186,7 +186,7 @@ class GlassModalSheet extends StatefulWidget {
   /// Custom color for the touch interaction glow.
   final Color? glowColor;
 
-  /// Radius of the touch interaction glow. Default: 1.5.
+  /// Relative radius of the touch interaction glow. Default: 1.6.
   final double glowRadius;
 
   /// Whether to prevent sheet scaling when interacting with children. Default: false.
@@ -299,7 +299,7 @@ class GlassModalSheet extends StatefulWidget {
     this.dragIndicatorHeight = 4,
     this.dragIndicatorTopPadding = 8,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.suppressInteractionOnChildren = false,
     this.padding,
     this.enableTopFade = false,
@@ -464,7 +464,7 @@ class GlassModalSheet extends StatefulWidget {
     double snapThreshold = 0.4,
     double velocityThreshold = 700.0,
     Color? glowColor,
-    double glowRadius = 1.5,
+    double glowRadius = GlassDefaults.touchGlowRadius,
     bool suppressInteractionOnChildren = false,
     EdgeInsetsGeometry? padding,
     bool enableTopFade = false,

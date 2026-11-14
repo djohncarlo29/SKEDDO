@@ -120,7 +120,7 @@ class GlassPopover extends StatefulWidget {
     this.enableInteractionGlow = true,
     this.glowOnTapOnly = true,
     this.glowColor,
-    this.glowRadius = 0.6,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.glowIntensity = 0.0,
     this.onClose,
     this.onOpen,

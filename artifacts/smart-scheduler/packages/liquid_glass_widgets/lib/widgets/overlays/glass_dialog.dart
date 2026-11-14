@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 
+import '../../constants/glass_defaults.dart';
 import '../../src/renderer/liquid_glass_renderer.dart';
 
 import '../../types/glass_quality.dart';
@@ -150,15 +151,9 @@ class GlassDialog extends StatelessWidget {
           'GlassDialog must have 1-3 actions',
         );
 
-  static const _actionButtonShape = LiquidRoundedSuperellipse(borderRadius: 12);
-
-  // Cache default colors to avoid allocations
-  static const _defaultGlowColor =
-      Color(0x4DFFFFFF); // white.withValues(alpha: 0.3)
-  static const _destructiveGlowColor =
-      Color(0x4DFF0000); // red.withValues(alpha: 0.3)
-  static const _primaryGlowColor =
-      Color(0x4D0000FF); // blue.withValues(alpha: 0.3)
+  static const _actionButtonShape = LiquidRoundedSuperellipse(
+    borderRadius: GlassDefaults.dialogActionCornerRadius,
+  );
 
   // ===========================================================================
   // Content Properties
@@ -424,25 +419,41 @@ class GlassDialog extends StatelessWidget {
   }
 
   Widget _buildActionButton(GlassDialogAction action, BuildContext context) {
-    // Determine button styling based on action type
-    var glowColor = _defaultGlowColor;
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final glowAlpha = (isDark
+            ? GlassDefaults.touchGlowDarkModeColor
+            : GlassDefaults.touchGlowLightModeColor)
+        .a;
+    var glowColor = isDark
+        ? GlassDefaults.touchGlowDarkModeColor
+        : GlassDefaults.touchGlowLightModeColor;
     if (action.isDestructive) {
-      glowColor = _destructiveGlowColor;
+      glowColor = CupertinoColors.destructiveRed
+          .resolveFrom(context)
+          .withValues(alpha: glowAlpha);
     } else if (action.isPrimary) {
-      glowColor = _primaryGlowColor;
+      glowColor = CupertinoColors.activeBlue.resolveFrom(context).withValues(
+        alpha: glowAlpha,
+      );
     }
 
     return GlassButton.custom(
       onTap: action.onPressed,
-      height: 44,
       shape: _actionButtonShape,
       glowColor: glowColor,
-      child: Text(
-        action.label,
-        style: _labelStyle(action).copyWith(
-          color: action.isDestructive
-              ? CupertinoColors.destructiveRed
-              : CupertinoColors.label.resolveFrom(context),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Text(
+            action.label,
+            textAlign: TextAlign.center,
+            style: _labelStyle(action).copyWith(
+              color: action.isDestructive
+                  ? CupertinoColors.destructiveRed
+                  : CupertinoColors.label.resolveFrom(context),
+            ),
+          ),
         ),
       ),
     );

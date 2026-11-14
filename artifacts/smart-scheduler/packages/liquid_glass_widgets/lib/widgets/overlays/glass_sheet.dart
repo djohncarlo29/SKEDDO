@@ -118,7 +118,7 @@ class GlassSheet extends StatefulWidget {
     this.allowNegativeStretch = true,
     this.enableInteractionGlow = true,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.enableSaturationGlow = true,
     this.suppressInteractionOnChildren = false,
   });
@@ -302,7 +302,7 @@ class GlassSheet extends StatefulWidget {
     bool allowNegativeStretch = true,
     bool enableInteractionGlow = true,
     Color? glowColor,
-    double glowRadius = 1.5,
+    double glowRadius = GlassDefaults.touchGlowRadius,
     bool suppressInteractionOnChildren = false,
     bool isDismissible = true,
     bool enableDrag = true,

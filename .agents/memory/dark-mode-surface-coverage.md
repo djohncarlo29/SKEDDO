@@ -22,8 +22,8 @@ white-on-accent icons/text and image/export colors unchanged.
 
 All app glass renderers share `kSkeddoSharedGlassRimStrength = 1.0`, matching
 the brighter toolbar/tab-bar edge. Apply it to package `fresnelStrength` and
-app-owned specular edges once; keep per-theme key lighting, tint, and blur
-separate. Dark interaction glow remains an independent setting.
+app-owned specular edges once; keep rim strength independent from material
+lighting and the transient touch glow.
 
 **Why:** Applying a 0.5 reduction through several renderer-specific inputs
 made the Calendar menu rim noticeably weaker than the toolbar and tab bar.
@@ -32,3 +32,16 @@ made the Calendar menu rim noticeably weaker than the toolbar and tab bar.
 constant for its rim control and do not apply another Dark Mode multiplier.
 The lightweight shader also uses `fresnelStrength` to scale its fixed
 structural rim in Dark Mode.
+
+All currently glow-enabled controls share the package's touch-glow defaults:
+relative radius 1.6, blur sigma 16, spread 0, opacity 1, with black 10% on
+light surfaces and white 15% on dark surfaces. Do not introduce per-surface
+default differences; keep ambient selected-state highlights and disabled glows
+separate from the transient finger-following glow.
+
+**Why:** Touch glow had drifted in radius, blur, and tint across menus, controls,
+and navigation surfaces, making the same gesture feel inconsistent.
+
+**How to apply:** Use `GlassDefaults` touch-glow values for newly enabled
+surfaces. Preserve an intentional caller override or explicit no-glow state,
+but do not create another default profile.

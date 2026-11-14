@@ -11,6 +11,8 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMaterializeTransition,
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
+import 'package:smart_scheduler/app_theme.dart'
+    show kConfirmationButtonCornerRadius;
 import 'package:smart_scheduler/widgets/skeddo_glass_alert_platter.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
@@ -396,9 +398,29 @@ void main() {
       of: find.text(longLabel),
       matching: find.byType(AnimatedContainer),
     );
+    final shortButton = find.ancestor(
+      of: find.text('Keep Event'),
+      matching: find.byType(AnimatedContainer),
+    );
     expect(text.maxLines, isNull);
     expect(text.overflow, isNull);
     expect(tester.getSize(button).height, greaterThan(48));
+    final longShape =
+        (tester.widget<AnimatedContainer>(button).decoration as ShapeDecoration)
+            .shape;
+    final shortShape =
+        (tester.widget<AnimatedContainer>(shortButton).decoration
+                as ShapeDecoration)
+            .shape;
+    expect(longShape, shortShape);
+    expect(
+      longShape,
+      const RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.all(
+          Radius.circular(kConfirmationButtonCornerRadius),
+        ),
+      ),
+    );
     expect(tester.takeException(), isNull);
   });
 

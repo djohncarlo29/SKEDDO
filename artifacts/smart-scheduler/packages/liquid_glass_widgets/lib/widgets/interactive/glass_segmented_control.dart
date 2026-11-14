@@ -213,7 +213,7 @@ class GlassSegmentedControl extends StatefulWidget {
     // ── iOS 26 interaction ──────────────────────────────────────────────────
     this.interactionBehavior = GlassInteractionBehavior.full,
     this.glowColor,
-    this.glowRadius = 1.5,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     // Scrollable-mode fields — unused in fixed mode.
     this.isScrollable = false,
     this.iconSize = 24.0,
@@ -294,7 +294,7 @@ class GlassSegmentedControl extends StatefulWidget {
         segmentExtent = null,
         interactionBehavior = GlassInteractionBehavior.full,
         glowColor = null,
-        glowRadius = 1.5,
+        glowRadius = GlassDefaults.touchGlowRadius,
         assert(segments.length >= 1,
             'GlassSegmentedControl.scrollable requires at least 1 segment'),
         assert(

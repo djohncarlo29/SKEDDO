@@ -137,10 +137,10 @@ class SearchableTabIndicator extends StatefulWidget {
         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     this.interactionGlowColor,
     this.nativePressHighlight = false,
-    this.interactionGlowRadius = 1.5,
-    this.interactionGlowBlurRadius = 0,
-    this.interactionGlowSpreadRadius = 0,
-    this.interactionGlowOpacity = 1,
+    this.interactionGlowRadius = GlassDefaults.touchGlowRadius,
+    this.interactionGlowBlurRadius = GlassDefaults.touchGlowBlurRadius,
+    this.interactionGlowSpreadRadius = GlassDefaults.touchGlowSpreadRadius,
+    this.interactionGlowOpacity = GlassDefaults.touchGlowOpacity,
     required this.enableBackgroundAnimation,
     required this.backgroundPressScale,
     this.platformViewBackdrop = false,
@@ -481,7 +481,10 @@ class SearchableTabIndicatorState extends State<SearchableTabIndicator>
   /// widget/render-object allocations per frame.
   Widget _wrapWithGlow({required Widget child}) {
     final effectiveColor =
-        widget.interactionGlowColor ?? const Color(0x1FFFFFFF);
+        widget.interactionGlowColor ??
+        GlassDefaults.touchGlowColorForBrightness(
+          GlassTheme.brightnessOf(context),
+        );
     if (effectiveColor.a == 0) return child;
     return GlassGlow(
       clipper: ShapeBorderClipper(shape: _barShape),
@@ -784,10 +787,10 @@ class SearchPill extends StatefulWidget {
     this.onFocusChanged,
     this.interactionGlowColor,
     this.nativePressHighlight = false,
-    this.interactionGlowRadius = 1.5,
-    this.interactionGlowBlurRadius = 0,
-    this.interactionGlowSpreadRadius = 0,
-    this.interactionGlowOpacity = 1,
+    this.interactionGlowRadius = GlassDefaults.touchGlowRadius,
+    this.interactionGlowBlurRadius = GlassDefaults.touchGlowBlurRadius,
+    this.interactionGlowSpreadRadius = GlassDefaults.touchGlowSpreadRadius,
+    this.interactionGlowOpacity = GlassDefaults.touchGlowOpacity,
     this.platformViewBackdrop = false,
     this.iconColor,
   });
@@ -919,7 +922,10 @@ class SearchPillState extends State<SearchPill> {
   /// widget/render-object allocations per frame.
   Widget _wrapWithGlow({required Widget child}) {
     final effectiveColor =
-        widget.interactionGlowColor ?? const Color(0x1FFFFFFF);
+        widget.interactionGlowColor ??
+        GlassDefaults.touchGlowColorForBrightness(
+          GlassTheme.brightnessOf(context),
+        );
     if (effectiveColor.a == 0) return child;
     return GlassGlow(
       glowColor: effectiveColor,
@@ -1316,10 +1322,10 @@ class MinimizableTrailingPill extends StatelessWidget {
     required this.backgroundPressScale,
     this.interactionGlowColor,
     this.nativePressHighlight = false,
-    this.interactionGlowRadius = 1.5,
-    this.interactionGlowBlurRadius = 0,
-    this.interactionGlowSpreadRadius = 0,
-    this.interactionGlowOpacity = 1,
+    this.interactionGlowRadius = GlassDefaults.touchGlowRadius,
+    this.interactionGlowBlurRadius = GlassDefaults.touchGlowBlurRadius,
+    this.interactionGlowSpreadRadius = GlassDefaults.touchGlowSpreadRadius,
+    this.interactionGlowOpacity = GlassDefaults.touchGlowOpacity,
     this.platformViewBackdrop = false,
     this.iconColor,
     this.label,
@@ -1343,8 +1349,15 @@ class MinimizableTrailingPill extends StatelessWidget {
   final double interactionGlowSpreadRadius;
   final double interactionGlowOpacity;
 
-  Widget _wrapWithGlow({required Widget child}) {
-    final effectiveColor = interactionGlowColor ?? const Color(0x1FFFFFFF);
+  Widget _wrapWithGlow({
+    required BuildContext context,
+    required Widget child,
+  }) {
+    final effectiveColor =
+        interactionGlowColor ??
+        GlassDefaults.touchGlowColorForBrightness(
+          GlassTheme.brightnessOf(context),
+        );
     if (effectiveColor.a == 0) return child;
     return GlassGlow(
       glowColor: effectiveColor,
@@ -1410,7 +1423,7 @@ class MinimizableTrailingPill extends StatelessWidget {
                 platformViewBackdrop: platformViewBackdrop,
                 child: nativePress && nativePressHighlight
                     ? PressAmbientLift(child: content)
-                    : _wrapWithGlow(child: content),
+                    : _wrapWithGlow(context: context, child: content),
               ),
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../../src/renderer/liquid_glass_renderer.dart';
+import '../../constants/glass_defaults.dart';
 
 import '../../types/glass_quality.dart';
 import 'glass_button.dart';
@@ -95,7 +96,7 @@ class GlassIconButton extends StatelessWidget {
     this.shape = GlassIconButtonShape.circle,
     this.borderRadius = 12,
     this.glowColor,
-    this.glowRadius = 20,
+    this.glowRadius = GlassDefaults.touchGlowRadius,
     this.interactionScale = 0.95,
     this.useOwnLayer = false,
     this.settings,
@@ -169,12 +170,12 @@ class GlassIconButton extends StatelessWidget {
 
   /// Color of the glow effect.
   ///
-  /// If null, uses white with low opacity.
+  /// If null, uses the shared brightness-aware touch-glow tint.
   final Color? glowColor;
 
-  /// Radius of the glow effect in logical pixels.
+  /// Relative radius of the glow against the layer's shortest side.
   ///
-  /// Defaults to 20.
+  /// Defaults to the shared touch-glow radius.
   final double glowRadius;
 
   // ===========================================================================
@@ -268,7 +269,8 @@ class GlassIconButton extends StatelessWidget {
       quality: quality,
       interactionScale: interactionScale,
       glowColor: glowColor, // Let GlassButton use theme if null
-      glowRadius: glowRadius,
+      glowRadius:
+          glowRadius == GlassDefaults.touchGlowRadius ? null : glowRadius,
       persistPressOnDrag: persistPressOnDrag,
       anchorStretch: anchorStretch,
       anchorStretchSettings: anchorStretchSettings,
