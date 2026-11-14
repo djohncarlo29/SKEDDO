@@ -10,7 +10,7 @@ import '../app_theme.dart' show kTertiaryLabel;
 import 'rounded_cupertino_sheet.dart';
 import 'skeddo_glass_settings.dart';
 
-const double _alertPlatterTitleMessageGap = 18.83;
+const double _alertPlatterTitleMessageGap = 16;
 const double _alertPlatterMessageActionGap = 20.33;
 
 /// Presents SKEDDO's scoped iOS 26/27-style alert with the shared glass curve.

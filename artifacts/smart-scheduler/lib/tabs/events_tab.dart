@@ -1054,12 +1054,6 @@ class _ContextMenuOverlay extends StatelessWidget {
         // at the bloom peak before settling, staying well within comfortable range.
         final cardScale = 1.0 + 0.07 * rawT;
 
-        // Keep the shared Fresnel rim fully present for the entire time the
-        // tile is lifted. The menu's own surface animates separately; fading
-        // the tile rim with that transition made the edge disappear during
-        // the very frames when the lifted tile should read as raised.
-        const rimOpacity = 1.0;
-
         // Hole is fixed at the original tile footprint — the dim mask never
         // moves or resizes. The preview can scale beyond the hole above it.
         final holeRect = Rect.fromLTWH(
@@ -1115,10 +1109,7 @@ class _ContextMenuOverlay extends StatelessWidget {
                 onTap: onDismiss,
                 child: Transform.scale(
                   scale: cardScale,
-                  child: _LiftedTileRimOutline(
-                    rimOpacity: rimOpacity,
-                    child: previewBuilder(context),
-                  ),
+                  child: previewBuilder(context),
                 ),
               ),
             ),
@@ -1141,6 +1132,26 @@ class _ContextMenuOverlay extends StatelessWidget {
                     ? Alignment.bottomCenter
                     : Alignment.topCenter,
                 useGlassMenuStyle: true,
+              ),
+            ),
+
+            // Paint the identity-body rim last, above the scrim and action
+            // platter. Keeping it as a separate edge-only layer prevents the
+            // settled menu surface from covering the lifted tile's Fresnel
+            // edge; the tile face remains a crisp, ordinary surface beneath.
+            Positioned(
+              left: originalOffset.dx,
+              top: originalOffset.dy,
+              width: previewW,
+              height: previewH,
+              child: IgnorePointer(
+                child: Transform.scale(
+                  scale: cardScale,
+                  child: _LiftedTileRimOutline(
+                    rimOpacity: 1,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
               ),
             ),
           ],

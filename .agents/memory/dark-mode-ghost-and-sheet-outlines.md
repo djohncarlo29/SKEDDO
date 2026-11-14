@@ -21,8 +21,10 @@ removed by app-wide Dark Mode shadow suppression.
 
 **How to apply:** Keep the tile face fully opaque, pass the menu's actual
 Fresnel/specular/rim-light settings to an edge-only shader layer, and disable
-body blur, refraction, tint, and color grading. Keep the shared Fresnel rim
-visible for the entire lift; do not fade it with the separate context-menu
-morph. Do not suppress the rim for any reorder path. Paint grouping glow
+body blur, refraction, tint, and color grading. Paint the context-menu tile rim
+as the final overlay above the scrim and action panel so it stays visible after
+settling. Keep the shared Fresnel rim visible for the entire lift; do not fade it
+with the separate context-menu morph. Do not suppress the rim for any reorder
+path. Paint grouping glow
 directly rather than through the normal shadow resolver, using the stationary
 destination category's resolved color.

@@ -73,7 +73,7 @@ void main() {
         matching: find.byType(AnimatedContainer),
       ),
     );
-    expect(messageRect.top - titleRect.bottom, closeTo(18.83, 0.1));
+    expect(messageRect.top - titleRect.bottom, closeTo(16, 0.1));
     expect(firstButtonRect.top - messageRect.bottom, closeTo(20.33, 0.1));
 
     final platter = tester.widget<GlassInteractiveContainer>(
