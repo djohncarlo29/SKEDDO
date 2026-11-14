@@ -280,10 +280,34 @@ void main() {
       find.byType(GlassInteractiveContainer),
     );
     expect(morphingPlatterRect.height, isNot(firstPlatterRect.height));
+    expect(
+      tester
+          .widget<Transform>(
+            find.byKey(const ValueKey('skeddo-glass-alert-step-bloom')),
+          )
+          .transform
+          .getMaxScaleOnAxis(),
+      greaterThan(1),
+    );
+    expect(
+      find.byKey(
+        const ValueKey('skeddo-glass-alert-content-materialize-filter'),
+      ),
+      findsWidgets,
+    );
 
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Second confirmation'), findsOneWidget);
+    expect(
+      tester
+          .widget<Transform>(
+            find.byKey(const ValueKey('skeddo-glass-alert-step-bloom')),
+          )
+          .transform
+          .getMaxScaleOnAxis(),
+      closeTo(1, 0.001),
+    );
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

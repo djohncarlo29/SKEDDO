@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
@@ -186,13 +187,37 @@ class SkeddoGlassAlertPlatter extends StatefulWidget {
       _SkeddoGlassAlertPlatterState();
 }
 
-class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
+class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter>
+    with SingleTickerProviderStateMixin {
   final List<GlobalKey> _actionKeys = [];
   final ValueNotifier<int?> _hoveredActionIndex = ValueNotifier(null);
+  late final AnimationController _stepBloomController;
+  late final Animation<double> _stepBloomScale;
 
   @override
   void initState() {
     super.initState();
+    _stepBloomController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+      value: 1,
+    );
+    _stepBloomScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1,
+          end: _alertPlatterInitialScale,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 42,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: _alertPlatterInitialScale,
+          end: 1,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 58,
+      ),
+    ]).animate(_stepBloomController);
     _syncActionKeys();
   }
 
@@ -202,12 +227,16 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
     if (oldWidget.contentTransitionKey != widget.contentTransitionKey) {
       _actionKeys.clear();
       _hoveredActionIndex.value = null;
+      if (widget.contentTransitionKey != null) {
+        _stepBloomController.forward(from: 0);
+      }
     }
     _syncActionKeys();
   }
 
   @override
   void dispose() {
+    _stepBloomController.dispose();
     _hoveredActionIndex.dispose();
     super.dispose();
   }
@@ -361,7 +390,17 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
 
   Widget _transitionDialogContent(BuildContext context, Widget child) {
     final animation = ModalRoute.of(context)?.animation;
-    if (animation == null) return child;
+    final dialog = AnimatedBuilder(
+      animation: _stepBloomScale,
+      child: child,
+      builder: (context, child) => Transform.scale(
+        key: const ValueKey('skeddo-glass-alert-step-bloom'),
+        scale: _stepBloomScale.value,
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+    if (animation == null) return dialog;
 
     return FadeTransition(
       opacity: animation,
@@ -370,7 +409,7 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter> {
         scale: animation.drive(
           Tween<double>(begin: _alertPlatterInitialScale, end: 1),
         ),
-        child: child,
+        child: dialog,
       ),
     );
   }
@@ -493,6 +532,52 @@ class _SkeddoAlertActionButtonState extends State<_SkeddoAlertActionButton> {
           );
         },
       ),
+    );
+  }
+}
+
+class _SkeddoAlertContentMaterializeTransition extends StatelessWidget {
+  const _SkeddoAlertContentMaterializeTransition({
+    required this.animation,
+    required this.child,
+  });
+
+  static const double _peakBlurSigma = 8;
+  static const Interval _entranceContent = Interval(0.35, 1);
+  static const Interval _exitContent = Interval(0.45, 1);
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      child: GlassMaterializeTransition(
+        animation: animation,
+        scaleFrom: 1,
+        contentSigma: _peakBlurSigma,
+        child: child,
+      ),
+      builder: (context, materializedChild) {
+        final progress = animation.value.clamp(0.0, 1.0).toDouble();
+        final contentProgress =
+            (animation.status == AnimationStatus.reverse
+                    ? _exitContent
+                    : _entranceContent)
+                .transform(progress);
+        final sigma = _peakBlurSigma * (1 - contentProgress);
+        return Opacity(
+          opacity: contentProgress,
+          child: ImageFiltered(
+            key: const ValueKey(
+              'skeddo-glass-alert-content-materialize-filter',
+            ),
+            imageFilter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+            child: materializedChild,
+          ),
+        );
+      },
     );
   }
 }
@@ -755,12 +840,11 @@ class _AlertPlatterScrollViewportState
             if (currentChild != null) currentChild,
           ],
         ),
-        transitionBuilder: (child, animation) => GlassMaterializeTransition(
-          animation: animation,
-          scaleFrom: 1.05,
-          contentSigma: 2,
-          child: child,
-        ),
+        transitionBuilder: (child, animation) =>
+            _SkeddoAlertContentMaterializeTransition(
+              animation: animation,
+              child: child,
+            ),
         child: KeyedSubtree(
           key: ValueKey<Object?>(transitionKey),
           child: widget.child,
