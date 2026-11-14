@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
+import 'package:liquid_glass_widgets/widgets/shared/glass_option_gesture_arena.dart';
 import 'internal/glass_drag_builder.dart';
 import 'package:meta/meta.dart';
 import '../../utils/glass_spring.dart';
@@ -203,6 +204,7 @@ class LiquidStretch extends StatelessWidget {
     return GlassDragBuilder(
       behavior: hitTestBehavior,
       suppressInteractionOnChildren: suppressInteractionOnChildren,
+      gestureController: GlassOptionGestureScope.maybeOf(context),
       builder: (context, value, child) {
         final scale = value == null ? 1.0 : interactionScale;
         return SpringBuilder(

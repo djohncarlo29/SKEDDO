@@ -4,8 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
 
-import '../app_theme.dart'
-    show BoundedSquircleStadiumBorder, kModalSheetCornerRadius;
+import '../app_theme.dart' show kModalSheetSurfaceShape;
 import 'live_rotation_geometry.dart';
 
 /// The top scroll-edge effect is anchored to the modal sheet's top edge,
@@ -35,10 +34,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
     required this.surfaceColor,
     required this.scrollBuilder,
     this.scrollController,
-    this.edgeClipShape = const BoundedSquircleStadiumBorder(
-      radius: kModalSheetCornerRadius,
-      topOnly: true,
-    ),
+    this.edgeClipShape = kModalSheetSurfaceShape,
     this.headerTopInset = 0,
     this.headerGap = 0,
     this.footer,
@@ -257,7 +253,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
 
   double get _activationDistance => math.max(
     48,
-    widget.headerHeight + widget.headerGap + widget.baseScrollPadding.top,
+    _topFadeExtent,
   );
 
   EdgeInsets get _scrollPadding => EdgeInsets.fromLTRB(

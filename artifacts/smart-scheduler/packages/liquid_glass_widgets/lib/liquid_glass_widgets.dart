@@ -50,6 +50,7 @@ export 'widgets/shared/glass_adaptive_scope.dart'; // GlassAdaptiveScope + Glass
 export 'widgets/shared/glass_content_aware_scope.dart'; // GlassContentAwareScope + GlassContentAwareContent + GlassContentAwareBrightness
 export 'widgets/shared/glass_page.dart' show GlassPage, GlassStatusBarStyle;
 export 'widgets/shared/glass_motion_scope.dart';
+export 'widgets/shared/glass_option_gesture_arena.dart';
 export 'widgets/shared/glass_scroll_edge_effect.dart';
 export 'widgets/shared/glass_swipe_action_scope.dart';
 export 'widgets/shared/glass_edit_scope.dart';

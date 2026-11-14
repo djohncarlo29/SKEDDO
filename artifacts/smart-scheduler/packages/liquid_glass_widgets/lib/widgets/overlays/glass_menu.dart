@@ -2,6 +2,7 @@ import 'dart:async' show Timer, scheduleMicrotask;
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart' show kTouchSlop, PointerDeviceKind;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../../src/utils/glass_localizations.dart';
@@ -19,6 +20,7 @@ import 'glass_menu_item.dart';
 import '../../theme/glass_theme_helpers.dart';
 import '../../theme/glass_theme.dart';
 import '../shared/glass_accessibility_scope.dart';
+import '../shared/glass_option_gesture_arena.dart';
 
 part 'shared/glass_menu_internal.dart';
 

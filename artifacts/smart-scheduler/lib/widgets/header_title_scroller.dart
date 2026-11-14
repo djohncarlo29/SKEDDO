@@ -493,16 +493,20 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                     return Stack(
                       fit: StackFit.expand,
                       children: [
-                        Align(
-                          alignment: widget.contentAlignment,
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: widget.onTap,
-                              child: _applyFadeMask(
-                                showLeading: showLeadingFade,
-                                showTrailing: showTrailingFade,
+                        _applyFadeMask(
+                          showLeading: showLeadingFade,
+                          showTrailing: showTrailingFade,
+                          // Apply the mask across the whole title viewport,
+                          // not just the text line's tight height. This keeps
+                          // glyph overhangs, ascenders/descenders, and any
+                          // leading/trailing controls on the same fade plane.
+                          child: Align(
+                            alignment: widget.contentAlignment,
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: widget.onTap,
                                 child: Listener(
                                   onPointerDown:
                                       widget.fadeOnlyDuringHorizontalDrag

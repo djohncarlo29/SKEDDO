@@ -4,7 +4,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/gestures.dart' show kTouchSlop;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -1283,13 +1283,14 @@ class ActionPanel extends StatefulWidget {
   State<ActionPanel> createState() => _ActionPanelState();
 }
 
-enum _ActionPanelGlidePhase { move, end, cancel }
+enum _ActionPanelGlidePhase { start, move, end, cancel }
 
 class _ActionPanelGlideEvent {
-  const _ActionPanelGlideEvent(this.phase, [this.position]);
+  const _ActionPanelGlideEvent(this.phase, [this.position, this.timeStamp]);
 
   final _ActionPanelGlidePhase phase;
   final Offset? position;
+  final Duration? timeStamp;
 }
 
 /// Forwards an external pointer's global position into a glass-style action
@@ -1297,11 +1298,28 @@ class _ActionPanelGlideEvent {
 /// pointer sequence that opened the menu.
 class ActionPanelGlideController extends ChangeNotifier {
   _ActionPanelGlideEvent? _event;
+  Duration _timeStamp = Duration.zero;
+
+  Duration _nextTimeStamp() {
+    _timeStamp += const Duration(milliseconds: 16);
+    return _timeStamp;
+  }
+
+  void start(Offset globalPosition) {
+    _timeStamp = Duration.zero;
+    _event = _ActionPanelGlideEvent(
+      _ActionPanelGlidePhase.start,
+      globalPosition,
+      _timeStamp,
+    );
+    notifyListeners();
+  }
 
   void move(Offset globalPosition) {
     _event = _ActionPanelGlideEvent(
       _ActionPanelGlidePhase.move,
       globalPosition,
+      _nextTimeStamp(),
     );
     notifyListeners();
   }
@@ -1310,12 +1328,17 @@ class ActionPanelGlideController extends ChangeNotifier {
     _event = _ActionPanelGlideEvent(
       _ActionPanelGlidePhase.end,
       globalPosition,
+      _nextTimeStamp(),
     );
     notifyListeners();
   }
 
   void cancel() {
-    _event = const _ActionPanelGlideEvent(_ActionPanelGlidePhase.cancel);
+    _event = _ActionPanelGlideEvent(
+      _ActionPanelGlidePhase.cancel,
+      null,
+      _nextTimeStamp(),
+    );
     notifyListeners();
   }
 }
@@ -1332,18 +1355,23 @@ class ActionPanelScrollView extends StatefulWidget {
     required this.child,
     required this.maxHeight,
     this.fadeHeight = kPickerPanelFadeHeight,
+    this.controller,
+    this.coordinatedGestures = false,
   });
 
   final Widget child;
   final double maxHeight;
   final double fadeHeight;
+  final ScrollController? controller;
+  final bool coordinatedGestures;
 
   @override
   State<ActionPanelScrollView> createState() => _ActionPanelScrollViewState();
 }
 
 class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
-  final _scrollCtrl = ScrollController();
+  final _ownedScrollCtrl = ScrollController();
+  ScrollController get _scrollCtrl => widget.controller ?? _ownedScrollCtrl;
   bool _canScroll = false;
   bool _checkScheduled = false;
   bool _showTopFade = false;
@@ -1361,6 +1389,14 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
   @override
   void didUpdateWidget(covariant ActionPanelScrollView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      if (oldWidget.controller == null) {
+        _ownedScrollCtrl.removeListener(_onScrollPositionChanged);
+      } else {
+        oldWidget.controller!.removeListener(_onScrollPositionChanged);
+      }
+      _scrollCtrl.addListener(_onScrollPositionChanged);
+    }
     if (oldWidget.maxHeight != widget.maxHeight ||
         oldWidget.child.key != widget.child.key) {
       _scheduleSync();
@@ -1414,15 +1450,14 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
     return false;
   }
 
-  ScrollPhysics get _physics => _canScroll
-      ? const BouncingScrollPhysics()
-      : const NeverScrollableScrollPhysics();
+  ScrollPhysics get _physics =>
+      _canScroll ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics();
 
   @override
   void dispose() {
     _scrollCtrl.removeListener(_onScrollPositionChanged);
     _pillHideTimer?.cancel();
-    _scrollCtrl.dispose();
+    if (widget.controller == null) _ownedScrollCtrl.dispose();
     super.dispose();
   }
 
@@ -1485,11 +1520,19 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
                   ],
                 ).createShader(bounds);
               },
-              child: SingleChildScrollView(
-                controller: _scrollCtrl,
-                physics: _physics,
-                child: widget.child,
-              ),
+              child: widget.coordinatedGestures
+                  ? GlassOptionGestureScrollConfiguration(
+                      child: SingleChildScrollView(
+                        controller: _scrollCtrl,
+                        physics: _physics,
+                        child: widget.child,
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      controller: _scrollCtrl,
+                      physics: _physics,
+                      child: widget.child,
+                    ),
             ),
             Positioned(
               right: 8,
@@ -1580,10 +1623,9 @@ class _ActionPanelState extends State<ActionPanel>
   Size? _glassMenuSurfaceSize;
   bool _glassMenuSurfaceMeasureScheduled = false;
   int? _glideIndex;
-  Offset? _lastGlidePosition;
   int? _menuPointer;
-  Offset? _menuPointerStart;
-  bool _menuPointerExceededSlop = false;
+  final GlassOptionGestureController _gestureController =
+      GlassOptionGestureController();
 
   // Scroll state — only active when widget.maxHeight != null.
   final _scrollCtrl = ScrollController();
@@ -1670,27 +1712,58 @@ class _ActionPanelState extends State<ActionPanel>
     final event = widget.externalGlideController?._event;
     if (event == null) return;
     switch (event.phase) {
+      case _ActionPanelGlidePhase.start:
+        final position = event.position;
+        if (position != null) {
+          _beginExternalGlide(
+            position,
+            event.timeStamp ?? Duration.zero,
+          );
+        }
       case _ActionPanelGlidePhase.move:
         final position = event.position;
-        if (position != null) _updateExternalGlide(position);
+        if (position != null) {
+          if (!_gestureController.isActive) {
+            _beginExternalGlide(
+              position,
+              event.timeStamp ?? Duration.zero,
+            );
+          } else {
+            _gestureController.moveAt(
+              pointer: -1,
+              globalPosition: position,
+              timeStamp: event.timeStamp ?? Duration.zero,
+            );
+          }
+        }
       case _ActionPanelGlidePhase.end:
         final position = event.position;
-        if (position != null) _endExternalGlide(position);
+        if (position != null) {
+          _gestureController.endAt(pointer: -1, globalPosition: position);
+        }
       case _ActionPanelGlidePhase.cancel:
-        _clearExternalGlide();
+        _gestureController.cancel(pointer: -1);
     }
   }
 
-  void _updateExternalGlide(Offset globalPosition) {
-    _scrollForExternalGlide(globalPosition);
-    _updateGlideSelection(globalPosition);
-    _lastGlidePosition = globalPosition;
-  }
-
-  void _updateGlideSelection(Offset globalPosition) {
-    // Context-menu gliding is intentionally silent: unlike the package's
-    // toolbar/picker menus, scanning these actions must not vibrate.
-    _setGlideIndex(_actionIndexAt(globalPosition));
+  void _beginExternalGlide(Offset globalPosition, Duration timeStamp) {
+    _gestureController.beginAt(
+      pointer: -1,
+      globalPosition: globalPosition,
+      timeStamp: timeStamp,
+      kind: PointerDeviceKind.touch,
+      surfaceBounds: _glassMenuSurfaceRect,
+      optionAt: _actionIndexAt,
+      onCandidateChanged: _setGlideIndex,
+      onSelect: (index) {
+        if (index >= 0 && index < widget.items.length) {
+          widget.items[index].onTap?.call();
+        }
+      },
+      scrollController: _scrollCtrl,
+      rowExtent: 48,
+      deferUntilInside: true,
+    );
   }
 
   void _setGlideIndex(int? index) {
@@ -1702,58 +1775,58 @@ class _ActionPanelState extends State<ActionPanel>
     setState(() => _glideIndex = index);
   }
 
-  void _endExternalGlide(Offset globalPosition) {
-    final index = _actionIndexAt(globalPosition) ?? _glideIndex;
-    _clearExternalGlide();
-    if (index == null || index < 0 || index >= widget.items.length) return;
-    widget.items[index].onTap?.call();
-  }
-
-  void _clearExternalGlide() {
-    _setGlideIndex(null);
-    _lastGlidePosition = null;
-  }
-
   void _onMenuPointerDown(PointerDownEvent event) {
     if (_menuPointer != null) return;
     _menuPointer = event.pointer;
-    _menuPointerStart = event.position;
-    _menuPointerExceededSlop = false;
+    _gestureController.beginPointer(
+      event,
+      surfaceBounds: _glassMenuSurfaceRect,
+      optionAt: _actionIndexAt,
+      onCandidateChanged: _setGlideIndex,
+      onSelect: (index) {
+        if (index >= 0 && index < widget.items.length) {
+          widget.items[index].onTap?.call();
+        }
+      },
+      scrollController: _scrollCtrl,
+      rowExtent: 48,
+    );
   }
 
   void _onMenuPointerMove(PointerMoveEvent event) {
     if (_menuPointer != event.pointer) return;
-    final start = _menuPointerStart;
-    if (start == null) return;
-    if (!_menuPointerExceededSlop &&
-        (event.position - start).distance > kTouchSlop) {
-      _menuPointerExceededSlop = true;
-    }
-    if (_menuPointerExceededSlop) {
-      _updateGlideSelection(event.position);
-    }
+    _gestureController.movePointer(event);
   }
 
   void _onMenuPointerUp(PointerUpEvent event) {
     if (_menuPointer != event.pointer) return;
-    final shouldGlideSelect = _menuPointerExceededSlop;
-    final index = shouldGlideSelect ? _actionIndexAt(event.position) : null;
-    _clearMenuPointer();
-    if (index != null && index >= 0 && index < widget.items.length) {
-      widget.items[index].onTap?.call();
-    }
+    _gestureController.endPointer(event);
+    _menuPointer = null;
   }
 
   void _onMenuPointerCancel(PointerCancelEvent event) {
     if (_menuPointer != event.pointer) return;
+    _gestureController.cancelPointer(event);
     _clearMenuPointer();
   }
 
   void _clearMenuPointer() {
     _menuPointer = null;
-    _menuPointerStart = null;
-    _menuPointerExceededSlop = false;
     _glideIndex = null;
+  }
+
+  Rect _glassMenuSurfaceRect() {
+    final renderObject =
+        _glassMenuSurfaceSizeKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      return Rect.zero;
+    }
+    return MatrixUtils.transformRect(
+      renderObject.getTransformTo(null),
+      Offset.zero & renderObject.size,
+    );
   }
 
   int? _actionIndexAt(Offset globalPosition) {
@@ -1772,49 +1845,6 @@ class _ActionPanelState extends State<ActionPanel>
       if (rect.contains(globalPosition)) return index;
     }
     return null;
-  }
-
-  void _scrollForExternalGlide(Offset globalPosition) {
-    if (!_scrollCtrl.hasClients ||
-        _scrollCtrl.position.maxScrollExtent <= 0 ||
-        _lastGlidePosition == null) {
-      return;
-    }
-    final viewportObject =
-        _glideScrollViewportKey.currentContext?.findRenderObject();
-    if (viewportObject is! RenderBox ||
-        !viewportObject.attached ||
-        !viewportObject.hasSize) {
-      return;
-    }
-    final viewportRect = MatrixUtils.transformRect(
-      viewportObject.getTransformTo(null),
-      Offset.zero & viewportObject.size,
-    );
-    if (!viewportRect.contains(globalPosition)) return;
-
-    final previous = _lastGlidePosition!;
-    final deltaY = globalPosition.dy - previous.dy;
-    final edgeZone = math.min(36.0, viewportRect.height * 0.2);
-    final nearTop = globalPosition.dy <= viewportRect.top + edgeZone;
-    final nearBottom = globalPosition.dy >= viewportRect.bottom - edgeZone;
-    // Match native drag scrolling: moving upward at the bottom reveals later
-    // rows; moving downward at the top reveals earlier rows.
-    final scrollDelta = nearBottom && deltaY < 0
-        ? -deltaY
-        : nearTop && deltaY > 0
-        ? -deltaY
-        : 0.0;
-    if (scrollDelta == 0) return;
-
-    final position = _scrollCtrl.position;
-    final nextOffset = (position.pixels + scrollDelta).clamp(
-      position.minScrollExtent,
-      position.maxScrollExtent,
-    );
-    if (nextOffset != position.pixels) {
-      _scrollCtrl.jumpTo(nextOffset);
-    }
   }
 
   void _onClosingChanged() {
@@ -1927,6 +1957,7 @@ class _ActionPanelState extends State<ActionPanel>
     _pillHideTimer?.cancel();
     _ctrl.dispose();
     _scrollCtrl.dispose();
+    _gestureController.dispose();
     super.dispose();
   }
 
@@ -2052,12 +2083,15 @@ class _ActionPanelState extends State<ActionPanel>
         // Full-size and mini action panels both use the native rubberband once
         // their content is clipped into a scrollable viewport.  Callers that
         // render a fixed-height panel never enter this scrollable path.
-        final scrollable = SingleChildScrollView(
+    final scrollView = SingleChildScrollView(
           key: _glideScrollViewportKey,
           controller: _scrollCtrl,
           physics: _effectiveScrollPhysics,
           child: column,
         );
+    final scrollable = widget.useGlassMenuStyle
+        ? GlassOptionGestureScrollConfiguration(child: scrollView)
+        : scrollView;
 
         final pinnedCount = widget.maxHeight == null
             ? 0
@@ -2374,12 +2408,15 @@ class _ActionPanelState extends State<ActionPanel>
           child: panelCard,
         );
         if (widget.useGlassMenuStyle) {
-          scaledPanel = Listener(
-            onPointerDown: _onMenuPointerDown,
-            onPointerMove: _onMenuPointerMove,
-            onPointerUp: _onMenuPointerUp,
-            onPointerCancel: _onMenuPointerCancel,
-            child: scaledPanel,
+          scaledPanel = GlassOptionGestureScope(
+            controller: _gestureController,
+            child: Listener(
+              onPointerDown: _onMenuPointerDown,
+              onPointerMove: _onMenuPointerMove,
+              onPointerUp: _onMenuPointerUp,
+              onPointerCancel: _onMenuPointerCancel,
+              child: scaledPanel,
+            ),
           );
         }
         return scaledPanel;

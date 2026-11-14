@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
-import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../app_theme.dart'
@@ -195,6 +194,8 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter>
     with SingleTickerProviderStateMixin {
   final List<GlobalKey> _actionKeys = [];
   final ValueNotifier<int?> _hoveredActionIndex = ValueNotifier(null);
+  final GlassOptionGestureController _optionGestureController =
+      GlassOptionGestureController();
   late final AnimationController _stepBloomController;
   late final Animation<double> _stepBloomScale;
 
@@ -240,6 +241,7 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter>
 
   @override
   void dispose() {
+    _optionGestureController.dispose();
     _stepBloomController.dispose();
     _hoveredActionIndex.dispose();
     super.dispose();
@@ -294,20 +296,24 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter>
                           namesRoute: true,
                           explicitChildNodes: true,
                           label: widget.title ?? 'Confirmation',
-                          child: GlassInteractiveContainer(
-                            useOwnLayer: false,
-                            settings: settings,
-                            quality: quality,
-                            shape: const LiquidRoundedSuperellipse(
-                              borderRadius: 34,
-                            ),
-                            padding: EdgeInsets.zero,
-                            child: _AlertPlatterScrollViewport(
-                              actions: widget.actions,
-                              actionKeys: _actionKeys,
-                              hoveredActionIndex: _hoveredActionIndex,
-                              contentTransitionKey: widget.contentTransitionKey,
-                              child: Column(
+                          child: GlassOptionGestureScope(
+                            controller: _optionGestureController,
+                            child: GlassInteractiveContainer(
+                              useOwnLayer: false,
+                              settings: settings,
+                              quality: quality,
+                              shape: const LiquidRoundedSuperellipse(
+                                borderRadius: 34,
+                              ),
+                              padding: EdgeInsets.zero,
+                              child: _AlertPlatterScrollViewport(
+                                actions: widget.actions,
+                                actionKeys: _actionKeys,
+                                hoveredActionIndex: _hoveredActionIndex,
+                                gestureController: _optionGestureController,
+                                contentTransitionKey:
+                                    widget.contentTransitionKey,
+                                child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -376,6 +382,7 @@ class _SkeddoGlassAlertPlatterState extends State<SkeddoGlassAlertPlatter>
                                     child: _buildActions(context),
                                   ),
                                 ],
+                                ),
                               ),
                             ),
                           ),
@@ -588,6 +595,7 @@ class _AlertPlatterScrollViewport extends StatefulWidget {
     required this.actions,
     required this.actionKeys,
     required this.hoveredActionIndex,
+    required this.gestureController,
     this.contentTransitionKey,
   });
 
@@ -595,6 +603,7 @@ class _AlertPlatterScrollViewport extends StatefulWidget {
   final List<GlassDialogAction> actions;
   final List<GlobalKey> actionKeys;
   final ValueNotifier<int?> hoveredActionIndex;
+  final GlassOptionGestureController gestureController;
   final Object? contentTransitionKey;
 
   @override
@@ -613,12 +622,6 @@ class _AlertPlatterScrollViewportState
   bool _showTopFade = false;
   bool _showBottomFade = false;
   bool _indicatorVisible = false;
-  int? _activePointer;
-  Offset? _pointerDownPosition;
-  Offset? _lastPointerPosition;
-  bool _pointerDragged = false;
-  bool _didScrollDuringPointer = false;
-  double? _lastScrollPixels;
 
   @override
   void initState() {
@@ -642,12 +645,7 @@ class _AlertPlatterScrollViewportState
   void didUpdateWidget(covariant _AlertPlatterScrollViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contentTransitionKey == widget.contentTransitionKey) return;
-    _activePointer = null;
-    _pointerDownPosition = null;
-    _lastPointerPosition = null;
-    _pointerDragged = false;
-    _didScrollDuringPointer = false;
-    _lastScrollPixels = null;
+    widget.gestureController.cancel();
     _indicatorHideTimer?.cancel();
     _indicatorVisible = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -694,13 +692,6 @@ class _AlertPlatterScrollViewportState
       return false;
     }
     _syncFromMetrics(notification.metrics);
-    if (_activePointer != null &&
-        notification is ScrollUpdateNotification &&
-        _lastScrollPixels != notification.metrics.pixels) {
-      _lastScrollPixels = notification.metrics.pixels;
-      _didScrollDuringPointer = true;
-      _updateHoveredAction(_lastPointerPosition);
-    }
     if (_canScroll &&
         (notification is ScrollStartNotification ||
             notification is ScrollUpdateNotification ||
@@ -726,40 +717,23 @@ class _AlertPlatterScrollViewportState
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    if (_activePointer != null) return;
-    _activePointer = event.pointer;
-    _pointerDownPosition = event.position;
-    _lastPointerPosition = event.position;
-    _pointerDragged = false;
-    _didScrollDuringPointer = false;
-    _lastScrollPixels = _controller.hasClients
-        ? _controller.position.pixels
-        : null;
-    _setHoveredAction(_actionIndexAt(event.position));
+    widget.gestureController.beginPointer(
+      event,
+      surfaceBounds: _viewportBounds,
+      optionAt: _actionIndexAt,
+      onCandidateChanged: _setHoveredAction,
+      onSelect: (index) {
+        if (index >= 0 && index < widget.actions.length) {
+          widget.actions[index].onPressed();
+        }
+      },
+      scrollController: _controller,
+      rowExtent: _averageActionHeight,
+    );
   }
 
   void _onPointerMove(PointerMoveEvent event) {
-    if (event.pointer != _activePointer || _pointerDownPosition == null) {
-      return;
-    }
-    _lastPointerPosition = event.position;
-    if ((event.position - _pointerDownPosition!).distance > kTouchSlop) {
-      _pointerDragged = true;
-    }
-    _updateHoveredAction(event.position);
-  }
-
-  void _updateHoveredAction(Offset? position) {
-    if (position == null) return;
-    // On overflowing dialogs, only activate the glide highlight once the
-    // Scrollable has actually moved. This keeps regular drags distinct from
-    // scroll-to-select and lets content moving beneath a stationary finger
-    // update the hovered button.
-    if (_canScroll && !_didScrollDuringPointer) {
-      _setHoveredAction(null);
-      return;
-    }
-    _setHoveredAction(_actionIndexAt(position));
+    widget.gestureController.movePointer(event);
   }
 
   void _setHoveredAction(int? index) {
@@ -785,39 +759,35 @@ class _AlertPlatterScrollViewportState
   }
 
   void _onPointerUp(PointerUpEvent event) {
-    if (event.pointer != _activePointer) return;
-    _lastPointerPosition = event.position;
-    _updateHoveredAction(event.position);
-    final shouldSelect = _pointerDragged;
-    final didScroll = _didScrollDuringPointer;
-    _activePointer = null;
-    _pointerDownPosition = null;
-    _lastPointerPosition = null;
-    _pointerDragged = false;
-    _didScrollDuringPointer = false;
-    _lastScrollPixels = null;
-    if (!shouldSelect || (_canScroll && !didScroll)) {
-      _setHoveredAction(null);
-      return;
-    }
-
-    final actionIndex = _actionIndexAt(event.position);
-    if (actionIndex != null && actionIndex < widget.actions.length) {
-      widget.actions[actionIndex].onPressed();
-    } else {
-      _setHoveredAction(null);
-    }
+    widget.gestureController.endPointer(event);
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
-    if (event.pointer != _activePointer) return;
-    _activePointer = null;
-    _pointerDownPosition = null;
-    _lastPointerPosition = null;
-    _pointerDragged = false;
-    _didScrollDuringPointer = false;
-    _lastScrollPixels = null;
-    _setHoveredAction(null);
+    widget.gestureController.cancelPointer(event);
+  }
+
+  Rect _viewportBounds() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      return Rect.zero;
+    }
+    return MatrixUtils.transformRect(
+      renderObject.getTransformTo(null),
+      Offset.zero & renderObject.size,
+    );
+  }
+
+  double get _averageActionHeight {
+    final heights = widget.actionKeys
+        .map((key) => key.currentContext?.findRenderObject())
+        .whereType<RenderBox>()
+        .where((box) => box.attached && box.hasSize)
+        .map((box) => box.size.height)
+        .toList();
+    if (heights.isEmpty) return 48;
+    return (heights.reduce((a, b) => a + b) / heights.length).clamp(36, 160);
   }
 
   Widget _buildContent() {
@@ -1009,15 +979,17 @@ class _AlertPlatterScrollViewportState
                 key: const ValueKey('skeddo-glass-alert-scroll-fade'),
                 blendMode: BlendMode.dstIn,
                 shaderCallback: _scrollFadeShader,
-                child: SingleChildScrollView(
-                  key: const ValueKey('skeddo-glass-alert-scroll-viewport'),
-                  controller: _controller,
-                  physics: _canScroll
-                      ? const BouncingScrollPhysics(
-                          parent: AlwaysScrollableScrollPhysics(),
-                        )
-                      : const NeverScrollableScrollPhysics(),
-                  child: _buildContent(),
+                child: GlassOptionGestureScrollConfiguration(
+                  child: SingleChildScrollView(
+                    key: const ValueKey('skeddo-glass-alert-scroll-viewport'),
+                    controller: _controller,
+                    physics: _canScroll
+                        ? const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          )
+                        : const NeverScrollableScrollPhysics(),
+                    child: _buildContent(),
+                  ),
                 ),
               ),
               _buildScrollIndicator(),

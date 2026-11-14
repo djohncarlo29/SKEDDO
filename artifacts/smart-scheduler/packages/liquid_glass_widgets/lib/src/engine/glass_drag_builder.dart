@@ -10,18 +10,21 @@
 
 import 'package:flutter/widgets.dart';
 import '../../types/interaction_notification.dart';
+import '../../widgets/shared/glass_option_gesture_arena.dart';
 
 class GlassDragBuilder extends StatefulWidget {
   const GlassDragBuilder({
     required this.builder,
     this.behavior = HitTestBehavior.opaque,
     this.suppressInteractionOnChildren = true,
+    this.gestureController,
     this.child,
     super.key,
   });
 
   final HitTestBehavior behavior;
   final bool suppressInteractionOnChildren;
+  final GlassOptionGestureController? gestureController;
   final ValueWidgetBuilder<Offset?> builder;
   final Widget? child;
 
@@ -71,6 +74,41 @@ class _GlassDragBuilderState extends State<GlassDragBuilder> {
   bool _shouldIgnoreCurrentPointer = false;
 
   bool get isDragging => _rawOffset != null;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.gestureController?.addListener(_onGestureOwnerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant GlassDragBuilder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.gestureController != widget.gestureController) {
+      oldWidget.gestureController?.removeListener(_onGestureOwnerChanged);
+      widget.gestureController?.addListener(_onGestureOwnerChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.gestureController?.removeListener(_onGestureOwnerChanged);
+    super.dispose();
+  }
+
+  void _onGestureOwnerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Offset? get _builderOffset {
+    final offset = _exposedOffset;
+    if (offset == null || widget.gestureController?.allowsStretch != false) {
+      return offset;
+    }
+    // Keep the non-null value so the existing press-scale feedback remains
+    // immediate, while withholding only the stretch offset from the renderer.
+    return Offset.zero;
+  }
 
   /// Computes the exposed offset with continuous slop subtraction.
   ///
@@ -157,7 +195,7 @@ class _GlassDragBuilderState extends State<GlassDragBuilder> {
             _lastExposedOffset = null;
           });
         },
-        child: widget.builder(context, _exposedOffset, widget.child),
+        child: widget.builder(context, _builderOffset, widget.child),
       ),
     );
   }

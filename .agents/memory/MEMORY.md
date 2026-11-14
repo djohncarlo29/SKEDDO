@@ -162,3 +162,4 @@
 - [System theme and accent independence](system-theme-accent-independence.md) — accent changes are color-only; System theme labels and rendered brightness must use the same OS snapshot.
 - [Mirror-setting trailing values](mirror-setting-trailing-values.md) — show “System (detail)” only when the corresponding system row exposes a detail; otherwise show “System.”
 - [Scoped Glass alert layout](scoped-glass-alert-layout.md) — use the newer alert platter for lifecycle confirmations; keep shared glass defaults unchanged.
+- [Liquid Glass gesture arbitration](liquid-glass-gesture-arbitration.md) — one locked owner handles stretch, selection, or scrolling; touch glow and press scale remain visual-only.

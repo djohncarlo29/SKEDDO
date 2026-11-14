@@ -62,6 +62,8 @@ dependencies:
   # flutter_a11y_lens above) since qualityPersistence is a wrap() parameter,
   # not an opt-in entry-point import — so it can't be made truly optional.
   shared_preferences: ^2.3.0
+  liquid_glass_widgets:
+    path: ../liquid_glass_widgets
 dev_dependencies:
   alchemist: ^0.14.0
   flutter_test:

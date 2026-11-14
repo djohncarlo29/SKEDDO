@@ -8,6 +8,7 @@ import 'package:smart_scheduler/app_theme.dart'
     show
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
+        kModalSheetSurfaceShape,
         kRoundedSheetLandscapeSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
@@ -24,6 +25,7 @@ void main() {
     );
     final edgeShape = sheet.edgeClipShape as BoundedSquircleStadiumBorder;
 
+    expect(sheet.edgeClipShape, same(kModalSheetSurfaceShape));
     expect(kModalSheetCornerRadius, 46);
     expect(edgeShape.radius, 46);
     expect(edgeShape.topOnly, isTrue);

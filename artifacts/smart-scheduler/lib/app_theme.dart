@@ -2385,6 +2385,12 @@ class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
       _pathForRect(rect.deflate(side.width));
 }
 
+/// Shared outer outline for modal sheet surfaces, scrims, and scroll effects.
+const ShapeBorder kModalSheetSurfaceShape = BoundedSquircleStadiumBorder(
+  radius: kModalSheetCornerRadius,
+  topOnly: true,
+);
+
 // SplitChevronUpDown — a clean custom up/down picker glyph.  This is painted
 // directly instead of clipping CupertinoIcons.chevron_up_chevron_down, because
 // midpoint clipping leaves anti-aliased fragments from the other chevron.

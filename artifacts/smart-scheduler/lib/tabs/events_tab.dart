@@ -530,7 +530,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     final initialPointerPosition = _pressStartGlobal ?? sourceRect.center;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _entry != null) {
-        _glideController.move(initialPointerPosition);
+        _glideController.start(initialPointerPosition);
       }
     });
 

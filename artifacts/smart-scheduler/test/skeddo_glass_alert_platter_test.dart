@@ -12,9 +12,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 import 'package:smart_scheduler/app_theme.dart'
-    show
-        kConfirmationButtonCornerRadius,
-        skeddoConfirmationActionFillColor;
+    show kConfirmationButtonCornerRadius, skeddoConfirmationActionFillColor;
 import 'package:smart_scheduler/widgets/skeddo_glass_alert_platter.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
@@ -518,7 +516,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('dragging across options selects the release target', (
+  testWidgets('scrolling a long dialog does not select crossed options', (
     tester,
   ) async {
     final selected = <String>[];
@@ -552,13 +550,20 @@ void main() {
     await tester.drag(scrollFinder, const Offset(0, -120));
     await tester.pump();
 
-    expect(selected, hasLength(1));
-    expect(selected.single, matches(RegExp(r'^Action \d+$')));
+    expect(
+      tester
+          .widget<SingleChildScrollView>(scrollFinder)
+          .controller!
+          .position
+          .pixels,
+      greaterThan(0),
+    );
+    expect(selected, isEmpty);
     expect(scrollFinder, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('scrolling an overflowing dialog highlights its touched option', (
+  testWidgets('a fitting dialog selects when a drag ends on another option', (
     tester,
   ) async {
     final selected = <String>[];
@@ -569,11 +574,15 @@ void main() {
             child: SkeddoGlassAlertPlatter(
               title: 'Choose an action',
               actions: [
-                for (var index = 0; index < 10; index++)
-                  GlassDialogAction(
-                    label: 'Action ${index + 1}',
-                    onPressed: () => selected.add('Action ${index + 1}'),
-                  ),
+                GlassDialogAction(
+                  label: 'Keep',
+                  onPressed: () => selected.add('Keep'),
+                ),
+                GlassDialogAction(
+                  label: 'Discard',
+                  isDestructive: true,
+                  onPressed: () => selected.add('Discard'),
+                ),
               ],
               settings: const LiquidGlassSettings(),
               quality: GlassQuality.standard,
@@ -585,42 +594,90 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.text('Action 5')),
+    final viewport = find.byKey(
+      const ValueKey('skeddo-glass-alert-scroll-viewport'),
     );
-    await gesture.moveBy(const Offset(0, -20));
-    await tester.pump();
-    await gesture.moveBy(const Offset(0, -20));
-    await tester.pump();
-    expect(
-      tester
-          .widget<SingleChildScrollView>(
-            find.byKey(const ValueKey('skeddo-glass-alert-scroll-viewport')),
-          )
-          .controller!
-          .position
-          .pixels,
-      greaterThan(0),
-    );
-    final highlightedIndexes = <int>[];
-    for (var index = 0; index < 10; index++) {
-      final text = find.text('Action ${index + 1}');
-      final button = find.ancestor(
-        of: text,
-        matching: find.byType(AnimatedContainer),
-      );
-      final decoration =
-          tester.widget<AnimatedContainer>(button).decoration
-              as ShapeDecoration;
-      if (decoration.color!.a >= 0.20) highlightedIndexes.add(index);
-    }
-    expect(highlightedIndexes, hasLength(1));
+    final scrollController = tester
+        .widget<SingleChildScrollView>(viewport)
+        .controller!;
+    expect(scrollController.position.maxScrollExtent, 0);
 
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Keep')),
+    );
+    await gesture.moveTo(tester.getCenter(find.text('Discard')));
+    await tester.pump();
     await gesture.up();
     await tester.pump();
-    expect(selected, ['Action ${highlightedIndexes.single + 1}']);
+
+    expect(selected, ['Discard']);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'scrolling an overflowing dialog does not highlight crossed options',
+    (tester) async {
+      final selected = <String>[];
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: Center(
+              child: SkeddoGlassAlertPlatter(
+                title: 'Choose an action',
+                actions: [
+                  for (var index = 0; index < 10; index++)
+                    GlassDialogAction(
+                      label: 'Action ${index + 1}',
+                      onPressed: () => selected.add('Action ${index + 1}'),
+                    ),
+                ],
+                settings: const LiquidGlassSettings(),
+                quality: GlassQuality.standard,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Action 5')),
+      );
+      for (var step = 0; step < 5; step++) {
+        await gesture.moveBy(const Offset(0, -20));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(
+        tester
+            .widget<SingleChildScrollView>(
+              find.byKey(const ValueKey('skeddo-glass-alert-scroll-viewport')),
+            )
+            .controller!
+            .position
+            .pixels,
+        greaterThan(0),
+      );
+      final highlightedIndexes = <int>[];
+      for (var index = 0; index < 10; index++) {
+        final text = find.text('Action ${index + 1}');
+        final button = find.ancestor(
+          of: text,
+          matching: find.byType(AnimatedContainer),
+        );
+        final decoration =
+            tester.widget<AnimatedContainer>(button).decoration
+                as ShapeDecoration;
+        if (decoration.color!.a >= 0.20) highlightedIndexes.add(index);
+      }
+      expect(highlightedIndexes, isEmpty);
+
+      await gesture.up();
+      await tester.pump();
+      expect(selected, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a non-scrolling drag does not trigger overflow selection', (
     tester,

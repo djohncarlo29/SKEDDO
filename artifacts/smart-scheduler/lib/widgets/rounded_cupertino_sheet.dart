@@ -6,9 +6,9 @@ import '../app_theme.dart'
     show
         kBackgroundColor,
         kModalBackground,
-        BoundedSquircleStadiumBorder,
         kLightModeSheetAppShellDimColor,
         kModalSheetCornerRadius,
+        kModalSheetSurfaceShape,
         kRoundedSheetSafeAreaGap,
         kRoundedSheetLandscapeSafeAreaGap,
         resolveThemeColor,
@@ -147,10 +147,7 @@ Widget? _withSheetDimOverlay(
             // cannot leave a square edge at the sheet's rounded top corners.
             key: const ValueKey('rounded-sheet-dim-overlay-clip'),
             clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
-              ),
+              shape: kModalSheetSurfaceShape,
             ),
             child: IgnorePointer(
               child: ColoredBox(
@@ -453,10 +450,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
           // so landscape full-bleed effects cannot square them off.
           child: ClipPath(
             clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
-              ),
+              shape: kModalSheetSurfaceShape,
             ),
             child: ColoredBox(
               color: resolveThemeColor(kModalBackground, context),
@@ -831,10 +825,7 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
         ? null
         : ClipPath(
             clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
-              ),
+              shape: kModalSheetSurfaceShape,
             ),
             // Keep the zero-opacity overlay wrapper stable when the secondary
             // route animation settles. Removing it reparents the parent's
@@ -862,10 +853,7 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
               alignment: Alignment.topCenter,
               child: ClipPath(
                 clipper: ShapeBorderClipper(
-                  shape: const BoundedSquircleStadiumBorder(
-                    radius: kModalSheetCornerRadius,
-                    topOnly: true,
-                  ),
+                  shape: kModalSheetSurfaceShape,
                 ),
                 child: child,
               ),

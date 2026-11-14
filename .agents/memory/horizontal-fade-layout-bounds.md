@@ -3,7 +3,7 @@ name: Edge-fade layout bounds
 description: Layout constraints required by the shared horizontal and vertical fade wrappers.
 ---
 
-The shared horizontal and vertical fade wrappers must let their text-field child determine its natural height. Their overlay fades can be positioned against that resulting size; neither wrapper may use StackFit.expand or add a separate ClipRect when it may appear inside a modal Column or Stack. For search fields, the editable viewport spans icon edge to icon edge, while one inner content inset per side defines the usable text area and the fade starts at those inner boundaries; never add a second pre-fade gap or clip.
+The shared horizontal and vertical fade wrappers must let their text-field child determine its natural height. Their overlay fades can be positioned against that resulting size; neither wrapper may use StackFit.expand or add a separate ClipRect when it may appear inside a modal Column or Stack. For modal header titles, apply the alpha mask to the entire allocated title viewport, not only the text line's tight render height, so ascenders, descenders, and glyph overhangs share the same fade. For search fields, the editable viewport spans icon edge to icon edge, while one inner content inset per side defines the usable text area and the fade starts at those inner boundaries; never add a second pre-fade gap or clip.
 
 **Why:** a tight expansion in an unbounded vertical parent can fail the modal body layout while the sheet header remains visible, and a wrapper clip creates a second boundary instead of letting text run underneath the fade.
 

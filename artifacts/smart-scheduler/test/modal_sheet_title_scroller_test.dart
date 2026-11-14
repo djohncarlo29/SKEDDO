@@ -185,6 +185,10 @@ void main() {
       greaterThan(1),
     );
     expect(_fadeMasks(), findsOneWidget);
+    final titleViewport = tester.getRect(find.byType(HeaderTitleScroller));
+    final maskViewport = tester.getRect(_fadeMasks());
+    expect(maskViewport.width, closeTo(titleViewport.width, 0.5));
+    expect(maskViewport.height, closeTo(titleViewport.height, 0.5));
   });
 
   testWidgets('modal title fades use alpha compositing, not a tint overlay', (

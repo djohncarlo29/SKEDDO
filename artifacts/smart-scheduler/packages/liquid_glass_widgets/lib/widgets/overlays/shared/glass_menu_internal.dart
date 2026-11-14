@@ -19,9 +19,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   int? _hoveredIndex;
   final ValueNotifier<int?> _hoveredIndexNotifier = ValueNotifier<int?>(null);
   bool _isDragging = false;
-  bool _hasStretched =
-      false; // Prevents closing if we moved into stretch territory
-  double _initialScrollOffset = 0.0;
+  final GlassOptionGestureController _optionGestureController =
+      GlassOptionGestureController();
+  Duration _externalGlideTime = Duration.zero;
   double _horizontalOffset = 0.0;
   double _verticalOffset = 0.0;
 
@@ -36,12 +36,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   Offset _followOffset = Offset.zero;
 
   int? _swipePointerId;
-  Offset _swipeStartPosition = Offset.zero;
-  bool _swipeArmed = false;
   bool _openedOnPointerDown = false;
   bool _openMorphPending = false;
   int _openMorphGeneration = 0;
   final GlobalKey _menuContentKey = GlobalKey();
+  Offset? _lastExternalGlidePosition;
 
   // --- Granular Update System (Performance + No flicker) ---
   // We cache the outer list but use notifiers to update selection state
@@ -225,6 +224,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _removeRouteListeners();
     _routes = const [];
     widget.controller?._detach(this);
+    _optionGestureController.dispose();
     _hoveredIndexNotifier.dispose();
     _morphController.dispose();
     _blurRamp.dispose();
@@ -442,6 +442,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       return;
     }
     _blurRamp.stop();
+    _optionGestureController.cancel();
     final wasClosing = _morphController.isClosing;
     if (_overlayController.isShowing) {
       _overlayController.hide();
@@ -450,10 +451,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _horizontalOffset = 0.0;
     _verticalOffset = 0.0;
     _isDragging = false;
-    _hasStretched = false;
     _followOffset = Offset.zero;
     _swipePointerId = null;
-    _swipeArmed = false;
     _openedOnPointerDown = false;
     _resetSubmenus();
     _resetMenuSelectionGesture();
@@ -565,9 +564,11 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         // this wrapper and never saw its fade.
         final outer = GlassMaterializeScope.maybeOf(context);
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
+        return GlassOptionGestureScope(
+          controller: _optionGestureController,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
             // Trigger — physically bounces and absorbs impact when slammed by the closing menu!
             Transform.translate(
               offset: Offset(pushDx, pushDy),
@@ -611,7 +612,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
               overlayChildBuilder: _buildMorphingOverlay,
               overlayLocation: OverlayChildLocation.nearestOverlay,
             ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -642,10 +644,8 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     }
 
     _swipePointerId = event.pointer;
-    _swipeStartPosition = event.position;
-    _swipeArmed = false;
     _openedOnPointerDown = true;
-
+    _beginOptionGesture(event, deferUntilInside: true);
     _openMenu();
   }
 
@@ -654,66 +654,102 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     if (!mounted) return;
     if (!widget.enableContinuousSwipe) return;
     if (event.pointer != _swipePointerId) return;
-    // Continuous swipe has no meaning on scrollable menus: arming would block
-    // scroll and always dismiss on release without selecting anything.
-    if (_isScrollable) return;
-
-    final distance = (event.position - _swipeStartPosition).distance;
-    if (!_swipeArmed) {
-      if (distance >= widget.continuousSwipeSlop) {
-        _swipeArmed = true;
-        _openedOnPointerDown = false;
-        _isDragging = true;
-      }
-    }
-
-    if (_swipeArmed) {
-      _updateHoverFromGlobalPosition(event.position);
+    _optionGestureController.movePointer(event);
+    _updateMenuTouchGlow(event.position);
+    if (_optionGestureController.owner !=
+        GlassOptionGestureOwner.undecided) {
+      _openedOnPointerDown = false;
     }
   }
 
-  void _updateHoverFromGlobalPosition(Offset globalPosition) {
-    Offset localPosition;
+  Rect _menuOptionsBounds() {
     final renderBox =
         _menuContentKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null && renderBox.attached && renderBox.hasSize) {
-      localPosition = renderBox.globalToLocal(globalPosition);
-    } else {
-      localPosition = globalPosition - _restingMenuGlobalRect().topLeft;
+    if (renderBox == null || !renderBox.attached || !renderBox.hasSize) {
+      return Rect.zero;
     }
+    return MatrixUtils.transformRect(
+      renderBox.getTransformTo(null),
+      Offset.zero & renderBox.size,
+    );
+  }
 
-    final previousIndex = _hoveredIndex;
-    _updateHoveredIndex(localPosition);
-
-    // Haptic feedback on item boundary crossing (iOS HIG)
-    if (_hoveredIndex != null && _hoveredIndex != previousIndex) {
-      HapticFeedback.selectionClick();
+  int? _menuOptionAtGlobalPosition(Offset globalPosition) {
+    final renderBox =
+        _menuContentKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.attached || !renderBox.hasSize) {
+      return null;
     }
+    return _calculateIndexFromPosition(
+      renderBox.globalToLocal(globalPosition),
+      context,
+      items: _activeItems,
+      scrollController: _scrollController,
+      visibleHeight: _activeHeight,
+    );
+  }
 
-    // Feed touch position to GlassGlow if interaction glow is enabled
-    if (widget.enableInteractionGlow) {
-      final glowLayerState = _menuContentKey.currentContext
-          ?.findAncestorStateOfType<GlassGlowLayerState>();
-      if (glowLayerState != null) {
-        final layerBox =
-            glowLayerState.context.findRenderObject() as RenderBox?;
-        if (layerBox != null && layerBox.attached && layerBox.hasSize) {
-          final isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
-          final glowColor = widget.glowColor ??
-              (isDark
-                  ? CupertinoColors.white
-                      .withValues(alpha: GlassDefaults.specularLightAlpha)
-                  : CupertinoColors.black
-                      .withValues(alpha: GlassDefaults.specularDarkAlpha));
-          glowLayerState.updateTouch(
-            layerBox.globalToLocal(globalPosition),
-            radius: widget.glowRadius,
-            color: glowColor,
-            blurRadius: 40,
-          );
+  double get _activeOptionRowExtent {
+    final count = _activeItems.length;
+    return count == 0 ? 48 : (_listHeight(_activeItems) / count).clamp(32, 96);
+  }
+
+  void _beginOptionGesture(
+    PointerDownEvent event, {
+    bool deferUntilInside = false,
+  }) {
+    _optionGestureController.beginPointer(
+      event,
+      surfaceBounds: _menuOptionsBounds,
+      optionAt: _menuOptionAtGlobalPosition,
+      onCandidateChanged: (index) {
+        final previous = _hoveredIndex;
+        _isDragging = index != null;
+        _setHoveredIndex(index);
+        if (widget.enableContinuousSwipe &&
+            index != null &&
+            index != previous) {
+          HapticFeedback.selectionClick();
         }
-      }
-    }
+      },
+      onSelect: (index) {
+        _activateActiveOption(index);
+      },
+      scrollController: _scrollController,
+      rowExtent: _activeOptionRowExtent,
+      deferUntilInside: deferUntilInside,
+      movementSlop: deferUntilInside
+          ? widget.continuousSwipeSlop
+          : kTouchSlop,
+    );
+  }
+
+  void _activateActiveOption(int index) {
+    if (index < 0 || index >= _activeItems.length) return;
+    final item = _activeItems[index];
+    if (item is GlassMenuItem && item.enabled) _activateItem(item);
+  }
+
+  void _updateMenuTouchGlow(Offset globalPosition) {
+    if (!widget.enableInteractionGlow) return;
+    final glowLayerState = _menuContentKey.currentContext
+        ?.findAncestorStateOfType<GlassGlowLayerState>();
+    if (glowLayerState == null) return;
+    final layerBox = glowLayerState.context.findRenderObject() as RenderBox?;
+    if (layerBox == null || !layerBox.attached || !layerBox.hasSize) return;
+    final isDark = GlassTheme.brightnessOf(context) == Brightness.dark;
+    final glowColor = widget.glowColor ??
+        (isDark
+            ? CupertinoColors.white
+                .withValues(alpha: GlassDefaults.specularLightAlpha)
+            : CupertinoColors.black
+                .withValues(alpha: GlassDefaults.specularDarkAlpha));
+    glowLayerState.updateTouch(
+      layerBox.globalToLocal(globalPosition),
+      radius: widget.glowRadius,
+      color: glowColor,
+      blurRadius: 40,
+    );
   }
 
   void _handleTriggerPointerUp(PointerUpEvent event) {
@@ -727,25 +763,15 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       glowLayerState?.removeTouch();
     }
 
-    if (_swipeArmed) {
-      final indexToTap = _hoveredIndex;
-      if (indexToTap != null && indexToTap >= 0 && indexToTap < _items.length) {
-        final item = _items[indexToTap];
-        if (item is GlassMenuItem && item.enabled) {
-          _activateItem(item);
-        } else {
-          _closeMenu();
-        }
-      } else {
-        _closeMenu();
-      }
-    }
+    final owner = _optionGestureController.owner;
+    final selectedByGlide = owner == GlassOptionGestureOwner.selection;
+    _optionGestureController.endPointer(event);
+    if (owner == GlassOptionGestureOwner.stretch) _closeMenu();
 
     _isDragging = false;
     _setHoveredIndex(null);
-    _hasStretched = false;
     _swipePointerId = null;
-    _swipeArmed = false;
+    if (selectedByGlide) _openedOnPointerDown = false;
   }
 
   void _handleTriggerPointerCancel(PointerCancelEvent event) {
@@ -759,15 +785,16 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       glowLayerState?.removeTouch();
     }
 
-    if (_swipeArmed) {
+    final owner = _optionGestureController.owner;
+    _optionGestureController.cancelPointer(event);
+    if (owner == GlassOptionGestureOwner.selection ||
+        owner == GlassOptionGestureOwner.stretch) {
       _closeMenu();
     }
 
     _isDragging = false;
     _setHoveredIndex(null);
-    _hasStretched = false;
     _swipePointerId = null;
-    _swipeArmed = false;
     _openedOnPointerDown = false;
   }
 
@@ -1030,7 +1057,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       _cachedWrappedItems = null;
       _setHoveredIndex(null);
       _isDragging = false;
-      _hasStretched = false;
       _levelMorphPopping = false;
     });
     _reclampStack();
@@ -1874,40 +1900,77 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         return _restingMenuGlobalRect().contains(globalPosition);
       }
     }
-    if (!_isDragging) {
-      _isDragging = true;
+    if (!_optionGestureController.isActive) {
+      _externalGlideTime = Duration.zero;
+      _optionGestureController.beginAt(
+        pointer: -2,
+        globalPosition: globalPosition,
+        timeStamp: _externalGlideTime,
+        kind: PointerDeviceKind.touch,
+        surfaceBounds: _menuOptionsBounds,
+        optionAt: _menuOptionAtGlobalPosition,
+        onCandidateChanged: (index) {
+          _isDragging = index != null;
+          _setHoveredIndex(index);
+        },
+        onSelect: _activateActiveOption,
+        scrollController: _scrollController,
+        rowExtent: _activeOptionRowExtent,
+        startInSelection: true,
+      );
+    } else {
+      _externalGlideTime += const Duration(milliseconds: 16);
+      _optionGestureController.moveAt(
+        pointer: -2,
+        globalPosition: globalPosition,
+        timeStamp: _externalGlideTime,
+      );
     }
-    _updateHoverFromGlobalPosition(globalPosition);
+    _lastExternalGlidePosition = globalPosition;
+    _updateMenuTouchGlow(globalPosition);
     return _restingMenuGlobalRect().contains(globalPosition);
   }
 
   bool _endGlide() {
     if (!_overlayController.isShowing) return false;
-    final index = _hoveredIndex;
     final pop = _glideOverParent;
-    _clearGlide();
-    if (_morphController.isClosing || _contentMorph.isAnimating) return false;
+    _glideOverParent = false;
     if (pop) {
+      _optionGestureController.cancel(pointer: -2);
+      _isDragging = false;
+      _setHoveredIndex(null);
+      if (_morphController.isClosing || _contentMorph.isAnimating) return false;
       _popSubmenu();
       return true;
     }
-    if (index != null && index >= 0 && index < _items.length) {
-      final item = _items[index];
-      if (item is GlassMenuItem && item.enabled) {
-        _activateItem(item);
-        return true;
-      }
+    if (_morphController.isClosing || _contentMorph.isAnimating) {
+      _optionGestureController.cancel(pointer: -2);
+      _setHoveredIndex(null);
+      _lastExternalGlidePosition = null;
+      return false;
     }
-    return false;
+    _optionGestureController.endAt(pointer: -2, globalPosition: _lastExternalGlidePosition ?? Offset.zero);
+    _lastExternalGlidePosition = null;
+    if (widget.enableInteractionGlow) {
+      final glowLayerState = _menuContentKey.currentContext
+          ?.findAncestorStateOfType<GlassGlowLayerState>();
+      glowLayerState?.removeTouch();
+    }
+    return _optionGestureController.lastCompletedOwner ==
+            GlassOptionGestureOwner.selection &&
+        _optionGestureController.lastCompletedOptionIndex != null;
   }
 
   void _cancelGlide() {
     if (!_overlayController.isShowing) return;
+    _optionGestureController.cancel(pointer: -2);
     _clearGlide();
   }
 
   void _clearGlide() {
     _glideOverParent = false;
+    _lastExternalGlidePosition = null;
+    _optionGestureController.cancel(pointer: -2);
     _resetMenuSelectionGesture();
     if (widget.enableInteractionGlow) {
       final glowLayerState = _menuContentKey.currentContext
@@ -1916,7 +1979,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     }
     _isDragging = false;
     _setHoveredIndex(null);
-    if (_hasStretched) setState(() => _hasStretched = false);
   }
 
   /// The open stack's global rect at rest: the body plus every open card,
@@ -1939,13 +2001,13 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
     _openMorphGeneration++;
     final wasWaitingForLayout = _openMorphPending;
     _openMorphPending = false;
+    _optionGestureController.cancel();
     _resetMenuSelectionGesture();
     _setHoveredIndex(null);
     setState(() {
       _isDragging = false;
     });
     _swipePointerId = null;
-    _swipeArmed = false;
     _openedOnPointerDown = false;
     if (wasWaitingForLayout) {
       _blurRamp.stop();
@@ -2730,6 +2792,9 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
         child: rows,
       ),
     );
+    final coordinatedListBody = interactive
+        ? GlassOptionGestureScrollConfiguration(child: listBody)
+        : listBody;
     final scrollContent = SizedBox(
       width: widget.menuWidth,
       height: viewportHeight,
@@ -2750,7 +2815,7 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
             showTop: showTopFade,
             showBottom: showBottomFade,
           ),
-          child: listBody,
+          child: coordinatedListBody,
         ),
       ),
     );
@@ -2763,74 +2828,52 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
               ? (event) {
                   if (!mounted) return;
                   _resetMenuSelectionGesture();
-                  _isDragging = true;
-                  _hasStretched = false;
-                  _initialScrollOffset = _scrollOffsetOf(scrollController);
-                  _updateHoveredIndex(
-                    event.localPosition,
-                    items: items,
+                  _isDragging = false;
+                  _optionGestureController.beginPointer(
+                    event,
+                    surfaceBounds: _menuOptionsBounds,
+                    optionAt: _menuOptionAtGlobalPosition,
+                    onCandidateChanged: (index) {
+                      _isDragging = index != null;
+                      _setHoveredIndex(index);
+                    },
+                    onSelect: (index) {
+                      if (index < 0 || index >= _activeItems.length) return;
+                      final item = _activeItems[index];
+                      if (item is GlassMenuItem && item.enabled) {
+                        _activateItem(item);
+                      }
+                    },
                     scrollController: scrollController,
-                    viewportHeight: viewportHeight,
+                    rowExtent: _activeOptionRowExtent,
                   );
                 }
               : null,
           onPointerMove: interactive
               ? (event) {
-                  if (!mounted || !_isDragging) return;
-                  if (!listIsScrollable) {
-                    _updateHoveredIndex(
-                      event.localPosition,
-                      items: items,
-                      scrollController: scrollController,
-                      viewportHeight: viewportHeight,
-                    );
-                  }
+                  if (!mounted) return;
+                  _optionGestureController.movePointer(event);
                 }
               : null,
           onPointerUp: interactive
               ? (event) {
                   if (!mounted) return;
-                  var handledBySwipe = false;
-                  if (_isDragging) {
-                    final currentOffset = _scrollOffsetOf(scrollController);
-                    final scrollDisplacement =
-                        (currentOffset - _initialScrollOffset).abs();
-
-                    // Fitting menus retain swipe-to-select. Overflowing menus
-                    // scroll normally and highlight the touched row until
-                    // scrolling begins.
-                    if (!listIsScrollable &&
-                        (scrollDisplacement < 10 || scrollDepth > 0)) {
-                      final indexToTap = _hoveredIndex ??
-                          _calculateIndexFromPosition(
-                            event.localPosition,
-                            context,
-                            items: items,
-                            scrollController: scrollController,
-                            visibleHeight: viewportHeight,
-                          );
-                      if (indexToTap != null) {
-                        final item = items[indexToTap];
-                        if (item is GlassMenuItem && item.enabled) {
-                          _activateItem(item);
-                          handledBySwipe = true;
-                        }
-                      }
-                    }
-                    _isDragging = false;
-                    _setHoveredIndex(null);
-                    _hasStretched = false;
-                  }
+                  final handledBySwipe =
+                      _optionGestureController.owner ==
+                      GlassOptionGestureOwner.selection;
                   // A row tap recogniser fires later in this pointer dispatch.
                   // Suppress it only when slide-to-select already activated
                   // the row; otherwise let a normal tap handle the action.
                   _bodyPointerUpHandled = handledBySwipe;
+                  _optionGestureController.endPointer(event);
+                  _isDragging = false;
                   scheduleMicrotask(() => _bodyPointerUpHandled = false);
                 }
               : null,
           onPointerCancel: interactive
-              ? (_) {
+              ? (event) {
                   if (!mounted) return;
+                  _optionGestureController.cancelPointer(event);
                   _resetMenuSelectionGesture();
                   _isDragging = false;
                 }
@@ -3032,10 +3075,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
   List<Widget> get _activeItems =>
       _submenuStack.isEmpty ? _items : _submenuStack.last.list;
 
-  bool get _isScrollable {
-    return _activeHeight < _listHeight(_items) - 1.0;
-  }
-
   double get _activeHeight => _submenuStack.isEmpty
       ? _targetBodyHeight()
       : _cardRect(_submenuStack.length - 1).height;
@@ -3167,45 +3206,6 @@ class _GlassMenuState extends State<GlassMenu> with TickerProviderStateMixin {
       currentOffset += itemHeight + kGlassMenuRowGap;
     }
     return null;
-  }
-
-  void _updateHoveredIndex(
-    Offset localPosition, {
-    List<Widget>? items,
-    ScrollController? scrollController,
-    double? viewportHeight,
-  }) {
-    // Detect if we've moved into "stretch territory" (outside visible menu bounds)
-    final targetItems = items ?? _activeItems;
-    final targetController = scrollController ?? _scrollController;
-    final visibleHeight = viewportHeight ?? _activeHeight;
-    final x = localPosition.dx;
-    final dy = localPosition.dy;
-
-    // We add a 100px buffer to allow for intense liquid stretching without accidental closure.
-    // We also allow cancelling the stretch if the user moves their finger back.
-    final outsideBounds = dy < -100 ||
-        dy > visibleHeight + 100 ||
-        x < -100 ||
-        x > widget.menuWidth + 100;
-
-    if (_hasStretched != outsideBounds) {
-      setState(() => _hasStretched = outsideBounds);
-    }
-
-    int? detectedIndex;
-
-    // Keep the touched row highlighted in both fitting and overflowing
-    // menus. Only fitting menus activate glide selection on release.
-    detectedIndex = _calculateIndexFromPosition(
-      localPosition,
-      context,
-      items: targetItems,
-      scrollController: targetController,
-      visibleHeight: visibleHeight,
-    );
-
-    _setHoveredIndex(detectedIndex);
   }
 
   void _setHoveredIndex(int? index) {

@@ -15,7 +15,11 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassDialogAction, GlassDefaults;
+    show
+        GlassDialogAction,
+        GlassDefaults,
+        GlassOptionGestureController,
+        GlassOptionGestureScope;
 
 import '../app_settings.dart';
 import '../app_theme.dart';
@@ -283,6 +287,9 @@ class DiscardChangesPopoverAnchorState
   late final VoidCallback _dismissCallback;
   final GlobalKey _triggerKey = GlobalKey();
   final GlobalKey _discardActionTargetKey = GlobalKey();
+  final ScrollController _popoverScrollController = ScrollController();
+  final GlassOptionGestureController _optionGestureController =
+      GlassOptionGestureController();
   final ValueNotifier<bool> _discardActionScrollHighlighted = ValueNotifier(
     false,
   );
@@ -359,6 +366,8 @@ class DiscardChangesPopoverAnchorState
   @override
   void dispose() {
     _closePollTimer?.cancel();
+    _popoverScrollController.dispose();
+    _optionGestureController.dispose();
     _discardActionScrollHighlighted.dispose();
     _popoverOverlayClosing.dispose();
     if (identical(_activeDiscardChangesSheetDismiss, _dismissCallback)) {
@@ -553,6 +562,8 @@ class DiscardChangesPopoverAnchorState
     return _DiscardPopoverScrollToSelect(
       buttonTargetKey: _discardActionTargetKey,
       isClosing: _popoverOverlayClosing,
+      gestureController: _optionGestureController,
+      scrollController: _popoverScrollController,
       onHighlightChanged: (highlighted) {
         if (_discardActionScrollHighlighted.value != highlighted) {
           _discardActionScrollHighlighted.value = highlighted;
@@ -560,6 +571,8 @@ class DiscardChangesPopoverAnchorState
       },
       onSelect: () => _acceptDiscard(closePopover),
       child: ActionPanelScrollView(
+        controller: _popoverScrollController,
+        coordinatedGestures: true,
         maxHeight: MediaQuery.sizeOf(context).height,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -652,7 +665,7 @@ class DiscardChangesPopoverAnchorState
             screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
         // Compensate the moved modal header trigger so the settled popover
         // remains at its existing screen coordinates.
-        popoverOffset: const Offset(-4, -4) - widget.triggerOffset,
+        popoverOffset: const Offset(-4, -2) - widget.triggerOffset,
         anchorGrowthToTrigger: true,
         keepTriggerHiddenDuringClose: true,
         popoverBorderRadius: kDiscardConfirmationPopoverCornerRadius,
@@ -672,10 +685,14 @@ class DiscardChangesPopoverAnchorState
         onClose: _onPopoverClosing,
         onOpen: _onPopoverOpened,
       );
-      if (widget.triggerOffset == Offset.zero) return popover;
+      final scopedPopover = GlassOptionGestureScope(
+        controller: _optionGestureController,
+        child: popover,
+      );
+      if (widget.triggerOffset == Offset.zero) return scopedPopover;
       return Transform.translate(
         offset: widget.triggerOffset,
-        child: popover,
+        child: scopedPopover,
       );
     },
   );
@@ -844,6 +861,8 @@ class _DiscardPopoverScrollToSelect extends StatefulWidget {
   const _DiscardPopoverScrollToSelect({
     required this.buttonTargetKey,
     required this.isClosing,
+    required this.gestureController,
+    required this.scrollController,
     required this.onHighlightChanged,
     required this.onSelect,
     required this.child,
@@ -851,6 +870,8 @@ class _DiscardPopoverScrollToSelect extends StatefulWidget {
 
   final GlobalKey buttonTargetKey;
   final ValueListenable<bool> isClosing;
+  final GlassOptionGestureController gestureController;
+  final ScrollController scrollController;
   final ValueChanged<bool> onHighlightChanged;
   final VoidCallback onSelect;
   final Widget child;
@@ -862,71 +883,25 @@ class _DiscardPopoverScrollToSelect extends StatefulWidget {
 
 class _DiscardPopoverScrollToSelectState
     extends State<_DiscardPopoverScrollToSelect> {
-  int? _activePointer;
-  Offset? _pointerDownPosition;
-  Offset? _lastPointerPosition;
-  double? _lastScrollPixels;
-  double? _latestScrollPixels;
-  bool _pointerDragged = false;
-  bool _canScroll = false;
-  bool _didScrollDuringPointer = false;
-
   void _onPointerDown(PointerDownEvent event) {
-    if (_activePointer != null || widget.isClosing.value) return;
-    _activePointer = event.pointer;
-    _pointerDownPosition = event.position;
-    _lastPointerPosition = event.position;
-    _lastScrollPixels = _latestScrollPixels ?? 0;
-    _pointerDragged = false;
-    _didScrollDuringPointer = false;
-    widget.onHighlightChanged(false);
+    if (widget.isClosing.value) return;
+    widget.gestureController.beginPointer(
+      event,
+      surfaceBounds: _surfaceBounds,
+      optionAt: _optionAt,
+      onCandidateChanged: (index) {
+        widget.onHighlightChanged(index == 0 && !widget.isClosing.value);
+      },
+      onSelect: (index) {
+        if (index == 0 && !widget.isClosing.value) widget.onSelect();
+      },
+      scrollController: widget.scrollController,
+      rowExtent: _buttonBounds?.height ?? 48,
+    );
   }
 
   void _onPointerMove(PointerMoveEvent event) {
-    if (event.pointer != _activePointer || _pointerDownPosition == null) return;
-    _lastPointerPosition = event.position;
-    if ((event.position - _pointerDownPosition!).distance > kTouchSlop) {
-      _pointerDragged = true;
-    }
-    _updateHighlight(event.position);
-  }
-
-  bool _onScrollMetrics(ScrollMetricsNotification notification) {
-    if (notification.metrics.axis == Axis.vertical) {
-      _canScroll = notification.metrics.maxScrollExtent > 1.0;
-      _latestScrollPixels = notification.metrics.pixels;
-    }
-    return false;
-  }
-
-  bool _onScroll(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical || notification.depth > 0) {
-      return false;
-    }
-    _canScroll = notification.metrics.maxScrollExtent > 1.0;
-    if (notification is ScrollUpdateNotification) {
-      final pixels = notification.metrics.pixels;
-      final previousPixels = _lastScrollPixels ?? 0;
-      if (_activePointer != null &&
-          (pixels - previousPixels).abs() > 0.01) {
-        _didScrollDuringPointer = true;
-        _updateHighlight(_lastPointerPosition);
-      }
-      _lastScrollPixels = pixels;
-    }
-    _latestScrollPixels = notification.metrics.pixels;
-    return false;
-  }
-
-  void _updateHighlight(Offset? position) {
-    if (position == null ||
-        !_pointerDragged ||
-        (_canScroll && !_didScrollDuringPointer) ||
-        widget.isClosing.value) {
-      widget.onHighlightChanged(false);
-      return;
-    }
-    widget.onHighlightChanged(_buttonBounds?.contains(position) ?? false);
+    widget.gestureController.movePointer(event);
   }
 
   Rect? get _buttonBounds {
@@ -940,49 +915,38 @@ class _DiscardPopoverScrollToSelectState
     return renderObject.localToGlobal(Offset.zero) & renderObject.size;
   }
 
-  void _resetPointer() {
-    _activePointer = null;
-    _pointerDownPosition = null;
-    _lastPointerPosition = null;
-    _lastScrollPixels = null;
-    _pointerDragged = false;
-    _didScrollDuringPointer = false;
-    widget.onHighlightChanged(false);
+  int? _optionAt(Offset position) {
+    if (widget.isClosing.value) return null;
+    return _buttonBounds?.contains(position) == true ? 0 : null;
+  }
+
+  Rect _surfaceBounds() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      return Rect.zero;
+    }
+    return renderObject.localToGlobal(Offset.zero) & renderObject.size;
   }
 
   void _onPointerUp(PointerUpEvent event) {
-    if (event.pointer != _activePointer) return;
-    _lastPointerPosition = event.position;
-    _updateHighlight(event.position);
-    final shouldSelect =
-        _pointerDragged &&
-        (!_canScroll || _didScrollDuringPointer) &&
-        (_buttonBounds?.contains(event.position) ?? false) &&
-        !widget.isClosing.value;
-    _resetPointer();
-    if (shouldSelect) widget.onSelect();
+    widget.gestureController.endPointer(event);
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
-    if (event.pointer != _activePointer) return;
-    _resetPointer();
+    widget.gestureController.cancelPointer(event);
   }
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollMetricsNotification>(
-      onNotification: _onScrollMetrics,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _onScroll,
-        child: Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: _onPointerDown,
-          onPointerMove: _onPointerMove,
-          onPointerUp: _onPointerUp,
-          onPointerCancel: _onPointerCancel,
-          child: widget.child,
-        ),
-      ),
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerCancel,
+      child: widget.child,
     );
   }
 }

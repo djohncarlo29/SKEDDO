@@ -60,9 +60,7 @@ void main() {
     );
     await tester.pump();
 
-    final glassRim = tester.widget<GlassContainer>(
-      find.byType(GlassContainer),
-    );
+    final glassRim = tester.widget<GlassContainer>(find.byType(GlassContainer));
     expect(glassRim.quality, GlassQuality.premium);
     expect(glassRim.settings!.blur, 0);
     expect(glassRim.settings!.glassColor.alpha, 0);
@@ -77,10 +75,7 @@ void main() {
     final cachedRimLayer = find.byKey(const ValueKey('glass-menu-rim-layer'));
     expect(cachedRimLayer, findsOneWidget);
     expect(
-      find.descendant(
-        of: cachedRimLayer,
-        matching: find.text(contentLabel),
-      ),
+      find.descendant(of: cachedRimLayer, matching: find.text(contentLabel)),
       findsNothing,
     );
     expect(
@@ -389,12 +384,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    glide.move(tester.getCenter(find.text('Pin')));
+    final pinPosition = tester.getCenter(find.text('Pin'));
+    glide.start(pinPosition.translate(0, -80));
+    glide.move(pinPosition);
     await tester.pump();
-    final pinRow = find.ancestor(
-      of: find.text('Pin'),
-      matching: find.byType(GlassMenuItem),
-    ).first;
+    final pinRow = find
+        .ancestor(of: find.text('Pin'), matching: find.byType(GlassMenuItem))
+        .first;
     final highlightedPin = tester.widget<GlassMenuItem>(pinRow);
     expect(highlightedPin.isInteractionHighlighted, isTrue);
     expect(highlightedPin.showInteractionHighlight, isTrue);
@@ -444,11 +440,7 @@ void main() {
             as BoxDecoration;
     expect(clearedPinDecoration.color, const Color(0x00000000));
     expect(
-      tester
-          .widget<GlassMenuItem>(
-            archiveRow,
-          )
-          .isInteractionHighlighted,
+      tester.widget<GlassMenuItem>(archiveRow).isInteractionHighlighted,
       isTrue,
     );
     glide.end(tester.getCenter(find.text('Archive Category')));
@@ -458,7 +450,7 @@ void main() {
     expect(archiveCount, 1);
   });
 
-  testWidgets('external glide scrolls overflowing rows before activation', (
+  testWidgets('external trigger glide selects without scrolling the menu', (
     tester,
   ) async {
     final closing = ValueNotifier(false);
@@ -497,23 +489,18 @@ void main() {
     final controller = tester
         .widget<SingleChildScrollView>(viewportFinder)
         .controller!;
-    final dragNearBottom = Offset(viewport.center.dx, viewport.bottom - 10);
-    glide.move(dragNearBottom);
+    final triggerPosition = Offset(viewport.center.dx, viewport.top - 80);
+    glide.start(triggerPosition);
     await tester.pump();
-    for (var index = 0; index < 10; index++) {
-      glide.move(
-        Offset(viewport.center.dx, viewport.bottom - (index.isEven ? 20 : 10)),
-      );
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    expect(controller.offset, greaterThan(0));
 
-    final visibleOption = find.text('Option 3');
+    final visibleOption = find.text('Option 1');
     expect(visibleOption, findsOneWidget);
     final optionPosition = tester.getCenter(visibleOption);
     glide.move(optionPosition);
     glide.end(optionPosition);
-    expect(selected, 'Option 3');
+    await tester.pump();
+    expect(controller.offset, 0);
+    expect(selected, 'Option 1');
   });
 
   testWidgets('an opened context platter supports its own glide selection', (
@@ -563,62 +550,63 @@ void main() {
     expect(archiveCount, 1);
   });
 
-  testWidgets('an independently scrolled platter selects on release', (
-    tester,
-  ) async {
-    final closing = ValueNotifier(false);
-    addTearDown(closing.dispose);
-    var selected = '';
+  testWidgets(
+    'an independently scrolled platter does not select crossed rows',
+    (tester) async {
+      final closing = ValueNotifier(false);
+      addTearDown(closing.dispose);
+      var selected = '';
 
-    await tester.pumpWidget(
-      CupertinoApp(
-        home: Center(
-          child: SizedBox(
-            width: 270,
-            child: ActionPanel(
-              isClosing: closing,
-              useGlassMenuStyle: true,
-              maxHeight: 132,
-              items: [
-                for (var index = 0; index < 7; index++)
-                  ActionItem(
-                    label: 'Option $index',
-                    icon: CupertinoIcons.circle,
-                    onTap: () => selected = 'Option $index',
-                  ),
-              ],
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Center(
+            child: SizedBox(
+              width: 270,
+              child: ActionPanel(
+                isClosing: closing,
+                useGlassMenuStyle: true,
+                maxHeight: 132,
+                items: [
+                  for (var index = 0; index < 7; index++)
+                    ActionItem(
+                      label: 'Option $index',
+                      icon: CupertinoIcons.circle,
+                      onTap: () => selected = 'Option $index',
+                    ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final viewportFinder = find.byType(SingleChildScrollView).first;
-    final viewport = tester.getRect(viewportFinder);
-    final scrollController = tester
-        .widget<SingleChildScrollView>(viewportFinder)
-        .controller!;
-    // The menu is deliberately over height so this verifies its real scroll
-    // path, not just glide-selecting rows that were initially visible.
-    expect(scrollController.position.maxScrollExtent, greaterThan(0));
-    final start = Offset(viewport.center.dx, viewport.bottom - 10);
-    final gesture = await tester.startGesture(start);
-    var releasePosition = start;
-    for (var step = 1; step <= 10; step++) {
-      releasePosition = start.translate(0, -step * 8.0);
-      await gesture.moveTo(releasePosition);
+      final viewportFinder = find.byType(SingleChildScrollView).first;
+      final viewport = tester.getRect(viewportFinder);
+      final scrollController = tester
+          .widget<SingleChildScrollView>(viewportFinder)
+          .controller!;
+      // The menu is deliberately over height so this verifies its real scroll
+      // path, not just glide-selecting rows that were initially visible.
+      expect(scrollController.position.maxScrollExtent, greaterThan(0));
+      final start = Offset(viewport.center.dx, viewport.bottom - 10);
+      final gesture = await tester.startGesture(start);
+      var releasePosition = start;
+      for (var step = 1; step <= 10; step++) {
+        releasePosition = start.translate(0, -step * 8.0);
+        await gesture.moveTo(releasePosition);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(scrollController.offset, greaterThan(0));
+      const targetLabel = 'Option 1';
+      final targetPosition = tester.getCenter(find.text(targetLabel));
+      await gesture.moveTo(targetPosition);
       await tester.pump(const Duration(milliseconds: 16));
-    }
-    expect(scrollController.offset, greaterThan(0));
-    const targetLabel = 'Option 1';
-    final targetPosition = tester.getCenter(find.text(targetLabel));
-    await gesture.moveTo(targetPosition);
-    await tester.pump(const Duration(milliseconds: 16));
-    await gesture.up();
-    await tester.pump();
-    expect(selected, targetLabel);
-  });
+      await gesture.up();
+      await tester.pump();
+      expect(selected, isEmpty);
+    },
+  );
 
   testWidgets('context action panel scrolls and reveals its scroll pill', (
     tester,

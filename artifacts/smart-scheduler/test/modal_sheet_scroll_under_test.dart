@@ -11,6 +11,8 @@ import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_title_scroller.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
+import 'package:smart_scheduler/app_theme.dart'
+    show kModalSheetSurfaceShape;
 
 void main() {
   testWidgets(
@@ -74,17 +76,25 @@ void main() {
       await tester.pump();
 
       expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
-      final edge = tester.widget<LiquidGlassScrollEdge>(
+      var edge = tester.widget<LiquidGlassScrollEdge>(
         find.byType(LiquidGlassScrollEdge),
       );
       expect(edge.edge, LiquidGlassEdge.top);
-      expect(edge.color.a, closeTo(0.78, 0.001));
-      expect(edge.blur, closeTo(12 * 0.85, 0.001));
+      expect(edge.color.a, lessThan(0.78));
+      expect(edge.blur, closeTo(12 * 0.85 * 50 / 58, 0.01));
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,
         closeTo(firstRowTop - 50, 1),
       );
+
+      controller.jumpTo(58);
+      await tester.pump();
+      edge = tester.widget<LiquidGlassScrollEdge>(
+        find.byType(LiquidGlassScrollEdge),
+      );
+      expect(edge.color.a, closeTo(0.78, 0.001));
+      expect(edge.blur, closeTo(12 * 0.85, 0.001));
 
       controller.jumpTo(0);
       await tester.pump();
@@ -260,7 +270,7 @@ void main() {
       final edgeFinder = find.byType(LiquidGlassScrollEdge);
       expect(edgeFinder, findsOneWidget);
       final expectedBlur = tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur;
-      expect(expectedBlur, closeTo(12 * 0.85, 0.001));
+      expect(expectedBlur, closeTo(12 * 0.85 * 50 / 58, 0.01));
 
       final gesture = await tester.startGesture(
         tester.getCenter(find.byType(ModalSheetTitleScroller)),
@@ -370,6 +380,54 @@ void main() {
 
     expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
   });
+
+  testWidgets(
+    'scroll-edge clipping uses the complete modal viewport and shared outline',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                edgeClipShape: kModalSheetSurfaceShape,
+                headerHeight: 40,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                surfaceColor: CupertinoColors.systemBackground,
+                header: const SizedBox(height: 40),
+                scrollBuilder: (context, padding) => ListView(
+                  padding: padding,
+                  children: List.generate(
+                    20,
+                    (index) => SizedBox(
+                      height: 40,
+                      child: Text('Clip row $index'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final sheetRect = tester.getRect(find.byType(ModalSheetScrollUnder));
+      final edgeClip = find.byKey(
+        const ValueKey('modal-sheet-scroll-edge-clip'),
+      );
+      final clipRect = tester.getRect(edgeClip);
+      expect(clipRect, sheetRect);
+      final clipper = tester.widget<ClipPath>(edgeClip).clipper!;
+      expect(clipper, isA<ShapeBorderClipper>());
+      expect(
+        (clipper as ShapeBorderClipper).shape,
+        same(kModalSheetSurfaceShape),
+      );
+    },
+  );
 
   testWidgets(
     'restores the top edge from an existing offset after the sheet state remounts',

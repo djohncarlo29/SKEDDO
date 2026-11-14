@@ -15,6 +15,7 @@ import 'package:flutter/rendering.dart';
 import 'glass_drag_builder.dart';
 import '../renderer/liquid_glass_self_scale_scope.dart';
 import '../../utils/glass_spring.dart';
+import '../../widgets/shared/glass_option_gesture_arena.dart';
 
 /// Configuration for the anchor stretch effect on interactive glass widgets.
 ///
@@ -240,6 +241,7 @@ class LiquidStretch extends StatelessWidget {
     return GlassDragBuilder(
       behavior: hitTestBehavior,
       suppressInteractionOnChildren: suppressInteractionOnChildren,
+      gestureController: GlassOptionGestureScope.maybeOf(context),
       builder: (context, value, child) {
         final pressed = value != null;
         // With pressGrowth the spring drives a 0→1 progress and the render

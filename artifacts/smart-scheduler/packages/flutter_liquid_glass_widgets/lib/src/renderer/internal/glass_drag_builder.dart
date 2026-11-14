@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:liquid_glass_widgets/widgets/shared/glass_option_gesture_arena.dart';
 import 'package:meta/meta.dart';
 import 'interaction_notification.dart';
 
@@ -8,12 +9,14 @@ class GlassDragBuilder extends StatefulWidget {
     required this.builder,
     this.behavior = HitTestBehavior.opaque,
     this.suppressInteractionOnChildren = true,
+    this.gestureController,
     this.child,
     super.key,
   });
 
   final HitTestBehavior behavior;
   final bool suppressInteractionOnChildren;
+  final GlassOptionGestureController? gestureController;
   final ValueWidgetBuilder<Offset?> builder;
   final Widget? child;
 
@@ -26,6 +29,38 @@ class _GlassDragBuilderState extends State<GlassDragBuilder> {
   bool _shouldIgnoreCurrentPointer = false;
 
   bool get isDragging => currentDragOffset != null;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.gestureController?.addListener(_onGestureOwnerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant GlassDragBuilder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.gestureController != widget.gestureController) {
+      oldWidget.gestureController?.removeListener(_onGestureOwnerChanged);
+      widget.gestureController?.addListener(_onGestureOwnerChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.gestureController?.removeListener(_onGestureOwnerChanged);
+    super.dispose();
+  }
+
+  void _onGestureOwnerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Offset? get _builderOffset {
+    if (currentDragOffset == null || widget.gestureController?.allowsStretch != false) {
+      return currentDragOffset;
+    }
+    return Offset.zero;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +100,7 @@ class _GlassDragBuilderState extends State<GlassDragBuilder> {
           if (!mounted) return;
           setState(() => currentDragOffset = null);
         },
-        child: widget.builder(context, currentDragOffset, widget.child),
+        child: widget.builder(context, _builderOffset, widget.child),
       ),
     );
   }

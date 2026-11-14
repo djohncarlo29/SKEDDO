@@ -322,7 +322,7 @@ void main() {
     expect(popover.anchorGrowthToTrigger, isTrue);
     expect(popover.keepTriggerHiddenDuringClose, isTrue);
     expect(popover.popoverWidth, 400);
-    expect(popover.popoverOffset, const Offset(-4, -4));
+    expect(popover.popoverOffset, const Offset(-4, -2));
     expect(popover.screenPadding, const EdgeInsets.all(12));
     expect(kSkeddoPopoverGlassOpacity, 0.83276);
     final glassContainers = find.byType(GlassContainer);
@@ -334,11 +334,11 @@ void main() {
       glassContainerRects.any(
         (rect) =>
             (rect.left - (triggerOrigin.dx - 4)).abs() < 1.0 &&
-            (rect.top - (triggerOrigin.dy - 4)).abs() < 1.0 &&
+            (rect.top - (triggerOrigin.dy - 2)).abs() < 1.0 &&
             (rect.width - popover.popoverWidth).abs() < 1.0,
       ),
       isTrue,
-      reason: 'The landscape popover should open 4px above and left of the X.',
+      reason: 'The landscape popover should settle 2px below and 4px left of the X.',
     );
     expect(popover.barrierDismissible, isTrue);
     expect(popover.settings!.refractiveIndex, 1.59);
@@ -836,7 +836,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final popover = tester.widget<GlassPopover>(find.byType(GlassPopover));
-    expect(popover.popoverOffset, const Offset(-8, -6));
+    expect(popover.popoverOffset, const Offset(-8, -4));
     final glassContainers = find.byType(GlassContainer);
     final glassContainerRects = List<Rect>.generate(
       glassContainers.evaluate().length,
@@ -846,12 +846,12 @@ void main() {
       glassContainerRects.any(
         (rect) =>
             (rect.left - (triggerOrigin.dx - 8)).abs() < 1.0 &&
-            (rect.top - (triggerOrigin.dy - 6)).abs() < 1.0 &&
+            (rect.top - (triggerOrigin.dy - 4)).abs() < 1.0 &&
             (rect.width - popover.popoverWidth).abs() < 1.0,
       ),
       isTrue,
       reason:
-          'The moved trigger must keep the settled popover at its old position.',
+          'The moved trigger must preserve the new 2px downward offset.',
     );
 
     await tester.tapAt(const Offset(500, 700));
