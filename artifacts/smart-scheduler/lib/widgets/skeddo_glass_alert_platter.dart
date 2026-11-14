@@ -1,8 +1,39 @@
 import 'package:flutter/cupertino.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-/// The iOS 26/27 alert-platter layout, scoped to SKEDDO's category lifecycle
-/// confirmations so the rest of the app keeps its existing glass style.
+import 'rounded_cupertino_sheet.dart';
+import 'skeddo_glass_settings.dart';
+
+/// Presents SKEDDO's scoped iOS 26/27-style alert with the shared glass curve.
+Future<T?> showSkeddoGlassAlertDialog<T>({
+  required BuildContext context,
+  required String title,
+  String? message,
+  required List<GlassDialogAction> Function(BuildContext dialogContext)
+  actionsBuilder,
+  bool barrierDismissible = true,
+}) {
+  final sharedSettings = skeddoModalSheetPickerGlassSettingsFor(
+    CupertinoTheme.brightnessOf(context),
+  );
+  final dialogSettings = skeddoNavigationGlassSettingsFromShared(
+    sharedSettings,
+  );
+  return showSafeCupertinoDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierColor: const Color(0x44000000),
+    builder: (dialogContext) => SkeddoGlassAlertPlatter(
+      title: title,
+      message: message,
+      actions: actionsBuilder(dialogContext),
+      settings: dialogSettings,
+      quality: GlassQuality.premium,
+    ),
+  );
+}
+
+/// The iOS 26/27 alert-platter layout scoped to SKEDDO confirmations.
 class SkeddoGlassAlertPlatter extends StatelessWidget {
   const SkeddoGlassAlertPlatter({
     required this.actions,
@@ -49,13 +80,13 @@ class SkeddoGlassAlertPlatter extends StatelessWidget {
                   quality: quality,
                   shape: const LiquidRoundedSuperellipse(borderRadius: 34),
                   padding: EdgeInsets.zero,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (hasHeader)
-                        Flexible(
-                          child: SingleChildScrollView(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (hasHeader)
+                          Padding(
                             padding: const EdgeInsetsDirectional.fromSTEB(
                               30,
                               22,
@@ -80,7 +111,7 @@ class SkeddoGlassAlertPlatter extends StatelessWidget {
                                     ),
                                   ),
                                 if (title != null && message != null)
-                                  const SizedBox(height: 7.33),
+                                  const SizedBox(height: 20.33),
                                 if (message != null)
                                   SizedBox(
                                     width: double.infinity,
@@ -96,20 +127,20 @@ class SkeddoGlassAlertPlatter extends StatelessWidget {
                               ],
                             ),
                           ),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            hasHeader ? 16 : 22,
+                            16,
+                            16,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) =>
+                                _buildActions(context, constraints.maxWidth),
+                          ),
                         ),
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          hasHeader ? 16 : 22,
-                          16,
-                          16,
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) =>
-                              _buildActions(context, constraints.maxWidth),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

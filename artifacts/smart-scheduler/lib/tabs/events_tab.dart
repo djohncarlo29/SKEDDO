@@ -46,7 +46,6 @@ import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/trailing_checkmark_slot.dart';
-import '../widgets/skeddo_glass_settings.dart';
 import '../widgets/skeddo_glass_alert_platter.dart';
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
@@ -12343,7 +12342,7 @@ class _GroupRow extends StatelessWidget {
 
 enum _DeleteGroupChoice { only, withCategories, withCategoriesAndContents }
 
-/// Overlay confirmation sheet for group deletion.
+/// First dialog in the group's deletion flow, choosing the deletion scope.
 ///
 /// This intentionally follows the same overlay-based presentation as the
 /// microphone access sheet: the card blooms in place and the scrim remains in
@@ -12353,190 +12352,37 @@ class _DeleteGroupSheet {
     BuildContext context, {
     required String groupName,
   }) async {
-    final completer = Completer<_DeleteGroupChoice?>();
-    late final OverlayEntry entry;
-    final overlay = Overlay.of(context, rootOverlay: true);
-
-    void close(_DeleteGroupChoice? result) {
-      if (completer.isCompleted) return;
-      entry.remove();
-      completer.complete(result);
-    }
-
-    entry = OverlayEntry(
-      builder:
-          (_) =>
-              _DeleteGroupSheetOverlay(groupName: groupName, onResult: close),
-    );
-    overlay.insert(entry);
-    return completer.future;
-  }
-}
-
-class _DeleteGroupSheetOverlay extends StatelessWidget {
-  final String groupName;
-  final void Function(_DeleteGroupChoice?) onResult;
-
-  const _DeleteGroupSheetOverlay({
-    required this.groupName,
-    required this.onResult,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLandscapeInset =
-        AppWindowContentScope.of(context).horizontalInset > 0.0;
-    final primary = resolveThemeColor(kPrimaryLabel, context);
-    final secondary = resolveThemeColor(kSecondaryLabel, context);
-    final horizontalInset =
-        AppWindowContentScope.of(context).horizontalInset + 16;
-    final buttonDecor = ShapeDecoration(
-      color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(
-        radius: kConfirmationButtonCornerRadius,
-      ),
-      shadows: resolveThemeShadows(kCardShadow, context),
-    );
-    final sheetBorder =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? BorderSide(
-              color: resolveThemeColor(kTertiaryLabel, context),
-              width: 0.5,
-            )
-            : null;
-
-    Widget button({
-      required String label,
-      required Color labelColor,
-      required VoidCallback onTap,
-    }) {
-      return GelBloomButton(
-        peakScale: 1.06,
-        tapDelay: const Duration(milliseconds: 120),
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          decoration: buttonDecor,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-          child: Center(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                color: labelColor,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
-              ),
-            ),
-          ),
+    return showSkeddoGlassAlertDialog<_DeleteGroupChoice>(
+      context: context,
+      title: 'Delete the group "$groupName"?',
+      message:
+          'Choose whether to remove only the group and keep its categories, '
+          'delete the group and categories while moving their events to the '
+          'default category, or delete the group, categories, and events '
+          'together. Category sections stay with deleted categories.',
+      actionsBuilder: (dialogContext) => [
+        GlassDialogAction(
+          label: 'Remove Group Only',
+          isPrimary: true,
+          onPressed: () =>
+              Navigator.of(dialogContext).pop(_DeleteGroupChoice.only),
         ),
-      );
-    }
-
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onResult(null),
-          child: const ColoredBox(
-            color: Color(0x44000000),
-            child: SizedBox.expand(),
-          ),
+        GlassDialogAction(
+          label: 'Delete Group and Categories',
+          onPressed: () =>
+              Navigator.of(dialogContext).pop(_DeleteGroupChoice.withCategories),
         ),
-        Align(
-          alignment: Alignment.center,
-          child: SafeArea(
-            left: !hasLandscapeInset,
-            right: !hasLandscapeInset,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalInset,
-                vertical: 16,
-              ),
-              child: GelBloomCard(
-                scaleOrigin: Alignment.center,
-                fillOpacity: 0.82,
-                shadowOpacity: 0.26,
-                border: sheetBorder,
-                shape: BoundedSquircleStadiumBorder(
-                  radius: kConfirmationSheetCornerRadius,
-                  side: sheetBorder ?? BorderSide.none,
-                ),
-                child: ActionPanelScrollView(
-                  maxHeight: MediaQuery.sizeOf(context).height,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    child: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                       children: [
-                      Text(
-                        'Delete the group "$groupName"?',
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 18,
-                          fontFamily: 'SFProText',
-                          fontWeight: FontWeight.w600,
-                          color: primary,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Choose whether to remove only the group and keep its '
-                        'categories, delete the group and categories while '
-                        'moving their events to the default category, or '
-                        'delete the group, categories, and events together. '
-                        'Category sections stay with deleted categories.',
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 15,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          color: secondary,
-                          height: 1.5,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      button(
-                        label: 'Remove Group Only',
-                        labelColor: primary,
-                        onTap: () => onResult(_DeleteGroupChoice.only),
-                      ),
-                      const SizedBox(height: 8),
-                      button(
-                        label: 'Delete Group and Categories',
-                        labelColor: primary,
-                        onTap:
-                            () => onResult(_DeleteGroupChoice.withCategories),
-                      ),
-                      const SizedBox(height: 8),
-                      button(
-                        label: 'Delete Group, Categories & Events',
-                        labelColor: CupertinoColors.destructiveRed,
-                        onTap: () => onResult(
-                          _DeleteGroupChoice.withCategoriesAndContents,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      button(
-                        label: 'Cancel',
-                        labelColor: primary,
-                        onTap: () => onResult(null),
-                      ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+        GlassDialogAction(
+          label: 'Delete Group, Categories & Events',
+          isDestructive: true,
+          onPressed: () => Navigator.of(
+            dialogContext,
+          ).pop(_DeleteGroupChoice.withCategoriesAndContents),
+        ),
+        GlassDialogAction(
+          label: 'Cancel',
+          onPressed: () => Navigator.of(dialogContext).pop(),
+        ),
       ],
     );
   }
@@ -12551,23 +12397,11 @@ Future<T?> _showCategoryLifecycleGlassDialog<T>(
   required List<GlassDialogAction> Function(BuildContext dialogContext)
   actionsBuilder,
 }) {
-  final sharedSettings = skeddoModalSheetPickerGlassSettingsFor(
-    CupertinoTheme.brightnessOf(context),
-  );
-  final dialogSettings = skeddoNavigationGlassSettingsFromShared(
-    sharedSettings,
-  );
-  return showSafeCupertinoDialog<T>(
+  return showSkeddoGlassAlertDialog<T>(
     context: context,
-    barrierDismissible: true,
-    barrierColor: const Color(0x44000000),
-    builder: (dialogContext) => SkeddoGlassAlertPlatter(
-      title: title,
-      message: message,
-      actions: actionsBuilder(dialogContext),
-      settings: dialogSettings,
-      quality: GlassQuality.premium,
-    ),
+    title: title,
+    message: message,
+    actionsBuilder: actionsBuilder,
   );
 }
 
@@ -12633,7 +12467,7 @@ class _ArchiveCategorySheet {
 
 enum _UtilityItemAction { primary, destructive }
 
-/// Overlay action sheet used when an item in Archived Items or Recently
+/// Dialog used when an item in Archived Items or Recently
 /// Deleted is tapped. Recovery stays first when present, an optional
 /// destructive action follows it, and Cancel remains last.
 class _UtilityItemSheet {
@@ -12644,192 +12478,31 @@ class _UtilityItemSheet {
     required String? actionLabel,
     String? destructiveActionLabel,
   }) async {
-    final completer = Completer<_UtilityItemAction?>();
-    late final OverlayEntry entry;
-    final overlay = Overlay.of(context, rootOverlay: true);
-
-    void close(_UtilityItemAction? result) {
-      if (completer.isCompleted) return;
-      entry.remove();
-      completer.complete(result);
-    }
-
-    entry = OverlayEntry(
-      builder:
-          (_) => _UtilityItemSheetOverlay(
-            title: title,
-            subtitle: subtitle,
-            actionLabel: actionLabel,
-            destructiveActionLabel: destructiveActionLabel,
-            onResult: close,
+    return showSkeddoGlassAlertDialog<_UtilityItemAction>(
+      context: context,
+      title: title,
+      message: subtitle,
+      actionsBuilder: (dialogContext) => [
+        if (actionLabel != null)
+          GlassDialogAction(
+            label: actionLabel,
+            isPrimary: true,
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_UtilityItemAction.primary),
           ),
-    );
-    overlay.insert(entry);
-    return completer.future;
-  }
-}
-
-class _UtilityItemSheetOverlay extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final String? destructiveActionLabel;
-  final void Function(_UtilityItemAction?) onResult;
-
-  const _UtilityItemSheetOverlay({
-    required this.title,
-    required this.subtitle,
-    required this.actionLabel,
-    required this.destructiveActionLabel,
-    required this.onResult,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLandscapeInset =
-        AppWindowContentScope.of(context).horizontalInset > 0.0;
-    final primary = resolveThemeColor(kPrimaryLabel, context);
-    final secondary = resolveThemeColor(kSecondaryLabel, context);
-    final horizontalInset =
-        AppWindowContentScope.of(context).horizontalInset + 16;
-    final buttonDecor = ShapeDecoration(
-      color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(
-        radius: kConfirmationButtonCornerRadius,
-      ),
-      shadows: resolveThemeShadows(kCardShadow, context),
-    );
-    final sheetBorder =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? BorderSide(
-              color: resolveThemeColor(kTertiaryLabel, context),
-              width: 0.5,
-            )
-            : null;
-
-    Widget button({
-      required String label,
-      required Color labelColor,
-      required VoidCallback onTap,
-    }) {
-      return GelBloomButton(
-        peakScale: 1.06,
-        tapDelay: const Duration(milliseconds: 120),
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          decoration: buttonDecor,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-          child: Center(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                color: labelColor,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
-              ),
-            ),
+        if (destructiveActionLabel != null)
+          GlassDialogAction(
+            label: destructiveActionLabel,
+            isDestructive: true,
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_UtilityItemAction.destructive),
           ),
+        GlassDialogAction(
+          label: 'Cancel',
+          onPressed: () => Navigator.of(dialogContext).pop(),
         ),
-      );
-    }
-
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onResult(null),
-          child: const ColoredBox(
-            color: Color(0x44000000),
-            child: SizedBox.expand(),
-          ),
-        ),
-        Align(
-          alignment: Alignment.center,
-          child: SafeArea(
-            left: !hasLandscapeInset,
-            right: !hasLandscapeInset,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalInset,
-                vertical: 16,
-              ),
-              child: GelBloomCard(
-                scaleOrigin: Alignment.center,
-                fillOpacity: 0.82,
-                shadowOpacity: 0.26,
-                border: sheetBorder,
-                shape: BoundedSquircleStadiumBorder(
-                  radius: kConfirmationSheetCornerRadius,
-                  side: sheetBorder ?? BorderSide.none,
-                ),
-                child: ActionPanelScrollView(
-                  maxHeight: MediaQuery.sizeOf(context).height,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    child: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                       children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 18,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w600,
-                          color: primary,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 15,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          color: secondary,
-                          height: 1.5,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      if (actionLabel != null)
-                        button(
-                          label: actionLabel!,
-                          labelColor: primary,
-                          onTap: () => onResult(_UtilityItemAction.primary),
-                        ),
-                      if (destructiveActionLabel != null) ...[
-                        if (actionLabel != null) const SizedBox(height: 8),
-                        button(
-                          label: destructiveActionLabel!,
-                          labelColor: CupertinoColors.destructiveRed,
-                          onTap: () =>
-                              onResult(_UtilityItemAction.destructive),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      button(
-                        label: 'Cancel',
-                        labelColor: primary,
-                        onTap: () => onResult(null),
-                      ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }

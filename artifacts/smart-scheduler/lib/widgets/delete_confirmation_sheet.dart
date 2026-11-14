@@ -13,14 +13,16 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassQuality,
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassDialogAction;
 
 import '../app_settings.dart';
 import '../app_theme.dart';
 import '../services/event_store.dart';
 import 'action_panel.dart';
-import 'app_window_content_boundary.dart';
 import 'device_screen_size.dart' as device_screen_size;
 import 'rounded_cupertino_sheet.dart';
+import 'skeddo_glass_alert_platter.dart';
 import 'skeddo_glass_settings.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
@@ -54,37 +56,24 @@ Future<bool?> showConfirmationSheet(
   String actionLabel = 'Delete',
   bool destructive = false,
   bool accentAction = false,
-}) async {
-  final completer = Completer<bool?>();
-  late OverlayEntry entry;
-  final overlay = Overlay.of(context, rootOverlay: true);
-  final isPresentedOverModalSheet =
-      RoundedCupertinoSheetRoute.hasParentSheet(context);
-  final horizontalInset =
-      AppWindowContentScope.of(context).horizontalInset +
-      (isPresentedOverModalSheet ? kModalConfirmationHorizontalInset : 16.0);
-
-  void close(bool? result) {
-    if (completer.isCompleted) return;
-    entry.remove();
-    completer.complete(result);
-  }
-
-  entry = OverlayEntry(
-    builder:
-        (_) => _DeleteConfirmationSheetOverlay(
-          title: title,
-          subtitle: subtitle,
-          actionLabel: actionLabel,
-          destructive: destructive,
-          accentAction: accentAction,
-          horizontalInset: horizontalInset,
-           isPresentedOverModalSheet: isPresentedOverModalSheet,
-          onResult: close,
-        ),
+}) {
+  return showSkeddoGlassAlertDialog<bool>(
+    context: context,
+    title: title,
+    message: subtitle,
+    actionsBuilder: (dialogContext) => [
+      GlassDialogAction(
+        label: 'Cancel',
+        onPressed: () => Navigator.of(dialogContext).pop(false),
+      ),
+      GlassDialogAction(
+        label: actionLabel,
+        isDestructive: destructive,
+        isPrimary: accentAction,
+        onPressed: () => Navigator.of(dialogContext).pop(true),
+      ),
+    ],
   );
-  overlay.insert(entry);
-  return completer.future;
 }
 
 /// Shows the shared destructive confirmation surface used by event, category,
@@ -703,175 +692,3 @@ final TextStyle _discardConfirmationButtonTextStyle = TextStyle(
   letterSpacing: kTracking17,
   height: kLineHeight,
 );
-
-class _DeleteConfirmationSheetOverlay extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final String actionLabel;
-  final bool destructive;
-  final bool accentAction;
-  final double horizontalInset;
-  final bool isPresentedOverModalSheet;
-  final void Function(bool?) onResult;
-
-  const _DeleteConfirmationSheetOverlay({
-    required this.title,
-    required this.subtitle,
-    required this.actionLabel,
-    required this.destructive,
-    required this.accentAction,
-    required this.horizontalInset,
-    required this.isPresentedOverModalSheet,
-    required this.onResult,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLandscapeInset =
-        AppWindowContentScope.of(context).horizontalInset > 0.0;
-    final primary = resolveThemeColor(kPrimaryLabel, context);
-    final secondary = resolveThemeColor(kSecondaryLabel, context);
-    final buttonDecor = ShapeDecoration(
-      color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(
-        radius: kConfirmationButtonCornerRadius,
-      ),
-      shadows: resolveThemeShadows(kCardShadow, context),
-    );
-    final sheetBorder =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? BorderSide(
-              color: resolveThemeColor(kTertiaryLabel, context),
-              width: 0.5,
-            )
-            : null;
-
-    Widget button({
-      required String label,
-      required Color labelColor,
-      required VoidCallback onTap,
-    }) {
-      return GelBloomButton(
-        peakScale: 1.06,
-        tapDelay: const Duration(milliseconds: 120),
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          decoration: buttonDecor,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-          child: Center(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                color: labelColor,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onResult(null),
-          child: const ColoredBox(
-            color: Color(0x44000000),
-            child: SizedBox.expand(),
-          ),
-        ),
-        Align(
-          alignment: Alignment.center,
-          child: SafeArea(
-            left: !hasLandscapeInset,
-            right: !hasLandscapeInset,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalInset,
-                vertical: 16,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: GelBloomCard(
-                  scaleOrigin: Alignment.center,
-                  fillOpacity: 0.82,
-                  shadowOpacity: 0.26,
-                  border: sheetBorder,
-                  shape: BoundedSquircleStadiumBorder(
-                    radius: isPresentedOverModalSheet
-                        ? kModalConfirmationSheetCornerRadius
-                        : kConfirmationSheetCornerRadius,
-                    side: sheetBorder ?? BorderSide.none,
-                  ),
-                  child: ActionPanelScrollView(
-                    maxHeight: MediaQuery.sizeOf(context).height,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                      child: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                       children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            inherit: false,
-                            fontSize: 18,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w600,
-                            color: primary,
-                            letterSpacing: kTracking16,
-                          ),
-                        ),
-                        if (subtitle != null && subtitle!.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            subtitle!,
-                            style: TextStyle(
-                              inherit: false,
-                              fontSize: 15,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              color: secondary,
-                              height: 1.5,
-                              letterSpacing: kTracking16,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        button(
-                          label: actionLabel,
-                          labelColor:
-                              destructive
-                                  ? CupertinoColors.destructiveRed
-                                  : accentAction
-                                  ? resolveAccentColor(context)
-                                  : primary,
-                          onTap: () => onResult(true),
-                        ),
-                        const SizedBox(height: 8),
-                        button(
-                          label: 'Cancel',
-                          labelColor: primary,
-                          onTap: () => onResult(null),
-                        ),
-                       ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}

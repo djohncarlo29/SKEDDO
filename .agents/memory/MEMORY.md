@@ -160,4 +160,4 @@
 - [System accent support](native-accent-color-source.md) — system accent APIs provide colors, not canonical swatch names; never label by nearest app swatch.
 - [System theme and accent independence](system-theme-accent-independence.md) — accent changes are color-only; System theme labels and rendered brightness must use the same OS snapshot.
 - [Mirror-setting trailing values](mirror-setting-trailing-values.md) — show “System (detail)” only when the corresponding system row exposes a detail; otherwise show “System.”
-- [Scoped Glass alert layout](scoped-glass-alert-layout.md) — use the newer iOS alert platter only for category dialogs; keep package defaults and tuned surfaces unchanged.
+- [Scoped Glass alert layout](scoped-glass-alert-layout.md) — use the newer alert platter for lifecycle confirmations; keep shared glass defaults unchanged.
