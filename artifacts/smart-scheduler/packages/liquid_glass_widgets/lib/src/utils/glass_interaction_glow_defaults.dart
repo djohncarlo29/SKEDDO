@@ -14,8 +14,8 @@ abstract final class GlassInteractionGlowDefaults {
   /// Shared additive spread beyond the animated radius.
   static const double spreadRadius = 0;
 
-  /// Shared opacity multiplier.
-  static const double opacity = 1;
+  /// Shared opacity multiplier, reduced to keep the finger-following glow subtle.
+  static const double opacity = 0.6;
 
   /// Neutral touch glow for light surfaces.
   static const Color lightModeColor = Color(0x1A000000);

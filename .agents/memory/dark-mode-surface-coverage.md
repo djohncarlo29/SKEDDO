@@ -34,13 +34,15 @@ The lightweight shader also uses `fresnelStrength` to scale its fixed
 structural rim in Dark Mode.
 
 All currently glow-enabled controls share the package's touch-glow defaults:
-relative radius 1.6, blur sigma 16, spread 0, opacity 1, with black 10% on
+relative radius 1.6, blur sigma 16, spread 0, opacity 0.6, with black 10% on
 light surfaces and white 15% on dark surfaces. Do not introduce per-surface
 default differences; keep ambient selected-state highlights and disabled glows
 separate from the transient finger-following glow.
 
 **Why:** Touch glow had drifted in radius, blur, and tint across menus, controls,
-and navigation surfaces, making the same gesture feel inconsistent.
+and navigation surfaces, making the same gesture feel inconsistent. Reducing
+the shared opacity by 40% keeps that unified treatment from overpowering the
+surface.
 
 **How to apply:** Use `GlassDefaults` touch-glow values for newly enabled
 surfaces. Preserve an intentional caller override or explicit no-glow state,
